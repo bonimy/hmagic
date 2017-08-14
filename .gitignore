@@ -1,0 +1,9 @@
+/Debug
+/Release
+/bin
+/ipch
+/HMagic.vcxproj.user
+/*.suo
+/*.sdf
+/*.opensdf
+/*.aps
