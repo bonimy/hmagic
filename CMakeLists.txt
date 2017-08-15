@@ -4,6 +4,7 @@ project(HMagic)
 
 add_executable(HMagic WIN32
                z3ed.c
+               structs.h
                resource.h
                z3ed.rc
                icon1.ico)
