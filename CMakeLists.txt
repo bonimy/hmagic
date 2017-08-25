@@ -10,7 +10,7 @@ add_executable(HMagic WIN32
                icon1.ico)
                
 # Needed for MIDI functionality.
-target_link_libraries(HMagic Winmm)
+target_link_libraries(HMagic winmm)
 
 # For Windows common controls.
-target_link_libraries(HMagic ComCtl32)
+target_link_libraries(HMagic comctl32)
