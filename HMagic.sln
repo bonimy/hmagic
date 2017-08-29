@@ -1,7 +1,6 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HMagic", "HMagic.vcxproj", "{FA008659-9533-2732-5E25-2CF65CCADA23}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HMagic", "HMagic.vcxproj", "{8E7AD8CB-1B87-9529-BA16-2A1235AC33EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -9,10 +8,10 @@ Global
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{FA008659-9533-2732-5E25-2CF65CCADA23}.Debug|Win32.ActiveCfg = Debug|Win32
-		{FA008659-9533-2732-5E25-2CF65CCADA23}.Debug|Win32.Build.0 = Debug|Win32
-		{FA008659-9533-2732-5E25-2CF65CCADA23}.Release|Win32.ActiveCfg = Release|Win32
-		{FA008659-9533-2732-5E25-2CF65CCADA23}.Release|Win32.Build.0 = Release|Win32
+		{8E7AD8CB-1B87-9529-BA16-2A1235AC33EC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8E7AD8CB-1B87-9529-BA16-2A1235AC33EC}.Debug|Win32.Build.0 = Debug|Win32
+		{8E7AD8CB-1B87-9529-BA16-2A1235AC33EC}.Release|Win32.ActiveCfg = Release|Win32
+		{8E7AD8CB-1B87-9529-BA16-2A1235AC33EC}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

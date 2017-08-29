@@ -20,7 +20,7 @@
 #define IDD_DIALOG12                    118
 #define IDD_DIALOG13                    119
 #define IDD_DIALOG14                    120
-#define IDD_DIALOG15                    121
+#define IDD_HEADER                      121
 #define IDD_DIALOG16                    124
 #define IDD_DIALOG17                    125
 #define IDD_DIALOG18                    126
@@ -29,7 +29,11 @@
 #define IDD_DIALOG21                    129
 #define IDD_DIALOG22                    130
 #define IDD_DIALOG23                    131
-#define IDD_DIALOG24                    132
+#define IDD_GRAPHIC_THEMES              132
+#define IDD_DIALOG25                    133
+#define IDD_MOVEDATA                    134
+#define IDB_BITMAP1                     136
+#define IDI_ICON2                       137
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002
@@ -53,11 +57,11 @@
 #define IDC_EDIT15                      1008
 #define IDC_BUTTON5                     1008
 #define IDC_RADIO2                      1009
-#define IDC_RADIO9                      1009
 #define IDC_EDIT16                      1009
 #define IDC_BUTTON8                     1009
 #define IDC_RADIO4                      1010
 #define IDC_EDIT17                      1010
+#define IDC_CHECK_OBJ                   1010
 #define IDC_RADIO5                      1011
 #define IDC_EDIT18                      1011
 #define IDC_EDIT8                       1012
@@ -111,6 +115,65 @@
 #define IDC_BUTTON6                     1041
 #define IDC_BUTTON7                     1042
 #define IDC_CUSTOM3                     1042
+#define IDC_SPIN1                       1043
+#define IDC_SPIN2                       1044
+#define IDC_STATICROM1                  1045
+#define IDC_STATICROM2                  1046
+#define IDC_BUTTON50                    1047
+#define IDC_BUTTON51                    1048
+#define IDC_BUTTON52                    1049
+#define IDC_BUTTON53                    1050
+#define IDC_CHECK_SPR                   1051
+#define IDC_CHECK_TIL                   1052
+#define IDC_CHECK_HED                   1053
+#define IDC_EDIT_SRC                    1054
+#define IDC_EDIT_DEST                   1055
+#define IDC_TEST                        1056
+#define IDC_EDITDATA                    1057
+#define IDC_OFFSET                      1058
+#define IDC_MOVEDATA                    1059
+#define IDC_DungEntrDoorHoriz           1060
+#define IDC_DungEntrDoorVert            1061
+#define IDC_DungEntrDoorNone            1062
+#define IDC_DungEntrTier                1063
+#define ID_DungEntrRoomNumber           3002
+#define ID_DungEntrYCoord               3004
+#define ID_DungEntrXCoord               3006
+#define ID_DungEntrYScroll              3008
+#define ID_DungEntrXScroll              3010
+#define ID_DungEditWindow               3011
+#define ID_DungLeftArrow                3014
+#define ID_DungRightArrow               3015
+#define ID_DungUpArrow                  3016
+#define ID_DungDownArrow                3017
+#define ID_DungFloor1                   3019
+#define ID_DungFloor2                   3021
+#define ID_DungEntTileSet               3023
+#define ID_DungEntrSong                 3025
+#define ID_DungIndex                    3027
+#define ID_DungLayout                   3029
+#define ID_DungShowBG1                  3030
+#define ID_DungShowBG2                  3031
+#define ID_DungAnimate                  3033
+#define ID_DungObjLayer1                3034
+#define ID_DungObjLayer2                3035
+#define ID_DungObjLayer3                3036
+#define ID_DungTileSet                  3041
+#define ID_DungPalette                  3043
+#define ID_DungCollSettings             3045
+#define ID_DungSprLayer                 3046
+#define ID_DungChangeRoom               3047
+#define ID_DungShowSprites              3048
+#define ID_DungSprTileSet               3050
+#define ID_DungYCamera                  3052
+#define ID_DungXCamera                  3054
+#define ID_DungEntrProps                3055
+#define ID_DungEditHeader               3056
+#define ID_DungItemLayer                3057
+#define ID_DungBlockLayer               3058
+#define ID_DungTorchLayer               3059
+#define ID_DungSortSprites              3060
+#define ID_DungExit                     3061
 #define ID_Z3_OPEN                      40001
 #define ID_Z3_SAVE                      40002
 #define ID_Z3_SAVEAS                    40003
@@ -154,14 +217,16 @@
 #define ID_EDITING_CLEARDUNGS           40056
 #define ID_EDITING_REPLACE              40057
 #define ID_EDITING_DELPITS              40058
+#define ID_EDITING_PORT                 40059
+#define ID_EDITING_HEADERS              40061
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         40059
-#define _APS_NEXT_CONTROL_VALUE         1043
+#define _APS_NEXT_RESOURCE_VALUE        138
+#define _APS_NEXT_COMMAND_VALUE         40062
+#define _APS_NEXT_CONTROL_VALUE         1064
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

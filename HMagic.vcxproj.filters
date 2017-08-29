@@ -2,15 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{7ddfa0c5-6fd7-4066-9613-f64ce873ef56}</UniqueIdentifier>
+      <UniqueIdentifier>{5ec25c19-c888-4a96-adbc-0d0ed46e8661}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
     </Filter>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{b8493160-7bfd-42a7-800d-556e0d3f7fe8}</UniqueIdentifier>
+      <UniqueIdentifier>{35428203-2679-41a2-aadf-98b2fd8c344e}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl</Extensions>
     </Filter>
     <Filter Include="Resource Files">
-      <UniqueIdentifier>{9533aaf5-1597-4a63-8498-6d8be28c07d0}</UniqueIdentifier>
+      <UniqueIdentifier>{3f6386dd-20a9-4e6a-91dd-776a335fefd2}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
   </ItemGroup>
@@ -28,17 +28,17 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="icon1.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="test2.bmp">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="sprname.dat" />
+  </ItemGroup>
+  <ItemGroup>
     <ResourceCompile Include="z3ed.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="icon1.ico">
-      <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="test2.bmp">
-      <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="sprname.dat" />
   </ItemGroup>
 </Project>

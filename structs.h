@@ -14,7 +14,7 @@ enum
 
 typedef struct
 {
-    char*buf;
+    unsigned char *buf;
     int count;
     int modf;
 } ZBLOCKS;
@@ -22,7 +22,7 @@ typedef struct
 typedef struct
 {
     HWND win;
-    short*buf;
+    uint16_t * buf;
     int modf;
 } ZOVER;
 
@@ -37,7 +37,8 @@ typedef struct
 typedef struct
 {
     unsigned char samp;
-    unsigned char ad,sr,gain;
+    unsigned char ad,sr;
+    uint8_t gain;
     unsigned char multhi,multlo;
 } ZINST;
 
@@ -121,6 +122,7 @@ typedef struct tagFDOC
         roomend3, // through 3...
         ovlend; // end of overlays
     
+    int headerLocation; // Added by MathOnNapkins. Allows for expanded header room.
     
     HWND editwin,
          mdiwin;
@@ -162,6 +164,10 @@ typedef struct tagFDOC
     
     short t_loaded,t_number,t_modf,withhead;
     
+    // Array of raw binary text data for each message in the game.
+    // Once correctly loaded, the first two bytes are a 16-bit value that
+    // indicates the length of the buffer, in a way analogous to Pascal
+    // strings.
     unsigned char **tbuf;
     
     unsigned short nummod;
@@ -255,7 +261,12 @@ typedef struct
 {
     EDITWIN ew;
     HWND dlg;
+    
+    /// Not used.
     short sel;
+    
+    /// Indicates whether the main text messages or dictionary strings are
+    /// currently selected.
     short num;
 } TEXTEDIT;
 
@@ -367,6 +378,8 @@ typedef struct overedit
     short ssize;
     unsigned char*sbuf;
     unsigned short*selbuf;
+    
+    // \note 'sch' appears to refer to 'search'
     unsigned char selsch[0x580];
     unsigned short*schbuf;
     short schyes[4];
@@ -675,6 +688,7 @@ extern SDCREATE *firstdlg, *lastdlg;
 
 extern FDOC *mark_doc;
 extern FDOC *firstdoc, *lastdoc, *activedoc;
+extern FDOC *portdoc,  *srcdoc;
 
 extern DUNGEDIT * dispwnd;
 
