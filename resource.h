@@ -20,7 +20,7 @@
 #define IDD_DIALOG12                    118
 #define IDD_DIALOG13                    119
 #define IDD_DIALOG14                    120
-#define IDD_DIALOG15                    121
+#define IDD_HEADER                      121
 #define IDD_DIALOG16                    124
 #define IDD_DIALOG17                    125
 #define IDD_DIALOG18                    126
@@ -29,7 +29,7 @@
 #define IDD_DIALOG21                    129
 #define IDD_DIALOG22                    130
 #define IDD_DIALOG23                    131
-#define IDD_DIALOG24                    132
+#define IDD_GRAPHIC_THEMES              132
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002

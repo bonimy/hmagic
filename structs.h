@@ -3,6 +3,8 @@
 
     #define HYRULE_MAGIC_STRUCTS_HEADER_GUARD
 
+    #include <stdint.h>
+
 // =============================================================================
 
 enum
@@ -14,7 +16,7 @@ enum
 
 typedef struct
 {
-    char*buf;
+    unsigned char *buf;
     int count;
     int modf;
 } ZBLOCKS;
@@ -22,7 +24,7 @@ typedef struct
 typedef struct
 {
     HWND win;
-    short*buf;
+    uint16_t *buf;
     int modf;
 } ZOVER;
 
@@ -41,7 +43,7 @@ typedef struct
     unsigned char multhi,multlo;
 } ZINST;
 
-typedef struct
+typedef struct tag_ZSFXINT
 {
     unsigned char voll,volr;
     short freq;
@@ -162,6 +164,10 @@ typedef struct tagFDOC
     
     short t_loaded,t_number,t_modf,withhead;
     
+    // Array of raw binary text data for each message in the game.
+    // Once correctly loaded, the first two bytes are a 16-bit value that
+    // indicates the length of the buffer, in a way analogous to Pascal
+    // strings.
     unsigned char **tbuf;
     
     unsigned short nummod;
