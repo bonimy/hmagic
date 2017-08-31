@@ -10,6 +10,11 @@
 // \task Change to GetWindowLongPtr() from GetWindowLong
 // \task Endian issues all around
 // \task Should we do anything with _itoa, _strupr?
+// \task Make sure no hexadecimal constants have + or - following them.
+// Seems some compilers interpret them as floating point hexadecimal
+// constants, which is understandable. Perhaps a C99 and beyond thing?
+// \task Rename all ID_{editor type}* enumeration values to like:
+// SD_{editor_type}_*
 
 #define OEMRESOURCE
 
@@ -101,26 +106,147 @@ enum
     
     ID_DungRoomNumber = ID_DungDlgFirst,
     ID_DungStatic1,
-    ID_DungFake2,
+    ID_DungEntrRoomNumber,
     ID_DungStatic2,
-    ID_DungFake3,
+    ID_DungEntrYCoord,
     ID_DungStatic3,
-    ID_DungFake4,
+    ID_DungEntrXCoord,
     ID_DungStatic4,
-    ID_DungFake5,
+    ID_DungEntrYScroll,
     ID_DungStatic5,
-    ID_DungFake6,
-    ID_DungFake7,
-    ID_DungFake8,
+    ID_DungEntrXScroll,
+    ID_DungEditWindow,
+    ID_DungStartLocGroupBox,
     
     /// Provides details on the currently selected entity of whatever sort.
     ID_DungDetailText,
     
-    ID_DungFake3036 = 3036,
+    ID_DungLeftArrow,
+    ID_DungRightArrow,
+    ID_DungUpArrow,
+    ID_DungDownArrow,
+    ID_DungStatic6,
+    ID_DungFloor1,
+    ID_DungStatic7,
+    ID_DungFloor2,
+    ID_DungStatic8,
+    ID_DungEntrTileSet,
+    ID_DungStatic9,
+    ID_DungEntrSong,
+    ID_DungStatic10,
+    ID_DungEntrPalaceID,
+    ID_DungStatic11,
+    ID_DungLayout,
+    ID_DungShowBG1,
+    ID_DungShowBG2,
+    ID_DungDispGroupBox,
+    ID_DungAnimateButton,
+    ID_DungObjLayer1,
+    ID_DungObjLayer2,
+    ID_DungObjLayer3,
     ID_DungEditGroupBox,
-    ID_DungFake3038,
+    ID_DungStatic12,
     ID_DungBG2Settings,
+    ID_DungStatic13,
+    ID_DungTileSet,
+    ID_DungStatic14,
+    ID_DungPalette,
+    ID_DungStatic15,
+    ID_DungSprTileSet,
+    
+    /// Collision settings
+    ID_DungCollSettings,
+    
+    ID_DungSprLayer,
+
+    /// Button that brings up dialog box asking if you'd like to switch to a
+    /// different room.
+    ID_DungChangeRoom,
+    
+    ID_DungShowSprites,
+    ID_DungStatic16,
+    ID_DungStatic17,
+    ID_DungEntrCameraX,
+    ID_DungStatic18,
+    ID_DungEntrCameraY,
+    ID_DungEntrProps,
+    ID_DungEditHeader,
+    ID_DungItemLayer,
+    ID_DungBlockLayer,
+    ID_DungTorchLayer,
+    ID_DungSortSprites,
+    ID_DungExit,
+    
+    // Should be considered an invalid entry.
+    ID_DungDlgAfterLast,
+    
+    ID_DungNumControls = (ID_DungDlgAfterLast - ID_DungDlgFirst)
 };
+
+    // Looking to call out IDs by name to hide when editing overlays
+    // rather than by their offset from 3000 <__<
+    unsigned const overlay_hide[] =
+    {
+        ID_DungRoomNumber,
+        ID_DungStatic1,
+        ID_DungEntrRoomNumber,
+        ID_DungStatic2,
+        ID_DungEntrYCoord,
+        ID_DungStatic3,
+        ID_DungEntrXCoord,
+        ID_DungStatic4,
+        ID_DungEntrYScroll,
+        ID_DungStatic5,
+        
+        ID_DungEntrXScroll,
+        ID_DungStartLocGroupBox,
+        ID_DungLeftArrow,
+        ID_DungRightArrow,
+        ID_DungUpArrow,
+        ID_DungDownArrow,
+        ID_DungStatic7,
+        ID_DungFloor2,
+        ID_DungStatic8,
+        ID_DungEntrTileSet,
+        
+        ID_DungStatic9,
+        ID_DungEntrSong,
+        ID_DungStatic10,
+        ID_DungEntrPalaceID,
+        ID_DungStatic11,
+        ID_DungLayout,
+        ID_DungObjLayer1,
+        ID_DungObjLayer2,
+        ID_DungObjLayer3,
+        ID_DungEditGroupBox,
+        
+        ID_DungStatic12,
+        ID_DungBG2Settings,
+        ID_DungStatic15,
+        ID_DungSprTileSet,
+        ID_DungCollSettings,
+        ID_DungSprLayer,
+        ID_DungChangeRoom,
+        ID_DungShowSprites,
+        ID_DungStatic16,
+        ID_DungStatic17,
+        
+        ID_DungEntrCameraX,
+        ID_DungStatic18,
+        ID_DungEntrCameraY,
+        ID_DungEntrProps,
+        ID_DungEditHeader,
+        ID_DungItemLayer,
+        ID_DungBlockLayer,
+        ID_DungTorchLayer,
+        ID_DungSortSprites,
+        ID_DungExit
+    };
+
+    enum
+    {
+        ID_DungOverlayHideCount = sizeof(overlay_hide) / sizeof(unsigned),
+    };
 
 enum
 {
@@ -195,13 +321,6 @@ const static int palt_st[] = {32,0,0,208};
 const short bg3blkofs[4] = {221,222,220,0};
 
 RECT const empty_rect = { 0, 0, 0, 0 };
-
-enum
-{
-    // \task Other branch has a better way of doing this (calculated from
-    // the actual range of IDs)
-    ID_DungOverlayHideCount = 49
-};
 
 char *note_str[12] = {"C ","C#","D ","D#","E ","F ","F#","G ","G#","A ","A#","B "};
 
@@ -315,6 +434,31 @@ int romaddr(int const addr)
     }
     
     return ret;
+}
+
+// =============================================================================
+
+/// Converts a cpu address to a rom address by combining a bank byte and
+/// a 16-bit address within that bank.
+uint32_t
+rom_addr_split(uint8_t  const p_bank,
+               uint16_t const p_addr)
+{
+    BOOL const even_bank = ( (p_bank % 2) == 0 );
+    
+    uint32_t const upper = (p_bank >> 1) << 16;
+    
+    uint32_t const lower = (even_bank) ? p_addr - 0x8000
+                                       : p_addr;
+    
+    // -----------------------------
+    
+    if(p_addr < 0x8000)
+    {
+        return 0;
+    }
+    
+    return (upper | lower); 
 }
 
 // =============================================================================
@@ -553,6 +697,208 @@ is16h_neg1_i(uint16_t const * const p_arr,
              size_t           const p_index)
 {
     return is16h_neg1(p_arr + p_index);
+}
+
+// =============================================================================
+
+RECT
+HM_GetWindowRect(HWND const p_win)
+{
+    RECT r;
+    
+    GetWindowRect(p_win, &r);
+    
+    return r;
+}
+
+RECT
+HM_GetClientRect(HWND const p_win)
+{
+    RECT r;
+    
+    GetClientRect(p_win, &r);
+    
+    return r;
+}
+
+POINT
+HM_ClientToScreen(HWND const p_win)
+{
+    POINT pt;
+    
+    ClientToScreen(p_win, &pt);
+    
+    return pt;
+}
+
+// =============================================================================
+
+POINT
+HM_GetWindowPos(HWND const p_win)
+{
+    RECT const r = HM_GetWindowRect(p_win);
+    
+    POINT const pt = { r.left, r.top };
+     
+    return pt;
+}
+
+
+POINT
+HM_GetClientPos(HWND const p_win)
+{
+    RECT const r = HM_GetClientRect(p_win);
+    
+    POINT const pt = { r.left, r.top };
+    
+    return pt;
+}
+
+POINT
+HM_PointClientToScreen(HWND  const p_win,
+                       POINT const p_rel_pos)
+{
+    POINT screen_pos = HM_GetWindowPos(p_win);
+    
+    screen_pos.x += p_rel_pos.x;
+    screen_pos.y += p_rel_pos.y;
+    
+    return screen_pos;
+}
+
+// =============================================================================
+
+typedef
+struct
+{
+    BOOL m_control_down;
+
+    POINT m_rel_pos;
+    POINT m_screen_pos;
+    
+} WM_MouseMoveData;
+
+signed int
+HM_GetSignedLoword(LPARAM p_ptr)
+{
+    return ( (int)(short) LOWORD(p_ptr) );
+}
+
+signed int
+HM_GetSignedHiword(LPARAM p_ptr)
+{
+    return ( (int)(short) HIWORD(p_ptr) );
+}
+
+
+WM_MouseMoveData
+GetMouseMoveData(HWND   const p_win,
+                 WPARAM const wparam,
+                 LPARAM const lparam)
+{
+    unsigned const flags = wparam;
+    
+    WM_MouseMoveData d = { FALSE, 0, 0, {0, 0} };
+    
+    POINT const rel_pos =
+    {
+        HM_GetSignedLoword(lparam),
+        HM_GetSignedHiword(lparam)
+    };
+    
+    // The absolute screen coordinates of the Window itself.
+    POINT const win_screen_pos = HM_GetWindowPos(p_win);
+    
+    // The absolute screen coordinates of the location indicated by the event
+    // (obviously this will be inside of the window, so further to the right,
+    // further down.)
+    POINT const screen_pos =
+    {
+        rel_pos.x + win_screen_pos.x,
+        rel_pos.y + win_screen_pos.y
+    };
+    
+    d.m_rel_pos = rel_pos;
+    
+    d.m_screen_pos = screen_pos;
+    
+    d.m_control_down = (flags & MK_CONTROL);
+    
+    return d;
+}
+
+typedef
+struct
+{
+    signed int m_distance;
+    
+    /// Full copy of all the flags just for reference.
+    unsigned m_flags;
+    
+    /// Is the shift key down?
+    BOOL m_shift_key;
+    
+    /// Is the control key down?
+    BOOL m_control_key;
+
+    /// Is the ALT key down?
+    BOOL m_alt_key;
+
+    POINT m_screen_pos;
+
+} HM_MouseWheelData;
+
+int
+truth(int value)
+{
+    return (value != 0);
+}
+
+// =============================================================================
+
+HM_MouseWheelData
+HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
+{
+    HM_MouseWheelData d;
+    
+    d.m_distance = HM_GetSignedHiword(p_wp);
+    
+    d.m_flags = LOWORD(p_wp);
+    
+    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
+    d.m_control_key = truth(d.m_flags & MK_CONTROL);
+
+    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
+    
+    d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
+    d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
+    
+    return d;
+}
+
+// =============================================================================
+
+typedef
+struct
+{
+    HWND m_deactivating;
+    HWND m_activating;
+}
+HM_MdiActivateData;
+
+// =============================================================================
+
+HM_MdiActivateData
+HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
+{
+    HM_MdiActivateData d;
+    
+    // -----------------------------
+    
+    d.m_deactivating = (HWND) p_wp;
+    d.m_activating   = (HWND) p_lp;
+    
+    return d;
 }
 
 // =============================================================================
@@ -1872,6 +2218,9 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
 
 //#define ShowDialog DialogBoxParam
 
+// \task the type for lparam in this function and the sdc struct should perhaps
+// be changed to void *. int is not necessarily large enough for a pointer on
+// 64-bit or in general!
 HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,int lparam)
 {
     SDCREATE* sdc = malloc(sizeof(SDCREATE));
@@ -2878,9 +3227,9 @@ nosplit:
                 {
                     doc->fsize = k;
                     
-newsize:
+                newsize:
                     
-                    rom = realloc(doc->rom,doc->fsize);
+                    rom = (uint8_t*) realloc(doc->rom, doc->fsize);
                 }
             }
             
@@ -3533,8 +3882,9 @@ void Initroom(DUNGEDIT *ed, HWND win)
 
 //LoadHeader
 
-void LoadHeader(DUNGEDIT * const ed,
-                int        const map)
+void
+LoadHeader(DUNGEDIT * const ed,
+           int        const map)
 {
     // we are passed in a dungeon editing window, and a map number (room number)
     
@@ -3573,7 +3923,7 @@ void LoadHeader(DUNGEDIT * const ed,
         
         if( (m > i) && (m < i + 14) )
         {
-            l = m - i;
+            l = (m - i);
             
             break;
         }
@@ -4007,9 +4357,10 @@ void Saveroom(DUNGEDIT *ed)
         // data in the first two entries. Effectively if there are two
         // 0xffff words in the torch data and the operand of the instruction
         // is 4, it means no room can load torch data.
-        if(!k)
+        if(!k) 
         {
             k = 4;
+            
             get_32_le(rom + 0x2736a) == u32_neg1;
         }
         
@@ -9003,10 +9354,10 @@ LoadText(FDOC * const doc)
         TEXT_GROW_SIZE = 128,
         COUNT_GROW_SIZE = 64,
     };
-
+    
     int data_pos = 0xe0000;
     int l;
-
+    
     int msg_count = 0;
     int max_msg_count = 0x200;
     
@@ -13304,8 +13655,8 @@ BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15ad4) )[j] - l, 0);
                 SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x15ab8) )[j] - i, 0);
                 SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x15aaa) )[j] - l, 0);
-                SetDlgItemInt(win, ID_DungYCamera, ((short*) (rom + 0x15af0) )[j], 0);
-                SetDlgItemInt(win, ID_DungXCamera, ((short*) (rom + 0x15ae2) )[j], 0);
+                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15af0) )[j], 0);
+                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x15ae2) )[j], 0);
             }
             else
             {
@@ -13314,8 +13665,8 @@ BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15063))[j] - l, 0);
                 SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x14e4f))[j] - i, 0);
                 SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x14d45))[j] - l, 0);
-                SetDlgItemInt(win, ID_DungYCamera, ((short*) (rom + 0x15277))[j], 0);
-                SetDlgItemInt(win, ID_DungXCamera, ((short*) (rom + 0x1516d))[j], 0);
+                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15277))[j], 0);
+                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x1516d))[j], 0);
             }
             
             // the show BG1, BG2, Sprite, check boxes.
@@ -13354,21 +13705,21 @@ BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             for(i = 0; i < 15; i++)
             {
                 SendDlgItemMessage(win,
-                                   ID_DungIndex,
+                                   ID_DungEntrPalaceID,
                                    CB_ADDSTRING,
                                    0,
                                    (int) level_str[i]);
             }
             
             SendDlgItemMessage(win,
-                               ID_DungIndex,
+                               ID_DungEntrPalaceID,
                                CB_SETCURSEL,
                                ( (rom[ (j >= 0x85 ? 0x15b91 : 0x1548b) + j] + 2) >> 1) & 0x7f,
                                0);
             
             ed->gfxtmp = rom[(j >= 0x85 ? 0x15b83 : 0x15381) + j];
             
-            SetDlgItemInt(win, ID_DungEntTileSet, ed->gfxtmp, 0);
+            SetDlgItemInt(win, ID_DungEntrTileSet, ed->gfxtmp, 0);
             
             Openroom(ed, k);
         }
@@ -13448,7 +13799,6 @@ newroom:
             
             goto updpal;
         
-        // brings up the room jump dialog box
         case ID_DungChangeRoom:
             
             k = askinteger(295, "Jump to room", "Room #");
@@ -13490,8 +13840,7 @@ newroom:
             
             goto updscrn;
         
-        // The animate button
-        case ID_DungAnimate:
+        case ID_DungAnimateButton:
             
             ed->anim++;
             
@@ -13567,13 +13916,13 @@ no_obj:
         case ID_DungEntrXScroll | (EN_CHANGE << 16):
         case ID_DungFloor1 | (EN_CHANGE << 16):
         case ID_DungFloor2 | (EN_CHANGE << 16):
-        case ID_DungEntTileSet | (EN_CHANGE << 16):
+        case ID_DungEntrTileSet | (EN_CHANGE << 16):
         case ID_DungLayout | (EN_CHANGE << 16):
         case ID_DungTileSet | (EN_CHANGE << 16):
         case ID_DungPalette | (EN_CHANGE << 16):
         case ID_DungSprTileSet | (EN_CHANGE << 16):
-        case ID_DungYCamera | (EN_CHANGE << 16):
-        case ID_DungXCamera | (EN_CHANGE << 16):
+        case ID_DungEntrCameraX | (EN_CHANGE << 16):
+        case ID_DungEntrCameraY | (EN_CHANGE << 16):
             
             wparam &= 65535;
             
@@ -13581,6 +13930,8 @@ no_obj:
             
             rom = ed->ew.doc->rom;
             
+            // \task consider a different check for this. The enumerations
+            // could change order.
             if(wparam > ID_DungEntrXScroll)
             {
                 switch(wparam)
@@ -13665,16 +14016,16 @@ updscrn: // update the screen (obviously)
                     
                     goto updmap;
                 
-                case ID_DungEntTileSet:
+                case ID_DungEntrTileSet:
                     
                     if(j > 30)
                     {
-                        SetDlgItemInt(win, ID_DungEntTileSet, 30, 0);
+                        SetDlgItemInt(win, ID_DungEntrTileSet, 30, 0);
                         break;
                     }
                     else if(j < 0)
                     {
-                        SetDlgItemInt(win, ID_DungEntTileSet, 0, 0);
+                        SetDlgItemInt(win, ID_DungEntrTileSet, 0, 0);
                         break;
                     }
                     
@@ -13807,14 +14158,14 @@ updpal2:
                     
                     break;
                 
-                case ID_DungYCamera:
+                case ID_DungEntrCameraX:
                     
                     ((short*)(rom+(ed->ew.param>=0x85?0x15af0:0x15277)))[ed->ew.param]=j;
                     ed->ew.doc->modf=1;
                     
                     break;
                 
-                case ID_DungXCamera:
+                case ID_DungEntrCameraY:
                     
                     ((short*)(rom+(ed->ew.param>=0x85?0x15ae2:0x1516d)))[ed->ew.param]=j;
                     ed->ew.doc->modf=1;
@@ -13857,8 +14208,8 @@ updpal2:
                     ((short*)(rom+0x14d45))[j] = n + l;
                 }
                 
-                SetDlgItemInt(win, ID_DungYCamera, n + 127, 0);
-                SetDlgItemInt(win, ID_DungXCamera, m + 119, 0);
+                SetDlgItemInt(win, ID_DungEntrCameraX, n + 127, 0);
+                SetDlgItemInt(win, ID_DungEntrCameraY, m + 119, 0);
                 
                 if(wparam < ID_DungStatic4)
                     FixEntScroll(ed->ew.doc, j);
@@ -13867,7 +14218,7 @@ updpal2:
             break;
         
         case ID_DungEntrSong | (CBN_SELCHANGE << 16):
-        case ID_DungIndex | (CBN_SELCHANGE << 16):
+        case ID_DungEntrPalaceID| (CBN_SELCHANGE << 16):
         case ID_DungBG2Settings | (CBN_SELCHANGE << 16):
         case ID_DungCollSettings | (CBN_SELCHANGE << 16):
             
@@ -13893,7 +14244,7 @@ updpal2:
                 
                 break;
             
-            case ID_DungIndex:
+            case ID_DungEntrPalaceID:
                 
                 rom
                 [
@@ -15030,8 +15381,8 @@ Blk16Search_OnPaint(OVEREDIT const * const p_ed,
     
     m = i + p_ed->schscroll;
     
-    oldbrush = SelectObject(hdc,trk_font);
-    oldobj2 = SelectObject(hdc,white_pen);
+    oldbrush = SelectObject(hdc, trk_font);
+    oldobj2 = SelectObject(hdc, white_pen);
     
     SetTextColor(hdc, 0xffffff);
     
@@ -16999,7 +17350,7 @@ void Savemap(OVEREDIT*ed)
     ZOVER*ov;
     FDOC*doc;
     
-    short * b6;
+    unsigned short * b6;
     
     uint16_t * b4 = 0;
     
@@ -17165,7 +17516,7 @@ void rotvec2d(POINT *vec, POINT *pt)
     if(a == 0 && b == 0)
         return;
     
-    c = sqrt(1048576 / (a * a + b * b));
+    c = (int) sqrt(1048576 / (a * a + b * b));
     d = ((pt->x*a)-(pt->y*b))*c>>10;
     e = ((pt->y*a)+(pt->x*b))*c>>10;
     pt->x=d;
@@ -17182,7 +17533,7 @@ void pnormal(int x1,int y1,int z1,int x2,int y2,int z2,int x3,int y3,int z3)
     
     if(a==0 && b==0 && c==0) {rptx=0,rpty=0,rptz=1023;return;}
     
-    d = sqrt(a*a+b*b+c*c);
+    d = (int) sqrt(a*a+b*b+c*c);
     
     rptx=a*1024/d;
     rpty=b*1024/d;
@@ -17949,7 +18300,7 @@ long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         {
             cc.rgbResult&=0xf8f8f8;
             
-            ed->pal[k] = 
+            ed->pal[k] = (uint16_t)
             (
                 ( (cc.rgbResult &     0xf8) >> 3)
               + ( (cc.rgbResult &   0xf800) >> 6)
@@ -23267,7 +23618,8 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+long CALLBACK
+blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKSEL16* ed;
     SCROLLINFO si;
@@ -23545,8 +23897,11 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     HBRUSH oldbrush;
     HPALETTE oldpal;
     SCROLLINFO si;
-    switch(msg) {
+    switch(msg)
+    {
+    
     case WM_SIZE:
+        
         ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
@@ -24044,7 +24399,6 @@ updname:
 }
 
 // =============================================================================
-
 
 BOOL CALLBACK
 overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -25180,7 +25534,8 @@ SD_ENTRY over_sd[] =
     {"EDIT","",300,24,25,20,3034,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"BUTTON","Search",56,20,0,20,3035,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
     {"BUTTON","Search2",56,42,0,20,3036,WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
-    {"BLKSEL16","",152,70,0,0,3038,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11}
+    {"BLKSEL16","",152,70,0,0,3038,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    
 };
 
 SD_ENTRY dung_sd[]={
@@ -25195,17 +25550,17 @@ SD_ENTRY dung_sd[]={
     {"EDIT","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","X scroll:",79,24,40,4, ID_DungStatic5, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"EDIT","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
-    {"STATIC","CX:",173,24,20,4,3051,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",193,24,40,4, ID_DungYCamera, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
-    {"STATIC","CY:",239,24,20,4,3053,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",259,24,40,4, ID_DungXCamera, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","CX:",173,24,20,4, ID_DungStatic17, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"EDIT","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","CY:",239,24,20,4, ID_DungStatic18, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"EDIT","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"BUTTON","More",301,24,36,4, ID_DungEntrProps, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"STATIC","Blockset:",104,72,45,52,3022,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",154,72,40,52, ID_DungEntTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
-    {"STATIC","Music:",204,72,40,52,3024,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"STATIC","Blockset:",104,72,45,52, ID_DungStatic8, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"EDIT","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","Music:",204,72,40,52, ID_DungStatic9, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"COMBOBOX","",254,72,80,-44, ID_DungEntrSong, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
-    {"STATIC","Dungeon:",204,48,48,28,3026,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"COMBOBOX","",254,48,80,-88, ID_DungIndex, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
+    {"STATIC","Dungeon:",204,48,48,28, ID_DungStatic10, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"COMBOBOX","",254,48,80,-88, ID_DungEntrPalaceID, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
     {"DUNGEON","",0,50,0,90, ID_DungEditWindow, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_VSCROLL|WS_HSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,10},
     {"STATIC","",344,86,74,4, ID_DungDetailText, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"BUTTON","",60,0,20,20, ID_DungLeftArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
@@ -25213,30 +25568,30 @@ SD_ENTRY dung_sd[]={
     {"BUTTON","",110,0,20,20, ID_DungUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","",135,0,20,20, ID_DungDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","Jump",160,0,40,20, ID_DungChangeRoom, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"STATIC","Floor 1:",204,0,55,20,3018, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Floor 1:",204,0,55,20, ID_DungStatic6, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Floor 2:",204,24,55,20,3020,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Floor 2:",204,24,55,20, ID_DungStatic7, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Blockset:",298,0,55,20,3040,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Blockset:",298,0,55,20, ID_DungStatic13, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","EnemyBlk:",395,0,55,20,3049,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","EnemyBlk:",395,0,55,20, ID_DungStatic16, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Palette:",298,24,55,20,3042,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Palette:",298,24,55,20, ID_DungStatic14, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Collision:",395,24,50,20,3044,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Collision:",395,24,50,20, ID_DungStatic15, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",450,24,90,120, ID_DungCollSettings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"BUTTON","Exit",550,24,40,24, ID_DungExit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"STATIC","Layout:",0,24,40,20,3028,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Layout:",0,24,40,20, ID_DungStatic11, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","More",490,0,30,24, ID_DungEditHeader, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","BG2:",75,24,30,20,3038,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","BG2:",75,24,30,20, ID_DungStatic12, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",105,24,95,100, ID_DungBG2Settings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
-    {"BUTTON","Starting location",0,86,340,0,3012,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
+    {"BUTTON","Starting location",0,86,340,0, ID_DungStartLocGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
     {"BUTTON","BG1",430,48,40,36, ID_DungShowBG1, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"BUTTON","BG2",430,34,40,22, ID_DungShowBG2, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"BUTTON","Spr",430,20,40,8, ID_DungShowSprites, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"BUTTON","Frm1",430,72,40,52,3033,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"BUTTON","Display",425,86,50,0,3032,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
+    {"BUTTON","Frm1",430,72,40,52, ID_DungAnimateButton, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Display",425,86,50,0, ID_DungDispGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
     {"BUTTON","1",485,64,40,52, ID_DungObjLayer1, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|WS_GROUP,0,12},
     {"BUTTON","2",485,48,40,36, ID_DungObjLayer2, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"BUTTON","3",485,32,40,20, ID_DungObjLayer3, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
@@ -25834,7 +26189,7 @@ SUPERDLG sampdlg={
 };
 
 SUPERDLG dungdlg = {
-    "",dungdlgproc,WS_CHILD|WS_VISIBLE,600,200,62,dung_sd
+    "",dungdlgproc,WS_CHILD|WS_VISIBLE, 600, 200, ID_DungNumControls, dung_sd
 };
 
 SUPERDLG textdlg={
@@ -25842,7 +26197,7 @@ SUPERDLG textdlg={
 };
 
 SUPERDLG overdlg={
-    "",overdlgproc,WS_CHILD|WS_VISIBLE,560,140,39,over_sd
+    "",overdlgproc,WS_CHILD|WS_VISIBLE,560,140, 39, over_sd
 };
 
 SUPERDLG trackdlg = {
@@ -25883,13 +26238,23 @@ SUPERDLG z3_dlg={
 
 long CALLBACK overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-    OVEREDIT *ed;
-    switch(msg) {
+    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+    
+    switch(msg)
+    {
+    
+    deflt:
+    default:
+        return DefMDIChildProc(win, msg, wparam, lparam);
+    
     case WM_CLOSE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         if(ed->selflag) Overselectwrite(ed);
+        
         if(ed->ew.doc->modf==2) goto deflt;
-        if(ed->ov->modf) {
+        
+        if(ed->ov->modf)
+        {
             wsprintf(buffer,"Confirm modification of area %02X?",ed->ew.param);
             switch(MessageBox(framewnd,buffer,"Overworld editor",MB_YESNOCANCEL)) {
             case IDYES:
@@ -25900,32 +26265,65 @@ long CALLBACK overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             case IDNO:
                 goto deflt;
             }
-        } else goto deflt;
+        }
+        else
+            goto deflt;
+        
         break;
+    
     case WM_MDIACTIVATE:
-        if((HWND)lparam!=win) break;
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        activedoc=ed->ew.doc;
-        Setdispwin((DUNGEDIT*)ed);
+        
+        if(ed)
+        {
+            HWND const deactivating = (HWND) wparam;
+            HWND const activating   = (HWND) lparam;
+            
+            if(activating != win)
+            {
+                break;
+            }
+            
+            activedoc = ed->ew.doc;
+            
+            Setdispwin((DUNGEDIT*) ed);
+        }
+        
         break;
+    
     case WM_GETMINMAXINFO:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
         DefMDIChildProc(win,msg,wparam,lparam);
         if(!ed) goto deflt;
         return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
     case WM_SIZE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
         SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
         goto deflt;
     case WM_CREATE:
-        ed=(OVEREDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        ed->dlg=CreateSuperDialog(&overdlg,win,0,0,0,0,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
+        
+        if(always)
+        {
+            CREATESTRUCT const * const cs = (CREATESTRUCT*) lparam;
+            
+            MDICREATESTRUCT const * const
+            mdi_cs = (MDICREATESTRUCT*) cs->lpCreateParams;
+            
+            OVEREDIT * const new_ed = (OVEREDIT*) (mdi_cs->lParam);
+            
+            SetWindowLong(win, GWL_USERDATA, (long) new_ed);
+            
+            ShowWindow(win, SW_SHOW);
+            
+            new_ed->dlg = CreateSuperDialog(&overdlg,
+                                            win,
+                                            0,
+                                            0,
+                                            0,
+                                            0,
+                                            (int) new_ed);
+        }
+        
+        break;
     }
+    
     return 0;
 }
 
@@ -26124,11 +26522,16 @@ long CALLBACK wmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         goto deflt;
         break;
     case WM_MDIACTIVATE:
-        if((HWND)lparam!=win) break;
+        
+        if((HWND)lparam!=win)
+            break;
+        
         ed=((WMAPEDIT*)GetWindowLong(win,GWL_USERDATA));
         activedoc=ed->ew.doc;
         Setdispwin((DUNGEDIT*)ed);
+        
         break;
+    
     case WM_GETMINMAXINFO:
         ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         DefMDIChildProc(win,msg,wparam,lparam);
@@ -26441,7 +26844,6 @@ deflt:
 
 long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-    OVEREDIT*ed;
     SCROLLINFO si;
     
     int i = 0; int j = 0; int k = 0; int l = 0;
@@ -26467,10 +26869,13 @@ long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     unsigned char*b6 = 0,*rom = 0;
     
+    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+    
     switch(msg)
     {
+    
     case WM_SIZE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -26484,17 +26889,47 @@ long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetScrollInfo(win,SB_HORZ,&si,1);
         ed->mapscrollv=Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,si.nMax,32);
         ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,si.nMax,32);
+        
         break;
+    
+    case WM_MOUSEWHEEL:
+        
+        {
+            HM_MouseWheelData d = HM_GetMouseWheelData(wparam, lparam);
+            
+            unsigned const is_horiz = (d.m_control_key);
+            
+            unsigned which_sb = (is_horiz) ? SB_HORZ : SB_VERT;
+            
+            int const which_scroll = (is_horiz) ? ed->mapscrollh : ed->mapscrollv;
+            int const which_page   = (is_horiz) ? ed->mappageh : ed->mappagev;
+            
+            int * const which_return = (is_horiz) ? &ed->mapscrollh : &ed->mapscrollv;
+            
+            (*which_return) = Handlescroll(win,
+                                           (d.m_distance > 0) ? 0 : 1,
+                                           which_scroll,
+                                           which_page,
+                                           which_sb,
+                                           ed->mapsize ? 32 : 16, 32);
+        }
+        
+        break;
+    
     case WM_VSCROLL:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->mapsize?32:16,32);
+        
+        ed->mapscrollv = Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->mapsize?32:16,32);
+        
         break;
+    
     case WM_HSCROLL:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->mapsize?32:16,32);
+        
+        ed->mapscrollh = Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->mapsize?32:16,32);
+        
         break;
+    
     case WM_RBUTTONDOWN:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         l=ed->tool;
         if(l==6 || l==4) break;
         if(l>2) {
@@ -26767,7 +27202,7 @@ addexit:
     case WM_GETDLGCODE:
         return DLGC_WANTCHARS;
     case WM_CHAR:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         if(wparam==26) {overdlgproc(GetParent(win),WM_COMMAND,3014,0);break;}
         i=ed->selobj;
         
@@ -26894,7 +27329,7 @@ updent:
         }
         break;
     case WM_LBUTTONDBLCLK:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         if(ed->selobj==-1) break;
         switch(ed->tool) {
         case 3:
@@ -26933,8 +27368,6 @@ updent:
     
     case WM_LBUTTONDOWN:
         
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
         if(ed->tool == 4)
         {
             l = ( ( (lparam >> 21) + ed->mapscrollv ) << 8)
@@ -26963,10 +27396,15 @@ updent:
         if(ed->tool!=6) SetCapture(win);
         SetFocus(win);
         goto mousemove;
+    
+    mousemove:
     case WM_MOUSEMOVE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-mousemove:
-        if(!ed->dtool) break;
+        
+        if(!ed->dtool)
+        {
+            break;
+        }
+        
         n=ed->mapscrollh<<5;
         o=ed->mapscrollv<<5;
         l=(lparam>>16)+o;
@@ -27295,8 +27733,9 @@ movetile:
             ed->ov->modf=1;
         }
         break;
+    
     case WM_LBUTTONUP:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         if(ed->dtool>1 && ed->dtool<4) {
             Getselectionrect(ed,&rc);
             InvalidateRect(win,&rc,0);
@@ -27329,11 +27768,16 @@ movetile:
                 for(o=0;o<l;o+=32) for(m=0;m<j;m++) ed->selbuf[n++]=b4[m+i+o];
             };
         }
-        if(ed->dtool) ReleaseCapture();
+        
+        if(ed->dtool)
+            ReleaseCapture();
+        
         ed->dtool=0;
+        
         break;
+    
     case WM_PAINT:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         hdc=BeginPaint(win,&ps);
         oldpal=SelectPalette(hdc,ed->hpal,1);
         RealizePalette(hdc);
@@ -27785,18 +28229,31 @@ BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         i=*(short*)(rom+0xdde7);
         
         wsprintf(buffer,
-                 "Sprites: OV:%d, D:%d, Free:%d\nOV Secrets: %d used, %d free\nDungeon secrets: %d used, %d free\nDungeon maps: %d used, %d free\nGraphics: %d used, %d free\nBlocks: %d/99\nTorches: %d/288\nEntrances: %d/129\nExits: %d/79\nHoles: %d/19\nBird locations set: %s\nWhirlpools: %d/8\nExpansion size: %d\nD. headers: %d used, %d free",
-                 doc->dungspr-0x4cb41,
-                 doc->sprend-doc->dungspr-0x300,
-                 0x4ec9f-doc->sprend,
-                 doc->sctend-0xdc3f9,
-                 0xdc894-doc->sctend,
-                 i+0x2217,
-                 -0x1950-i,
-                 doc->dmend-0x57621,
-                 0x57ce0-doc->dmend,
-                 doc->gfxend-0x8b800,
-                 0xc4000-doc->gfxend,
+                 "Sprites: OV:%d, D:%d, Free:%d\n"
+                 "OV Secrets: %d used, %d free\n"
+                 "Dungeon secrets: %d used, %d free\n"
+                 "Dungeon maps: %d used, %d free\n"
+                 "Graphics: %d used, %d free\n"
+                 "Blocks: %d/99\n"
+                 "Torches: %d/288\n"
+                 "Entrances: %d/129\n"
+                 "Exits: %d/79\n"
+                 "Holes: %d/19\n"
+                 "Bird locations set: %s\n"
+                 "Whirlpools: %d/8\n"
+                 "Expansion size: %d\n"
+                 "D. headers: %d used, %d free",
+                 doc->dungspr - 0x4cb41,
+                 doc->sprend - doc->dungspr - 0x300,
+                 0x4ec9f - doc->sprend,
+                 doc->sctend - 0xdc3f9,
+                 0xdc894 - doc->sctend,
+                 i + 0x2217,
+                 -0x1950 - i,
+                 doc->dmend - 0x57621,
+                 0x57ce0 - doc->dmend,
+                 doc->gfxend - 0x8b800,
+                 0xc4000 - doc->gfxend,
                  j,
                  *(short*) (rom + 0x88c1),
                  k,
@@ -27804,9 +28261,10 @@ BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                  m,
                  buffer+768,
                  n,
-                 doc->mapexp ? doc->fsize-doc->mapexp : 0,
+                 doc->mapexp ? (doc->fsize - doc->mapexp)
+                             : 0,
                  *(short*) (rom + 0x27780) + 2174,
-                 -*(short*)(rom+0x27780));
+                 -*(short*)(rom + 0x27780));
         
         SetDlgItemText(win,IDC_STATIC2,buffer);
         
@@ -28216,7 +28674,7 @@ updatemods:
             *(int*)(rom+0x17fbe) = activedoc->oolend;
             
             if(activedoc->mapexp)
-                *(int*)(rom+0x100000) = activedoc->mapexp;
+                *(int*)(rom + 0x100000) = activedoc->mapexp;
             
             h = CreateFile(activedoc->filename,
                            GENERIC_WRITE,
@@ -28807,6 +29265,8 @@ nomod:
                 *(USHORT*)(rom+0x654c0)=0xdf49;
                 *(USHORT*)(rom+0x65148)=0xe047;
                 *(USHORT*)(rom+0x65292)=0xe0f4;
+                
+                // \task look into these 32-bit constants.
                 *(int*)(rom+0x137d)=0xd4bf1b79;
                 *(USHORT*)(rom+0x1381)=0x856e;
                 *(int*)(rom+0x1386)=0xe5e702e1;
@@ -30031,8 +30491,22 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     GetCurrentDirectory(MAX_PATH,currdir);
     
     while(GetMessage(&msg,0,0,0))
+    {
+        if(msg.message == WM_MOUSEWHEEL)
+        {
+            POINT pt;
+            GetCursorPos(&pt);
+            
+            msg.hwnd = WindowFromPoint(pt);
+            
+            DispatchMessage(&msg);
+            
+            continue;
+        }
+        
         ProcessMessage(&msg);
-    
+    }
+
     if(cfg_modf)
     {
         DWORD write_bytes = 0;
