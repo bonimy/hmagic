@@ -191,7 +191,7 @@ typedef struct tagFDOC
     int gfxend, // graphics end
         dungspr, // dungeon sprite
         sprend, // sprite end
-        sctend, // ???
+        sctend, // end of overworld secrets data (items)
         dmend, // ???
         tmend1, // treasure map end 1
         tmend2, // treasure map end 2
