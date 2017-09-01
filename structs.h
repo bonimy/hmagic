@@ -326,10 +326,12 @@ typedef struct
     unsigned char *tbuf;
     
     // the header's size.
-    short hsize;
+    int hsize;
     
     // the header buffer.
     unsigned char hbuf[14];
+    
+    int map_vscroll_delta;
     
 } DUNGEDIT;
 

@@ -1043,6 +1043,39 @@ HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
 
 // =============================================================================
 
+SCROLLINFO
+HM_GetVertScrollInfo(HWND const p_win)
+{
+    SCROLLINFO si;
+    
+    si.cbSize = sizeof(SCROLLINFO);
+    
+    si.fMask = SIF_ALL;
+     
+    GetScrollInfo(p_win, SB_VERT, &si);
+    
+    return si;
+}
+
+// =============================================================================
+
+SCROLLINFO
+HM_GetHorizScrollInfo(HWND const p_win)
+{
+    SCROLLINFO si;
+    
+    si.cbSize = sizeof(SCROLLINFO);
+    
+    si.fMask = SIF_ALL;
+     
+    GetScrollInfo(p_win, SB_HORZ, &si);
+    
+    return si;
+}
+
+// =============================================================================
+
+
 // \task Dummied out on the HMagic2 side for now.
 
 #if 0
@@ -2572,8 +2605,10 @@ unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
 
 //Uncompress**********************************
 
-unsigned char* Uncompress(unsigned char *src, int *size,
-                          int const p_big_endian)
+uint8_t *
+Uncompress(uint8_t const *       src,
+           int           * const size,
+           int             const p_big_endian)
 {
     unsigned char *b2 = (unsigned char*) malloc(1024);
     
@@ -2597,9 +2632,12 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         
         if(b == 7) // i.e. 0b 111
         {
+            // get bits 0b 0001 1100
+            b = ( (a >> 2) & 7 );
+            
             // get bits 0b 0000 0011, multiply by 256, OR with the next byte.
-            b = ((a >> 2) & 7);
-            c = ((a & 3) << 8) | *(src++);
+            c = ( (a & 0x0003) << 8 );
+            c |= *(src++);
         }
         else
             // or get bits 0b 0001 1111
@@ -2611,7 +2649,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         {
             // need to increase the buffer size.
             bs += 1024;
-            b2 = realloc(b2,bs);
+            b2 = (uint8_t*) realloc(b2,bs);
         }
         
         // 7 was handled, here we handle other decompression codes.
@@ -2703,7 +2741,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
                 b2[bd++] = b2[d++];
             }
             
-            src+=2;
+            src += 2;
         }
     }
     
@@ -3812,9 +3850,9 @@ void Releaseblks(FDOC*doc,int b)
                         {
                             e = cpuaddr(e + a - f + c);
                             
-                            rom[0x4f80 + d] = (e >> 16);
-                            rom[0x505f + d] = (e >> 8);
-                            rom[0x513e + d] = e;
+                            rom[0x4f80 + d] = ( (e >> 16) & 0xff );
+                            rom[0x505f + d] = ( (e >>  8) & 0xff );
+                            rom[0x513e + d] = ( (e >>  0) & 0xff );
                         }
                     }
                     
@@ -4011,14 +4049,17 @@ LoadHeader(DUNGEDIT * const ed,
     
     uint8_t const * const rom = ed->ew.doc->rom;
     
-    /// lower limit for the header offset.
-    int i = 0;
+    /// address of the header of the room indicated by parameter 'map'.
+    uint16_t i = 0;
+    
+    // upper limit for the header offset.
+    uint16_t m = 0;
     
     /// counter variable for looping through all dungeon rooms.
     int j = 0;
     
-    int l = 0, // size of the header
-        m = 0; // upper limit for the header offset.
+    // size of the header
+    int l = 0;
     
     // -----------------------------
     
@@ -4033,7 +4074,7 @@ LoadHeader(DUNGEDIT * const ed,
         // if is less than 14 bytes from i.
         m = get_16_le_i(rom + 0x27502, j);
         
-        if( (m > i) && (m < i + 14) )
+        if( (m > i) && (m < (i + 14) ) )
         {
             l = (m - i);
             
@@ -12924,7 +12965,7 @@ BOOL CALLBACK editroomprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             break;
         case IDOK:
             rom=dunged->ew.doc->rom;
-            dunged->hsize=hs;
+            dunged->hsize = hs;
             dunged->hbuf[4] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO1,CB_GETCURSEL,0,0);
             dunged->hbuf[5] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO2,CB_GETCURSEL,0,0);
             dunged->hbuf[6] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO3,CB_GETCURSEL,0,0);
@@ -19895,6 +19936,7 @@ upddrag:
             }
         }
         break;
+    
     case WM_LBUTTONDOWN:
         
         // What to do if the left mouse button goes down.
@@ -20041,25 +20083,105 @@ movesel:
             break;
         
         si.cbSize = sizeof(si);
-        si.fMask = SIF_RANGE|SIF_PAGE;
-        si.nMin = 0;
-        si.nMax = 16;
-        si.nPage = lparam >> 21;
+        
+        si.fMask = SIF_RANGE | SIF_PAGE;
+        
+        {
+            uint16_t const height = HIWORD(lparam);
+            
+            unsigned divider = 16;
+            
+            si.nMin = 0;
+            si.nMax = ( ( (512 + 32) / divider ) - 1 );
+            
+            si.nPage = height / divider;
+            
+            ed->map_vscroll_delta = divider;
+        }
+        
         ed->mappagev = si.nPage;
         
         SetScrollInfo(win,SB_VERT,&si,1);
+        
+        si.nMin = 0;
+        si.nMax = 16;
+        
         si.nPage = (lparam & 65535) >> 5;
         ed->mappageh = si.nPage;
         
         SetScrollInfo(win,SB_HORZ,&si,1);
-        ed->mapscrollv = Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
+        ed->mapscrollv = Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,16,
+                                      ed->map_vscroll_delta);
         ed->mapscrollh = Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
+        
+        break;
+    
+    case WM_MOUSEWHEEL:
+        
+        if(always)
+        {
+            HM_MouseWheelData d = HM_GetMouseWheelData(wparam, lparam);
+            
+            unsigned scroll_type = SB_LINEUP;
+                 
+            WPARAM fake_wp = 0;
+            
+            SCROLLINFO si_v = HM_GetVertScrollInfo(win);
+            
+            if(d.m_distance > 0)
+            {
+                // wheel moving up or left
+                if(d.m_control_key)
+                {
+                    scroll_type = SB_PAGEUP;
+                }
+                else
+                {
+                    scroll_type = SB_LINEUP;
+                }
+            }
+            else
+            {
+                if(d.m_control_key)
+                {
+                    scroll_type = SB_PAGEDOWN;
+                }
+                else
+                {
+                    scroll_type = SB_LINEDOWN;
+                }
+            }             
+            
+            fake_wp = MAKEWPARAM(scroll_type, 0);
+            
+            ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
+            
+            ed->mapscrollv = Handlescroll(win,
+                                          fake_wp,
+                                          ed->mapscrollv,
+                                          ed->mappagev,
+                                          SB_VERT,
+                                          (si_v.nMax - si_v.nMin) + 1,
+                                          ed->map_vscroll_delta);
+        }
         
         break;
     
     case WM_VSCROLL:
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
+
+        {
+            SCROLLINFO const si_v = HM_GetVertScrollInfo(win);
+            
+            ed->mapscrollv=Handlescroll(win,
+                                        wparam,
+                                        ed->mapscrollv,
+                                        ed->mappagev,
+                                        SB_VERT,
+                                        (si_v.nMax - si_v.nMin) + 1,
+                                        ed->map_vscroll_delta);
+        }
+        
         break;
     
     case WM_HSCROLL:
@@ -21056,7 +21178,7 @@ selfirst:
         k = ((ps.rcPaint.right + 31) & 0xffffffe0);
         l = ((ps.rcPaint.bottom + 31) & 0xffffffe0);
         n = ed->mapscrollh << 5;
-        o = ed->mapscrollv << 5;
+        o = ed->mapscrollv * ed->map_vscroll_delta;
         
         if(l + o > 0x200)
             l = 0x200 - o;
@@ -26978,7 +27100,7 @@ long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
         si.nMin=0;
-        si.nMax=ed->mapsize?32:16;
+        si.nMax = ( ed->mapsize?32:16 ) - 1;
         si.nPage=lparam>>21;
         ed->mappagev=si.nPage;
         SetScrollInfo(win,SB_VERT,&si,1);
