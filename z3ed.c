@@ -32,8 +32,10 @@
 // having to deal with truncation from int to short or char. They should
 // Get tackled eventually (and carefully).
 // \task Do this at some point.
+#if 1
 #pragma warning(disable:4242)
 #pragma warning(disable:4244)
+#endif
 
 #pragma warning(push, 0)
 
@@ -646,10 +648,23 @@ ldle16b_i(uint8_t const * const p_arr,
 
 // =============================================================================
 
+// "load little endian 16-bit value using a half word pointer"
 uint16_t
 ldle16h(uint16_t const * const p_arr)
 {
     return ldle16b( (uint8_t *) p_arr);
+}
+
+// =============================================================================
+
+// "store little endian 24-bit value using a byte pointer"
+void
+stle24b(uint8_t  *const p_arr,
+        uint32_t  const p_val)
+{
+    p_arr[0] = ( (p_val >>  0) & 0xff );
+    p_arr[1] = ( (p_val >>  8) & 0xff );
+    p_arr[2] = ( (p_val >> 16) & 0xff );
 }
 
 // =============================================================================
@@ -1430,10 +1445,8 @@ void RelocateHeaders(HWND win, FDOC *doc, int dest)
 
     doc->headerLocation = romHeaderDest;
 
-    rom[0xB5DD] = (char) (cpuHeaderDest);
-    rom[0xB5DE] = (char) (cpuHeaderDest >> 8);
-    rom[0xB5DF] = (char) (cpuHeaderDest >> 16);
-
+    stle24b(rom + 0xb5dd, cpuHeaderDest);
+    
     for(j = 0; j < 0x250; j += 2, pointerEntry += 14)
     {
         absolute = (  *(int*) (rom + romHeaderLoc + j)  ) & 0xFFFF;
@@ -2435,8 +2448,10 @@ unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
 
 //Uncompress**********************************
 
-unsigned char* Uncompress(unsigned char *src, int *size,
-                          int const p_big_endian)
+uint8_t *
+Uncompress(uint8_t const *       src,
+           int           * const size,
+           int             const p_big_endian)
 {
     unsigned char *b2 = (unsigned char*) malloc(1024);
     
@@ -2460,10 +2475,12 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         
         if(b == 7) // i.e. 0b 111
         {
+            // get bits 0b 0001 1100
+            b = ( (a >> 2) & 7 );
+            
             // get bits 0b 0000 0011, multiply by 256, OR with the next byte.
-            b = (unsigned char) ((a >> 2) & 7); // get bits 0b 0001 1100
-            c = (unsigned short) ( ( ( ( (unsigned short) a) & 0x0003) << 8) );
-            c |= (*(src++) & 0x00FF);
+            c = (unsigned short) ( (a & 0x0003) << 8 );
+            c |= ( *(src++) & 0x00FF);
         }
         else
             // or get bits 0b 0001 1111
@@ -2475,7 +2492,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         {
             // need to increase the buffer size.
             bs += 1024;
-            b2 = realloc(b2,bs);
+            b2 = (uint8_t*) realloc(b2,bs);
         }
         
         // 7 was handled, here we handle other decompression codes.
@@ -2575,7 +2592,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
                 b2[bd++] = b2[d++];
             }
             
-            src+=2;
+            src += 2;
         }
     }
     
@@ -3691,9 +3708,9 @@ void Releaseblks(FDOC*doc,int b)
                         {
                             e = cpuaddr(e + a - f + c);
                             
-                            rom[0x4f80 + d] = (unsigned char) (e >> 16);
-                            rom[0x505f + d] = (unsigned char) (e >> 8);
-                            rom[0x513e + d] = (unsigned char) e;
+                            rom[0x4f80 + d] = ( (e >> 16) & 0xff );
+                            rom[0x505f + d] = ( (e >>  8) & 0xff );
+                            rom[0x513e + d] = ( (e >>  0) & 0xff );
                         }
                     }
                     
@@ -3891,14 +3908,18 @@ LoadHeader(DUNGEDIT * const ed,
     uint8_t const * const rom = ed->ew.doc->rom;
     
     /// address of the header of the room indicated by parameter 'map'.
-    int i = 0;
+    uint32_t i = 0;
+    
+    // upper limit for the header offset.
+    uint16_t m = 0;
+    
+    int n = 0;
     
     /// counter variable for looping through all dungeon rooms.
     int j = 0;
     
-    int l = 0, // size of the header
-        m = 0, // upper limit for the header offset.
-        n = 0;
+    // size of the header
+    int l = 0;
     
     int const headerAddrLocal = ed->ew.doc->headerLocation;
     
@@ -3921,7 +3942,7 @@ LoadHeader(DUNGEDIT * const ed,
         // if is less than 14 bytes from i.
         m = get_16_le_i(rom + headerAddrLocal, j);
         
-        if( (m > i) && (m < i + 14) )
+        if( (m > i) && (m < (i + 14) ) )
         {
             l = (m - i);
             
