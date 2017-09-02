@@ -916,7 +916,9 @@ struct
     POINT m_rel_pos;
     POINT m_screen_pos;
     
-} WM_MouseMoveData;
+} HM_MouseMoveData;
+
+// =============================================================================
 
 signed int
 HM_GetSignedLoword(LPARAM p_ptr)
@@ -924,21 +926,24 @@ HM_GetSignedLoword(LPARAM p_ptr)
     return ( (int)(short) LOWORD(p_ptr) );
 }
 
+// =============================================================================
+
 signed int
 HM_GetSignedHiword(LPARAM p_ptr)
 {
     return ( (int)(short) HIWORD(p_ptr) );
 }
 
+// =============================================================================
 
-WM_MouseMoveData
-GetMouseMoveData(HWND   const p_win,
-                 WPARAM const wparam,
-                 LPARAM const lparam)
+HM_MouseMoveData
+HM_GetMouseMoveData(HWND   const p_win,
+                    WPARAM const wparam,
+                    LPARAM const lparam)
 {
     unsigned const flags = wparam;
     
-    WM_MouseMoveData d = { FALSE, 0, 0, {0, 0} };
+    HM_MouseMoveData d = { FALSE, 0, 0, {0, 0} };
     
     POINT const rel_pos =
     {
@@ -1042,6 +1047,80 @@ HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
 }
 
 // =============================================================================
+
+INT_PTR CALLBACK
+status_proc(HWND   p_win,
+            UINT   p_msg,
+            WPARAM p_wp,
+            LPARAM p_lp)
+{
+    switch(p_msg)
+    {
+         
+    default:
+
+        break;
+    
+    case WM_INITDIALOG:
+        
+        if(always)
+        {
+            if(p_lp)
+            {
+                MessageBox(p_win, "What", NULL, MB_OK);
+                
+                SetWindowPos(p_win, HWND_TOPMOST,
+                             0, 0, 0, 0,
+                             SWP_NOSIZE | SWP_NOMOVE);
+                
+                SetDlgItemText(p_win, IDC_STATIC5, "MURP");
+            }
+            
+        }
+        
+        // Set keyboard focus
+        return TRUE;
+    
+    case WM_ACTIVATE:
+        
+        return FALSE;
+    }
+    
+#if 0
+    return DefWindowProc(p_win, p_msg, p_wp, p_lp);
+#else
+    return 0;
+#endif
+    
+    
+}
+
+// =============================================================================
+
+HWND debug_window = 0;
+
+HWND
+CreateNotificationWindow(HWND const p_parent)
+{
+    DLGPROC p;
+    WNDPROC p2;
+    HWND const win = CreateDialogParam
+    (
+        hinstance,
+        MAKEINTRESOURCE(IDD_DEBUG_DLG),
+        framewnd,
+        status_proc,
+        (LPARAM) 5
+    );
+    
+    SetWindowPos(win, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+    
+    ShowWindow(win, SW_SHOW);
+    
+    return win;    
+}
+
+
 
 // \task Dummied out on the HMagic2 side for now.
 
@@ -3812,9 +3891,9 @@ void Releaseblks(FDOC*doc,int b)
                         {
                             e = cpuaddr(e + a - f + c);
                             
-                            rom[0x4f80 + d] = (e >> 16);
-                            rom[0x505f + d] = (e >> 8);
-                            rom[0x513e + d] = e;
+                            rom[0x4f80 + d] = ( (e >> 16) & 0xff );
+                            rom[0x505f + d] = ( (e >>  8) & 0xff );
+                            rom[0x513e + d] = ( (e >>  0) & 0xff );
                         }
                     }
                     
@@ -10543,6 +10622,10 @@ int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size
 {
     SCROLLINFO si;
     int i=sc;
+    
+    int dx = 0;
+    int dy = 0;
+    
     switch(wparam&65535) {
     case SB_BOTTOM:
         i=size-page;
@@ -10581,9 +10664,15 @@ int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size
     SetScrollInfo(win,scdir,&si,1);
     
     if(scdir == SB_VERT)
-        ScrollWindowEx(win,0,(sc-i)*size2,0,0,0,0,SW_INVALIDATE|SW_ERASE);
+    {
+        dy = (sc - i) * size2;
+    }
     else
-        ScrollWindowEx(win,(sc-i)*size2,0,0,0,0,0,SW_INVALIDATE|SW_ERASE);
+    {
+        dx = (sc - i) * size2;
+    }
+    
+    ScrollWindowEx(win, dx, dy, 0, 0, 0, 0, SW_INVALIDATE | SW_ERASE);
     
     return i;
 }
@@ -10750,7 +10839,7 @@ songchg:
             if(!s) break;
             
             s->numparts++;
-            s->tbl = realloc(s->tbl, s->numparts << 2);
+            s->tbl = (SONGPART**) realloc(s->tbl, s->numparts << 2);
             
             if(j != -1)
                 MoveMemory(s->tbl + j + 1,
@@ -10769,8 +10858,8 @@ songchg:
             s=doc->songs[i];
             if(!s) break;
             s->numparts++;
-            s->tbl=realloc(s->tbl,s->numparts<<2);
-            sp=s->tbl[s->numparts-1]=malloc(sizeof(SONGPART));
+            s->tbl = (SONGPART**) realloc(s->tbl,s->numparts<<2);
+            sp=s->tbl[s->numparts-1] = (SONGPART*) malloc(sizeof(SONGPART));
             for(k=0;k<8;k++) sp->tbl[k]=-1;
             sp->flag=s->flag&1;
             sp->inst=1;
@@ -10791,9 +10880,9 @@ songchg:
             if(!sp->inst)
                 free(sp);
             
-            sp = CopyMemory(s->tbl + j,
-                            s->tbl + j + 1,
-                            (s->numparts - j) << 2);
+            sp = (SONGPART*) CopyMemory(s->tbl + j,
+                                        s->tbl + j + 1,
+                                        (s->numparts - j) << 2);
             
             ed->ew.doc->m_modf=1;
             goto songchg;
@@ -10833,17 +10922,34 @@ songchg:
             }
             break;
         case 3027:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
-            i=ed->sel_song;
-            if(i==-1) break;
-            doc=ed->ew.doc;
-            if(doc->songs[i]) { MessageBox(framewnd,"Please delete the existing song first.","Bad error happened",MB_OK); break; }
-            s=doc->songs[i]=malloc(sizeof(SONG));
+            
+            ed = (MUSEDIT*)GetWindowLong(win,DWL_USER);
+            i = ed->sel_song;
+            
+            if(i == -1)
+                break;
+            
+            doc = ed->ew.doc;
+            
+            if(doc->songs[i])
+            {
+                MessageBox(framewnd,
+                           "Please delete the existing song first.",
+                           "Bad error happened",
+                           MB_OK);
+                
+                break;
+            }
+            
+            s = doc->songs[i] = (SONG*) malloc(sizeof(SONG));
+            
             s->flag=0;
             s->inst=1;
             s->numparts=0;
             s->tbl=0;
+            
             goto updsongs;
+        
         case 3028:
             ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
             i=ed->sel_song;
@@ -11152,8 +11258,10 @@ Drawblock(OVEREDIT const * const ed,
     
     int a,
         b,
-        c,
-        d;
+        c;
+    
+    // which chr (character / tile) to use.
+    int d = (n & 0x03ff);
     
     unsigned e;
     
@@ -11163,8 +11271,6 @@ Drawblock(OVEREDIT const * const ed,
     int mask,tmask;
     
     b2 = (drawbuf + 992 + x - (y << 5));
-    
-    d = n & 0x3ff;
     
     *(char*) &col = *(((char*)&col) + 1) = *(((char*)&col) + 2) = *(((char*)&col) + 3) = ((n & 0x1c00) >> 6);
     
@@ -11182,10 +11288,12 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 16)
     {
+        // 2bpp graphics? Not sure.
+        
         if(d >= 0x180)
             goto noblock;
         
-        b3 = ed->ew.doc->blks[bg3blkofs[d>>7]].buf;
+        b3 = ed->ew.doc->blks[bg3blkofs[d >> 7]].buf;
         
         if(!b3)
             goto noblock;
@@ -11340,7 +11448,7 @@ noblock:
             
             for(a = 0; a < 8; a++)
             {
-                *(int*) b2 = ((*(int*) b1) & mask) + col;
+                *(int*) b2     = ((*(int*) b1)     & mask) + col;
                 ((int*) b2)[1] = ((((int*) b1)[1]) & mask) + col;
                 
                 b2 -= 32;
@@ -11355,7 +11463,7 @@ noblock:
             
             for(a = 0; a < 8; a++)
             {
-                *(int*) b2 = ((*(int*) b1) & mask) + col;
+                *(int*) b2     = ((*(int*) b1)     & mask) + col;
                 ((int*) b2)[1] = ((((int*) b1)[1]) & mask) + col;
                 b2 += 32;
                 b1 += 8;
@@ -11563,6 +11671,130 @@ void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
     }
 }
 
+// =============================================================================
+
+void
+DrawDungeon32x32(DUNGEDIT const * const p_ed,
+                 int const i,
+                 int const j,
+                 int const n,
+                 int const o,
+                 uint16_t const * const p_buf)
+{
+    // 
+    int const m = ( (i + n) >> 3) + ( (j + o) << 3);
+    
+    int p = 0;
+    
+    // Take overworld editor. Type punning going on here.
+    OVEREDIT const * const fake_oed = (OVEREDIT*) p_ed;
+    
+    for(p = 0; p < 4; p++)
+    {
+        int q = 0;
+        
+        for(q = 0; q < 256; q += 64)
+        {
+            int const r = p << 3;
+            int const s = q >> 3;
+            int const t = m + p + q;
+            
+            int u = 0;
+            
+            if(p_ed->layering & 2)
+            {
+                Drawblock( (OVEREDIT*) p_ed,
+                          r, s,
+                          p_buf[t + 0x2000], 8);
+                
+                u = 1;
+            }
+            
+            switch(p_ed->layering >> 5)
+            {
+            case 0:
+                
+                if(p_ed->disp & 1)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t], u);
+                }
+                    
+                break;
+            
+            case 1:
+            case 5:
+            case 6:
+                
+                if(p_ed->disp & 2)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+                    
+                    u = 1;
+                }
+                
+                if(p_ed->disp & 1)
+                {
+                    Drawblock(fake_oed,r,s, p_buf[t],u);
+                }
+                
+                break;
+            case 2:
+                
+                if(p_ed->disp & 2)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+                    
+                    u = 1;
+                }
+                
+                if(p_ed->disp & 1)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t], u);
+                }
+                
+                break;
+            case 3:
+                
+                if(p_ed->disp & 1)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t], u);
+                    
+                    u = 1;
+                }
+                
+                if(p_ed->disp & 2)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+                }
+                
+                break;
+            case 4: case 7:
+                
+                if(p_ed->disp & 1)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t], u);
+                    
+                    u = 1;
+                }
+                
+                if(p_ed->disp & 2)
+                {
+                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+                }
+                
+                break;
+            }
+            
+            if(p_ed->layering & 4)
+            {
+                Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 17);
+            }
+        }
+    }
+}
+
+// =============================================================================
+
 void
 Paintdungeon(DUNGEDIT *ed,
              HDC hdc,
@@ -11572,107 +11804,61 @@ Paintdungeon(DUNGEDIT *ed,
              int n,int o,
              unsigned short const *buf)
 {
-    int i,
-        j,
-        m,
-        p,
-        q,
-        r,
-        s,
-        t,
-        u,
-        v;
+    // loop variable that represents the y coordinate in the tilemap.
+    int j;
+
+    // 
+    int v;
+
+    int const o_map8 = (o & ~7);
     
     HGDIOBJ oldobj = 0;
     
-    if((!(ed->disp & 3)) || ((!(ed->disp & 1)) && !(ed->layering >> 5))) {
+    // -----------------------------
+    
+    SetDlgItemText(debug_window, IDC_STATIC6, "o");
+    
+    if
+    (
+        ( ! (ed->disp & 3))
+     || ( ( ! (ed->disp & 1) ) && ! (ed->layering >> 5) )
+    )
+    {
         oldobj = SelectObject(hdc, black_brush);
-        v=1;
+        
+        v = 1;
     }
     else
-        v=0;
+    {
+        v = 0;
+    }
     
     for(j = y; j < l; j += 32)
     {
-        i = x;
+        // loop variable that represents the current x coordinate in the tilemap.
+        int i = x;
+        
+        // -----------------------------
         
         for( ; i < k; i += 32)
         {
             if(v)
-                Rectangle(hdc,i,j,i+32,j+32);
+            {
+                Rectangle(hdc, i, j, i + 32, j + 32);
+            }
             else
             {
-                m = ( (i + n) >> 3) + ( (j + o) << 3);
-            
-                for(p = 0; p < 4; p++)
-                {
-                    for(q = 0; q < 256; q += 64)
-                    {
-                        r = p << 3;
-                        s = q >> 3;
-                        t = m + p + q;
-                        u = 0;
-                        
-                        if(ed->layering & 2)
-                            Drawblock( (OVEREDIT*) ed, r, s, buf[t + 0x2000], 8), u = 1;
-                        
-                        switch(ed->layering >> 5)
-                        {
-                        case 0:
-                            if(ed->disp&1) Drawblock((OVEREDIT*)ed,r,s,buf[t],u);
-                                break;
-                        
-                        case 1:
-                        case 5:
-                        case 6:
-                            
-                            if(ed->disp & 2)
-                                Drawblock((OVEREDIT*)ed, r, s, buf[t + 0x1000], u), u = 1;
-                            
-                            if(ed->disp & 1)
-                                Drawblock((OVEREDIT*)ed,r,s,buf[t],u);
-                            
-                            break;
-                        case 2:
-                            
-                            if(ed->disp & 2)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t + 0x1000], u + 2), u = 1;
-                            
-                            if(ed->disp & 1)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t], u);
-                            
-                            break;
-                        case 3:
-                            if(ed->disp & 1)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t], u), u = 1;
-                            
-                            if(ed->disp & 2)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t + 0x1000], u);
-                            
-                            break;
-                        case 4: case 7:
-                            
-                            if(ed->disp & 1)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t], u), u = 1;
-                            
-                            if(ed->disp & 2)
-                                Drawblock( (OVEREDIT*) ed, r, s, buf[t + 0x1000], u + 2);
-                            
-                            break;
-                        }
-                        
-                        if(ed->layering&4)
-                            Drawblock((OVEREDIT*)ed,r,s,buf[t + 0x2000],17);
-                    }
-                }
-                
-                Paintblocks(rc,hdc,i,j,ed);
+                DrawDungeon32x32(ed, i, j, n, o, buf);
+                                
+                Paintblocks(rc, hdc, i, j, ed);
             }
         }
     }
     
     if(oldobj)
+    {
         SelectObject(hdc, oldobj);
+    }
 }
 
 void Updateobjdisplay(CHOOSEDUNG*ed,int num)
@@ -19646,8 +19832,21 @@ long CALLBACK dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         }
         break;
     case WM_MOUSEMOVE:
+        
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
+        
 updcursor:
+        
+        {
+            HM_MouseMoveData d = HM_GetMouseMoveData(win, wparam, lparam);
+            
+            char info[0x200];
+            
+            sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x, d.m_rel_pos.y);
+            
+            SetDlgItemText(debug_window, IDC_STATIC2, info);
+        }
+        
         o=((short)lparam)+(ed->mapscrollh<<5);
         p=(lparam>>16)+(ed->mapscrollv<<5);
         
@@ -19895,6 +20094,7 @@ upddrag:
             }
         }
         break;
+    
     case WM_LBUTTONDOWN:
         
         // What to do if the left mouse button goes down.
@@ -20041,25 +20241,92 @@ movesel:
             break;
         
         si.cbSize = sizeof(si);
+        
         si.fMask = SIF_RANGE|SIF_PAGE;
+        
         si.nMin = 0;
+        
+    #if 0
         si.nMax = 16;
         si.nPage = lparam >> 21;
         ed->mappagev = si.nPage;
         
-        SetScrollInfo(win,SB_VERT,&si,1);
+        ed->map_vscroll_delta = 32;
+        
+    #else
+        {
+            unsigned height = HIWORD(lparam);
+            unsigned width  = LOWORD(lparam);
+            
+            int const divider = 9;
+            
+            si.nMax  = ( ( (512 + 32) / divider) - 1 );
+            
+            si.nPage = (height / divider);
+            
+            ed->mappagev = si.nPage;
+            ed->map_vscroll_delta = divider;
+        }
+    #endif
+        
+        SetScrollInfo(win, SB_VERT, &si, 1);
+        
+        si.nMin  = 0;
+        si.nMax  = 15;
         si.nPage = (lparam & 65535) >> 5;
         ed->mappageh = si.nPage;
         
-        SetScrollInfo(win,SB_HORZ,&si,1);
-        ed->mapscrollv = Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
-        ed->mapscrollh = Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
+        SetScrollInfo(win, SB_HORZ, &si, 1);
+        
+        ed->mapscrollv = Handlescroll(win,
+                                      -1,
+                                      ed->mapscrollv,
+                                      ed->mappagev,
+                                      SB_VERT,
+                                      16,
+                                      ed->map_vscroll_delta);
+        
+        ed->mapscrollh = Handlescroll(win,
+                                      -1,
+                                      ed->mapscrollh,
+                                      ed->mappageh,
+                                      SB_HORZ,
+                                      16,
+                                      32);
+        
+        break;
+    
+    case WM_MOUSEWHEEL:
+        
+        if(always)
+        {
+            HM_MouseWheelData const d = HM_GetMouseWheelData(wparam, lparam);
+            
+            // -----------------------------
+        }
         
         break;
     
     case WM_VSCROLL:
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
+        
+        {
+            SCROLLINFO si;
+            
+            si.cbSize = sizeof(SCROLLINFO);
+            
+            si.fMask = (SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS);
+            
+            GetScrollInfo(win, SB_VERT, &si);
+            
+            ed->mapscrollv = Handlescroll(win,
+                                          wparam,
+                                          ed->mapscrollv,
+                                          ed->mappagev,
+                                          SB_VERT,
+                                          (si.nMax - si.nMin) + 1,
+                                          ed->map_vscroll_delta);
+        }
         break;
     
     case WM_HSCROLL:
@@ -21056,7 +21323,7 @@ selfirst:
         k = ((ps.rcPaint.right + 31) & 0xffffffe0);
         l = ((ps.rcPaint.bottom + 31) & 0xffffffe0);
         n = ed->mapscrollh << 5;
-        o = ed->mapscrollv << 5;
+        o = (ed->mapscrollv * ed->map_vscroll_delta);
         
         if(l + o > 0x200)
             l = 0x200 - o;
@@ -22216,6 +22483,7 @@ long CALLBACK wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_MOUSEMOVE:
         ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
 mousemove:
+        
         n=ed->mapscrollh<<5;
         o=ed->mapscrollv<<5;
         j=((short)lparam)+n;
@@ -24508,7 +24776,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             char handle_text[0x100];
             
-            WM_MouseMoveData const d = GetMouseMoveData(win, wparam, lparam);
+            HM_MouseMoveData const d = HM_GetMouseMoveData(win, wparam, lparam);
             
             HWND const child = ChildWindowFromPoint(win, d.m_rel_pos);
             
@@ -27503,7 +27771,8 @@ updent:
             
             RECT const par_rect = HM_GetWindowRect(par);
             
-            WM_MouseMoveData d = GetMouseMoveData(win, wparam, lparam);
+            HM_MouseMoveData const d =
+            HM_GetMouseMoveData(win, wparam, lparam);
             
             POINT const rel_pos =
             {
@@ -27852,28 +28121,53 @@ movetile:
     
     case WM_LBUTTONUP:
         
-        if(ed->dtool>1 && ed->dtool<4) {
-            Getselectionrect(ed,&rc);
-            InvalidateRect(win,&rc,0);
-            if(ed->rectleft<ed->rectright) i=ed->rectleft,j=ed->rectright;
-            else i=ed->rectright,j=ed->rectleft;
-            if(ed->recttop<ed->rectbot) k=ed->recttop,l=ed->rectbot;
-            else k=ed->rectbot,l=ed->recttop;
-            if(ed->dtool==3) {
+        if(ed->dtool > 1 && ed->dtool < 4)
+        {
+            Getselectionrect(ed, &rc);
+            InvalidateRect(win, &rc, 0);
+            
+            if(ed->rectleft < ed->rectright)
+            {
+                i = ed->rectleft;
+                j = ed->rectright;
+            }
+            else
+            {
+                i = ed->rectright;
+                j = ed->rectleft;
+            }
+            
+            if(ed->recttop < ed->rectbot)
+            {
+                k = ed->recttop;
+                l = ed->rectbot;
+            }
+            else
+            {
+                k = ed->rectbot;
+                l = ed->recttop;
+            }
+            
+            if(ed->dtool == 3)
+            {
                 ed->undomodf=ed->ov->modf;
                 memcpy(ed->undobuf,ed->ov->buf,0x800);
-                for(m=i;m<j;m++)
-                    for(n=k;n<l;n++)
-                        ed->ov->buf[m+(n<<5)]=ed->selblk;
-                ed->ov->modf=1;
-            } else if(!ed->selflag) {
-                ed->rectleft=i;
-                ed->rectright=j;
-                ed->recttop=k;
-                ed->rectbot=l;
-                ed->selflag=1;
-                ed->stselx=i;
-                ed->stsely=k;
+                
+                for(m = i; m < j; m++)
+                    for(n = k; n < l; n++)
+                        ed->ov->buf[m + (n << 5)] = ed->selblk;
+                
+                ed->ov->modf = 1;
+            }
+            else if(!ed->selflag)
+            {
+                ed->rectleft = i;
+                ed->rectright = j;
+                ed->recttop = k;
+                ed->rectbot = l;
+                ed->selflag = 1;
+                ed->stselx = i;
+                ed->stsely = k;
                 j-=i;
                 l-=k;
                 l<<=5;
@@ -28324,16 +28618,16 @@ BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 l++;
         
         // Checking number of hole markers on overworld.
-        for(i=0;i<19;i++)
+        for(i = 0; i < 19; i++)
             if( ! is16b_neg1_i(rom + 0xdb826, i) )
                 m++;
         
         // Checking number of whirlpool markers on overworld.
-        for(i=0;i<9;i++)
+        for(i = 0; i < 9; i++)
             buffer[768+i] =
             (
                 is16b_neg1_i(rom + 0x16ae5, i) ? '-'
-                                               : (i + '0')
+                                               : ((char) i + '0')
             );
         
         buffer[777] = 0;
@@ -30694,8 +30988,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
         }
     }
     
-    GetCurrentDirectory(MAX_PATH,currdir);
+    GetCurrentDirectory(MAX_PATH, currdir);
     
+    debug_window = CreateNotificationWindow(framewnd);
+
     while(GetMessage(&msg,0,0,0))
     {
         if(msg.message == WM_MOUSEWHEEL)

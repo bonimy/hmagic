@@ -331,6 +331,8 @@ typedef struct
     // the header buffer.
     unsigned char hbuf[14];
     
+    int map_vscroll_delta;
+    
 } DUNGEDIT;
 
 typedef struct
