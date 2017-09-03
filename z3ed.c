@@ -1094,6 +1094,21 @@ status_proc(HWND   p_win,
     
     
 }
+// =============================================================================
+
+SCROLLINFO
+HM_GetVertScrollInfo(HWND const p_win)
+{
+    SCROLLINFO si;
+    
+    si.cbSize = sizeof(SCROLLINFO);
+    
+    si.fMask = SIF_ALL;
+     
+    GetScrollInfo(p_win, SB_VERT, &si);
+    
+    return si;
+}
 
 // =============================================================================
 
@@ -1120,6 +1135,38 @@ CreateNotificationWindow(HWND const p_parent)
     return win;    
 }
 
+SCROLLINFO
+HM_GetHorizScrollInfo(HWND const p_win)
+{
+    SCROLLINFO si;
+    
+    si.cbSize = sizeof(SCROLLINFO);
+    
+    si.fMask = SIF_ALL;
+     
+    GetScrollInfo(p_win, SB_HORZ, &si);
+    
+    return si;
+}
+
+// =============================================================================
+
+int
+HM_IsEmptyRect(RECT const p_rect)
+{
+    if
+    (
+        (p_rect.right == p_rect.left)
+     && (p_rect.top   == p_rect.bottom)
+    )
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+// =============================================================================
 
 
 // \task Dummied out on the HMagic2 side for now.
@@ -2651,8 +2698,10 @@ unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
 
 //Uncompress**********************************
 
-unsigned char* Uncompress(unsigned char *src, int *size,
-                          int const p_big_endian)
+uint8_t *
+Uncompress(uint8_t const *       src,
+           int           * const size,
+           int             const p_big_endian)
 {
     unsigned char *b2 = (unsigned char*) malloc(1024);
     
@@ -2676,9 +2725,12 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         
         if(b == 7) // i.e. 0b 111
         {
+            // get bits 0b 0001 1100
+            b = ( (a >> 2) & 7 );
+            
             // get bits 0b 0000 0011, multiply by 256, OR with the next byte.
-            b = ((a >> 2) & 7);
-            c = ((a & 3) << 8) | *(src++);
+            c  = ( (a & 0x0003) << 8 );
+            c |= *(src++);
         }
         else
             // or get bits 0b 0001 1111
@@ -2690,7 +2742,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
         {
             // need to increase the buffer size.
             bs += 1024;
-            b2 = realloc(b2,bs);
+            b2 = (uint8_t*) realloc(b2,bs);
         }
         
         // 7 was handled, here we handle other decompression codes.
@@ -2782,7 +2834,7 @@ unsigned char* Uncompress(unsigned char *src, int *size,
                 b2[bd++] = b2[d++];
             }
             
-            src+=2;
+            src += 2;
         }
     }
     
@@ -4090,14 +4142,17 @@ LoadHeader(DUNGEDIT * const ed,
     
     uint8_t const * const rom = ed->ew.doc->rom;
     
-    /// lower limit for the header offset.
-    int i = 0;
+    /// address of the header of the room indicated by parameter 'map'.
+    uint16_t i = 0;
+    
+    // upper limit for the header offset.
+    uint16_t m = 0;
     
     /// counter variable for looping through all dungeon rooms.
     int j = 0;
     
-    int l = 0, // size of the header
-        m = 0; // upper limit for the header offset.
+    // size of the header
+    int l = 0;
     
     // -----------------------------
     
@@ -4112,7 +4167,11 @@ LoadHeader(DUNGEDIT * const ed,
         // if is less than 14 bytes from i.
         m = get_16_le_i(rom + 0x27502, j);
         
-        if( (m > i) && (m < i + 14) )
+        // \task When merging with other branches, note that
+        // m and i are compared. If one is 16-bit, for example,
+        // and the other is 32-bit, that is a big potential
+        // problem.
+        if( (m > i) && (m < (i + 14) ) )
         {
             l = (m - i);
             
@@ -10859,7 +10918,7 @@ songchg:
             if(!s) break;
             s->numparts++;
             s->tbl = (SONGPART**) realloc(s->tbl,s->numparts<<2);
-            sp=s->tbl[s->numparts-1] = (SONGPART*) malloc(sizeof(SONGPART));
+            sp=s->tbl[s->numparts - 1] = (SONGPART*) malloc(sizeof(SONGPART));
             for(k=0;k<8;k++) sp->tbl[k]=-1;
             sp->flag=s->flag&1;
             sp->inst=1;
@@ -10924,6 +10983,7 @@ songchg:
         case 3027:
             
             ed = (MUSEDIT*)GetWindowLong(win,DWL_USER);
+            
             i = ed->sel_song;
             
             if(i == -1)
@@ -11288,7 +11348,7 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 16)
     {
-        // 2bpp graphics? Not sure.
+        // \task 2bpp graphics? Not sure.
         
         if(d >= 0x180)
             goto noblock;
@@ -11682,7 +11742,8 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
                  uint16_t const * const p_buf)
 {
     // 
-    int const m = ( (i + n) >> 3) + ( (j + o) << 3);
+    int const m = ( (i + n) >> 3)
+                + ( ( (j + o) << 3)  );
     
     int p = 0;
     
@@ -11796,6 +11857,29 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
 // =============================================================================
 
 void
+SabotageForScience(int x, int y)
+{
+    int i = 0;
+    
+    if( (x < 0x40) || (x >= 0x60) )
+    {
+        return;
+    }
+
+    if( (y < 0x40) || (y >= 0x60) )
+    {
+        return;
+    }
+
+    for(i = 0; i < 0x400; i += 1)
+    {
+        drawbuf[i] = (i % 15);
+    }
+}
+
+// =============================================================================
+
+void
 Paintdungeon(DUNGEDIT *ed,
              HDC hdc,
              RECT *rc,
@@ -11805,18 +11889,15 @@ Paintdungeon(DUNGEDIT *ed,
              unsigned short const *buf)
 {
     // loop variable that represents the y coordinate in the tilemap.
-    int j;
-
-    // 
+    int j = 0;
+    
+    // Seems to be nonzero if one of the backgrounds is disabled or
+    // full of blackness.
     int v;
-
-    int const o_map8 = (o & ~7);
     
     HGDIOBJ oldobj = 0;
     
     // -----------------------------
-    
-    SetDlgItemText(debug_window, IDC_STATIC6, "o");
     
     if
     (
@@ -11836,6 +11917,7 @@ Paintdungeon(DUNGEDIT *ed,
     for(j = y; j < l; j += 32)
     {
         // loop variable that represents the current x coordinate in the tilemap.
+        // (aligned to a 32 pixel grid though).
         int i = x;
         
         // -----------------------------
@@ -11849,7 +11931,9 @@ Paintdungeon(DUNGEDIT *ed,
             else
             {
                 DrawDungeon32x32(ed, i, j, n, o, buf);
-                                
+                
+                SabotageForScience(i, j);
+                
                 Paintblocks(rc, hdc, i, j, ed);
             }
         }
@@ -13110,7 +13194,7 @@ BOOL CALLBACK editroomprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             break;
         case IDOK:
             rom=dunged->ew.doc->rom;
-            dunged->hsize=hs;
+            dunged->hsize = hs;
             dunged->hbuf[4] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO1,CB_GETCURSEL,0,0);
             dunged->hbuf[5] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO2,CB_GETCURSEL,0,0);
             dunged->hbuf[6] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO3,CB_GETCURSEL,0,0);
@@ -19842,7 +19926,7 @@ updcursor:
             
             char info[0x200];
             
-            sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x, d.m_rel_pos.y);
+            sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x / 8, d.m_rel_pos.y / 8);
             
             SetDlgItemText(debug_window, IDC_STATIC2, info);
         }
@@ -20242,37 +20326,28 @@ movesel:
         
         si.cbSize = sizeof(si);
         
-        si.fMask = SIF_RANGE|SIF_PAGE;
+        si.fMask = SIF_RANGE | SIF_PAGE;
         
-        si.nMin = 0;
-        
-    #if 0
-        si.nMax = 16;
-        si.nPage = lparam >> 21;
-        ed->mappagev = si.nPage;
-        
-        ed->map_vscroll_delta = 32;
-        
-    #else
         {
-            unsigned height = HIWORD(lparam);
-            unsigned width  = LOWORD(lparam);
+            unsigned const height = HIWORD(lparam);
+            unsigned const width  = LOWORD(lparam);
             
-            int const divider = 9;
+            unsigned const divider = 9;
             
-            si.nMax  = ( ( (512 + 32) / divider) - 1 );
+            si.nMin = 0;
+            si.nMax = ( ( (512 + 32) / divider ) - 1 );
             
             si.nPage = (height / divider);
             
             ed->mappagev = si.nPage;
             ed->map_vscroll_delta = divider;
         }
-    #endif
         
         SetScrollInfo(win, SB_VERT, &si, 1);
         
-        si.nMin  = 0;
-        si.nMax  = 15;
+        si.nMin = 0;
+        si.nMax = 15;
+        
         si.nPage = (lparam & 65535) >> 5;
         ed->mappageh = si.nPage;
         
@@ -20302,7 +20377,49 @@ movesel:
         {
             HM_MouseWheelData const d = HM_GetMouseWheelData(wparam, lparam);
             
+            unsigned scroll_type = SB_LINEUP;
+            
+            WPARAM fake_wp = 0;
+            
+            SCROLLINFO si_v = HM_GetVertScrollInfo(win);
+            
             // -----------------------------
+            
+            if(d.m_distance > 0)
+            {
+                // wheel moving up or left
+                if(d.m_control_key)
+                {
+                    scroll_type = SB_PAGEUP;
+                }
+                else
+                {
+                    scroll_type = SB_LINEUP;
+                }
+            }
+            else
+            {
+                if(d.m_control_key)
+                {
+                    scroll_type = SB_PAGEDOWN;
+                }
+                else
+                {
+                    scroll_type = SB_LINEDOWN;
+                }
+            }             
+            
+            fake_wp = MAKEWPARAM(scroll_type, 0);
+            
+            ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
+            
+            ed->mapscrollv = Handlescroll(win,
+                                          fake_wp,
+                                          ed->mapscrollv,
+                                          ed->mappagev,
+                                          SB_VERT,
+                                          (si_v.nMax - si_v.nMin) + 1,
+                                          ed->map_vscroll_delta);
         }
         
         break;
@@ -20311,22 +20428,17 @@ movesel:
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
         
         {
-            SCROLLINFO si;
+            SCROLLINFO const si_v = HM_GetVertScrollInfo(win);
             
-            si.cbSize = sizeof(SCROLLINFO);
-            
-            si.fMask = (SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS);
-            
-            GetScrollInfo(win, SB_VERT, &si);
-            
-            ed->mapscrollv = Handlescroll(win,
-                                          wparam,
-                                          ed->mapscrollv,
-                                          ed->mappagev,
-                                          SB_VERT,
-                                          (si.nMax - si.nMin) + 1,
-                                          ed->map_vscroll_delta);
+            ed->mapscrollv=Handlescroll(win,
+                                        wparam,
+                                        ed->mapscrollv,
+                                        ed->mappagev,
+                                        SB_VERT,
+                                        (si_v.nMax - si_v.nMin) + 1,
+                                        ed->map_vscroll_delta);
         }
+        
         break;
     
     case WM_HSCROLL:
@@ -21315,10 +21427,53 @@ selfirst:
         
         if(!ed)
             break;
-        
-        hdc = BeginPaint(win, &ps);
-        oldpal = SelectPalette(hdc, ed->hpal, 1);
-        RealizePalette(hdc);
+        else
+        {
+            HRGN update_region = CreateRectRgn(0, 0, 0, 0);
+            
+            RECT update_rect;
+            
+            BOOL result_1 = GetUpdateRect(win, NULL, FALSE);
+            
+            BOOL result_2 = GetUpdateRect(win, &update_rect, FALSE);
+            
+            int result_3 = GetUpdateRgn(win, update_region, FALSE);
+            
+            if(result_1 != result_2)
+            {
+                SetDlgItemText(debug_window, IDC_STATIC3, "wtf #1");
+                
+                break;
+            }
+            
+            if( HM_IsEmptyRect(update_rect) )
+            {
+                SetDlgItemText(debug_window, IDC_STATIC3, "wtf #2");
+                
+                break;
+            }
+            
+            hdc = BeginPaint(win, &ps);
+            
+            if( HM_IsEmptyRect(ps.rcPaint) )
+            {
+                if(result_3 == NULLREGION)
+                {
+                    SetDlgItemText(debug_window, IDC_STATIC3, "wtf #3");
+                }
+                else
+                {
+                    SetDlgItemText(debug_window, IDC_STATIC3, "wtf #4");
+                }
+                
+                EndPaint(win, &ps);
+                
+                break;
+            }
+            
+            oldpal = SelectPalette(hdc, ed->hpal, 1);
+            RealizePalette(hdc);
+        }
         
         k = ((ps.rcPaint.right + 31) & 0xffffffe0);
         l = ((ps.rcPaint.bottom + 31) & 0xffffffe0);
@@ -27246,7 +27401,7 @@ long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
         si.nMin=0;
-        si.nMax=ed->mapsize?32:16;
+        si.nMax = ( ed->mapsize ? 32 : 16 ) - 1;
         si.nPage=lparam>>21;
         ed->mappagev=si.nPage;
         SetScrollInfo(win,SB_VERT,&si,1);
@@ -28124,6 +28279,7 @@ movetile:
         if(ed->dtool > 1 && ed->dtool < 4)
         {
             Getselectionrect(ed, &rc);
+            
             InvalidateRect(win, &rc, 0);
             
             if(ed->rectleft < ed->rectright)
@@ -28624,11 +28780,13 @@ BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         // Checking number of whirlpool markers on overworld.
         for(i = 0; i < 9; i++)
+        {
             buffer[768+i] =
             (
                 is16b_neg1_i(rom + 0x16ae5, i) ? '-'
                                                : ((char) i + '0')
             );
+        }
         
         buffer[777] = 0;
         
@@ -30991,7 +31149,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     GetCurrentDirectory(MAX_PATH, currdir);
     
     debug_window = CreateNotificationWindow(framewnd);
-
+    
     while(GetMessage(&msg,0,0,0))
     {
         if(msg.message == WM_MOUSEWHEEL)
