@@ -30,6 +30,7 @@
 #define IDD_DIALOG22                    130
 #define IDD_DIALOG23                    131
 #define IDD_GRAPHIC_THEMES              132
+#define IDD_DEBUG_DLG                   133
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002
@@ -111,6 +112,7 @@
 #define IDC_BUTTON6                     1041
 #define IDC_BUTTON7                     1042
 #define IDC_CUSTOM3                     1042
+#define IDC_STATIC1                     1043
 #define ID_Z3_OPEN                      40001
 #define ID_Z3_SAVE                      40002
 #define ID_Z3_SAVEAS                    40003
@@ -159,9 +161,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
+#define _APS_NEXT_RESOURCE_VALUE        134
 #define _APS_NEXT_COMMAND_VALUE         40059
-#define _APS_NEXT_CONTROL_VALUE         1043
+#define _APS_NEXT_CONTROL_VALUE         1044
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
