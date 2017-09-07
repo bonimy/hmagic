@@ -111,13 +111,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DungeonMap.c" />
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />
+    <ClInclude Include="wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico" />

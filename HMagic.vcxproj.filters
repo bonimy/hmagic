@@ -13,10 +13,22 @@
       <UniqueIdentifier>{9533aaf5-1597-4a63-8498-6d8be28c07d0}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="Source Files\Dungeon">
+      <UniqueIdentifier>{f2927367-4d0a-4a4a-8cd8-27ee57c25a5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Dungeon">
+      <UniqueIdentifier>{396b39a9-803a-4cc8-964b-6a33fb281617}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\General">
+      <UniqueIdentifier>{4004e306-2cf4-4403-b46f-faf456ebae03}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonMap.c">
+      <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -25,6 +37,12 @@
     </ClInclude>
     <ClInclude Include="structs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonEnum.h">
+      <Filter>Header Files\Dungeon</Filter>
+    </ClInclude>
+    <ClInclude Include="wrappers.h">
+      <Filter>Header Files\General</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
