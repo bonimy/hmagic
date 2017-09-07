@@ -1,9 +1,43 @@
 
-#if !defined HYRULE_MAGIC_STRUCTS_HEADER_GUARD
+#if !defined HMAGIC_STRUCTS_HEADER_GUARD
 
-    #define HYRULE_MAGIC_STRUCTS_HEADER_GUARD
+    #define HMAGIC_STRUCTS_HEADER_GUARD
 
+    #define OEMRESOURCE
+
+    // This is legacy code, and I don't want to bother using the MS-specific
+    // extensions to the standard library at this time.
+    #define _CRT_SECURE_NO_WARNINGS
+
+    // 'nonstandard extension used : non-constant aggregate initializer'
+    // This warning is not really relevant since major vendors support this
+    // extension and C99 eliminates it completely whenever MS gets around to
+    // supporting it.
+    #pragma warning(disable:4204)
+
+    // There are just too many of these warnings to address at the moment
+    // having to deal with truncation from int to short or char. They should
+    // Get tackled eventually (and carefully).
+    // \task Do this at some point.
+#if 0
+    #pragma warning(disable:4242)
+    #pragma warning(disable:4244)
+#endif
+
+    #pragma warning(push, 0)
+
+    #include <windows.h>
     #include <stdint.h>
+    #include <commctrl.h>
+    #include <mmsystem.h>
+    #include <math.h>
+
+    #pragma warning(pop)
+
+
+    #include "resource.h"
+
+
 
 // =============================================================================
 
@@ -13,6 +47,15 @@ enum
 };
 
 // =============================================================================
+
+#pragma pack(push)
+
+// Done so that our structures are not allowed to add padding.
+// (which would be harmful for type punning / casting that some of the
+// code does. I wouldn't call that best practice either, but it's what
+// we have to work with at the moment (e.g. casting one type of edit
+// structure to a DUNGEDIT pointer because it has members in common).
+#pragma pack(1)
 
 typedef struct
 {
@@ -300,9 +343,18 @@ typedef struct
     
     int mappageh,mappagev;
     int mapscrollh,mapscrollv;
-    int selobj,selchk;
+    int selobj;
     
+    /// Which "checkbox" is selected. Specifically, this means which radio
+    /// button is currently selected, because that determines which "layer"
+    /// is a candidate for editing currently. Layers are things like "layer 2",
+    /// "item", "sprite", "torch", etc.
+    int selchk;
+    
+    /// Pairs of 16-bit pointers that remember where the object data and
+    /// door data, respectively, begin in the data of this room.
     short chkofs[6];
+    
     short len;
     short chestloc[16];
     
@@ -332,6 +384,9 @@ typedef struct
     unsigned char hbuf[14];
     
     int map_vscroll_delta;
+    
+    // \task A buffer for all pixels of the map (experimental)
+    uint8_t map_bits[512 * 512];
     
 } DUNGEDIT;
 
@@ -576,7 +631,7 @@ typedef struct tagSDC
     // linked list to the next/last one.
     struct tagSDC *prev, *next;
     
-} SDCREATE;
+}SDCREATE;
 
 typedef struct
 {
@@ -677,6 +732,8 @@ typedef struct
     
 } ZCHANNEL;
 
+#pragma pack(pop)
+
 // =============================================================================
 
 extern SDCREATE *firstdlg, *lastdlg;
@@ -720,5 +777,104 @@ extern SUPERDLG overdlg,
                 perspdlg,
                 patchdlg,
                 z3_dlg;
+
+extern HPEN green_pen,
+     null_pen,
+     white_pen,
+     blue_pen;
+
+extern HBRUSH
+       black_brush,
+       white_brush,
+       green_brush,
+       yellow_brush,
+       purple_brush,
+       red_brush,
+       blue_brush,
+       gray_brush;
+
+extern HGDIOBJ trk_font;
+
+extern HCURSOR normal_cursor,
+        forbid_cursor,
+        wait_cursor;
+
+extern HBITMAP arrows_imgs[4];
+
+extern HANDLE shade_brush[8];
+extern HANDLE sizecsor[5];
+
+// The handle to the program
+extern HINSTANCE hinstance;
+
+extern HWND framewnd, clientwnd;
+
+extern short dm_x;
+extern short dm_k;
+
+extern unsigned char dm_l, dm_dl;
+
+extern const char obj3_h[248];
+extern const char obj3_m[248];
+extern const char obj3_w[248];
+
+extern const unsigned char obj3_t[248];
+
+extern char *cur_sec;
+
+extern HWND debug_window;
+
+extern int const always;
+
+extern const short bg3blkofs[4];
+
+extern int palhalf[8];
+
+// =============================================================================
+
+typedef
+struct
+{
+    BOOL m_control_down;
+
+    POINT m_rel_pos;
+    POINT m_screen_pos;
+    
+} HM_MouseMoveData;
+
+// =============================================================================
+
+typedef
+struct
+{
+    signed int m_distance;
+    
+    /// Full copy of all the flags just for reference.
+    unsigned m_flags;
+    
+    /// Is the shift key down?
+    BOOL m_shift_key;
+    
+    /// Is the control key down?
+    BOOL m_control_key;
+
+    /// Is the ALT key down?
+    BOOL m_alt_key;
+
+    POINT m_screen_pos;
+
+} HM_MouseWheelData;
+
+// =============================================================================
+
+typedef
+struct
+{
+    HWND m_deactivating;
+    HWND m_activating;
+}
+HM_MdiActivateData;
+
+// =============================================================================
 
 #endif
