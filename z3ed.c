@@ -55,6 +55,8 @@
 
 #include <windows.h>
 
+#include "WinGDI.h"
+
 #include <commctrl.h>
 #include <mmsystem.h>
 #include <math.h>
@@ -65,6 +67,7 @@
 #pragma warning(pop)
 
 #include "resource.h"
+
 
 // Done so that our structures are not allowed to add padding.
 // (which would be harmful for type punning / casting that some of the
@@ -83,6 +86,11 @@ unsigned short copy_w,copy_h;
 unsigned short * copybuf = 0;
 
 uint8_t const u8_neg1 = (uint8_t) (~0);
+
+static HGDIOBJ gray_pen = 0;
+
+static HPEN tint_pen = 0;
+static HBRUSH tint_br = 0;
 
 uint16_t const u16_neg1 = (uint16_t) (~0);
 
@@ -21436,6 +21444,9 @@ selfirst:
         
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
         
+        if( ! tint_pen) { tint_pen = CreatePen(PS_SOLID, 3, RGB(0x90, 0xff, 0x90) ); }
+        if( ! tint_br)  { tint_br = CreateSolidBrush( RGB(0x80, 0x80, 0x80) ); }
+        
         if(!ed)
             break;
         
@@ -21476,13 +21487,24 @@ selfirst:
                 k=((j&0x1f80)>>4)-o;
                 j=((j&0x7e)<<2)-n;
                 Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
+                Ellipse(hdc,j,k,j+16,k+16);
                 strcpy(buffer,Getsecretstring(rom,ed->sbuf[i+2]));
                 Paintspr(hdc,j,k,n,o,512);
             }
             SelectObject(hdc,oldobj2);
         }
         i=ed->selobj;
-        if(i) {
+        if(i)
+        {
             if(ed->selchk==9) {
                 dm_x=(*(short*)(ed->tbuf+i)>>1)&0xfff;
             } else if(ed->selchk==8) {
@@ -21529,7 +21551,88 @@ selfirst:
                     SelectObject(hdc,oldobj3);
                 }
                 else
+                {
+
+#if 1
+                    BOOL r = 0;
+
+                    HDC other_dc = CreateCompatibleDC(hdc);
+                    
+                    unsigned width = rc.right - rc.left;
+                    unsigned height = rc.bottom - rc.top;
+                    
+                    HBITMAP other_bm = CreateCompatibleBitmap(hdc,
+                                                              width,
+                                                              height);
+                    
+                    HGDIOBJ const pen = tint_pen;
+                    HGDIOBJ const br = tint_br;
+                    
+                    HGDIOBJ const old_pen = SelectObject(other_dc, pen);
+                    HGDIOBJ const old_br = SelectObject(other_dc, br);
+                    
+                    static int r2_func = 0;
+                    static int r2_inc  = 0;
+                    
+                    BLENDFUNCTION bf = { AC_SRC_OVER, 0, 0xff, AC_SRC_ALPHA };
+                    
+                    HGDIOBJ tiny_bm = SelectObject(other_dc, other_bm);
+                    
+                    RECT rc2 = { 0, 0, width, height };
+                    
+                    // r = FillRect(other_dc, &rc2, (HBRUSH) GetStockObject(HOLLOW_BRUSH) );
+                    
+                    // r = Rectangle(other_dc, rc2.left + 1, rc2.top + 1, rc2.right - 1, rc2.bottom - 1); 
+                    
+#if 0
+                    BitBlt(other_dc,
+                           rc2.left,
+                           rc2.top,
+                           width,
+                           height,
+                           hdc,
+                           rc.left,
+                           rc.top,
+                           SRCCOPY);
+                    
+                    r = FrameRect(other_dc, &rc2, green_brush);
+#else
+                    r = Rectangle(other_dc, rc2.left, rc2.top, rc2.right, rc2.bottom);
+#endif
+                    
+                    
+                    bf.BlendOp = AC_SRC_OVER;
+                    bf.BlendFlags = 0;
+                    bf.SourceConstantAlpha = 0x80;
+                    bf.AlphaFormat = 0; // AC_SRC_ALPHA;
+                    
+                    r = AlphaBlend(hdc,
+                               rc.left,
+                               rc.top,
+                               width,
+                               height,
+                               other_dc,
+                               0,
+                               0, 
+                               width,
+                               height,
+                               bf);
+                    
+                    
+                    SelectObject(other_dc, old_pen);
+                    SelectObject(other_dc, old_br);
+                    
+                    DeleteObject(other_bm);
+                    DeleteObject(tiny_bm);
+                    
+                    DeleteDC(other_dc);
+
+                    // r = FrameRect(hdc, &rc, blue_brush);
+
+#else
                     FrameRect(hdc,&rc,(ed->withfocus&1)?green_brush:gray_brush);
+#endif
+                }
             }
         }
         
