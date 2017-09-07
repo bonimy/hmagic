@@ -859,7 +859,7 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
         
         for(i = 0; i < p_ed->ssize; i += 3)
         {
-            int const k_pre = *(short*) (p_ed->sbuf+i);
+            int const k_pre = ldle16b(p_ed->sbuf + i);
             
             int const k = ((k_pre & 0x1f80) >> 4) - o;
             int const j = ((k_pre & 0x7e) << 2) - n;
@@ -2265,22 +2265,33 @@ chooseobj:
         }
         break;
     case WM_KEYDOWN:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        rom=ed->ew.doc->rom;
-        if(!(lparam&0x1000000)) switch(wparam) {
-        case VK_RIGHT:
-            wparam=VK_NUMPAD6;
-            break;
-        case VK_LEFT:
-            wparam=VK_NUMPAD4;
-            break;
-        case VK_DOWN:
-            wparam=VK_NUMPAD2;
-            break;
-        case VK_UP:
-            wparam=VK_NUMPAD8;
-            break;
+        
+        ed = (DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
+        rom = ed->ew.doc->rom;
+
+        if( !(lparam & 0x1000000) )
+        {
+            // Allows the num pad directional keys to work regardless of 
+            // whether numlock is on or not. (This block is entered if numlock
+            // is off.)
+            
+            switch(wparam)
+            {
+            case VK_RIGHT:
+                wparam=VK_NUMPAD6;
+                break;
+            case VK_LEFT:
+                wparam=VK_NUMPAD4;
+                break;
+            case VK_DOWN:
+                wparam=VK_NUMPAD2;
+                break;
+            case VK_UP:
+                wparam=VK_NUMPAD8;
+                break;
+            }
         }
+            
         if(ed->selchk>7) break;
         else if(ed->selchk==7) if(wparam==VK_RIGHT) {
             if(ed->ssize==0) break;
