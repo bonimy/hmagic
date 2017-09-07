@@ -52,8 +52,8 @@ uint8_t const u8_neg1 = (uint8_t) (~0);
 
 static HGDIOBJ gray_pen = 0;
 
-static HPEN tint_pen = 0;
-static HBRUSH tint_br = 0;
+HPEN tint_pen = 0;
+HBRUSH tint_br = 0;
 
 uint16_t const u16_neg1 = (uint16_t) (~0);
 

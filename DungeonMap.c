@@ -46,6 +46,12 @@ Getsecretstring(uint8_t const * const rom,
 
 // \task End prototypes that should be in their own header.
 
+// \task Needs header too
+extern HPEN tint_pen;
+extern HBRUSH tint_br;
+
+// \task end externs that need header.
+
 // =============================================================================
 
 int szcofs[16] =
@@ -58,27 +64,46 @@ int szcofs[16] =
 void
 PaintDungeonBlocks(RECT       const clip_r,
                    RECT       const data_r,
-                   HDC        const hdc,
+                   HDC        const p_dc,
                    DUNGEDIT * const ed)
 {
+    HDC const mem_dc = CreateCompatibleDC(p_dc);
+    
+    HGDIOBJ tiny_bm = 0; 
+
+    HBITMAP const mem_bm = CreateCompatibleBitmap(p_dc,
+                                                  512,
+                                                  512);
+    
+    
     // \task Temporary. We'd prefer to have a const 'ed' object.
     ed->bmih.biWidth  = 512;
     ed->bmih.biHeight = 512;
     
-    SetDIBitsToDevice(hdc,
-                      clip_r.left,
-                      clip_r.top,
-                      (data_r.right - data_r.left),
-                      (data_r.bottom - data_r.top),
-                      data_r.left,
-                      data_r.top,
-                      0,
-                      512,
-                      ed->map_bits,
-                      (BITMAPINFO*) &(ed->bmih),
-                      ed->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
-     
-    printf("asdfsdf");
+    SetDIBits(mem_dc,
+              mem_bm,
+              0,
+              512,
+              ed->map_bits,
+              (BITMAPINFO*) &ed->bmih,
+              ed->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
+    
+    tiny_bm = SelectObject(mem_dc, mem_bm);
+    
+    BitBlt(p_dc,
+           clip_r.left,
+           clip_r.top,
+           clip_r.right - clip_r.left,
+           clip_r.bottom - clip_r.top,
+           mem_dc,
+           data_r.left,
+           data_r.top,
+           SRCCOPY);
+    
+    DeleteDC(mem_dc);
+    
+    DeleteObject(mem_bm);
+    DeleteObject(tiny_bm);
 }
 
 // =============================================================================
@@ -614,7 +639,11 @@ PaintDungeon(DUNGEDIT const * const p_ed,
         v = 0;
     }
     
+#if 0
     for(i = tile_r.left; i < tile_r.right; i += 8)
+#else
+    for(i = 0; i < 512; i += 8)
+#endif
     {
         // loop variable that represents the current x coordinate in the tilemap.
         // (aligned to a 32 pixel grid though).
@@ -622,7 +651,11 @@ PaintDungeon(DUNGEDIT const * const p_ed,
         
         // -----------------------------
         
+#if 0
         for(j = tile_r.top; j < tile_r.bottom; j += 8)
+#else
+        for(j = 0; j < 512; j += 8)
+#endif
         {
             if(v)
             {
@@ -683,6 +716,14 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
     };
     
     // -----------------------------
+    
+    if( HM_IsEmptyRect(clip_r) )
+    {
+        EndPaint(p_win, &ps);
+
+        return;
+    }
+
     
     if( ! tint_pen) { tint_pen = CreatePen(PS_SOLID, 3, RGB(0x90, 0xff, 0x90) ); }
     if( ! tint_br)  { tint_br = CreateSolidBrush( RGB(0x80, 0x80, 0x80) ); }
