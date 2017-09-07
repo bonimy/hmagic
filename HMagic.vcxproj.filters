@@ -30,6 +30,9 @@
     <ClCompile Include="DungeonMap.c">
       <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
+    <ClCompile Include="ChooseObject.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -42,6 +45,9 @@
       <Filter>Header Files\Dungeon</Filter>
     </ClInclude>
     <ClInclude Include="wrappers.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="Callbacks.h">
       <Filter>Header Files\General</Filter>
     </ClInclude>
   </ItemGroup>

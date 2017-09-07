@@ -44,6 +44,13 @@ char const *
 Getsecretstring(uint8_t const * const rom,
                 int             const i);
 
+uint32_t
+ldle24b(uint8_t const * const p_arr);
+
+void
+stle24b(uint8_t * const p_arr,
+        uint32_t  const p_value);
+
 // \task End prototypes that should be in their own header.
 
 // \task Needs header too
@@ -58,6 +65,68 @@ int szcofs[16] =
 {
     4,3,3,3,1,2,0,1,1,0,2,1,1,3,3,3
 };
+
+// =============================================================================
+
+// Is this the one that draws the dungeon?
+void Updatemap(DUNGEDIT *ed)
+{
+    int i;
+    
+    uint16_t *nbuf = ed->nbuf, *buf2;
+    
+    uint8_t const * buf = ed->buf;
+    
+    uint8_t const * const rom = ed->ew.doc->rom;
+    
+    dm_buf = nbuf;
+    
+    buf2 = (uint16_t*) ( rom + 0x1b52 + ((buf[0] << 4) & 0xf0) );
+    fill4x2(rom, ed->nbuf, buf2);
+    
+    buf2 = (uint16_t*) ( rom + 0x1b52 + (buf[0] & 0xf0) );
+    fill4x2(rom, ed->nbuf + 0x1000, buf2);
+    
+    ed->chestnum = 0;
+    
+    if(ed->ew.param < 0x8c)
+    {
+        Drawmap(rom,
+                ed->nbuf,
+                rom + romaddr(*(int*) (rom + romaddr(*(int*) (rom + 0x882d)) + (buf[1] >> 2) * 3)),
+                ed);
+        
+        buf = Drawmap(rom, ed->nbuf, buf + 2, ed);
+        buf = Drawmap(rom, ed->nbuf + 0x1000, buf, ed);
+        
+        Drawmap(rom, ed->nbuf, buf, ed);
+        
+        for(i = 0; i < 0x18c; i += 4)
+        {
+            if(*(short*)(rom + 0x271de + i) == ed->mapnum)
+            {
+                dm_x = (*(short*)(rom + 0x271e0 + i) & 0x3fff)>>1;
+                
+                ed->nbuf[dm_x]=0x1922;
+                ed->nbuf[dm_x+64]=0x1932;
+                ed->nbuf[dm_x+1]=0x1923;
+                ed->nbuf[dm_x+65]=0x1933;
+            }
+        }
+        
+        for(i = 2; i < ed->tsize; i += 2)
+        {
+            dm_x = *(short*) (ed->tbuf + i) & 0x1fff;
+            dm_x >>= 1;
+            ed->nbuf[dm_x] = 0xde0;
+            ed->nbuf[dm_x+64] = 0xdf0;
+            ed->nbuf[dm_x+1] = 0x4de0;
+            ed->nbuf[dm_x+65] = 0x4df0;
+        }
+    }
+    else
+        Drawmap(rom,ed->nbuf,buf+2,ed);
+}
 
 // =============================================================================
 
@@ -500,9 +569,9 @@ noblock:
 // =============================================================================
 
 static void
-DrawDungeonMap8(DUNGEDIT const * const p_ed,
-                int              const p_x,
-                int              const p_y)
+DrawDungeonMap8(DUNGEDIT * const p_ed,
+                int        const p_x,
+                int        const p_y)
 {
     uint16_t const * const tilemap = p_ed->nbuf;
     
@@ -975,7 +1044,7 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     // Handles the actual dungeon map portion
@@ -987,14 +1056,8 @@ dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     int i, j, k, l, m, n, o, p, q = 0;
     
-    PAINTSTRUCT ps;
-    HDC hdc;
-    HPALETTE oldpal;
     DUNGEDIT *ed;
-    HBRUSH oldbrush = 0,
-           oldobj2 = 0,
-           oldobj3 = 0;
-    RECT rc,rc2;
+    RECT rc;
     HMENU menu,menu2;
     POINT pt;
     
@@ -1004,14 +1067,20 @@ dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     {
     
     case WM_LBUTTONUP:
+        
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->withfocus&10) {
+        
+        if(ed->withfocus & 10)
+        {
             ReleaseCapture();
             ed->withfocus&=-15;
             ed->selcorner=16;
+            
             goto updcursor;
         }
+        
         break;
+    
     case WM_MOUSEMOVE:
         
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
@@ -1430,7 +1499,6 @@ movesel:
         
         {
             unsigned const height = HIWORD(lparam);
-            unsigned const width  = LOWORD(lparam);
             
             unsigned const divider = 9;
             
@@ -1525,28 +1593,39 @@ movesel:
         break;
     
     case WM_VSCROLL:
+        
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
         
         {
             SCROLLINFO const si_v = HM_GetVertScrollInfo(win);
             
-            ed->mapscrollv=Handlescroll(win,
-                                        wparam,
-                                        ed->mapscrollv,
-                                        ed->mappagev,
-                                        SB_VERT,
-                                        (si_v.nMax - si_v.nMin) + 1,
-                                        ed->map_vscroll_delta);
+            ed->mapscrollv = Handlescroll(win,
+                                          wparam,
+                                          ed->mapscrollv,
+                                          ed->mappagev,
+                                          SB_VERT,
+                                          (si_v.nMax - si_v.nMin) + 1,
+                                          ed->map_vscroll_delta);
         }
         
         break;
     
     case WM_HSCROLL:
+        
         ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
+        
+        ed->mapscrollh = Handlescroll(win,
+                                      wparam,
+                                      ed->mapscrollh,
+                                      ed->mappageh,
+                                      SB_HORZ,
+                                      16,
+                                      32);
+        
         break;
     
     case WM_GETDLGCODE:
+        
         return DLGC_WANTARROWS | DLGC_WANTCHARS;
     
     case WM_CHAR:
@@ -1827,13 +1906,27 @@ chestchg:
     case WM_LBUTTONDBLCLK:
         ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
 chooseobj:
-        if(!ed->selobj) break;
-        if(ed->selchk>=7) break;
-        if(ed->selchk==6) {
+        
+        if(!ed->selobj)
+            break;
+        
+        if(ed->selchk>=7)
+            break;
+        
+        if(ed->selchk==6)
+        {
             q=(ed->ebuf[ed->selobj+1]>=224)?768:512;
-            i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,ed->ebuf[ed->selobj+2]+q);
-        } else i = ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long) ed);
-        if(i==-1) break;
+            i = ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,ed->ebuf[ed->selobj+2]+q);
+        }
+        else
+            i = ShowDialog(hinstance,
+                           MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                           framewnd,
+                           choosedung,
+                           ed);
+        
+        if(i == -1)
+            break;
         
         Dungselectchg(ed,win,0);
         SetFocus(win);
@@ -1945,7 +2038,11 @@ chooseobj:
                 else
                     l = ed->selobj;
                 
-                o = ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long)ed);
+                o = ShowDialog(hinstance,
+                               MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                               framewnd,
+                               choosedung,
+                               ed);
                 
                 if(o==-1) break;
                 for(n=m;n<7;n++) ed->chkofs[n]+=3;
@@ -1977,10 +2074,20 @@ chooseobj:
             if(ed->selobj=ed->chkofs[m-1] || !ed->selobj) l=ed->chkofs[m]-2;
             else l=ed->selobj;
             if(l==ed->chkofs[m-1]-2) p=4; else p=2;
-            o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long)ed);
-            if(o==-1) break;
-            for(n=m;n<7;n++) ed->chkofs[n]+=p;
-            ed->buf=realloc(ed->buf,ed->len);
+            
+            o = ShowDialog(hinstance,
+                         MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                         framewnd,choosedung,
+                         ed);
+            
+            if(o == -1)
+                break;
+            
+            for(n=m;n<7;n++)
+                ed->chkofs[n]+=p;
+            
+            ed->buf = realloc(ed->buf,ed->len);
+            
             memcpy(ed->buf+l+p,ed->buf+l,ed->len-l-p);
             if(p==4) { *(short*)(ed->buf+l)=-16; l+=2; }
             ed->selobj=l;
@@ -2286,25 +2393,42 @@ updpot:
             ed->ebuf[ed->selobj+2]+=16;
             ed->modf=1;
             goto updsel;
+        
         case 'B':
-            if(ed->selobj==1) break;
-            i=*(int*)(ed->ebuf+ed->selobj-3);
-            *(short*)(ed->ebuf+ed->selobj-3)=*(short*)(ed->ebuf+ed->selobj);
-            ed->ebuf[ed->selobj-1]=ed->ebuf[ed->selobj+2];
-            *(short*)(ed->ebuf+ed->selobj)=i;
-            ed->ebuf[ed->selobj+2]=i>>16;
-            ed->selobj-=3;
-            ed->modf=1;
+            
+            if(ed->selobj == 1)
+                break;
+            
+            // \task Perhaps a swaple24b() is in order.
+            i = ldle24b(ed->ebuf + ed->selobj - 3);
+            
+            stle24b(ed->ebuf + ed->selobj - 3,
+                    ldle24b(ed->ebuf + ed->selobj) );
+            
+            stle24b(ed->ebuf + ed->selobj, i);
+            
+            ed->selobj -= 3;
+            ed->modf = 1;
+            
             goto updsel;
+        
         case 'V':
-            if(ed->selobj==ed->esize-3) break;
-            i=*(int*)(ed->ebuf+ed->selobj+3);
-            *(short*)(ed->ebuf+ed->selobj+3)=*(short*)(ed->ebuf+ed->selobj);
-            ed->ebuf[ed->selobj+5]=ed->ebuf[ed->selobj+2];
-            *(short*)(ed->ebuf+ed->selobj)=i;
-            ed->ebuf[ed->selobj+2]=i>>16;
-            ed->selobj+=3;
-            ed->modf=1;
+            
+            // Moves the selected sprite later in the load sequence.
+            
+            if(ed->selobj == ed->esize - 3)
+                break;
+            
+            i = ldle24b(ed->ebuf + ed->selobj + 3);
+            
+            stle24b(ed->ebuf + ed->selobj + 3,
+                     ldle24b(ed->ebuf + ed->selobj) );
+            
+            stle24b(ed->ebuf + ed->selobj, i);
+            
+            ed->selobj += 3;
+            ed->modf = 1;
+            
             goto updsel;
         } }
         else if(ed->selchk & 1)

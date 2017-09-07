@@ -25,6 +25,10 @@
     HM_DrawRectangle(HDC const p_device_context,
                      RECT const p_rect);
 
+    BOOL
+    HM_IsEmptyRect(RECT const p_rect);
+
+
     int __stdcall askinteger(int max, char *caption, char *text);
 
 #endif

@@ -11,7 +11,7 @@
 #define IDD_DIALOG3                     109
 #define IDD_DIALOG4                     110
 #define IDD_DIALOG5                     111
-#define IDD_DIALOG6                     112
+#define IDD_DUNG_CHOOSE_OBJECT          112
 #define IDD_DIALOG7                     113
 #define IDD_DIALOG8                     114
 #define IDD_DIALOG9                     115

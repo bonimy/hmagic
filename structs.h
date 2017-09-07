@@ -370,10 +370,15 @@ typedef struct
     
     short selcorner;
     
+    // Size and buffer for "enemies", or more generally "sprites".
     short esize;
     unsigned char *ebuf;
+    
+    // Size and buffer for "secrets", aka "items".
     short ssize;
     unsigned char *sbuf;
+    
+    // Size and buffer for torches.
     short tsize;
     unsigned char *tbuf;
     
@@ -654,6 +659,7 @@ typedef struct
     
 } BLOCKEDIT16;
 
+/// Editor data for dungeon object selector dialog.
 typedef struct
 {
     DUNGEDIT *ed;
@@ -829,6 +835,16 @@ extern int const always;
 extern const short bg3blkofs[4];
 
 extern int palhalf[8];
+
+extern HDC objdc;
+
+extern RECT const empty_rect;
+
+extern DUNGEDIT * dunged;
+
+extern uint8_t drawbuf[0x400];
+
+extern uint16_t *dm_buf;
 
 // =============================================================================
 
