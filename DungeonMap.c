@@ -402,7 +402,7 @@ noblock:
         
         case 0x8000:
             
-            b2 -= 224;
+            b2 -= scan_size * 7;
             
             for(a = 0; a < 8; a++)
             {
@@ -442,7 +442,7 @@ noblock:
         
         case 0x8000:
             
-            b2 -= 224;
+            b2 -= scan_size * 7;
             
             for(a = 0; a < 8; a++)
             {
