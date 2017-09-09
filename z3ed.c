@@ -955,6 +955,51 @@ HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
 
 // =============================================================================
 
+HM_MouseData
+HM_GetMouseData(MSG const p_packed_msg)
+{
+    WPARAM const wp = p_packed_msg.wParam;
+    LPARAM const lp = p_packed_msg.lParam;
+    
+    // Get client coordinates of the click.
+    POINT const rel_pos =
+    {
+        HM_GetSignedLoword(lp),
+        HM_GetSignedHiword(lp)
+    };
+    
+    // The absolute screen coordinates of the Window itself.
+    POINT const win_screen_pos = HM_GetWindowPos(p_packed_msg.hwnd);
+    
+    // The absolute screen coordinates of the location indicated by the event
+    // (obviously this will be inside of the window, so further to the right,
+    // further down.)
+    POINT const screen_pos =
+    {
+        rel_pos.x + win_screen_pos.x,
+        rel_pos.y + win_screen_pos.y
+    };
+    
+    HM_MouseData d;
+    
+    // -----------------------------
+    
+    d.m_flags = (unsigned) wp;
+    
+    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
+    d.m_control_key = truth(d.m_flags & MK_CONTROL);
+
+    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
+    
+    d.m_rel_pos = rel_pos;
+    
+    d.m_screen_pos = screen_pos;
+    
+    return d;
+}
+
+// =============================================================================
+
 HM_MdiActivateData
 HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
 {
@@ -1132,6 +1177,29 @@ HM_IsEmptyRect(RECT const p_rect)
 
 // =============================================================================
 
+MSG
+HM_PackMessage(HWND const p_win,
+               UINT       p_msg_id,
+               WPARAM     p_wp,
+               LPARAM     p_lp)
+{
+    MSG msg;
+    
+    POINT CONST dummy = { 0, 0 };
+    
+    // -----------------------------
+    
+    msg.hwnd = p_win;
+    msg.lParam = p_lp;
+    msg.message = p_msg_id;
+    msg.pt = dummy;
+    msg.time = 0;
+    msg.wParam = p_wp;
+    
+    return msg;
+}
+
+// =============================================================================
 
 // \task Dummied out on the HMagic2 side for now.
 

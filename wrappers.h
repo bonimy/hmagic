@@ -16,6 +16,9 @@
                         LPARAM const lparam);
 
     HM_MouseWheelData
+    HM_GetMouseData(MSG const p_packed_msg);
+
+    HM_MouseWheelData
     HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp);
 
     HM_MdiActivateData
@@ -28,6 +31,11 @@
     BOOL
     HM_IsEmptyRect(RECT const p_rect);
 
+    MSG
+    HM_PackMessage(HWND const p_win,
+                   UINT       p_msg_id,
+                   WPARAM     p_wp,
+                   LPARAM     p_lp);
 
     int __stdcall askinteger(int max, char *caption, char *text);
 

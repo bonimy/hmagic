@@ -1,57 +1,13 @@
 
     #include "structs.h"
+
+    #include "Callbacks.h"
+    #include "prototypes.h"
     #include "wrappers.h"
 
     #include "DungeonEnum.h"
 
 // =============================================================================
-
-// \task Should be in a headers of their own
-BOOL CALLBACK
-choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
-
-BOOL CALLBACK
-choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
-
-void
-PaintSprName(HDC hdc,
-             int x,
-             int y,
-             int n,
-             int o,
-             int w,
-             char const * const p_name);
-
-void
-Drawblock(OVEREDIT const * const ed,
-          int const x,
-          int const y,
-          int const n,
-          int const t);
-
-void
-Paintblocks(RECT *rc,
-            HDC hdc,
-            int x,
-            int y,
-            DUNGEDIT*ed);
-
-char const *
-Getsprstring(DUNGEDIT const * const ed,
-             int              const i);
-
-char const *
-Getsecretstring(uint8_t const * const rom,
-                int             const i);
-
-uint32_t
-ldle24b(uint8_t const * const p_arr);
-
-void
-stle24b(uint8_t * const p_arr,
-        uint32_t  const p_value);
-
-// \task End prototypes that should be in their own header.
 
 // \task Needs header too
 extern HPEN tint_pen;
@@ -197,6 +153,8 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     // which chr (character / tile) to use.
     int d = (n & 0x03ff);
     
+    BOOL const vflip = (n & 0x8000);
+    
     unsigned e;
     
     const static char f[14] = {1,1,0,0,0,0,0,0,1,1,1,0,1,1};
@@ -209,6 +167,8 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     
     int col;
     int mask,tmask;
+    
+    // -----------------------------
     
     *(char*) &col = *(((char*)&col) + 1) = *(((char*)&col) + 2) = *(((char*)&col) + 3) = ((n & 0x1c00) >> 6);
     
@@ -384,64 +344,36 @@ noblock:
     
     case 0:
         
-        switch(n & 0x8000)
+        if(vflip)
         {
-        
-        case 0:
-            
-            for(a = 0; a < 8; a++)
-            {
-                *(int*) b2     = ((*(int*) b1)     & mask) + col;
-                ((int*) b2)[1] = ((((int*) b1)[1]) & mask) + col;
-                
-                b2 -= scan_size;
-                b1 += 8;
-            }
-            
-            break;
-        
-        case 0x8000:
-            
             b2 -= scan_size * 7;
             
             for(a = 0; a < 8; a++)
             {
                 *(int*) b2     = ((*(int*) b1)     & mask) + col;
                 ((int*) b2)[1] = ((((int*) b1)[1]) & mask) + col;
+                
                 b2 += scan_size;
                 b1 += 8;
             }
-            
-            break;
+        }
+        else
+        {
+            for(a = 0; a < 8; a++)
+            {
+                *(int*) b2     = ((*(int*) b1)     & mask) + col;
+                ((int*) b2)[1] = ((((int*) b1)[1]) & mask) + col;
+                b2 -= scan_size;
+                b1 += 8;
+            }
         }
         
         break;
     
     case 1:
         
-        switch(n & 0x8000)
+        if(vflip)
         {
-        case 0:
-            
-            for(a = 0; a < 8; a++)
-            {
-                b = ((int*) b4)[0];
-                c = ((int*) b4)[1];
-                
-                ((int*) b2)[0] &= b;
-                ((int*) b2)[1] &= c;
-                ((int*) b2)[0] |= (((*(int*) b1) & mask) + col) & ~b;
-                ((int*) b2)[1] |= (((*(int*)(b1 + 4)) & mask) + col) & ~c;
-                
-                b2 -= scan_size;
-                b1 += 8;
-                b4 += 8;
-            }
-            
-            break;
-        
-        case 0x8000:
-            
             b2 -= scan_size * 7;
             
             for(a = 0; a < 8; a++)
@@ -458,36 +390,33 @@ noblock:
                 b1 += 8;
                 b4 += 8;
             }
-            
-            break;
+        }
+        else
+        {
+            for(a = 0; a < 8; a++)
+            {
+                b = ((int*) b4)[0];
+                c = ((int*) b4)[1];
+                
+                ((int*) b2)[0] &= b;
+                ((int*) b2)[1] &= c;
+                ((int*) b2)[0] |= (((*(int*) b1) & mask) + col) & ~b;
+                ((int*) b2)[1] |= (((*(int*)(b1 + 4)) & mask) + col) & ~c;
+                
+                b2 -= scan_size;
+                b1 += 8;
+                b4 += 8;
+            }
         }
         
         break;
     
     case 2:
         
-        switch(n & 0x8000)
+        // \task Seems to be broken?
+        if(vflip)
         {
-        
-        case 0:
-            
-            tmask = 0xff00ff;
-            
-            for(a = 0; a < 8; a++)
-            {
-                *(int*) b2 = (((*(int*) b1) & mask) + col) & tmask;
-                ((int*) b2)[1] = (((((int*) b1)[1]) & mask) + col) & tmask;
-                
-                b2 -= scan_size;
-                b1 += 8;
-                tmask ^= -1;
-            }
-            
-            break;
-        
-        case 0x8000:
-            
-            b2 -= 224;
+            b2 -= scan_size * 7;
             
             tmask = 0xff00ff00;
             
@@ -501,18 +430,53 @@ noblock:
                 
                 tmask ^= -1;
             }
+        }
+        else
+        {
+            tmask = 0xff00ff;
             
-            break;
+            for(a = 0; a < 8; a++)
+            {
+                *(int*) b2 = (((*(int*) b1) & mask) + col) & tmask;
+                ((int*) b2)[1] = (((((int*) b1)[1]) & mask) + col) & tmask;
+                
+                b2 -= scan_size;
+                b1 += 8;
+                tmask ^= -1;
+            }
         }
         
         break;
     
     case 3:
         
-        switch(n & 0x8000)
-        {
-        case 0:
+        // \task Seems to be broken?
+        if(vflip)
+        {            
+            tmask = 0xff00ff00;
             
+            b2 -= scan_size * 7;
+            
+            for(a = 0; a < 8; a++)
+            {
+                b = ((int*) b4)[0] | ~tmask;
+                c = ((int*) b4)[1] | ~tmask;
+                
+                ((int*) b2)[0] &= b;
+                ((int*) b2)[1] &= c;
+                
+                ((int*) b2)[0] |= (((*(int*) b1) & mask) + col) & ~b & tmask;
+                ((int*) b2)[1] |= (((*(int*) (b1 + 4)) & mask) + col) & ~c & tmask;
+                
+                b2 += scan_size;
+                b1 += 8;
+                b4 += 8;
+                
+                tmask ^= -1;
+            }
+        }
+        else
+        {
             tmask = 0xff00ff;
             
             for(a = 0; a < 8; a++)
@@ -532,34 +496,6 @@ noblock:
                 
                 tmask ^= -1;
             }
-            
-            break;
-        
-        case 0x8000:
-            
-            tmask = 0xff00ff00;
-            
-            b2 -= 224;
-            
-            for(a = 0; a < 8; a++)
-            {
-                b = ((int*) b4)[0] | ~tmask;
-                c = ((int*) b4)[1] | ~tmask;
-                
-                ((int*) b2)[0] &= b;
-                ((int*) b2)[1] &= c;
-                
-                ((int*) b2)[0] |= (((*(int*) b1) & mask) + col) & ~b & tmask;
-                ((int*) b2)[1] |= (((*(int*) (b1 + 4)) & mask) + col) & ~c & tmask;
-                
-                b2 += scan_size;
-                b1 += 8;
-                b4 += 8;
-                
-                tmask ^= -1;
-            }
-            
-            break;
         }
         
         break;
@@ -665,14 +601,10 @@ DrawDungeonMap8(DUNGEDIT * const p_ed,
 // =============================================================================
 
 static void
-PaintDungeon(DUNGEDIT const * const p_ed,
-             HDC hdc,
-             RECT *rc,
-             int x,int y,
-             int k,int l,
-             int n,int o,
-             RECT clip_r,
-             RECT data_r)
+PaintDungeon(DUNGEDIT * const p_ed,
+             HDC        const hdc,
+             RECT       const clip_r,
+             RECT       const data_r)
 {
     // loop variable that represents the y coordinate in the tilemap.
     int i = 0;
@@ -708,7 +640,7 @@ PaintDungeon(DUNGEDIT const * const p_ed,
         v = 0;
     }
     
-#if 0
+#if 1
     for(i = tile_r.left; i < tile_r.right; i += 8)
 #else
     for(i = 0; i < 512; i += 8)
@@ -720,7 +652,7 @@ PaintDungeon(DUNGEDIT const * const p_ed,
         
         // -----------------------------
         
-#if 0
+#if 1
         for(j = tile_r.top; j < tile_r.bottom; j += 8)
 #else
         for(j = 0; j < 512; j += 8)
@@ -749,8 +681,8 @@ PaintDungeon(DUNGEDIT const * const p_ed,
 // =============================================================================
 
 void
-DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
-                   HWND             const p_win)
+DungeonMap_OnPaint(DUNGEDIT * const p_ed,
+                   HWND       const p_win)
 {
     char text_buf[0x200];
     
@@ -828,10 +760,6 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
     
     PaintDungeon(p_ed,
                  hdc,
-                 &ps.rcPaint,
-                 ps.rcPaint.left & 0xffffffe0,
-                 ps.rcPaint.top & 0xffffffe0,
-                 k, l, n, o,
                  clip_r,
                  data_r);
     
@@ -884,22 +812,22 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
         }
         else if(p_ed->selchk==8)
         {
-            dm_x=(*(short*)(p_ed->ew.doc->rom+so+2)>>1)&0xfff;
+            dm_x=(*(short*)(rom + so + 2)>>1)&0xfff;
         }
         else if(p_ed->selchk==7)
         {
             dm_x=(*(short*)(p_ed->sbuf+so-2)>>1)&0xfff;
             dm_k=p_ed->sbuf[so];
-            cur_sec=Getsecretstring(p_ed->ew.doc->rom,dm_k);              
+            cur_sec = Getsecretstring(rom, dm_k);              
         }
         else if(p_ed->selchk==6)
         {
-            dm_x=((p_ed->ebuf[so+1]&31)<<1)+((p_ed->ebuf[so]&31)<<7);
-            dm_k=p_ed->ebuf[so+2]+((p_ed->ebuf[so+1]>=224)?256:0);
+            dm_x=((p_ed->ebuf[so+1]&31)<<1)+((p_ed->ebuf[so]&31) << 7);
+            dm_k = p_ed->ebuf[so + 2] + ( (p_ed->ebuf[so + 1] >= 224) ? 256 : 0);
         }
         else if(p_ed->selchk & 1)
         {
-            getdoor(p_ed->buf+so,p_ed->ew.doc->rom),
+            getdoor(p_ed->buf+so, rom),
             k = 4,
             l = 4;
         }
@@ -941,7 +869,7 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
                 if(p_ed->selchk==6)
                     strcpy(text_buf, Getsprstring(p_ed, so));
                 else
-                    strcpy(text_buf, Getsecretstring(p_ed->ew.doc->rom, dm_k));
+                    strcpy(text_buf, Getsecretstring(rom, dm_k));
                 
                 PaintSprName(hdc,rc.left,rc.top,n,o,512, text_buf);
                 SelectObject(hdc,oldobj2);
@@ -977,11 +905,7 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
                 
                 RECT rc2 = { 0, 0, width, height };
                 
-                // r = FillRect(other_dc, &rc2, (HBRUSH) GetStockObject(HOLLOW_BRUSH) );
-                
-                // r = Rectangle(other_dc, rc2.left + 1, rc2.top + 1, rc2.right - 1, rc2.bottom - 1); 
-                
-#if 0
+#if 1
                 BitBlt(other_dc,
                        rc2.left,
                        rc2.top,
@@ -1001,7 +925,7 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
                 bf.BlendOp = AC_SRC_OVER;
                 bf.BlendFlags = 0;
                 bf.SourceConstantAlpha = 0x80;
-                bf.AlphaFormat = 0; // AC_SRC_ALPHA;
+                bf.AlphaFormat = 0;
                 
                 r = AlphaBlend(hdc,
                            rc.left,
@@ -1044,6 +968,225 @@ DungeonMap_OnPaint(DUNGEDIT const * const p_ed,
 
 // =============================================================================
 
+void
+DungeonMap_OnMouseWheel(DUNGEDIT * const p_ed,
+                        MSG        const p_msg)
+{
+    HM_MouseWheelData const d = HM_GetMouseWheelData(p_msg.wParam,
+                                                     p_msg.lParam);
+    
+    unsigned scroll_type = SB_LINEUP;
+    
+    WPARAM fake_wp = 0;
+    
+    HWND const w = p_msg.hwnd;
+    
+    SCROLLINFO si_v = HM_GetVertScrollInfo(p_msg.hwnd);
+    
+    // -----------------------------
+    
+    if(d.m_distance > 0)
+    {
+        // wheel moving up or left
+        if(d.m_control_key)
+        {
+            scroll_type = SB_PAGEUP;
+        }
+        else
+        {
+            scroll_type = SB_LINEUP;
+        }
+    }
+    else
+    {
+        if(d.m_control_key)
+        {
+            scroll_type = SB_PAGEDOWN;
+        }
+        else
+        {
+            scroll_type = SB_LINEDOWN;
+        }
+    }             
+    
+    fake_wp = MAKEWPARAM(scroll_type, 0);
+    
+    p_ed->mapscrollv = Handlescroll(w,
+                                    fake_wp,
+                                    p_ed->mapscrollv,
+                                    p_ed->mappagev,
+                                    SB_VERT,
+                                    (si_v.nMax - si_v.nMin) + 1,
+                                    p_ed->map_vscroll_delta);
+}
+
+// =============================================================================
+
+void
+DungeonMap_OnLeftMouseDown(DUNGEDIT * const p_ed,
+                           MSG        const p_packed_msg)
+{
+    // What to do if the left mouse button goes down.
+    
+    // Obtains the rom and other data structures associated with this room.
+    // notes: o is the x coordinate of the click, p is the y coordinate
+    // q is the size of the object we're looking for (3 bytes or 2 bytes)
+    // m is the number of objects of that type in the array we're looking through
+    // n is a counter to step through those objects
+    // i is flag variable (bit 0: it's a door (type 2 object)
+    
+    HM_MouseData const d = HM_GetMouseData(p_packed_msg);
+    
+    
+    
+    HWND const w = p_packed_msg.hwnd;
+     
+    int const o = d.m_rel_pos.x + (p_ed->mapscrollh << 5);
+    int const p = d.m_rel_pos.y + (p_ed->mapscrollv * p_ed->map_vscroll_delta);
+    
+    uint8_t const * const rom = p_ed->ew.doc->rom;
+    
+    if(p_ed->selcorner)
+    {
+        p_ed->withfocus |= 8;
+        p_ed->dragx = (o + 4) & -8;
+        p_ed->dragy = (p + 4) & -8;
+        p_ed->sizerect = p_ed->selrect;
+        
+        SetCapture(w);
+    }
+    else
+    {
+        int i = 0;
+        int m = 0;
+        int n = 0;
+        int q = 0;
+        
+        // -----------------------------
+            
+        if
+        (
+            p_ed->selobj
+         && o >= p_ed->selrect.left
+         && o < p_ed->selrect.right
+         && p >= p_ed->selrect.top
+         && p < p_ed->selrect.bottom
+        )
+        {
+            goto movesel;
+        }
+        
+        Dungselectchg(p_ed, w, 0);
+        
+        // If it's a layout, handle only type 1 objects
+        if(p_ed->ew.param >= 0x8c)
+        {
+            i = 0, q = 3;
+        }
+        else
+        {
+            i = p_ed->selchk;
+            
+            if(i < 6)
+            {
+                i &= 6;
+                
+                if(p_ed->chkofs[i + 2] != p_ed->chkofs[i + 1])
+                    i |= 1;
+                
+                q = 3 - (i & 1);
+            }
+        }
+        
+        if(i == 9)
+            n = 2, m = p_ed->tsize - 2, q = 2;
+        else if(i == 8)
+            n = 0x271de, m = 0x27366, q = 4;
+        else if(i == 7)
+            n = 0, m = p_ed->ssize - 3, q = 3;
+        else if(i == 6)
+            n = 1, m = p_ed->esize - 3, q = 3;
+        else
+            n = p_ed->chkofs[i & 6], m = p_ed->chkofs[i + 1] - 2 - q;
+        
+        p_ed->selobj=0;
+        
+        for(;m >= n; m -= q)
+        {
+            RECT rc;
+            
+            // -----------------------------
+            
+            if(i < 6 && (i & 1) && m < p_ed->chkofs[i])
+            {
+                i--, q = 3, m -= 3;
+                
+                if(m < n)
+                    break;
+            }
+            
+            if(i == 9)
+            {
+                dm_x = (*(short*) (p_ed->tbuf + m) >> 1) & 0xfff;
+            }
+            else if(i == 8)
+            {
+                if(*(short*) (rom + m) != p_ed->mapnum)
+                    continue;
+                
+                dm_x = (*(short*) (rom + m + 2) >> 1) & 0xfff;
+            }
+            else if(i == 7)
+            {
+                dm_x = *(short*) (p_ed->sbuf + m) >> 1;
+                dm_k = p_ed->sbuf[m + 2];
+                cur_sec = Getsecretstring(rom, dm_k);
+            }
+            else if(i == 6)
+            {
+                dm_x = ((p_ed->ebuf[m] & 31) << 7) + ((p_ed->ebuf[m + 1] & 31) << 1);
+                
+                dm_l = ((p_ed->ebuf[m] & 0x60) >> 2) | ((p_ed->ebuf[m + 1] & 0xe0) >> 5);
+                dm_k = p_ed->ebuf[m + 2] + (((dm_l & 7) == 7) ? 256 : 0);
+            }
+            else if(i & 1)
+                getdoor(p_ed->buf + m, rom);
+            else
+                getobj(p_ed->buf + m);
+            
+            rc.left = ((dm_x & 0x3f) << 3);
+            rc.top = ((dm_x >> 6) << 3);
+            
+            Getdungobjsize(i, &rc, 0, 0, 0);
+            
+            if(o >= rc.left && o < rc.right && p >= rc.top && p < rc.bottom)
+            {
+                if(i == 7)
+                    m += 2;
+                
+                p_ed->selobj = m;
+                p_ed->selchk = i;
+                
+            movesel:
+                
+                p_ed->withfocus |= 2;
+                p_ed->dragx = o;
+                p_ed->dragy = p;
+                
+                SetCapture(w);
+                
+                break;
+            }
+        }
+        
+        Dungselectchg(p_ed, w, 1);
+    }
+    
+    SetFocus(w);
+}
+
+// =============================================================================
+
 LRESULT CALLBACK
 dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -1056,25 +1199,56 @@ dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     int i, j, k, l, m, n, o, p, q = 0;
     
-    DUNGEDIT *ed;
+    DUNGEDIT  * const ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
     RECT rc;
     HMENU menu,menu2;
     POINT pt;
     
     unsigned char * rom = 0;
     
+    MSG const packed_msg = HM_PackMessage(win, msg, wparam, lparam);
+
+    // Some messages require a valid editor pointer to do anything useful.
+    switch(msg)
+    {
+    
+    default:
+        
+        break;
+    
+    case WM_LBUTTONUP:
+    case WM_MOUSEMOVE:
+    case WM_LBUTTONDOWN:
+    case WM_SIZE:
+    case WM_MOUSEWHEEL:
+    case WM_VSCROLL:
+    case WM_HSCROLL:
+    case WM_CHAR:
+    case WM_LBUTTONDBLCLK:
+    case WM_RBUTTONDOWN:
+    case WM_KEYDOWN:
+    case WM_SETFOCUS:
+    case WM_KILLFOCUS:
+    case WM_PAINT:
+        
+        if( ! ed )
+        {
+            return 0;
+        }
+        
+        break;
+    }
+    
     switch(msg)
     {
     
     case WM_LBUTTONUP:
         
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        
         if(ed->withfocus & 10)
         {
             ReleaseCapture();
-            ed->withfocus&=-15;
-            ed->selcorner=16;
+            ed->withfocus &= -15;
+            ed->selcorner = 16;
             
             goto updcursor;
         }
@@ -1082,10 +1256,7 @@ dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_MOUSEMOVE:
-        
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        
-updcursor:
+    updcursor:
         
         {
             HM_MouseMoveData d = HM_GetMouseMoveData(win, wparam, lparam);
@@ -1350,132 +1521,7 @@ upddrag:
     
     case WM_LBUTTONDOWN:
         
-        // What to do if the left mouse button goes down.
-        
-        // Obtains the rom and other data structures associated with this room.
-        // notes: o is the x coordinate of the click, p is the y coordinate
-        // q is the size of the object we're looking for (3 bytes or 2 bytes)
-        // m is the number of objects of that type in the array we're looking through
-        // n is a counter to step through those objects
-        // i is flag variable (bit 0: it's a door (type 2 object)
-        ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        o = (lparam & 65535) + (ed->mapscrollh << 5);
-        p = (lparam >> 16) + (ed->mapscrollv * ed->map_vscroll_delta);
-        
-        if(ed->selcorner)
-        {
-            ed->withfocus |= 8;
-            ed->dragx = (o + 4) & -8;
-            ed->dragy = (p + 4) & -8;
-            ed->sizerect = ed->selrect;
-            
-            SetCapture(win);
-        }
-        else
-        {
-            if(ed->selobj && o >= ed->selrect.left && o < ed->selrect.right && p >= ed->selrect.top && p < ed->selrect.bottom)
-                goto movesel;
-            
-            Dungselectchg(ed,win,0);
-            
-            // If it's a layout, handle only type 1 objects
-            if(ed->ew.param >= 0x8c)
-                i = 0, q = 3;
-            else
-            {
-                i = ed->selchk;
-                
-                if(i < 6)
-                {
-                    i &= 6;
-                    
-                    if(ed->chkofs[i+2] != ed->chkofs[i+1])
-                        i |= 1;
-                    
-                    q = 3 - (i & 1);
-                }
-            }
-            
-            if(i == 9)
-                n = 2, m = ed->tsize - 2, q = 2;
-            else if(i == 8)
-                n = 0x271de, m = 0x27366, rom = ed->ew.doc->rom, q = 4;
-            else if(i == 7)
-                n = 0, m = ed->ssize - 3, rom = ed->ew.doc->rom, q = 3;
-            else if(i == 6)
-                n = 1, m = ed->esize - 3, q = 3;
-            else
-                n = ed->chkofs[i & 6], m = ed->chkofs[i + 1] - 2 - q;
-            
-            ed->selobj=0;
-            
-            for(;m>=n;m-=q)
-            {
-                if(i < 6 && (i & 1) && m < ed->chkofs[i])
-                {
-                    i--, q = 3, m -= 3;
-                    
-                    if(m < n)
-                        break;
-                }
-                
-                if(i == 9)
-                {
-                    dm_x = (*(short*) (ed->tbuf + m) >> 1) & 0xfff;
-                }
-                else if(i == 8)
-                {
-                    if(*(short*) (rom + m) != ed->mapnum)
-                        continue;
-                    
-                    dm_x = (*(short*) (rom + m + 2) >> 1) & 0xfff;
-                }
-                else if(i == 7)
-                {
-                    dm_x = *(short*) (ed->sbuf + m) >> 1;
-                    dm_k = ed->sbuf[m + 2];
-                    cur_sec = Getsecretstring(ed->ew.doc->rom, dm_k);
-                }
-                else if(i == 6)
-                {
-                    dm_x = ((ed->ebuf[m] & 31) << 7) + ((ed->ebuf[m + 1] & 31) << 1);
-                    
-                    dm_l = ((ed->ebuf[m] & 0x60) >> 2) | ((ed->ebuf[m + 1] & 0xe0) >> 5);
-                    dm_k = ed->ebuf[m + 2] + (((dm_l & 7) == 7) ? 256 : 0);
-                }
-                else if(i & 1)
-                    getdoor(ed->buf + m, ed->ew.doc->rom);
-                else
-                    getobj(ed->buf + m);
-                
-                rc.left = ((dm_x & 0x3f) << 3);
-                rc.top = ((dm_x >> 6) << 3);
-                
-                Getdungobjsize(i, &rc, 0, 0, 0);
-                
-                if(o >= rc.left && o < rc.right && p >= rc.top && p < rc.bottom)
-                {
-                    if(i == 7)
-                        m += 2;
-                    
-                    ed->selobj = m;
-                    ed->selchk = i;
-movesel:
-                    
-                    ed->withfocus |= 2;
-                    ed->dragx = o;
-                    ed->dragy = p;
-                    
-                    SetCapture(win);
-                    
-                    break;
-                }
-            }
-            Dungselectchg(ed,win,1);
-        }
-        
-        SetFocus(win);
+        DungeonMap_OnLeftMouseDown(ed, packed_msg);
         
         break;
     
@@ -1487,11 +1533,6 @@ movesel:
         break;
     
     case WM_SIZE:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!ed)
-            break;
         
         si.cbSize = sizeof(si);
         
@@ -1541,60 +1582,11 @@ movesel:
     
     case WM_MOUSEWHEEL:
         
-        if(always)
-        {
-            HM_MouseWheelData const d = HM_GetMouseWheelData(wparam, lparam);
-            
-            unsigned scroll_type = SB_LINEUP;
-            
-            WPARAM fake_wp = 0;
-            
-            SCROLLINFO si_v = HM_GetVertScrollInfo(win);
-            
-            // -----------------------------
-            
-            if(d.m_distance > 0)
-            {
-                // wheel moving up or left
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEUP;
-                }
-                else
-                {
-                    scroll_type = SB_LINEUP;
-                }
-            }
-            else
-            {
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEDOWN;
-                }
-                else
-                {
-                    scroll_type = SB_LINEDOWN;
-                }
-            }             
-            
-            fake_wp = MAKEWPARAM(scroll_type, 0);
-            
-            ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-            
-            ed->mapscrollv = Handlescroll(win,
-                                          fake_wp,
-                                          ed->mapscrollv,
-                                          ed->mappagev,
-                                          SB_VERT,
-                                          (si_v.nMax - si_v.nMin) + 1,
-                                          ed->map_vscroll_delta);
-        }
+        DungeonMap_OnMouseWheel(ed, packed_msg);
         
         break;
     
     case WM_VSCROLL:
-        
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
         
         {
             SCROLLINFO const si_v = HM_GetVertScrollInfo(win);
@@ -1612,8 +1604,6 @@ movesel:
     
     case WM_HSCROLL:
         
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
         ed->mapscrollh = Handlescroll(win,
                                       wparam,
                                       ed->mapscrollh,
@@ -1629,8 +1619,6 @@ movesel:
         return DLGC_WANTARROWS | DLGC_WANTCHARS;
     
     case WM_CHAR:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
         
         if(wparam >= 64)
             wparam &= 223;
@@ -1904,8 +1892,7 @@ chestchg:
         break;
     
     case WM_LBUTTONDBLCLK:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-chooseobj:
+    chooseobj:
         
         if(!ed->selobj)
             break;
@@ -1958,9 +1945,11 @@ chooseobj:
             
             goto upd;
         }
+        
         break;
+    
     case WM_RBUTTONDOWN:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
+        
         SetFocus(win);
         menu = CreatePopupMenu();
         
@@ -2263,10 +2252,11 @@ chooseobj:
             
             goto updmap;
         }
+        
         break;
+    
     case WM_KEYDOWN:
         
-        ed = (DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
         rom = ed->ew.doc->rom;
 
         if( !(lparam & 0x1000000) )
@@ -2291,21 +2281,27 @@ chooseobj:
                 break;
             }
         }
-            
-        if(ed->selchk>7) break;
-        else if(ed->selchk==7) if(wparam==VK_RIGHT) {
+        
+        if(ed->selchk>7)
+            break;
+        else if(ed->selchk==7) if(wparam==VK_RIGHT)
+        {
             if(ed->ssize==0) break;
             Dungselectchg(ed,win,0);
             if(!ed->selobj) ed->selobj=2; else ed->selobj+=3;
             if(ed->selobj>=ed->ssize) ed->selobj=ed->ssize-1;
             goto selchg;
-        } else if(wparam==VK_LEFT) {
+        }
+        else if(wparam==VK_LEFT)
+        {
             if(ed->ssize<2) break;
             Dungselectchg(ed,win,0);
             ed->selobj-=3;
             if(ed->selobj<1) ed->selobj=2;
             goto selchg;
-        } else {
+        }
+        else
+        {
             if(!ed->selobj) break;
             Dungselectchg(ed,win,0);
             switch(wparam) {
@@ -2364,10 +2360,15 @@ updpot:
             ed->selobj-=3;
             if(ed->selobj<1) ed->selobj=1;
             goto selchg;
-        } else {
-            if(!ed->selobj) break;
+        }
+        else
+        {
+            if(!ed->selobj)
+                break;
             Dungselectchg(ed,win,0);
-            switch(wparam) {
+            
+            switch(wparam)
+            {
         case VK_NUMPAD6:
             dm_x=ed->ebuf[ed->selobj+1];
             ed->ebuf[ed->selobj+1]=(dm_x&224)|((dm_x+1)&31);
@@ -2646,30 +2647,31 @@ selfirst:
                 Dungselectchg(ed,win,1);
             } }
             break;
+    
     case WM_SETFOCUS:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->withfocus|=1;
-        Dungselectchg(ed,win,0);
+        
+        ed->withfocus |= 1;
+        
+        Dungselectchg(ed, win, 0);
+        
         break;
+    
     case WM_KILLFOCUS:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->withfocus&=-2;
+        
+        ed->withfocus &= -2;
+        
         Dungselectchg(ed,win,0);
+        
         break;
+    
     case WM_PAINT:
         
-        ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(ed)
-        {
-            DungeonMap_OnPaint(ed, win);
-        }
-        
-        break;
+        DungeonMap_OnPaint(ed, win);
         
         break;
     
     default:
+        
         return DefWindowProc(win,msg,wparam,lparam);
     }
     

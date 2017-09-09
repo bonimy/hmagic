@@ -355,6 +355,9 @@ typedef struct
     /// door data, respectively, begin in the data of this room.
     short chkofs[6];
     
+    // \note This member acts as a 7th index of the chkofs array in some
+    // situations. Along with the packing pragma, it would be a bad idea
+    // to rearrange the relative position if this and the chkofs variable.
     short len;
     short chestloc[16];
     
@@ -857,6 +860,29 @@ struct
     POINT m_screen_pos;
     
 } HM_MouseMoveData;
+
+// =============================================================================
+
+/// For use with mouse button down / up messages, click, hover messages, and 
+typedef
+struct
+{
+    /// Full copy of all the flags just for reference.
+    unsigned m_flags;
+    
+    /// Is the shift key down?
+    BOOL m_shift_key;
+    
+    /// Is the control key down?
+    BOOL m_control_key;
+
+    /// Is the ALT key down?
+    BOOL m_alt_key;
+    
+    POINT m_rel_pos;
+    POINT m_screen_pos;
+    
+} HM_MouseData;
 
 // =============================================================================
 
