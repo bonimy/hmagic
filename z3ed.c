@@ -375,6 +375,8 @@ enum
         ID_DungOverlayHideCount = sizeof(overlay_hide) / sizeof(unsigned),
     };
 
+// =============================================================================
+
     enum
     {
         ID_TextFirst = 3000,
@@ -390,6 +392,8 @@ enum
     
     };
 
+// =============================================================================
+
     enum
     {
         SD_GenericFirst = 3000,
@@ -404,6 +408,8 @@ enum
         
         SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),
     };
+
+// =============================================================================
 
 // Sound volume level.
 uint16_t soundvol = 180;
@@ -444,12 +450,12 @@ unsigned char dm_l, dm_dl;
 // "current secret"?
 // Doesn't actually appear to be used, except to calculate the size of the
 // boxes for droppable items (the red dots).
-char *cur_sec;
+char const * cur_sec;
 
 static unsigned char masktab[16] = {255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 const static int sprset_loc[3] = {0x4c881,0x4c901,0x4ca21};
-static int palhalf[8] = {1,0,0,1,1,1,0,0};
+int palhalf[8] = {1,0,0,1,1,1,0,0};
 
 const static int map_ofs[5] = {0,16,512,528};
 const static int map_ind[4] = {0,1,8,9};
@@ -518,15 +524,15 @@ HBRUSH black_brush,
 
 HGDIOBJ trk_font;
 
-
 HCURSOR normal_cursor,
         forbid_cursor,
         wait_cursor;
 
+HCURSOR sizecsor[5];
+
 HBITMAP arrows_imgs[4];
 
 HANDLE shade_brush[8];
-HANDLE sizecsor[5];
 
 // The handle to the program
 HINSTANCE hinstance;
@@ -634,6 +640,89 @@ recalloc(void   const * const p_old_buf,
 
 // =============================================================================
 
+// "load little endian value at the given byte offset and shift to get its
+// value relative to the base offset (powers of 256, essentially)"
+unsigned
+ldle(uint8_t const * const p_arr,
+     unsigned        const p_index)
+{
+    uint32_t v = p_arr[p_index];
+    
+    v <<= (8 * p_index);
+    
+    return v;
+}
+
+// Helper function to get the first byte in a little endian number
+uint32_t
+ldle0(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 0);
+}
+
+// Helper function to get the second byte in a little endian number
+uint32_t
+ldle1(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 1);
+}
+
+// Helper function to get the third byte in a little endian number
+uint32_t
+ldle2(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 2);
+}
+
+// Helper function to get the third byte in a little endian number
+uint32_t
+ldle3(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 3);
+}
+
+// =============================================================================
+
+void
+stle(uint8_t  * const p_arr,
+     size_t     const p_index,
+     unsigned   const p_val)
+{
+    uint8_t v = (p_val >> (8 * p_index) ) & 0xff;
+    
+    p_arr[p_index] = v;
+}
+
+void
+stle0(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 0, p_val);
+}
+
+void
+stle1(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 1, p_val);
+}
+
+void
+stle2(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 2, p_val);
+}
+
+void
+stle3(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 3, p_val);
+}
+
+// =============================================================================
+
 unsigned long
 get_32_le(unsigned char const * const p_arr)
 {
@@ -717,7 +806,7 @@ add_16_le_i(uint8_t  * const p_arr,
 {
     size_t const offset = (p_index * 2);
     
-    put_16_le(p_arr + offset, p_val);
+    add_16_le(p_arr + offset, p_val);
 }
 
 // =============================================================================
@@ -766,8 +855,7 @@ ldle16b(uint8_t const * const p_arr)
 {
     uint16_t v = 0;
     
-    v |= (p_arr[0] << 0);
-    v |= (p_arr[1] << 8);
+    v |= ( ldle0(p_arr) | ldle1(p_arr) );
     
     return v;
 }
@@ -794,6 +882,86 @@ ldle16h(uint16_t const * const p_arr)
 
 // =============================================================================
 
+// Load little endian halfword (16-bit) dereferenced from a pointer to a
+// halfword.
+uint16_t
+ldle16h_i(uint16_t const * const p_arr,
+          size_t           const p_index)
+{
+    return ldle16b_i((uint8_t *) p_arr, p_index);
+}
+
+// =============================================================================
+
+// "load little endian 24-bit value using a byte pointer"
+uint32_t
+ldle24b(uint8_t const * const p_arr)
+{
+    uint32_t v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr);
+    
+    return v;
+}
+
+// =============================================================================
+
+// "indexed load little endian 24-bit value using a byte pointer"
+uint32_t
+ldle24b_i(uint8_t const * const p_arr,
+          unsigned        const p_index)
+{
+    uint32_t v = ldle24b( p_arr + (p_index * 3) );
+    
+    return v;
+}
+
+// =============================================================================
+
+void
+stle16b(uint8_t * const p_arr,
+        uint16_t  const p_val)
+{
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+stle16b_i(uint8_t * const p_arr,
+          size_t    const p_index,
+          uint16_t  const p_val)
+{
+    stle16b(p_arr + (p_index * 2), p_val);
+}
+
+// =============================================================================
+
+// "store little endian 24-bit value using a byte pointer"
+void
+stle24b(uint8_t  *const p_arr,
+        uint32_t  const p_val)
+{
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+    stle2(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+addle16b_i(uint8_t * const p_arr,
+           size_t    const p_index,
+           uint16_t  const p_addend)
+{
+    uint16_t v = ldle16b_i(p_arr, p_index);
+    
+    v += p_addend;
+    
+    stle16b_i(p_arr, p_index, v);
+}
+
+// =============================================================================
+
 // Read a half word at the given octec-pointer and if its bit pattern is
 // 0xffff, return one. Else, zero. Note that endianness is irrelevant for
 // this check.
@@ -805,21 +973,13 @@ is16b_neg1(uint8_t const * const p_arr)
     return (v == 0xffff);
 }
 
+// =============================================================================
+
 int
 is16b_neg1_i(uint8_t const * const p_arr,
              size_t          const p_index)
 {
     return is16b_neg1(p_arr + (2 * p_index) );
-}
-
-// Load little endian halfword (16-bit) dereferenced from a pointer to a
-// halfword.
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index)
-{
-    return get_16_le_i((uint8_t *) p_arr,
-                       p_index);
 }
 
 // =============================================================================
@@ -908,18 +1068,6 @@ HM_PointClientToScreen(HWND  const p_win,
 
 // =============================================================================
 
-typedef
-struct
-{
-    BOOL m_control_down;
-
-    POINT m_rel_pos;
-    POINT m_screen_pos;
-    
-} HM_MouseMoveData;
-
-// =============================================================================
-
 signed int
 HM_GetSignedLoword(LPARAM p_ptr)
 {
@@ -972,26 +1120,7 @@ HM_GetMouseMoveData(HWND   const p_win,
     return d;
 }
 
-typedef
-struct
-{
-    signed int m_distance;
-    
-    /// Full copy of all the flags just for reference.
-    unsigned m_flags;
-    
-    /// Is the shift key down?
-    BOOL m_shift_key;
-    
-    /// Is the control key down?
-    BOOL m_control_key;
-
-    /// Is the ALT key down?
-    BOOL m_alt_key;
-
-    POINT m_screen_pos;
-
-} HM_MouseWheelData;
+// =============================================================================
 
 int
 truth(int value)
@@ -1023,13 +1152,48 @@ HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
 
 // =============================================================================
 
-typedef
-struct
+HM_MouseData
+HM_GetMouseData(MSG const p_packed_msg)
 {
-    HWND m_deactivating;
-    HWND m_activating;
+    WPARAM const wp = p_packed_msg.wParam;
+    LPARAM const lp = p_packed_msg.lParam;
+    
+    // Get client coordinates of the click.
+    POINT const rel_pos =
+    {
+        HM_GetSignedLoword(lp),
+        HM_GetSignedHiword(lp)
+    };
+    
+    // The absolute screen coordinates of the Window itself.
+    POINT const win_screen_pos = HM_GetWindowPos(p_packed_msg.hwnd);
+    
+    // The absolute screen coordinates of the location indicated by the event
+    // (obviously this will be inside of the window, so further to the right,
+    // further down.)
+    POINT const screen_pos =
+    {
+        rel_pos.x + win_screen_pos.x,
+        rel_pos.y + win_screen_pos.y
+    };
+    
+    HM_MouseData d;
+    
+    // -----------------------------
+    
+    d.m_flags = (unsigned) wp;
+    
+    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
+    d.m_control_key = truth(d.m_flags & MK_CONTROL);
+
+    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
+    
+    d.m_rel_pos = rel_pos;
+    
+    d.m_screen_pos = screen_pos;
+    
+    return d;
 }
-HM_MdiActivateData;
 
 // =============================================================================
 
@@ -1048,17 +1212,49 @@ HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
 
 // =============================================================================
 
+BOOL
+HM_DrawRectangle(HDC  const p_device_context,
+                 RECT const p_rect)
+{
+    return Rectangle(p_device_context,
+                     p_rect.left,
+                     p_rect.top,
+                     p_rect.right,
+                     p_rect.bottom);
+}
+
+// =============================================================================
+
+void*
+hm_memdup(void const * const p_arr,
+          size_t             p_len)
+{
+    void * const new_arr = calloc(1, p_len);
+    
+    if(new_arr)
+    {
+        memcpy(new_arr, p_arr, p_len);
+    }
+    
+    return new_arr;
+}
+
+// =============================================================================
+
 INT_PTR CALLBACK
 status_proc(HWND   p_win,
             UINT   p_msg,
             WPARAM p_wp,
             LPARAM p_lp)
 {
+    // \task Perhaps make this a macro for Window procedures?
+    (void) p_win, p_msg, p_wp, p_lp;
+    
     switch(p_msg)
     {
          
     default:
-
+        
         break;
     
     case WM_INITDIALOG:
@@ -1067,8 +1263,6 @@ status_proc(HWND   p_win,
         {
             if(p_lp)
             {
-                MessageBox(p_win, "What", NULL, MB_OK);
-                
                 SetWindowPos(p_win, HWND_TOPMOST,
                              0, 0, 0, 0,
                              SWP_NOSIZE | SWP_NOMOVE);
@@ -1094,6 +1288,41 @@ status_proc(HWND   p_win,
     
     
 }
+
+// =============================================================================
+
+HWND debug_window = 0;
+
+HWND
+CreateNotificationWindow(HWND const p_parent)
+{
+    HWND const win = CreateDialogParam
+    (
+        hinstance,
+        MAKEINTRESOURCE(IDD_DEBUG_DLG),
+        p_parent,
+        status_proc,
+        (LPARAM) 5
+    );
+    
+    if(win)
+    {
+        unsigned const screen_width  = GetSystemMetrics(SM_CXSCREEN);
+        
+        RECT const r = HM_GetWindowRect(win);
+        
+        SetWindowPos(win,
+                     HWND_NOTOPMOST,
+                     screen_width - (r.right - r.left),
+                     0,
+                     0, 0, SWP_NOSIZE);
+        
+        ShowWindow(win, SW_SHOW);
+    }
+    
+    return win;    
+}
+
 // =============================================================================
 
 SCROLLINFO
@@ -1112,29 +1341,6 @@ HM_GetVertScrollInfo(HWND const p_win)
 
 // =============================================================================
 
-HWND debug_window = 0;
-
-HWND
-CreateNotificationWindow(HWND const p_parent)
-{
-    DLGPROC p;
-    WNDPROC p2;
-    HWND const win = CreateDialogParam
-    (
-        hinstance,
-        MAKEINTRESOURCE(IDD_DEBUG_DLG),
-        framewnd,
-        status_proc,
-        (LPARAM) 5
-    );
-    
-    SetWindowPos(win, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-    
-    ShowWindow(win, SW_SHOW);
-    
-    return win;    
-}
-
 SCROLLINFO
 HM_GetHorizScrollInfo(HWND const p_win)
 {
@@ -1151,7 +1357,7 @@ HM_GetHorizScrollInfo(HWND const p_win)
 
 // =============================================================================
 
-int
+BOOL
 HM_IsEmptyRect(RECT const p_rect)
 {
     if
@@ -1168,6 +1374,62 @@ HM_IsEmptyRect(RECT const p_rect)
 
 // =============================================================================
 
+MSG
+HM_PackMessage(HWND const p_win,
+               UINT       p_msg_id,
+               WPARAM     p_wp,
+               LPARAM     p_lp)
+{
+    MSG msg;
+    
+    POINT CONST dummy = { 0, 0 };
+    
+    // -----------------------------
+    
+    msg.hwnd = p_win;
+    msg.lParam = p_lp;
+    msg.message = p_msg_id;
+    msg.pt = dummy;
+    msg.time = 0;
+    msg.wParam = p_wp;
+    
+    return msg;
+}
+
+// =============================================================================
+
+RGBQUAD
+HM_MakeRgb(uint8_t const p_red,
+           uint8_t const p_green,
+           uint8_t const p_blue)
+{
+    RGBQUAD q;
+    
+    q.rgbRed      = p_red;
+    q.rgbGreen    = p_green;
+    q.rgbBlue     = p_blue;
+    q.rgbReserved = 0;
+    
+    return q;
+}
+
+// =============================================================================
+
+/// From "5 bits per channel"
+RGBQUAD
+HM_RgbFrom5bpc(uint16_t const p_color)
+{
+    RGBQUAD q;
+
+    q.rgbRed      = ( (p_color << 3) & 0xf8 );
+    q.rgbGreen    = ( (p_color >> 2) & 0xf8 );
+    q.rgbBlue     = ( (p_color >> 7) & 0xf8 );
+    q.rgbReserved = 0;
+    
+    return q;
+}
+
+// =============================================================================
 
 // \task Dummied out on the HMagic2 side for now.
 
@@ -2484,9 +2746,10 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
 
 //#define ShowDialog DialogBoxParam
 
-HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,int lparam)
+HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h, LPARAM lparam)
 {
-    SDCREATE* sdc = malloc(sizeof(SDCREATE));
+    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
+    
     HWND hc;
     sdc->dlgtemp = dlgtemp;
     sdc->owner = owner;
@@ -2502,7 +2765,9 @@ HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
     char buf[1024];
     HWND hc;
     MDICREATESTRUCT mdic;
-    EDITWIN*a=malloc(size);
+    
+    EDITWIN * const a = (EDITWIN*) calloc(1, size);
+    
     wsprintf(buf,"%s - %s",doc->filename,title);
     a->doc=doc;
     a->param=param;
@@ -2513,6 +2778,7 @@ HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
     mdic.style=WS_SYSMENU|WS_CAPTION|WS_THICKFRAME|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
     mdic.lParam=(long)a;
     hc=(HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
+    
     SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
     SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
     return hc;
@@ -4016,6 +4282,7 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
                 
                 ++k;
             }
+            
             ofs += 16;
         }
     }
@@ -4055,13 +4322,18 @@ foundblk:
     InvalidateRect(hc,&rc,0);
 }
 const static short nxtmap[4]={-1,1,-16,16};
+
+// Specific configurations that are checked involving BG2 settings.
+// Dunno what they signify yet.
 const static unsigned char bg2_ofs[]={
     0, 0x20, 0x40, 0x60, 0x80, 0xa0, 0xc0, 0xe0, 0x01
 };
 
-//Initroom********************************
+// =============================================================================
 
-void Initroom(DUNGEDIT *ed, HWND win)
+void
+Initroom(DUNGEDIT * const ed,
+         HWND       const win)
 {
     unsigned char *buf2;
     
@@ -4186,11 +4458,22 @@ LoadHeader(DUNGEDIT * const ed,
     memcpy(ed->hbuf, rom + rom_addr_split(0x04, i), 14);
 }
 
-//LoadHeader********************************
+// =============================================================================
 
-//Openroom********************************
+BOOL
+HM_BinaryCheckDlgButton(HWND     const p_win,
+                        unsigned const p_dlg_control,
+                        BOOL     const p_is_checked)
+{
+    return CheckDlgButton(p_win,
+                          p_dlg_control,
+                          p_is_checked ? BST_CHECKED : BST_UNCHECKED);
+}
 
-void Openroom(DUNGEDIT *ed, int map)
+// =============================================================================
+
+void
+Openroom(DUNGEDIT *ed, int map)
 {
     int i,j,l;
     unsigned char *buf;
@@ -4239,7 +4522,7 @@ void Openroom(DUNGEDIT *ed, int map)
                     if(k == 0xffff)
                         goto end;
                     
-                    if(!ed->selobj)
+                    if( !ed->selobj )
                     {
                         ed->selobj = i;
                         ed->selchk = j;
@@ -4247,7 +4530,9 @@ void Openroom(DUNGEDIT *ed, int map)
                 }
             }
             else
+            {
                 i += 3;
+            }
             
             if(!ed->selobj) // if there is no selected object, pick one.
             {
@@ -4282,7 +4567,7 @@ end:
     memcpy(ed->buf, buf, i);// copy the data from buf to ed->buf.
     
     // this is the "layout", ranging from 0-7
-    SetDlgItemInt(win, ID_DungLayout, buf[1] >> 2, 0);
+    SetDlgItemInt(win, ID_DungLayout, ed->buf[1] >> 2, 0);
     
     // load the header information.
     LoadHeader(ed, map);
@@ -4321,6 +4606,8 @@ end:
     {
         if(ed->layering == bg2_ofs[i])
         {
+            // \task Is this buggy? What if the value is not in this list?
+            // Probably not the case in a vanilla rom, but still...
             SendDlgItemMessage(win, ID_DungBG2Settings, CB_SETCURSEL, i, 0);
             
             break;
@@ -4339,7 +4626,7 @@ end:
     }
     
     ed->esize = i;
-    ed->ebuf = malloc(i);
+    ed->ebuf = (uint8_t*) malloc(i);
     
     memcpy(ed->ebuf,buf,i);
     
@@ -4703,7 +4990,7 @@ changeroom:
             
             if(n)
             {
-                rom[i]   = ed->layering|(ed->coll<<2);
+                rom[i]   = ed->layering | (ed->coll << 2);
                 rom[i+1] = (uint8_t) ed->palnum;
                 rom[i+2] = (uint8_t) ed->gfxnum;
                 rom[i+3] = (uint8_t) ed->sprgfx;
@@ -5179,7 +5466,8 @@ const static char obj2_h[128]={
     6,6,13,2,2,2,4,3,3,4,4,4,3,3,4,4,
     10,8,8,64,8,2,3,3,8,3,4,8,2,2,2,1
 };
-const static char obj3_w[248]={
+
+const char obj3_w[248]={
     0,0,0,0,0,-4,-4,0,0,5,5,5,5,5,5,5,
     5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
     5,2,3,2,2,2,2,2,2,2,2,2,2,2,2,13,
@@ -5197,7 +5485,8 @@ const static char obj3_w[248]={
     0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1
 };
-const static char obj3_h[248]={
+
+const char obj3_h[248]={
     2,4,4,4,4,4,4,2,2,9,9,9,9,9,9,9,
     9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
     9,3,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
@@ -5215,7 +5504,8 @@ const static char obj3_h[248]={
     0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1
 };
-const static char obj3_m[248]={
+
+const char obj3_m[248]={
     2,2,2,2,2,6,6,2,2,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
     1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -5233,7 +5523,8 @@ const static char obj3_m[248]={
     4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,
     0,0,0,0,0,0,0,0
 };
-const static unsigned char obj3_t[248]={
+
+const unsigned char obj3_t[248]={
     0,2,2,1,1,1,1,1,1,97,65,65,97,97,65,65,
     97,97,65,65,97,97,65,65,97,97,65,65,97,97,65,65,
     97,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -5286,7 +5577,7 @@ HDC objdc;
 
 HBITMAP objbmp;
 
-void Getstringobjsize(char*str,RECT*rc)
+void Getstringobjsize(char const * str, RECT *rc)
 {
     GetTextExtentPoint(objdc,str,strlen(str),(LPSIZE)&(rc->right));
     rc->bottom++;
@@ -5469,7 +5760,9 @@ blah:
         }
     }
 }
-void setobj(DUNGEDIT*ed,unsigned char*map)
+
+void
+setobj(DUNGEDIT*ed, unsigned char *map)
 {
     unsigned char c=0;
     short k,l,m,n,o;
@@ -5564,7 +5857,8 @@ void getdoor(unsigned char const *       map,
         dm_x = ( ldle16b_i(rom + 0x197e, dm_dl + dm_k * 12) ) >> 1;
 }
 
-void setdoor(unsigned char*map)
+void
+setdoor(unsigned char *map)
 {
     dm_k&=3;
     map[0]=dm_k+(dm_dl<<4);
@@ -11136,12 +11430,14 @@ char* sec_str[]={
     "8E"
 };
 
-char* Getsecretstring(unsigned char * rom, int i)
+char const *
+Getsecretstring(uint8_t const * const rom,
+                int             const i)
 {
     int a;
     
     if(i >= 128)
-        return sec_str[(i & 15) >> 1];
+        return sec_str[ (i & 15) >> 1 ];
     else if(i == 4)
         return "Random";
     else if(i == 0)
@@ -11269,6 +11565,7 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
     
     k = ed->mapscrollh;
     l = ed->mapscrollv;
+    
     i = ( (dm_x & 0x3f) << 3) - (k << 5);
     j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l << 5);
     
@@ -11286,19 +11583,33 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
         if( ( (j + 32) >> 5) >= ed->mappagev )
             l += ( (j + 32) >> 5) - ed->mappagev;
         
-        if(k!=ed->mapscrollh) SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION+(k<<16),0);
-        if(l!=ed->mapscrollv) SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION+(l<<16),0);
+        if(k != ed->mapscrollh)
+        {
+            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION + (k << 16), 0);
+        }
+        
+        if(l != ed->mapscrollv)
+        {
+            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION + (l << 16), 0);
+        }
     }
-    rc.left=((dm_x&0x3f)<<3);
-    rc.top=(((dm_x>>6)&0x3f)<<3);
-    Getdungobjsize(ed->selchk,&rc,0,0,0);
-    ed->selrect=rc;
-    rc.left-=k<<5;
-    rc.top-=l<<5;
-    rc.right-=k<<5;
-    rc.bottom-=l<<5;
-    ed->objt=dm_k;
-    ed->objl=dm_l;
+    
+    rc.left = ((dm_x & 0x3f) << 3);
+    rc.top  = (((dm_x >> 6) & 0x3f) << 3);
+    
+    Getdungobjsize(ed->selchk, &rc, 0, 0, 0);
+    
+    ed->selrect = rc;
+    
+    rc.left -= k << 5;
+    rc.top  -= l << 5;
+    
+    rc.right  -= k << 5;
+    rc.bottom -= l << 5;
+    
+    ed->objt = dm_k;
+    ed->objl = dm_l;
+    
     InvalidateRect(hc,&rc,0);
 }
 
@@ -11336,6 +11647,9 @@ Drawblock(OVEREDIT const * const ed,
     
     if((t & 24) == 24)
     {
+        // \task Used with only with Link's graphics dialog,
+        // seemingly. Need a name(s) for these bits.
+        
         b3 = ed->ew.doc->blks[225].buf;
         
         if(!b3)
@@ -11349,6 +11663,8 @@ Drawblock(OVEREDIT const * const ed,
     else if(t & 16)
     {
         // \task 2bpp graphics? Not sure.
+        // Used with the dungeon map screen (not the maps themselves)
+        // Need a name for this bit.
         
         if(d >= 0x180)
             goto noblock;
@@ -11369,6 +11685,9 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 8)
     {
+        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // Need a name for this bit.
+        
         if(d >= 0x100)
             goto noblock;
         
@@ -11727,7 +12046,13 @@ void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
     }
     else
     {
-        SetDIBitsToDevice(hdc,x,y,32,32,0,0,0,32,drawbuf,(BITMAPINFO*)&(ed->bmih),ed->hpal?DIB_PAL_COLORS:DIB_RGB_COLORS);
+        SetDIBitsToDevice(hdc,
+                          x, y,
+                          32, 32,
+                          0, 0, 0, 32,
+                          drawbuf,
+                          (BITMAPINFO*)&(ed->bmih),
+                          ed->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
     }
 }
 
@@ -11743,7 +12068,7 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
 {
     // 
     int const m = ( (i + n) >> 3)
-                + ( ( (j + o) << 3)  );
+                + ( (j + o) << 3);
     
     int p = 0;
     
@@ -11857,30 +12182,7 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
 // =============================================================================
 
 void
-SabotageForScience(int x, int y)
-{
-    int i = 0;
-    
-    if( (x < 0x40) || (x >= 0x60) )
-    {
-        return;
-    }
-
-    if( (y < 0x40) || (y >= 0x60) )
-    {
-        return;
-    }
-
-    for(i = 0; i < 0x400; i += 1)
-    {
-        drawbuf[i] = (i % 15);
-    }
-}
-
-// =============================================================================
-
-void
-Paintdungeon(DUNGEDIT *ed,
+Paintdungeon(DUNGEDIT const * ed,
              HDC hdc,
              RECT *rc,
              int x,int y,
@@ -11932,8 +12234,6 @@ Paintdungeon(DUNGEDIT *ed,
             {
                 DrawDungeon32x32(ed, i, j, n, o, buf);
                 
-                SabotageForScience(i, j);
-                
                 Paintblocks(rc, hdc, i, j, ed);
             }
         }
@@ -11944,6 +12244,8 @@ Paintdungeon(DUNGEDIT *ed,
         SelectObject(hdc, oldobj);
     }
 }
+
+// =============================================================================
 
 void Updateobjdisplay(CHOOSEDUNG*ed,int num)
 {
@@ -13993,6 +14295,8 @@ BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             Openroom(ed, k);
         }
         
+        // \task Investigate this. Do all dungeons really set the backdrop color
+        // to pure black?
         ed->pal[0] = blackcolor;
         
         // for the first entry of each palette, the first color is "blackcolor"
@@ -15111,7 +15415,10 @@ BOOL CALLBACK tmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         memcpy(ed->buf,rom+k,i);
 loaded:
         ed->len=i;
-        for(i=16;i<256;i+=16) ed->pal[i]=ed->pal[0];
+        
+        for(i = 16; i < 256; i += 16)
+            ed->pal[i] = ed->pal[0];
+        
         k = 0x6073 + (ed->gfxtmp << 3);
         l = 0x5d97 + (ed->gfxnum << 2);
         for(i=0;i<8;i++) ed->blocksets[i]=rom[k++];
@@ -15288,7 +15595,10 @@ BOOL CALLBACK lmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         Loadpal(ed,rom,0x1bd642,0xd9,3,1);
         Loadpal(ed,rom,0x1bd658,0xdc,4,1);
         Loadpal(ed,rom,0x1bd344,0xf1,15,1);
-        for(i=16;i<256;i+=16) ed->pal[i]=ed->pal[0];
+        
+        for(i = 16; i < 256; i += 16)
+            ed->pal[i] = ed->pal[0];
+        
         ed->curfloor=0;
         ed->sel=0;
         if(!ed->floors) ed->curfloor=-1;
@@ -17416,6 +17726,7 @@ open_edt:
                         wsprintf(buf,"Watergate overlay");
                     
                     hc = Editwin(doc,"ZEDUNGEON",buf,j, sizeof(DUNGEDIT));
+                    
                     oed = (OVEREDIT*) GetWindowLong(hc,GWL_USERDATA);
                     hc = GetDlgItem(oed->dlg, ID_DungEditWindow);
                     
@@ -17813,26 +18124,95 @@ int inpoly(int x,int y,POINT*pts,int k)
 
 TEXTMETRIC textmetric;
 
-void Paintspr(HDC hdc,int j,int k,int n,int o,int w)
+// =============================================================================
+
+// \note More re-entrant version of another function in that it
+// doesn't write using a global text buffer.
+void
+PaintSprName(HDC hdc,
+             int x,
+             int y,
+             int n,
+             int o,
+             int          const p_clip_width,
+             char const * const p_name)
 {
-    int l=strlen(buffer);
-    if(k+textmetric.tmHeight>w-o) return;
-    if((l*textmetric.tmAveCharWidth)+j>w-n) l=(w-n-j)/textmetric.tmAveCharWidth;
-    if(l<=0) return;
-    SetTextColor(hdc,0);
-    TextOut(hdc,j+1,k+1,buffer,l);
-    TextOut(hdc,j-1,k-1,buffer,l);
-    TextOut(hdc,j+1,k-1,buffer,l);
-    TextOut(hdc,j-1,k+1,buffer,l);
+    size_t len = strlen(p_name);
+    
+    signed final_len = (signed) len;
+    
+    // -----------------------------
+    
+    // \task It would appear that the clip width is being used as height too?
+    // Does this always assume that window area are square?
+    if( (y + textmetric.tmHeight) > (p_clip_width - o) )
+        return;
+    
+    if( (len * textmetric.tmAveCharWidth) + x > (p_clip_width - n) )
+        final_len = (p_clip_width - n - x) / textmetric.tmAveCharWidth;
+    
+    if(len <= 0)
+        return;
+    
+    SetTextColor(hdc, 0);
+    
+    TextOut(hdc,x + 1, y + 1, p_name, final_len);
+    TextOut(hdc,x - 1, y - 1, p_name, final_len);
+    TextOut(hdc,x + 1, y - 1, p_name, final_len);
+    TextOut(hdc,x - 1, y + 1, p_name, final_len);
     
 #if 0
-    SetTextColor(hdc,0xffbf3f);
+    SetTextColor(hdc, 0xffbf3f);
 #else
-    SetTextColor(hdc,0xfefefe);
+    SetTextColor(hdc, 0xfefefe);
 #endif
     
-    TextOut(hdc,j,k,buffer,l);
+    TextOut(hdc,x, y, p_name, final_len);
 }
+
+// =============================================================================
+
+void
+Paintspr(HDC hdc,
+         int x,
+         int y,
+         int n,
+         int o,
+         int w)
+{
+    size_t const len = strlen(buffer);
+    
+    signed final_len = (signed) len;
+    
+    // -----------------------------
+    
+    if( (y + textmetric.tmHeight) > (w - o) )
+        return;
+    
+    if( (len * textmetric.tmAveCharWidth) + x > (w - n) )
+        final_len = (w - n - x) / textmetric.tmAveCharWidth;
+    
+    if(final_len <= 0)
+        return;
+    
+    SetTextColor(hdc, 0);
+    
+    TextOut(hdc, x + 1, y + 1, buffer, final_len);
+    TextOut(hdc, x - 1, y - 1, buffer, final_len);
+    TextOut(hdc, x + 1, y - 1, buffer, final_len);
+    TextOut(hdc, x - 1, y + 1, buffer, final_len);
+    
+#if 0
+    SetTextColor(hdc, 0xffbf3f);
+#else
+    SetTextColor(hdc, 0xfefefe);
+#endif
+    
+    TextOut(hdc, x, y, buffer, final_len);
+}
+
+// =============================================================================
+
 void Getsampsel(SAMPEDIT*ed,RECT*rc)
 {
     rc->left=(ed->sell<<16)/ed->zoom-ed->scroll;
@@ -19382,10 +19762,14 @@ digkey:
                 wsprintf(buffer,"%04X: Flag %d Time %04X Time2 %04X",sc->addr,sc->flag,sc->tim,sc->tim2);
                 TextOut(hdc,256,k,buffer,lstrlen(buffer));
             }
-            k+=textmetric.tmHeight;
+            
+            k += textmetric.tmHeight;
         }
-        k=(ed->sel-ed->scroll)*textmetric.tmHeight;
-        SetROP2(hdc,R2_NOTXORPEN);
+        
+        k = (ed->sel-ed->scroll) * textmetric.tmHeight;
+        
+        SetROP2(hdc, R2_NOTXORPEN);
+        
         oldobj3=SelectObject(hdc,null_pen);
         if(mark_doc==ed->ew.doc && mark_sr==ed->ew.param) {
             rc.top=(mark_start-ed->scroll)*textmetric.tmHeight;
@@ -19398,7 +19782,8 @@ digkey:
         rc.bottom=k+textmetric.tmHeight;
         Rectangle(hdc,ps.rcPaint.left-1,rc.top,ps.rcPaint.right+1,rc.bottom+1);
         SelectObject(hdc,oldobj3);
-        if(ed->csel!=-1) {
+        if(ed->csel!=-1)
+        {
             rc.left=csel_l[ed->csel];
             rc.right=csel_r[ed->csel];
             DrawFocusRect(hdc,&rc);
@@ -19413,7 +19798,9 @@ digkey:
     return 0;
 }
 
-char*Getsprstring(DUNGEDIT*ed,int i)
+char const *
+Getsprstring(DUNGEDIT const * const ed,
+             int              const i)
 {
     int j = ed->ebuf[i+2];
     
@@ -19731,8 +20118,10 @@ updblk:
                             ed->modf=1;
                         }
                     }
-                    ed->dragx=o&-9;
-                    ed->dragy=p&-9;
+                    
+                    ed->dragx = o & -9;
+                    ed->dragy = p & -9;
+                    
                     break;
                 }
                 
@@ -20732,7 +21121,11 @@ chooseobj:
         if(ed->selchk==6) {
             q=(ed->ebuf[ed->selobj+1]>=224)?768:512;
             i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,ed->ebuf[ed->selobj+2]+q);
-        } else i = ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long) ed);
+        } else i = ShowDialog(hinstance,
+                              MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                              framewnd,
+                              choosedung,
+                              (long) ed);
         if(i==-1) break;
         
         Dungselectchg(ed,win,0);
@@ -20836,16 +21229,22 @@ chooseobj:
             switch(k)
             {
             case 1:
-                m=ed->selchk|1;
-                Dungselectchg(ed,win,0);
-                ed->selchk&=6;
+                m = ed->selchk | 1;
                 
-                if(ed->selobj>=ed->chkofs[m] || !ed->selobj)
+                Dungselectchg(ed,win,0);
+                
+                ed->selchk &= 6;
+                
+                if(ed->selobj >= ed->chkofs[m] || !ed->selobj)
                     l = ed->chkofs[m] - 2;
                 else
                     l = ed->selobj;
                 
-                o = ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long)ed);
+                o = ShowDialog(hinstance,
+                               MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                               framewnd,
+                               choosedung,
+                               (long) ed);
                 
                 if(o==-1) break;
                 for(n=m;n<7;n++) ed->chkofs[n]+=3;
@@ -20877,7 +21276,11 @@ chooseobj:
             if(ed->selobj=ed->chkofs[m-1] || !ed->selobj) l=ed->chkofs[m]-2;
             else l=ed->selobj;
             if(l==ed->chkofs[m-1]-2) p=4; else p=2;
-            o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG6,framewnd,choosedung,(long)ed);
+            o=ShowDialog(hinstance,
+                         MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                         framewnd,
+                         choosedung,
+                         (long)ed);
             if(o==-1) break;
             for(n=m;n<7;n++) ed->chkofs[n]+=p;
             ed->buf=realloc(ed->buf,ed->len);
@@ -21580,6 +21983,8 @@ selfirst:
     
     return 0;
 }
+
+// =============================================================================
 
 void Drawdot(HDC hdc,RECT*rc,int q,int n,int o)
 {
@@ -23650,7 +24055,9 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                         // this value)
                         n = i + (j << 4);
                         
-                        n = (oed->pal[n].rgbBlue << 16) + (oed->pal[n].rgbGreen << 8) + (oed->pal[n].rgbRed);
+                        n = (oed->pal[n].rgbBlue  << 16)
+                          + (oed->pal[n].rgbGreen <<  8)
+                          + (oed->pal[n].rgbRed);
                         
                         newobj = CreateSolidBrush(n);
                     }
@@ -30086,14 +30493,9 @@ nomod:
             
             for(i = 0; i < 0x128; i++)
             {
-                // \task Probably want something like add_le_16
-                // and add_le16_i().
-                short val = get_16_le_i(rom + 0x4cb42, i)
-                          + (short) ( 0x4cb42 - activedoc->dungspr );
-                
-                put_16_le_i(rom + 0x4cb42,
-                            i,
-                            val);
+                addle16b_i(rom + 0x4cb42,
+                           i,
+                           (short) (0x4cb42 - activedoc->dungspr) );
             }
             
             activedoc->sprend += 0x4cb42 - activedoc->dungspr;
@@ -30981,17 +31383,17 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     // Custom midi configuration of some sort.
                     
-                    if(section_size >= 100)
+                    if(section_size >= (MIDI_ARR_BYTES * 2) )
                     {
-                        // \task Change this so that it reads things
-                        // specifically as little endian
-                        memcpy(midi_inst,
-                               section_data,
-                               MIDI_ARR_BYTES);
+                        size_t i = 0;
                         
-                        memcpy(midi_trans,
-                               section_data + MIDI_ARR_BYTES,
-                               MIDI_ARR_BYTES);
+                        for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+                        {
+                            midi_inst[i] = ldle16b_i(section_data, i);
+                            
+                            midi_trans[i] = ldle16b_i(section_data,
+                                                      i + MIDI_ARR_WORDS);
+                        }
                         
                         l |= CFG_MIDI_LOADED;
                     }

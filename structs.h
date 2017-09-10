@@ -14,6 +14,15 @@ enum
 
 // =============================================================================
 
+#pragma pack(push)
+
+// Done so that our structures are not allowed to add padding.
+// (which would be harmful for type punning / casting that some of the
+// code does. I wouldn't call that best practice either, but it's what
+// we have to work with at the moment (e.g. casting one type of edit
+// structure to a DUNGEDIT pointer because it has members in common).
+#pragma pack(1)
+
 typedef struct
 {
     unsigned char *buf;
@@ -300,9 +309,21 @@ typedef struct
     
     int mappageh,mappagev;
     int mapscrollh,mapscrollv;
-    int selobj,selchk;
+    int selobj;
     
+    /// Which "checkbox" is selected. Specifically, this means which radio
+    /// button is currently selected, because that determines which "layer"
+    /// is a candidate for editing currently. Layers are things like "layer 2",
+    /// "item", "sprite", "torch", etc.
+    int selchk;
+    
+    /// Pairs of 16-bit pointers that remember where the object data and
+    /// door data, respectively, begin in the data of this room.
     short chkofs[6];
+    
+    // \note This member acts as a 7th index of the chkofs array in some
+    // situations. Along with the packing pragma, it would be a bad idea
+    // to rearrange the relative position if this and the chkofs variable.
     short len;
     short chestloc[16];
     
@@ -318,10 +339,15 @@ typedef struct
     
     short selcorner;
     
+    // Size and buffer for "enemies", or more generally "sprites".
     short esize;
     unsigned char *ebuf;
+    
+    // Size and buffer for "secrets", aka "items".
     short ssize;
     unsigned char *sbuf;
+    
+    // Size and buffer for torches.
     short tsize;
     unsigned char *tbuf;
     
@@ -599,6 +625,7 @@ typedef struct
     
 } BLOCKEDIT16;
 
+/// Editor data for dungeon object selector dialog.
 typedef struct
 {
     DUNGEDIT *ed;
@@ -677,6 +704,8 @@ typedef struct
     
 } ZCHANNEL;
 
+#pragma pack(pop)
+
 // =============================================================================
 
 extern SDCREATE *firstdlg, *lastdlg;
@@ -720,5 +749,76 @@ extern SUPERDLG overdlg,
                 perspdlg,
                 patchdlg,
                 z3_dlg;
+
+
+// =============================================================================
+
+typedef
+struct
+{
+    BOOL m_control_down;
+
+    POINT m_rel_pos;
+    POINT m_screen_pos;
+    
+} HM_MouseMoveData;
+
+// =============================================================================
+
+/// For use with mouse button down / up messages, click, hover messages, and 
+typedef
+struct
+{
+    /// Full copy of all the flags just for reference.
+    unsigned m_flags;
+    
+    /// Is the shift key down?
+    BOOL m_shift_key;
+    
+    /// Is the control key down?
+    BOOL m_control_key;
+    
+    /// Is the ALT key down?
+    BOOL m_alt_key;
+    
+    POINT m_rel_pos;
+    POINT m_screen_pos;
+    
+} HM_MouseData;
+
+// =============================================================================
+
+typedef
+struct
+{
+    signed int m_distance;
+    
+    /// Full copy of all the flags just for reference.
+    unsigned m_flags;
+    
+    /// Is the shift key down?
+    BOOL m_shift_key;
+    
+    /// Is the control key down?
+    BOOL m_control_key;
+
+    /// Is the ALT key down?
+    BOOL m_alt_key;
+
+    POINT m_screen_pos;
+
+} HM_MouseWheelData;
+
+// =============================================================================
+
+typedef
+struct
+{
+    HWND m_deactivating;
+    HWND m_activating;
+}
+HM_MdiActivateData;
+
+// =============================================================================
 
 #endif
