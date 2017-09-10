@@ -113,4 +113,12 @@ enum
         SD_DungHideMarkers = ~SD_DungShowMarkers,
     };
 
+// =============================================================================
+
+    enum
+    {
+        SD_DungSprLayerSelected = 6,
+    };
+
+
 #endif

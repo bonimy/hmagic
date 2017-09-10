@@ -15,7 +15,7 @@
                         WPARAM const wparam,
                         LPARAM const lparam);
 
-    HM_MouseWheelData
+    HM_MouseData
     HM_GetMouseData(MSG const p_packed_msg);
 
     HM_MouseWheelData
@@ -37,6 +37,15 @@
                    WPARAM     p_wp,
                    LPARAM     p_lp);
 
-    int __stdcall askinteger(int max, char *caption, char *text);
+    RGBQUAD
+    HM_MakeRgb(uint8_t const p_red,
+               uint8_t const p_green,
+               uint8_t const p_blue);
+
+    RGBQUAD
+    HM_RgbFrom5bpc(uint16_t const p_color);
+
+    int __stdcall
+    askinteger(int max, char *caption, char *text);
 
 #endif

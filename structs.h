@@ -639,7 +639,7 @@ typedef struct tagSDC
     // linked list to the next/last one.
     struct tagSDC *prev, *next;
     
-}SDCREATE;
+} SDCREATE;
 
 typedef struct
 {
@@ -811,7 +811,8 @@ extern HCURSOR normal_cursor,
 extern HBITMAP arrows_imgs[4];
 
 extern HANDLE shade_brush[8];
-extern HANDLE sizecsor[5];
+
+extern HCURSOR sizecsor[5];
 
 // The handle to the program
 extern HINSTANCE hinstance;
@@ -829,7 +830,7 @@ extern const char obj3_w[248];
 
 extern const unsigned char obj3_t[248];
 
-extern char *cur_sec;
+extern char const * cur_sec;
 
 extern HWND debug_window;
 
@@ -875,7 +876,7 @@ struct
     
     /// Is the control key down?
     BOOL m_control_key;
-
+    
     /// Is the ALT key down?
     BOOL m_alt_key;
     

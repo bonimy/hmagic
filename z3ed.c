@@ -331,7 +331,7 @@ unsigned char dm_l, dm_dl;
 // "current secret"?
 // Doesn't actually appear to be used, except to calculate the size of the
 // boxes for droppable items (the red dots).
-char *cur_sec;
+char const * cur_sec;
 
 static unsigned char masktab[16] = {255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
@@ -409,10 +409,11 @@ HCURSOR normal_cursor,
         forbid_cursor,
         wait_cursor;
 
+HCURSOR sizecsor[5];
+
 HBITMAP arrows_imgs[4];
 
 HANDLE shade_brush[8];
-HANDLE sizecsor[5];
 
 // The handle to the program
 HINSTANCE hinstance;
@@ -563,6 +564,46 @@ ldle3(uint8_t const * const p_arr)
 
 // =============================================================================
 
+void
+stle(uint8_t  * const p_arr,
+     size_t     const p_index,
+     unsigned   const p_val)
+{
+    uint8_t v = (p_val >> (8 * p_index) ) & 0xff;
+    
+    p_arr[p_index] = v;
+}
+
+void
+stle0(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 0, p_val);
+}
+
+void
+stle1(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 1, p_val);
+}
+
+void
+stle2(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 2, p_val);
+}
+
+void
+stle3(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 3, p_val);
+}
+
+// =============================================================================
+
 unsigned long
 get_32_le(unsigned char const * const p_arr)
 {
@@ -646,7 +687,7 @@ add_16_le_i(uint8_t  * const p_arr,
 {
     size_t const offset = (p_index * 2);
     
-    put_16_le(p_arr + offset, p_val);
+    add_16_le(p_arr + offset, p_val);
 }
 
 // =============================================================================
@@ -722,6 +763,17 @@ ldle16h(uint16_t const * const p_arr)
 
 // =============================================================================
 
+// Load little endian halfword (16-bit) dereferenced from a pointer to a
+// halfword.
+uint16_t
+ldle16h_i(uint16_t const * const p_arr,
+          size_t           const p_index)
+{
+    return ldle16b_i((uint8_t *) p_arr, p_index);
+}
+
+// =============================================================================
+
 // "load little endian 24-bit value using a byte pointer"
 uint32_t
 ldle24b(uint8_t const * const p_arr)
@@ -745,14 +797,48 @@ ldle24b_i(uint8_t const * const p_arr,
 
 // =============================================================================
 
+void
+stle16b(uint8_t * const p_arr,
+        uint16_t  const p_val)
+{
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+stle16b_i(uint8_t * const p_arr,
+          size_t    const p_index,
+          uint16_t  const p_val)
+{
+    stle16b(p_arr + (p_index * 2), p_val);
+}
+
+// =============================================================================
+
 // "store little endian 24-bit value using a byte pointer"
 void
 stle24b(uint8_t  *const p_arr,
         uint32_t  const p_val)
 {
-    p_arr[0] = ( (p_val >>  0) & 0xff );
-    p_arr[1] = ( (p_val >>  8) & 0xff );
-    p_arr[2] = ( (p_val >> 16) & 0xff );
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+    stle2(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+addle16b_i(uint8_t * const p_arr,
+           size_t    const p_index,
+           uint16_t  const p_addend)
+{
+    uint16_t v = ldle16b_i(p_arr, p_index);
+    
+    v += p_addend;
+    
+    stle16b_i(p_arr, p_index, v);
 }
 
 // =============================================================================
@@ -768,21 +854,13 @@ is16b_neg1(uint8_t const * const p_arr)
     return (v == 0xffff);
 }
 
+// =============================================================================
+
 int
 is16b_neg1_i(uint8_t const * const p_arr,
              size_t          const p_index)
 {
     return is16b_neg1(p_arr + (2 * p_index) );
-}
-
-// Load little endian halfword (16-bit) dereferenced from a pointer to a
-// halfword.
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index)
-{
-    return get_16_le_i((uint8_t *) p_arr,
-                       p_index);
 }
 
 // =============================================================================
@@ -1016,7 +1094,7 @@ HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
 // =============================================================================
 
 BOOL
-HM_DrawRectangle(HDC const p_device_context,
+HM_DrawRectangle(HDC  const p_device_context,
                  RECT const p_rect)
 {
     return Rectangle(p_device_context,
@@ -1057,7 +1135,7 @@ status_proc(HWND   p_win,
     {
          
     default:
-
+        
         break;
     
     case WM_INITDIALOG:
@@ -1111,15 +1189,15 @@ CreateNotificationWindow(HWND const p_parent)
     if(win)
     {
         unsigned const screen_width  = GetSystemMetrics(SM_CXSCREEN);
-        unsigned const screen_height = GetSystemMetrics(SM_CYSCREEN);
-
+        
         RECT const r = HM_GetWindowRect(win);
         
-        SetWindowPos(win, HWND_NOTOPMOST,
+        SetWindowPos(win,
+                     HWND_NOTOPMOST,
                      screen_width - (r.right - r.left),
                      0,
                      0, 0, SWP_NOSIZE);
-    
+        
         ShowWindow(win, SW_SHOW);
     }
     
@@ -1197,6 +1275,39 @@ HM_PackMessage(HWND const p_win,
     msg.wParam = p_wp;
     
     return msg;
+}
+
+// =============================================================================
+
+RGBQUAD
+HM_MakeRgb(uint8_t const p_red,
+           uint8_t const p_green,
+           uint8_t const p_blue)
+{
+    RGBQUAD q;
+    
+    q.rgbRed      = p_red;
+    q.rgbGreen    = p_green;
+    q.rgbBlue     = p_blue;
+    q.rgbReserved = 0;
+    
+    return q;
+}
+
+// =============================================================================
+
+/// From "5 bits per channel"
+RGBQUAD
+HM_RgbFrom5bpc(uint16_t const p_color)
+{
+    RGBQUAD q;
+
+    q.rgbRed      = ( (p_color << 3) & 0xf8 );
+    q.rgbGreen    = ( (p_color >> 2) & 0xf8 );
+    q.rgbBlue     = ( (p_color >> 7) & 0xf8 );
+    q.rgbReserved = 0;
+    
+    return q;
 }
 
 // =============================================================================
@@ -4054,13 +4165,11 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
             {
                 l = *(a++);
                 
-                pal[k].rgbRed   = (BYTE) ((l & 0x1f) << 3);
-                pal[k].rgbGreen = (BYTE) ((l & 0x3e0) >> 2);
-                pal[k].rgbBlue  = (BYTE) ((l & 0x7c00) >> 7);
-                pal[k].rgbReserved = 0;
+                pal[k] = HM_RgbFrom5bpc(l);
                 
                 ++k;
             }
+            
             ofs += 16;
         }
     }
@@ -5315,6 +5424,7 @@ const char obj3_h[248]={
     0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1
 };
+
 const char obj3_m[248]={
     2,2,2,2,2,6,6,2,2,1,1,1,1,1,1,1,
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -5387,7 +5497,7 @@ HDC objdc;
 
 HBITMAP objbmp;
 
-void Getstringobjsize(char*str,RECT*rc)
+void Getstringobjsize(char const * str, RECT *rc)
 {
     GetTextExtentPoint(objdc,str,strlen(str),(LPSIZE)&(rc->right));
     rc->bottom++;
@@ -5570,7 +5680,9 @@ blah:
         }
     }
 }
-void setobj(DUNGEDIT*ed,unsigned char*map)
+
+void
+setobj(DUNGEDIT*ed, unsigned char *map)
 {
     unsigned char c=0;
     short k,l,m,n,o;
@@ -5665,7 +5777,8 @@ void getdoor(unsigned char const *       map,
         dm_x = ( ldle16b_i(rom + 0x197e, dm_dl + dm_k * 12) ) >> 1;
 }
 
-void setdoor(unsigned char*map)
+void
+setdoor(unsigned char *map)
 {
     dm_k&=3;
     map[0]=dm_k+(dm_dl<<4);
@@ -11197,6 +11310,8 @@ Getsecretstring(uint8_t const * const rom,
 
 void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
 {
+    int const vdelta = ed->map_vscroll_delta;
+    
     RECT rc;
     unsigned char*rom=ed->ew.doc->rom;
     int i,j,k,l;
@@ -11312,8 +11427,9 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
     
     k = ed->mapscrollh;
     l = ed->mapscrollv;
+    
     i = ( (dm_x & 0x3f) << 3) - (k << 5);
-    j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l << 5);
+    j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l * vdelta);
     
     if(f && ed->selobj)
     {
@@ -11321,27 +11437,41 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
             k += i >> 5;
         
         if(j < 0)
-            l += j >> 5;
+            l += (j / vdelta);
         
         if( ( (i + 32) >> 5) >= ed->mappageh)
             k += ( (i + 32) >> 5) - ed->mappageh;
         
-        if( ( (j + 32) >> 5) >= ed->mappagev )
-            l += ( (j + 32) >> 5) - ed->mappagev;
+        if( ( (j + vdelta) / vdelta) >= ed->mappagev )
+            l += ( (j + vdelta) / vdelta) - ed->mappagev;
         
-        if(k!=ed->mapscrollh) SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION+(k<<16),0);
-        if(l!=ed->mapscrollv) SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION+(l<<16),0);
+        if(k != ed->mapscrollh)
+        {
+            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION + (k << 16), 0);
+        }
+        
+        if(l != ed->mapscrollv)
+        {
+            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION + (l << 16), 0);
+        }
     }
-    rc.left=((dm_x&0x3f)<<3);
-    rc.top=(((dm_x>>6)&0x3f)<<3);
-    Getdungobjsize(ed->selchk,&rc,0,0,0);
-    ed->selrect=rc;
-    rc.left-=k<<5;
-    rc.top-=l<<5;
-    rc.right-=k<<5;
-    rc.bottom-=l<<5;
-    ed->objt=dm_k;
-    ed->objl=dm_l;
+    
+    rc.left = ((dm_x & 0x3f) << 3);
+    rc.top  = (((dm_x >> 6) & 0x3f) << 3);
+    
+    Getdungobjsize(ed->selchk, &rc, 0, 0, 0);
+    
+    ed->selrect = rc;
+    
+    rc.left -= k << 5;
+    rc.top  -= l * vdelta;
+    
+    rc.right  -= k << 5;
+    rc.bottom -= l * vdelta;
+    
+    ed->objt = dm_k;
+    ed->objl = dm_l;
+    
     InvalidateRect(hc,&rc,0);
 }
 
@@ -11379,7 +11509,8 @@ Drawblock(OVEREDIT const * const ed,
     
     if((t & 24) == 24)
     {
-        // \task Used with only with Link's graphics dialog, seemingly.
+        // \task Used with only with Link's graphics dialog,
+        // seemingly. Need a name(s) for these bits.
         
         b3 = ed->ew.doc->blks[225].buf;
         
@@ -11395,6 +11526,7 @@ Drawblock(OVEREDIT const * const ed,
     {
         // \task 2bpp graphics? Not sure.
         // Used with the dungeon map screen (not the maps themselves)
+        // Need a name for this bit.
         
         if(d >= 0x180)
             goto noblock;
@@ -11416,7 +11548,8 @@ Drawblock(OVEREDIT const * const ed,
     else if(t & 8)
     {
         // \task Used with a lot of the tilemap screens, title screen in particular.
-
+        // Need a name for this bit.
+        
         if(d >= 0x100)
             goto noblock;
         
@@ -11777,7 +11910,7 @@ void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
     {
         SetDIBitsToDevice(hdc,
                           x, y,
-                          32,32,
+                          32, 32,
                           0, 0, 0, 32,
                           drawbuf,
                           (BITMAPINFO*)&(ed->bmih),
@@ -11934,7 +12067,7 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
 // =============================================================================
 
 void
-Paintdungeon(DUNGEDIT const * const ed,
+Paintdungeon(DUNGEDIT const * ed,
              HDC hdc,
              RECT *rc,
              int x,int y,
@@ -11956,7 +12089,7 @@ Paintdungeon(DUNGEDIT const * const ed,
     if
     (
         ( ! (ed->disp & SD_DungShowBothBGs))
-     || ( ( ! (ed->disp & SD_DungShowBothBGs) ) && ! (ed->layering >> 5) )
+     || ( ( ! (ed->disp & SD_DungShowBG1) ) && ! (ed->layering >> 5) )
     )
     {
         oldobj = SelectObject(hdc, black_brush);
@@ -12113,7 +12246,7 @@ Setpalette(HWND const win, HPALETTE const pal)
     return;
 }
 
-void Updateblk8sel(BLOCKSEL8*ed,int num)
+void Updateblk8sel(BLOCKSEL8 *ed, int num)
 {
     int i=num+(ed->scroll<<4);
     int j,k,l,m;
@@ -12833,14 +12966,21 @@ BOOL CALLBACK editwhirl(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     (void) lparam;
     
-    switch(msg) {
+    switch(msg)
+    {
+    
     case WM_INITDIALOG:
-        rom=oved->ew.doc->rom;
+        
+        rom = oved->ew.doc->rom;
+        
         i=oved->selobj;
         j=(oved->ew.param&7)<<9;
         k=(oved->ew.param&56)<<6;
-        if(i>8) SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x16ce6))[i],0);
-        else {
+        
+        if(i > 8)
+            SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x16ce6))[i],0);
+        else
+        {
             ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_HIDE);
             ShowWindow(GetDlgItem(win,IDC_EDIT1),SW_HIDE);
         }
@@ -13359,6 +13499,8 @@ BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             Openroom(ed, k);
         }
         
+        // \task Investigate this. Do all dungeons really set the backdrop color
+        // to pure black?
         ed->pal[0] = blackcolor;
         
         // for the first entry of each palette, the first color is "blackcolor"
@@ -14477,7 +14619,10 @@ BOOL CALLBACK tmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         memcpy(ed->buf,rom+k,i);
 loaded:
         ed->len=i;
-        for(i=16;i<256;i+=16) ed->pal[i]=ed->pal[0];
+        
+        for(i = 16; i < 256; i += 16)
+            ed->pal[i] = ed->pal[0];
+        
         k = 0x6073 + (ed->gfxtmp << 3);
         l = 0x5d97 + (ed->gfxnum << 2);
         for(i=0;i<8;i++) ed->blocksets[i]=rom[k++];
@@ -14654,7 +14799,10 @@ BOOL CALLBACK lmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         Loadpal(ed,rom,0x1bd642,0xd9,3,1);
         Loadpal(ed,rom,0x1bd658,0xdc,4,1);
         Loadpal(ed,rom,0x1bd344,0xf1,15,1);
-        for(i=16;i<256;i+=16) ed->pal[i]=ed->pal[0];
+        
+        for(i = 16; i < 256; i += 16)
+            ed->pal[i] = ed->pal[0];
+        
         ed->curfloor=0;
         ed->sel=0;
         if(!ed->floors) ed->curfloor=-1;
@@ -17185,6 +17333,8 @@ TEXTMETRIC textmetric;
 
 // =============================================================================
 
+// \note More re-entrant version of another function in that it
+// doesn't write using a global text buffer.
 void
 PaintSprName(HDC hdc,
              int x,
@@ -17229,14 +17379,15 @@ PaintSprName(HDC hdc,
 
 // =============================================================================
 
-void Paintspr(HDC hdc,
-              int x,
-              int y,
-              int n,
-              int o,
-              int w)
+void
+Paintspr(HDC hdc,
+         int x,
+         int y,
+         int n,
+         int o,
+         int w)
 {
-    size_t len = strlen(buffer);
+    size_t const len = strlen(buffer);
     
     signed final_len = (signed) len;
     
@@ -17248,15 +17399,15 @@ void Paintspr(HDC hdc,
     if( (len * textmetric.tmAveCharWidth) + x > (w - n) )
         final_len = (w - n - x) / textmetric.tmAveCharWidth;
     
-    if(len <= 0)
+    if(final_len <= 0)
         return;
     
     SetTextColor(hdc, 0);
     
-    TextOut(hdc,x + 1, y + 1, buffer, final_len);
-    TextOut(hdc,x - 1, y - 1, buffer, final_len);
-    TextOut(hdc,x + 1, y - 1, buffer, final_len);
-    TextOut(hdc,x - 1, y + 1, buffer, final_len);
+    TextOut(hdc, x + 1, y + 1, buffer, final_len);
+    TextOut(hdc, x - 1, y - 1, buffer, final_len);
+    TextOut(hdc, x + 1, y - 1, buffer, final_len);
+    TextOut(hdc, x - 1, y + 1, buffer, final_len);
     
 #if 0
     SetTextColor(hdc, 0xffbf3f);
@@ -17264,7 +17415,7 @@ void Paintspr(HDC hdc,
     SetTextColor(hdc, 0xfefefe);
 #endif
     
-    TextOut(hdc,x, y, buffer, final_len);
+    TextOut(hdc, x, y, buffer, final_len);
 }
 
 // =============================================================================
@@ -18818,10 +18969,14 @@ digkey:
                 wsprintf(buffer,"%04X: Flag %d Time %04X Time2 %04X",sc->addr,sc->flag,sc->tim,sc->tim2);
                 TextOut(hdc,256,k,buffer,lstrlen(buffer));
             }
-            k+=textmetric.tmHeight;
+            
+            k += textmetric.tmHeight;
         }
-        k=(ed->sel-ed->scroll)*textmetric.tmHeight;
+        
+        k = (ed->sel-ed->scroll) * textmetric.tmHeight;
+        
         SetROP2(hdc,R2_NOTXORPEN);
+        
         oldobj3=SelectObject(hdc,null_pen);
         if(mark_doc==ed->ew.doc && mark_sr==ed->ew.param) {
             rc.top=(mark_start-ed->scroll)*textmetric.tmHeight;
@@ -18834,20 +18989,27 @@ digkey:
         rc.bottom=k+textmetric.tmHeight;
         Rectangle(hdc,ps.rcPaint.left-1,rc.top,ps.rcPaint.right+1,rc.bottom+1);
         SelectObject(hdc,oldobj3);
-        if(ed->csel!=-1) {
+        if(ed->csel!=-1)
+        {
             rc.left=csel_l[ed->csel];
             rc.right=csel_r[ed->csel];
             DrawFocusRect(hdc,&rc);
         }
+        
         SelectObject(hdc,oldobj);
         SelectObject(hdc,oldobj2);
         EndPaint(win,&ps);
         break;
+    
     default:
+        
         return DefWindowProc(win,msg,wparam,lparam);
     }
+    
     return 0;
 }
+
+// =============================================================================
 
 char const *
 Getsprstring(DUNGEDIT const * const ed,
@@ -18980,11 +19142,15 @@ tmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetScrollInfo(win,SB_HORZ,&si,1);
         ed->mapscrollv=Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
         ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
+        
         break;
+    
     case WM_VSCROLL:
         ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
+        
         break;
+    
     case WM_HSCROLL:
         ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
@@ -19169,8 +19335,10 @@ updblk:
                             ed->modf=1;
                         }
                     }
-                    ed->dragx=o&-9;
-                    ed->dragy=p&-9;
+                    
+                    ed->dragx = o & -9;
+                    ed->dragy = p & -9;
+                    
                     break;
                 }
                 
@@ -19310,12 +19478,16 @@ updblk:
                 Tmapobjchg(ed,win);
                 ed->modf=1;
             }
+            
             break;
         }
+        
         break;
+    
     default:
         return DefWindowProc(win,msg,wparam,lparam);
     }
+    
     return 0;
 }
 
@@ -21390,7 +21562,9 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                         // this value)
                         n = i + (j << 4);
                         
-                        n = (oed->pal[n].rgbBlue << 16) + (oed->pal[n].rgbGreen << 8) + (oed->pal[n].rgbRed);
+                        n = (oed->pal[n].rgbBlue  << 16)
+                          + (oed->pal[n].rgbGreen <<  8)
+                          + (oed->pal[n].rgbRed);
                         
                         newobj = CreateSolidBrush(n);
                     }
@@ -27835,14 +28009,9 @@ nomod:
             
             for(i = 0; i < 0x128; i++)
             {
-                // \task Probably want something like add_le_16
-                // and add_le16_i().
-                short val = get_16_le_i(rom + 0x4cb42, i)
-                          + (short) ( 0x4cb42 - activedoc->dungspr );
-                
-                put_16_le_i(rom + 0x4cb42,
-                            i,
-                            val);
+                addle16b_i(rom + 0x4cb42,
+                           i,
+                           (short) (0x4cb42 - activedoc->dungspr) );
             }
             
             activedoc->sprend += 0x4cb42 - activedoc->dungspr;
@@ -28730,17 +28899,17 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     // Custom midi configuration of some sort.
                     
-                    if(section_size >= 100)
+                    if(section_size >= (MIDI_ARR_BYTES * 2) )
                     {
-                        // \task Change this so that it reads things
-                        // specifically as little endian
-                        memcpy(midi_inst,
-                               section_data,
-                               MIDI_ARR_BYTES);
+                        size_t i = 0;
                         
-                        memcpy(midi_trans,
-                               section_data + MIDI_ARR_BYTES,
-                               MIDI_ARR_BYTES);
+                        for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+                        {
+                            midi_inst[i] = ldle16b_i(section_data, i);
+                            
+                            midi_trans[i] = ldle16b_i(section_data,
+                                                      i + MIDI_ARR_WORDS);
+                        }
                         
                         l |= CFG_MIDI_LOADED;
                     }
