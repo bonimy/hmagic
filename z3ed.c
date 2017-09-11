@@ -420,7 +420,6 @@ HINSTANCE hinstance;
 
 HWND framewnd, clientwnd;
 
-RGBQUAD greencolor={72,152,72,0};
 RGBQUAD darkcolor={80,136,144,0};
 RGBQUAD deathcolor={96,96,48,0};
 RGBQUAD blackcolor={0,0,0,0};
@@ -1308,6 +1307,36 @@ HM_RgbFrom5bpc(uint16_t const p_color)
     q.rgbReserved = 0;
     
     return q;
+}
+
+// =============================================================================
+
+/// COLORREF to "5 bits per channel" snes color.
+uint16_t
+HM_ColRefTo5bpc(COLORREF const p_cr)
+{
+    uint16_t snes_color = 0;
+    
+    snes_color |= ( (p_cr >> 3) & 0x001f );
+    snes_color |= ( (p_cr >> 6) & 0x03e0 );
+    snes_color |= ( (p_cr >> 9) & 0x7c00 );
+    
+    return snes_color;
+}
+
+// =============================================================================
+
+/// RGBQUAD structure to "5 bits per channel" snes color.
+uint16_t
+HM_ColQuadTo5bpc(RGBQUAD const p_cr)
+{
+    uint16_t snes_color = 0;
+    
+    snes_color |= ( (p_cr.rgbRed   >> 3) & 0x001f );
+    snes_color |= ( (p_cr.rgbGreen << 2) & 0x03e0 );
+    snes_color |= ( (p_cr.rgbBlue  << 7) & 0x7c00 );
+    
+    return snes_color;
 }
 
 // =============================================================================
@@ -18149,14 +18178,7 @@ long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         if(ChooseColor(&cc))
         {
-            cc.rgbResult&=0xf8f8f8;
-            
-            ed->pal[k] = (uint16_t)
-            (
-                ( (cc.rgbResult &     0xf8) >> 3)
-              + ( (cc.rgbResult &   0xf800) >> 6)
-              + ( (cc.rgbResult & 0xf80000) >> 9)
-            );
+            ed->pal[k] = HM_ColRefTo5bpc(cc.rgbResult);
             
             DeleteObject(ed->brush[k]);
             ed->brush[k]=CreateSolidBrush(cc.rgbResult);
@@ -22836,6 +22858,15 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     uint16_t * b4 = 0;
     uint16_t * b5 = 0;
     
+    // Light world default backdrop.
+    RGBQUAD lw_default_bd;
+    
+    // backdrop for extended areas
+    RGBQUAD extended_bd;
+    
+    // Dark world default backdrop color.
+    RGBQUAD dw_default_bd;
+    
     switch(msg)
     {
     
@@ -23034,23 +23065,44 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         if(b2[2] < 128)
             Loadpal(ed, rom, 0x1be604 + (((unsigned char*)(rom + 0xdebc6))[b2[2]]), 0x71, 7, 1);
         
+        // \note Right now these are loaded by extracting them from game code
+        // this assumes that the game code for loading these values hasn't
+        // changed.
+        lw_default_bd = HM_RgbFrom5bpc( ldle16b(rom + 0x75625) );
+
+        // Slightly different green shade for zora falls / master sword grove.
+        extended_bd   = HM_RgbFrom5bpc( ldle16b(rom + 0x75640) );
+        
+        dw_default_bd = HM_RgbFrom5bpc( ldle16b(rom + 0x7564f) );
+        
         // \task SePH asked about this part where the backdrop is handled.
         // See if it can be fixed.
         if(j & 0x40)
-            ed->pal[0] = darkcolor;
+        {
+            ed->pal[0] = dw_default_bd;
+        }
         else
-            ed->pal[0] = greencolor;
+        {
+            ed->pal[0] = lw_default_bd;
+        }
         
         if(j == 0x5b || j == 0x88)
             ed->pal[0] = blackcolor;
         
         m = j & 0x3f;
         
+        {
+            uint16_t deathcolor_snes = HM_ColQuadTo5bpc(deathcolor);
+            uint16_t darkcolor_snes = HM_ColQuadTo5bpc(darkcolor);
+        
         if(m == 3 || m == 5 || m == 7 || j == 0x95)
             ed->pal[0] = deathcolor;
         
+        
         for(i = 16; i < 256; i += 16)
             ed->pal[i] = ed->pal[0];
+        
+        }
         
         ov = ed->ew.doc->overworld + j;
         ov->buf = malloc(0xa00);
