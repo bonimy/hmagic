@@ -169,7 +169,9 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     int mask,tmask;
     
     // -----------------------------
-    
+
+    // \note Kinda clever. This writes in a multiple of 0x10 (0x00 to 0x70,
+    // inclusive) to 4 separate byte locations.
     *(char*) &col = *(((char*)&col) + 1) = *(((char*)&col) + 2) = *(((char*)&col) + 3) = ((n & 0x1c00) >> 6);
     
     if((t & 24) == 24)
@@ -1904,6 +1906,518 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
+unsigned long
+HM_NumPadKeyDownFilter(MSG const p_packed_msg)
+{
+    unsigned long const key_info = p_packed_msg.lParam;
+    
+    unsigned long const key = p_packed_msg.wParam;
+    
+    // -----------------------------
+    
+    if( ! (key_info & 0x1000000) )
+    {
+        // Allows the num pad directional keys to work regardless of 
+        // whether numlock is on or not. (This block is entered if numlock
+        // is off.)
+        
+        switch(key)
+        {
+           
+        default:
+            break;
+        
+        case VK_RIGHT:
+            return VK_NUMPAD6;
+        
+        case VK_LEFT:
+            return VK_NUMPAD4;
+        
+        case VK_DOWN:
+            return VK_NUMPAD2;
+        
+        case VK_UP:
+            return VK_NUMPAD8;
+        }
+    }
+    
+    return key;
+}
+
+// =============================================================================
+
+void
+DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
+                     MSG        const p_packed_msg)
+{
+    uint8_t const * const rom = p_ed->ew.doc->rom;
+    
+    unsigned long const key = HM_NumPadKeyDownFilter(p_packed_msg);
+    
+    HWND const w = p_packed_msg.hwnd;
+    
+    // -----------------------------
+    
+    if(p_ed->selchk > 7)
+    {
+        return;
+    }
+    else if(p_ed->selchk == 7)
+    {
+        if(key == VK_RIGHT)
+        {
+            if(p_ed->ssize == 0)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            if(!p_ed->selobj)
+                p_ed->selobj = 2;
+            else
+                p_ed->selobj += 3;
+            
+            if(p_ed->selobj >= p_ed->ssize)
+                p_ed->selobj = p_ed->ssize - 1;
+            
+            goto selchg;
+        }
+        else if(key == VK_LEFT)
+        {
+            if(p_ed->ssize < 2)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            p_ed->selobj -= 3;
+            
+            if(p_ed->selobj < 1)
+                p_ed->selobj = 2;
+            
+            goto selchg;
+        }
+        else
+        {
+            int j = 0;
+            int k = 0;
+            
+            if(!p_ed->selobj)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            switch(key)
+            {
+            
+            case VK_NUMPAD4:
+                
+                p_ed->sbuf[p_ed->selobj - 2] -= 2;
+                p_ed->modf=1;
+                goto updsel;
+            
+            case VK_NUMPAD6:
+                
+                p_ed->sbuf[p_ed->selobj - 2] += 2;
+                p_ed->modf=1;
+                goto updsel;
+            
+            case VK_NUMPAD8:
+                
+                *((short*)(p_ed->sbuf+p_ed->selobj - 2)) -= 128;
+                
+                p_ed->modf=1;
+                
+                goto updsel;
+            
+            case VK_NUMPAD2:
+                
+                *((short*)(p_ed->sbuf+p_ed->selobj - 2)) += 128;
+                
+                p_ed->modf=1;
+                
+                goto updsel;
+            
+            case 'N':
+                
+                k = -1;
+                
+                goto updpot;
+            
+            case 'M':
+                
+                k = 1;
+                
+                goto updpot;
+            
+            case 'J':
+                k=-16;
+                
+                goto updpot;
+            
+            case 'K':
+                
+                k = 16;
+                
+            updpot:
+                
+                j = p_ed->sbuf[p_ed->selobj];
+                
+                if(j > 22)
+                    j=(j>>1)-41;
+                j+=k;
+                if(j>27) j-=28;
+                if(j<0) j+=28;
+                if(j>22) j=(j+41)<<1;
+                p_ed->sbuf[p_ed->selobj]=j;
+                Dungselectchg(p_ed, w, 1);
+                p_ed->modf=1;
+                break;
+            }
+        }
+    }
+    else if(p_ed->selchk == SD_DungSprLayerSelected)
+    {
+        if(key == VK_RIGHT)
+        {
+            if(p_ed->esize < 2)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            if(!p_ed->selobj)
+                p_ed->selobj = 1;
+            else
+                p_ed->selobj+=3;
+            
+            if(p_ed->selobj>=p_ed->esize)
+                p_ed->selobj=p_ed->esize-3;
+            
+            goto selchg;
+        }
+        else if(key == VK_LEFT)
+        {
+            if(p_ed->esize < 2)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            p_ed->selobj -= 3;
+            
+            if(p_ed->selobj < 1)
+                p_ed->selobj = 1;
+            
+            goto selchg;
+        }
+        else
+        {
+            unsigned i = 0;
+            
+            if(!p_ed->selobj)
+                return;
+            Dungselectchg(p_ed, w, 0);
+            
+            switch(key)
+            {
+            case VK_NUMPAD6:
+                dm_x=p_ed->ebuf[p_ed->selobj+1];
+                p_ed->ebuf[p_ed->selobj+1]=(dm_x&224)|((dm_x+1)&31);
+                p_ed->modf=1;
+                goto updsel;
+            case VK_NUMPAD4:
+                dm_x=p_ed->ebuf[p_ed->selobj+1];
+                p_ed->ebuf[p_ed->selobj+1]=(dm_x&224)|((dm_x-1)&31);
+                p_ed->modf=1;
+                goto updsel;
+            case VK_NUMPAD8:
+                dm_x=p_ed->ebuf[p_ed->selobj];
+                p_ed->ebuf[p_ed->selobj]=(dm_x&224)|((dm_x-1)&31);
+                p_ed->modf=1;
+                goto updsel;
+            case VK_NUMPAD2:
+                dm_x=p_ed->ebuf[p_ed->selobj];
+                p_ed->ebuf[p_ed->selobj]=(dm_x&224)|((dm_x+1)&31);
+                p_ed->modf=1;
+                goto updsel;
+            case 'N':
+                p_ed->ebuf[p_ed->selobj+2]--;
+                p_ed->modf=1;
+                goto updsel;
+            case 'M':
+                p_ed->ebuf[p_ed->selobj+2]++;
+                p_ed->modf=1;
+                goto updsel;
+            case 'J':
+                p_ed->ebuf[p_ed->selobj+2]-=16;
+                p_ed->modf=1;
+                goto updsel;
+            case 'K':
+                p_ed->ebuf[p_ed->selobj+2]+=16;
+                p_ed->modf=1;
+                goto updsel;
+            
+            case 'B':
+                
+                if(p_ed->selobj == 1)
+                    break;
+                
+                // \task Perhaps a swaple24b() is in order.
+                i = ldle24b(p_ed->ebuf + p_ed->selobj - 3);
+                
+                stle24b(p_ed->ebuf + p_ed->selobj - 3,
+                        ldle24b(p_ed->ebuf + p_ed->selobj) );
+                
+                stle24b(p_ed->ebuf + p_ed->selobj, i);
+                
+                p_ed->selobj -= 3;
+                p_ed->modf = 1;
+                
+                goto updsel;
+            
+            case 'V':
+                
+                // Moves the selected sprite later in the load sequence.
+                
+                if(p_ed->selobj == p_ed->esize - 3)
+                    break;
+                
+                i = ldle24b(p_ed->ebuf + p_ed->selobj + 3);
+                
+                stle24b(p_ed->ebuf + p_ed->selobj + 3,
+                         ldle24b(p_ed->ebuf + p_ed->selobj) );
+                
+                stle24b(p_ed->ebuf + p_ed->selobj, i);
+                
+                p_ed->selobj += 3;
+                p_ed->modf = 1;
+                
+                goto updsel;
+            }
+        }
+    }
+    else if(p_ed->selchk & 1)
+    {
+        if(key == VK_RIGHT)
+        {
+            if(p_ed->chkofs[p_ed->selchk] >= p_ed->chkofs[p_ed->selchk + 1] - 2)
+                return;
+        
+            Dungselectchg(p_ed, w, 0);
+        
+            if(!p_ed->selobj)
+selfirst:
+                p_ed->selobj = p_ed->chkofs[p_ed->selchk];
+            else
+            {
+                p_ed->selobj += 2;
+            
+                if(p_ed->selobj >= p_ed->chkofs[p_ed->selchk + 1] - 2)
+                {
+                    p_ed->selobj = p_ed->chkofs[p_ed->selchk + 1] - 4;
+                    return;
+                }
+            }
+            
+            goto selchg;
+        }
+        else if(key == VK_LEFT)
+        {
+            if(p_ed->chkofs[p_ed->selchk] == p_ed->chkofs[p_ed->selchk + 1] - 2)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            if(!p_ed->selobj)
+                goto selfirst;
+            
+            p_ed->selobj -= 2;
+            
+            if(p_ed->selobj < p_ed->chkofs[p_ed->selchk])
+            {
+                if(p_ed->chkofs[p_ed->selchk] != p_ed->chkofs[p_ed->selchk - 1] + 2)
+                {
+                    p_ed->selchk--;
+                    p_ed->selobj -= 3;
+                }
+                else
+                {
+                    p_ed->selobj = p_ed->chkofs[p_ed->selchk];
+                    
+                    return;
+                }
+            }
+            
+            goto selchg;
+        }
+        else
+        {
+            if(!p_ed->selobj)
+                return;
+            
+            Dungselectchg(p_ed, w, 0);
+            
+            switch(key)
+            {
+            case VK_NUMPAD6:
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_dl++;
+                if(dm_dl>11) dm_dl=0;
+                goto upddr;
+            case VK_NUMPAD4:
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_dl--;
+                if(dm_dl>11) dm_dl=11;
+                goto upddr;
+            case VK_NUMPAD2:
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_k--;
+                goto upddr;
+            case VK_NUMPAD8:
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_k++;
+                goto upddr;
+            case 'K':
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_l+=0x10;
+                goto upddr;
+            case 'J':
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_l-=0x10;
+                goto upddr;
+            case 'M':
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_l++;
+                goto upddr;
+            case 'N':
+                getdoor(p_ed->buf+p_ed->selobj,rom);
+                dm_l--;
+            upddr:
+            
+                if(dm_l>41)
+                    dm_l-=42;
+                
+                if(dm_l>41)
+                    dm_l+=84;
+                setdoor(p_ed->buf+p_ed->selobj);
+                p_ed->modf=1;
+                goto updmap;
+            }
+        }
+    }
+    else if(key == VK_RIGHT)
+    {
+        if(p_ed->chkofs[p_ed->selchk] == p_ed->chkofs[p_ed->selchk+1]-2)
+            return;
+        
+        Dungselectchg(p_ed, w, 0);
+        
+        if(!p_ed->selobj)
+            goto selfirst;
+        
+        p_ed->selobj+=3;
+        
+        if(p_ed->selobj>=p_ed->chkofs[p_ed->selchk+1]-2)
+            if(p_ed->chkofs[p_ed->selchk+2]==p_ed->chkofs[p_ed->selchk+1])
+            {
+                p_ed->selobj=p_ed->chkofs[p_ed->selchk+1]-5+(p_ed->selchk&1);
+                
+                return;
+            }
+            else
+                p_ed->selobj+=2,p_ed->selchk++;
+            
+            goto selchg;
+    }
+    else if(key == VK_LEFT)
+    {
+        if(p_ed->chkofs[p_ed->selchk]==p_ed->chkofs[p_ed->selchk+1]-2)
+            return;
+        
+        Dungselectchg(p_ed, w, 0);
+        
+        if(!p_ed->selobj)
+            goto selfirst;
+        
+        p_ed->selobj-=3;
+        
+        if(p_ed->selobj<p_ed->chkofs[p_ed->selchk])
+        {
+            p_ed->selobj=p_ed->chkofs[p_ed->selchk];
+            
+            
+            return;
+        }
+    
+    selchg:
+    
+        Dungselectchg(p_ed, w, 1);
+    
+        return;
+    }
+    else
+    {
+        if(!p_ed->selobj)
+            return;
+        
+        Dungselectchg(p_ed, w, 0);
+        
+        switch(key)
+        {
+        case VK_NUMPAD6:
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_x++;
+            if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x++;
+            goto upd;
+        case VK_NUMPAD4:
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_x--;
+            if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x--;
+            goto upd;
+        case VK_NUMPAD2:
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_x+=64;
+            goto upd;
+        case VK_NUMPAD8:
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_x-=64;
+            goto upd;
+        case 'K':
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_k+=0x10;
+            if(dm_k>0xff && dm_k<0x110) dm_k-=0x100;
+            if(dm_k>0x13f) dm_k-=0x40;
+            goto upd;
+        case 'J':
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_k-=0x10;
+            if(dm_k>0xef && dm_k<0x100) dm_k+=0x40;
+            if(dm_k<0) dm_k+=0x100;
+            goto upd;
+        case 'M':
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_k++;
+            if(dm_k==0x100) dm_k=0;
+            if(dm_k==0x140) dm_k=0x100;
+            goto upd;
+        case 'N':
+            getobj(p_ed->buf+p_ed->selobj);
+            dm_k--;
+            if(dm_k==0xff) dm_k=0x13f;
+            
+            // \task Just a gentle reminder that if we change this to
+            // an unsigned type we will probably have problems
+            // (due to integer promotion rules).
+            if(dm_k==-1) dm_k=0xff;
+        upd:
+            setobj(p_ed,p_ed->buf+p_ed->selobj);
+        updmap:
+            Updatemap(p_ed);
+        updsel:
+            Dungselectchg(p_ed, w, 1);
+        }
+    }
+}
+
+// =============================================================================
+
 #define WPROCSIG() (HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 LRESULT CALLBACK
@@ -2124,23 +2638,53 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
         if(ed->selchk == SD_DungSprLayerSelected)
         {
             ed->ebuf[ed->selobj+2]=i;
-            if(i&256) ed->ebuf[ed->selobj+1]|=224;
-            else ed->ebuf[ed->selobj+1]&=31;
+            
+            if(i&256)
+                ed->ebuf[ed->selobj+1]|=224;
+            else
+                ed->ebuf[ed->selobj+1]&=31;
+            
             ed->modf=1;
-            goto updsel;
-        } else if(ed->selchk&1) {
+            
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
+        }
+        else if(ed->selchk & 1)
+        {
             getdoor(ed->buf+ed->selobj,ed->ew.doc->rom);
-            i-=0x1b8;
-            dm_k=i/42;
-            dm_l=i%42;
-            goto upddr;
-        } else {
+            
+            i -= 0x1b8;
+            dm_k = i / 42;
+            dm_l = i % 42;
+            
+            {
+                if(dm_l > 41)
+                    dm_l -= 42;
+                
+                if(dm_l > 41)
+                    dm_l += 84;
+                
+                setdoor(ed->buf + ed->selobj);
+                ed->modf = 1;
+                
+                Updatemap(ed);
+                Dungselectchg(ed, p_win, 1);
+                
+                break;
+            }
+        }
+        else
+        {
             getobj(ed->buf+ed->selobj);
-            if(i<0x40) dm_k=i + 0x100;
-            else if(i<0x138) {
-                dm_k=i - 0x40;
-                j=obj3_t[dm_k];
-                dm_l=(j==0)|(j==2);
+            
+            if(i < 0x40)
+                dm_k = i + 0x100;
+            else if(i < 0x138)
+            {
+                dm_k = i - 0x40;
+                j = obj3_t[dm_k];
+                dm_l = (j == 0) | (j == 2);
             }
             else
             {
@@ -2148,7 +2692,11 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
                 dm_l = (i - 0x138) & 15;
             }
             
-            goto upd;
+            setobj(ed, ed->buf + ed->selobj);
+            Updatemap(ed);
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
         }
         
         break;
@@ -2162,8 +2710,10 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
         
         if(ed->selchk < SD_DungSprLayerSelected)
         {
-            AppendMenu(menu,MF_STRING,1,"Insert an object");
-            if(ed->ew.param<0x8c) AppendMenu(menu,MF_STRING,2,"Insert a door");
+            AppendMenu(menu, MF_STRING, 1, "Insert an object");
+            
+            if(ed->ew.param < 0x8c)
+                AppendMenu(menu,MF_STRING,2,"Insert a door");
         }
         else if(ed->selchk == SD_DungSprLayerSelected)
             AppendMenu(menu, MF_STRING, 4, "Insert an enemy");
@@ -2263,8 +2813,11 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
                 ed->buf[l]=0;
                 ed->buf[l+1]=0;
                 ed->buf[l+2]=0;
-                if(o<0x40) dm_k=o + 0x100;
-                else if(o<0x138) {
+                
+                if(o < 0x40)
+                    dm_k=o + 0x100;
+                else if(o<0x138)
+                {
                     dm_k=o - 0x40;
                     j=obj3_t[dm_k];
                     dm_l=(j==0)|(j==2);
@@ -2275,7 +2828,11 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
                     dm_l = (o - 0x138) & 15;
                 }
                 
-                goto upd;
+                setobj(ed, ed->buf + ed->selobj);
+                Updatemap(ed);
+                Dungselectchg(ed, p_win, 1);
+                
+                break;
             
             case 2:
             m=(ed->selchk|1)+1;
@@ -2293,8 +2850,8 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             if(o == -1)
                 break;
             
-            for(n=m;n<7;n++)
-                ed->chkofs[n]+=p;
+            for(n = m; n < 7; n++)
+                ed->chkofs[n] += p;
             
             ed->buf = (uint8_t*) realloc(ed->buf,ed->len);
             
@@ -2302,9 +2859,25 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             if(p==4) { *(short*)(ed->buf+l)=-16; l+=2; }
             ed->selobj=l;
             o-=0x1b8;
-            dm_k=o/42;
-            dm_l=o%42;
-            goto upddr;
+            dm_k = o / 42;
+            dm_l = o % 42;
+            
+            {
+                if(dm_l > 41)
+                    dm_l -= 42;
+                
+                if(dm_l > 41)
+                    dm_l += 84;
+                
+                setdoor(ed->buf + ed->selobj);
+                ed->modf = 1;
+                
+                Updatemap(ed);
+                Dungselectchg(ed, p_win, 1);
+                
+                break;
+            }
+        
         case 3:
             Dungselectchg(ed, p_win, 0);
             m=ed->selchk;
@@ -2351,8 +2924,14 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
                 memcpy(ed->buf+l,ed->buf+l+3,ed->len-l);
                 ed->buf=realloc(ed->buf,ed->len);
             }
-            ed->selobj=0;
-            goto updmap;
+            
+            ed->selobj = 0;
+            
+            Updatemap(ed);
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
+        
         case 4:
             Dungselectchg(ed, p_win, 0);
             o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,512);
@@ -2371,8 +2950,12 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             if(o&256) i+=224;
             ed->ebuf[ed->selobj+1]=i;
             ed->ebuf[ed->selobj+2]=o;
-            ed->modf=1;
-            goto updsel;
+            ed->modf = 1;
+            
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
+        
         case 5:
             goto chooseobj;
         case 6: // delete all objects, sprites, etc. "REMOVE ALL"
@@ -2437,7 +3020,9 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             }
             InvalidateRect(p_win, 0, 0);
             ed->selobj=0;
-            goto updsel;
+            Dungselectchg(ed, p_win, 1);
+            break;
+        
         case 7:
             Dungselectchg(ed, p_win, 0);
             ed->sbuf=realloc(ed->sbuf,ed->ssize+=3);
@@ -2446,7 +3031,9 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             *(short*)(ed->sbuf+ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
             ed->sbuf[ed->selobj]=0;
             ed->modf=1;
-            goto updsel;
+            Dungselectchg(ed, p_win, 1);
+            break;
+        
         case 8:
             Dungselectchg(ed, p_win, 0);
             
@@ -2462,7 +3049,12 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             if(k==0x18c)
                 MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
             ed->ew.doc->modf=1;
-            goto updmap;
+            
+            Updatemap(ed);
+            Dungselectchg(ed, p_win, 1);
+
+            break;
+        
         case 9:
             Dungselectchg(ed, p_win, 0);
             k=ed->tsize;
@@ -2470,10 +3062,17 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             ed->selobj=k;
             ed->tbuf=realloc(ed->tbuf,k+=2);
             ed->tsize=k;
+            
             *(short*)(ed->tbuf)=ed->mapnum;
             *(short*)(ed->tbuf+k-2)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-            ed->modf=1;
-            goto updmap;
+            
+            ed->modf = 1;
+            
+            Updatemap(ed);
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
+        
         case 10:
             i=askinteger(295,"Use another header","Room #");
             if(i<0) break;
@@ -2483,426 +3082,17 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             ed->hmodf = i + 2;
             ed->modf  = i + 2;
             
-            goto updmap;
+            Updatemap(ed);
+            Dungselectchg(ed, p_win, 1);
+            
+            break;
         }
         
         break;
     
     case WM_KEYDOWN:
         
-        rom = ed->ew.doc->rom;
-        
-        if( !(p_lp & 0x1000000) )
-        {
-            // Allows the num pad directional keys to work regardless of 
-            // whether numlock is on or not. (This block is entered if numlock
-            // is off.)
-            
-            switch(p_wp)
-            {
-            case VK_RIGHT:
-                p_wp = VK_NUMPAD6;
-                break;
-            case VK_LEFT:
-                p_wp = VK_NUMPAD4;
-                break;
-            case VK_DOWN:
-                p_wp = VK_NUMPAD2;
-                break;
-            case VK_UP:
-                p_wp = VK_NUMPAD8;
-                break;
-            }
-        }
-        
-        if(ed->selchk > 7)
-        {
-            break;
-        }
-        else if(ed->selchk==7)
-        {
-            if(p_wp == VK_RIGHT)
-            {
-                if(ed->ssize==0) break;
-                Dungselectchg(ed, p_win, 0);
-                if(!ed->selobj) ed->selobj=2; else ed->selobj+=3;
-                if(ed->selobj>=ed->ssize) ed->selobj=ed->ssize-1;
-                
-                goto selchg;
-            }
-            else if(p_wp == VK_LEFT)
-            {
-                if(ed->ssize<2) break;
-                Dungselectchg(ed, p_win, 0);
-                ed->selobj-=3;
-                if(ed->selobj<1) ed->selobj=2;
-                goto selchg;
-            }
-            else
-            {
-                if(!ed->selobj) break;
-                Dungselectchg(ed, p_win, 0);
-                
-                switch(p_wp)
-                {
-                case VK_NUMPAD4:
-                    ed->sbuf[ed->selobj-2]-=2;
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD6:
-                    ed->sbuf[ed->selobj-2]+=2;
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD8:
-                    *((short*)(ed->sbuf+ed->selobj-2))-=128;
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD2:
-                    *((short*)(ed->sbuf+ed->selobj-2))+=128;
-                    ed->modf=1;
-                    goto updsel;
-                case 'N':
-                    k=-1;
-                    goto updpot;
-                case 'M':
-                    k=1;
-                    goto updpot;
-                case 'J':
-                    k=-16;
-                    goto updpot;
-                case 'K':
-                    k=16;
-    updpot:
-                    j=ed->sbuf[ed->selobj];
-                    if(j>22) j=(j>>1)-41;
-                    j+=k;
-                    if(j>27) j-=28;
-                    if(j<0) j+=28;
-                    if(j>22) j=(j+41)<<1;
-                    ed->sbuf[ed->selobj]=j;
-                    Dungselectchg(ed, p_win, 1);
-                    ed->modf=1;
-                    break;
-                }
-            }
-        }
-        else if(ed->selchk == SD_DungSprLayerSelected)
-        {
-            if(p_wp == VK_RIGHT)
-            {
-                if(ed->esize<2) break;
-                Dungselectchg(ed, p_win, 0);
-                if(!ed->selobj) ed->selobj=1; else ed->selobj+=3;
-                if(ed->selobj>=ed->esize) ed->selobj=ed->esize-3;
-                goto selchg;
-            }
-            else if(p_wp == VK_LEFT)
-            {
-                if(ed->esize < 2)
-                    break;
-                
-                Dungselectchg(ed, p_win, 0);
-                ed->selobj-=3;
-                
-                if(ed->selobj < 1)
-                    ed->selobj = 1;
-                
-                goto selchg;
-            }
-            else
-            {
-                if(!ed->selobj)
-                    break;
-                Dungselectchg(ed, p_win, 0);
-                
-                switch(p_wp)
-                {
-                case VK_NUMPAD6:
-                    dm_x=ed->ebuf[ed->selobj+1];
-                    ed->ebuf[ed->selobj+1]=(dm_x&224)|((dm_x+1)&31);
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD4:
-                    dm_x=ed->ebuf[ed->selobj+1];
-                    ed->ebuf[ed->selobj+1]=(dm_x&224)|((dm_x-1)&31);
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD8:
-                    dm_x=ed->ebuf[ed->selobj];
-                    ed->ebuf[ed->selobj]=(dm_x&224)|((dm_x-1)&31);
-                    ed->modf=1;
-                    goto updsel;
-                case VK_NUMPAD2:
-                    dm_x=ed->ebuf[ed->selobj];
-                    ed->ebuf[ed->selobj]=(dm_x&224)|((dm_x+1)&31);
-                    ed->modf=1;
-                    goto updsel;
-                case 'N':
-                    ed->ebuf[ed->selobj+2]--;
-                    ed->modf=1;
-                    goto updsel;
-                case 'M':
-                    ed->ebuf[ed->selobj+2]++;
-                    ed->modf=1;
-                    goto updsel;
-                case 'J':
-                    ed->ebuf[ed->selobj+2]-=16;
-                    ed->modf=1;
-                    goto updsel;
-                case 'K':
-                    ed->ebuf[ed->selobj+2]+=16;
-                    ed->modf=1;
-                    goto updsel;
-                
-                case 'B':
-                    
-                    if(ed->selobj == 1)
-                        break;
-                    
-                    // \task Perhaps a swaple24b() is in order.
-                    i = ldle24b(ed->ebuf + ed->selobj - 3);
-                    
-                    stle24b(ed->ebuf + ed->selobj - 3,
-                            ldle24b(ed->ebuf + ed->selobj) );
-                    
-                    stle24b(ed->ebuf + ed->selobj, i);
-                    
-                    ed->selobj -= 3;
-                    ed->modf = 1;
-                    
-                    goto updsel;
-                
-                case 'V':
-                    
-                    // Moves the selected sprite later in the load sequence.
-                    
-                    if(ed->selobj == ed->esize - 3)
-                        break;
-                    
-                    i = ldle24b(ed->ebuf + ed->selobj + 3);
-                    
-                    stle24b(ed->ebuf + ed->selobj + 3,
-                             ldle24b(ed->ebuf + ed->selobj) );
-                    
-                    stle24b(ed->ebuf + ed->selobj, i);
-                    
-                    ed->selobj += 3;
-                    ed->modf = 1;
-                    
-                    goto updsel;
-                }
-            }
-        }
-        else if(ed->selchk & 1)
-        {
-            if(p_wp == VK_RIGHT)
-            {
-                if(ed->chkofs[ed->selchk] >= ed->chkofs[ed->selchk + 1] - 2)
-                    break;
-            
-                Dungselectchg(ed, p_win, 0);
-            
-                if(!ed->selobj)
-selfirst:
-                    ed->selobj = ed->chkofs[ed->selchk];
-                else
-                {
-                    ed->selobj += 2;
-                
-                    if(ed->selobj >= ed->chkofs[ed->selchk + 1] - 2)
-                    {
-                        ed->selobj = ed->chkofs[ed->selchk + 1] - 4;
-                        break;
-                    }
-                }
-                
-                goto selchg;
-            }
-            else if(p_wp == VK_LEFT)
-            {
-                if(ed->chkofs[ed->selchk] == ed->chkofs[ed->selchk + 1] - 2)
-                    break;
-                
-                Dungselectchg(ed, p_win, 0);
-                
-                if(!ed->selobj)
-                    goto selfirst;
-                
-                ed->selobj -= 2;
-                
-                if(ed->selobj < ed->chkofs[ed->selchk])
-                {
-                    if(ed->chkofs[ed->selchk] != ed->chkofs[ed->selchk - 1] + 2)
-                    {
-                        ed->selchk--;
-                        ed->selobj -= 3;
-                    }
-                    else
-                    {
-                        ed->selobj = ed->chkofs[ed->selchk];
-                        break;
-                    }
-                }
-            
-                goto selchg;
-            }
-            else
-            {
-                if(!ed->selobj)
-                    break;
-            
-                Dungselectchg(ed, p_win, 0);
-            
-                switch(p_wp)
-                {
-                case VK_NUMPAD6:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_dl++;
-                    if(dm_dl>11) dm_dl=0;
-                    goto upddr;
-                case VK_NUMPAD4:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_dl--;
-                    if(dm_dl>11) dm_dl=11;
-                    goto upddr;
-                case VK_NUMPAD2:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_k--;
-                    goto upddr;
-                case VK_NUMPAD8:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_k++;
-                    goto upddr;
-                case 'K':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l+=0x10;
-                    goto upddr;
-                case 'J':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l-=0x10;
-                    goto upddr;
-                case 'M':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l++;
-                    goto upddr;
-                case 'N':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l--;
-                upddr:
-                
-                    if(dm_l>41)
-                        dm_l-=42;
-                
-                    if(dm_l>41)
-                        dm_l+=84;
-                    setdoor(ed->buf+ed->selobj);
-                    ed->modf=1;
-                    goto updmap;
-                }
-            }
-        }
-        else if(p_wp == VK_RIGHT)
-        {
-            if(ed->chkofs[ed->selchk] == ed->chkofs[ed->selchk+1]-2)
-                break;
-            
-            Dungselectchg(ed, p_win, 0);
-            
-            if(!ed->selobj)
-                goto selfirst;
-            
-            ed->selobj+=3;
-            
-            if(ed->selobj>=ed->chkofs[ed->selchk+1]-2)
-                if(ed->chkofs[ed->selchk+2]==ed->chkofs[ed->selchk+1])
-                {
-                    ed->selobj=ed->chkofs[ed->selchk+1]-5+(ed->selchk&1);
-                    break;
-                }
-                else
-                    ed->selobj+=2,ed->selchk++;
-                
-                goto selchg;
-        }
-        else if(p_wp == VK_LEFT)
-        {
-            if(ed->chkofs[ed->selchk]==ed->chkofs[ed->selchk+1]-2) break;
-            Dungselectchg(ed, p_win, 0);
-            if(!ed->selobj) goto selfirst;
-            ed->selobj-=3;
-            if(ed->selobj<ed->chkofs[ed->selchk]) {
-                ed->selobj=ed->chkofs[ed->selchk];
-                break;
-            }
-        
-        selchg:
-        
-            Dungselectchg(ed, p_win, 1);
-        
-            break;
-        }
-        else
-        {
-            if(!ed->selobj)
-                break;
-            
-            Dungselectchg(ed, p_win, 0);
-            
-            switch(p_wp)
-            {
-            case VK_NUMPAD6:
-                getobj(ed->buf+ed->selobj);
-                dm_x++;
-                if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x++;
-                goto upd;
-            case VK_NUMPAD4:
-                getobj(ed->buf+ed->selobj);
-                dm_x--;
-                if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x--;
-                goto upd;
-            case VK_NUMPAD2:
-                getobj(ed->buf+ed->selobj);
-                dm_x+=64;
-                goto upd;
-            case VK_NUMPAD8:
-                getobj(ed->buf+ed->selobj);
-                dm_x-=64;
-                goto upd;
-            case 'K':
-                getobj(ed->buf+ed->selobj);
-                dm_k+=0x10;
-                if(dm_k>0xff && dm_k<0x110) dm_k-=0x100;
-                if(dm_k>0x13f) dm_k-=0x40;
-                goto upd;
-            case 'J':
-                getobj(ed->buf+ed->selobj);
-                dm_k-=0x10;
-                if(dm_k>0xef && dm_k<0x100) dm_k+=0x40;
-                if(dm_k<0) dm_k+=0x100;
-                goto upd;
-            case 'M':
-                getobj(ed->buf+ed->selobj);
-                dm_k++;
-                if(dm_k==0x100) dm_k=0;
-                if(dm_k==0x140) dm_k=0x100;
-                goto upd;
-            case 'N':
-                getobj(ed->buf+ed->selobj);
-                dm_k--;
-                if(dm_k==0xff) dm_k=0x13f;
-                
-                // \task Just a gentle reminder that if we change this to
-                // an unsigned type we will probably have problems
-                // (due to integer promotion rules).
-                if(dm_k==-1) dm_k=0xff;
-            upd:
-                setobj(ed,ed->buf+ed->selobj);
-            updmap:
-                Updatemap(ed);
-            updsel:
-                Dungselectchg(ed, p_win, 1);
-            }
-        }
+        DungeonMap_OnKeyDown(ed, packed_msg);
         
         break;
     
