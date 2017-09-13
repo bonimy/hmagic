@@ -17390,6 +17390,11 @@ PaintSprName(HDC hdc,
     if(len <= 0)
         return;
     
+    if(final_len > len)
+    {
+        final_len = len;
+    }
+    
     SetTextColor(hdc, 0);
     
     TextOut(hdc,x + 1, y + 1, p_name, final_len);
@@ -17430,6 +17435,11 @@ Paintspr(HDC hdc,
     
     if(final_len <= 0)
         return;
+    
+    if(final_len > len)
+    {
+        final_len = len;
+    }
     
     SetTextColor(hdc, 0);
     
