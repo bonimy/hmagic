@@ -1172,6 +1172,7 @@ status_proc(HWND   p_win,
 // =============================================================================
 
 HWND debug_window = 0;
+HWND debug_box = 0;
 
 HWND
 CreateNotificationWindow(HWND const p_parent)
@@ -1337,6 +1338,121 @@ HM_ColQuadTo5bpc(RGBQUAD const p_cr)
     snes_color |= ( (p_cr.rgbBlue  << 7) & 0x7c00 );
     
     return snes_color;
+}
+
+// =============================================================================
+
+LRESULT CALLBACK
+HM_NotifyBoxProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
+{
+    switch(p_msg)
+    {
+    
+    default:
+
+        break;
+        
+    case WM_PAINT:
+        
+        {
+            RECT rc = HM_GetClientRect(p_win);
+            
+            PAINTSTRUCT ps;
+            
+            HDC const dc = BeginPaint(p_win, &ps);
+            
+            FrameRect(dc, &rc, blue_brush);
+            
+            EndPaint(p_win, &ps);
+            
+            return 0;
+        }
+        
+    case WM_MOUSEACTIVATE:
+
+        return MA_NOACTIVATE;
+    }
+    
+    return DefWindowProc(p_win, p_msg, p_wp, p_lp);
+}
+
+// =============================================================================
+
+HWND
+CreateNotificationBox(HWND const p_parent)
+{
+    WNDCLASSEX wc;
+    
+    RECT const parent_rect = HM_GetWindowRect(p_parent);
+    
+    {
+        wc.cbSize = sizeof(WNDCLASSEX);
+        
+        wc.style = 0;
+        
+        wc.lpfnWndProc = HM_NotifyBoxProc;
+        
+        wc.cbClsExtra = 0;
+    
+        wc.cbWndExtra = 0;
+        
+        wc.hInstance = hinstance;
+        
+        wc.hIcon = NULL;
+        
+        wc.hCursor = normal_cursor;
+        
+        wc.hbrBackground = COLOR_HIGHLIGHTTEXT;
+        
+        wc.lpszMenuName = NULL;
+        
+        wc.lpszClassName = "HMAGIC_NOTIFY_BOX";
+        
+        wc.hIconSm = NULL;
+    }
+    
+    if( RegisterClassEx(&wc) )
+    {
+        HWND const w = CreateWindowEx
+        (
+            WS_EX_LAYERED,
+            "HMAGIC_NOTIFY_BOX",
+            NULL,
+            WS_POPUP,
+            parent_rect.right - 220,
+            parent_rect.bottom - 60,
+            200,
+            40,
+            p_parent,
+            NULL,
+            hinstance,
+            NULL
+        );
+        
+        if(w)
+        {
+            SetLayeredWindowAttributes(w,
+                                       0,
+                                       0x20,
+                                       LWA_ALPHA);
+            
+            ShowWindow(w, SW_SHOW);
+        }
+        
+        return w;
+    }
+    else
+    {
+        char text_buf[0x100];
+        
+        DWORD i = GetLastError();
+        
+        sprintf(text_buf, "Error code: %u", i);
+        
+        MessageBox(p_parent, text_buf, NULL, MB_OK);
+    }
+    
+    return NULL;
 }
 
 // =============================================================================
@@ -4397,7 +4513,7 @@ LoadDungeonObjects(DUNGEDIT * const p_ed,
     // Get the base address for this room in the rom.
     uint8_t const * const buf = rom
                               + romaddr( ldle24b_i(rom + 0xf8000, p_map) );
-
+    
     // Offset into the raw object data array.
     // The first two bytes are floor tile fill pattern (floor1 / floor2),
     // layout and other information that are irrelevant to loading objects,
@@ -4469,7 +4585,7 @@ LoadDungeonObjects(DUNGEDIT * const p_ed,
 end:
         i += 2;
     }
-
+    
     p_ed->len = i; // size of the buffer.
     
     // generate the buffer of size i.
@@ -16959,7 +17075,7 @@ open_edt:
                         wsprintf(buf,"Watergate overlay");
                     
                     hc = Editwin(doc,"ZEDUNGEON",buf,j, sizeof(DUNGEDIT));
-                     
+                    
                     if(hc)
                     {
                         DUNGEDIT * ed = (DUNGEDIT*) GetWindowLong(hc, GWL_USERDATA);
@@ -19005,7 +19121,7 @@ digkey:
             k += textmetric.tmHeight;
         }
         
-        k = (ed->sel-ed->scroll) * textmetric.tmHeight;
+        k = (ed->sel - ed->scroll) * textmetric.tmHeight;
         
         SetROP2(hdc,R2_NOTXORPEN);
         
@@ -26932,6 +27048,216 @@ long CALLBACK frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     switch(msg)
     {
     
+#if 0
+    case WM_NCCALCSIZE:
+        
+        if(wparam)
+        {
+            NCCALCSIZE_PARAMS * const params = (NCCALCSIZE_PARAMS*) lparam;
+            
+            LRESULT d_r = DefWindowProc(win, msg, wparam, lparam);
+            
+            params->rgrc[0].right  -= 32;
+            params->rgrc[0].bottom -= 32;
+            
+            return WVR_VALIDRECTS;
+        }
+        else
+        {
+            RECT * const r = (RECT*) lparam;
+            
+            r->right  -= 32;
+            r->bottom -= 32;
+            
+            return 0;
+        }
+        
+        break;
+    
+    case WM_NCPAINT:
+         
+        if(always)
+        {
+            return 1;
+        }
+        if(wparam == 1)
+        {
+            RECT const whole_rect = HM_GetWindowRect(win);
+            
+            HRGN const region = CreateRectRgnIndirect(&whole_rect);
+            
+            LRESULT result = DefWindowProc(win, msg, (HRGN) region, lparam);
+            
+            DeleteObject(region);
+            
+            return result;
+        }
+        
+        if( always)
+        {
+            RECT const whole_rect = HM_GetWindowRect(win);
+            
+            HRGN const region = (wparam == 1)
+                              ? CreateRectRgnIndirect(&whole_rect)
+                              : (HRGN) wparam;
+            
+            HDC const dc = GetDCEx(win,
+                                   region,
+                                   DCX_WINDOW  | DCX_INTERSECTRGN);
+            
+            DWORD region_size = GetRegionData(region, 1, NULL);
+            
+            RGNDATA * region_data = region_size
+                                  ? (RGNDATA*) calloc(1, region_size)
+                                  : NULL;
+            
+            if(region_data)
+            {
+                int i = 0;
+                
+                DWORD dummy = GetRegionData(region, region_size, region_data);
+
+                RECT * const rect_arr = (RECT*) region_data->Buffer;
+                
+                DWORD const rect_count = region_data->rdh.nCount;
+                
+                HDC const win_dc = GetWindowDC(win);
+                
+                // -----------------------------
+                
+                (void) dummy;
+                
+#if 1
+                DefWindowProc(win, msg, (HRGN) region, lparam);
+#else
+                for(i = 0; i < rect_count; i += 1)
+                {
+                    FillRect(win_dc, &rect_arr[i],
+                             blue_brush);
+                }
+#endif
+                
+                free(region_data);
+                
+                ReleaseDC(win, win_dc);
+                
+                region_data = 0;
+            }
+            
+            // Windows will deallocate it it was a specific set of rectangles
+            // rather than the whole window as a region.
+            if(wparam == 1)
+            {
+                DeleteObject(region);
+            }
+            
+            ReleaseDC(win, dc);
+        }
+        
+        return 0;
+#endif
+
+#if 1
+
+    case WM_VSCROLL:
+
+        if(always)
+        {
+            return DefFrameProc(win, clientwnd, msg, wparam, lparam);
+        }
+        
+        break;
+
+#endif
+
+#if 1
+    case WM_MOUSEWHEEL:
+
+        // A hacky load of shit, but it works... seemingly.
+        if(always)
+        {
+            HM_MouseWheelData CONST d = HM_GetMouseWheelData(wparam, lparam);
+            
+            unsigned const is_horiz = (d.m_control_key);
+            
+            int const  scroll_amount = d.m_distance > 0
+                                     ? SB_LINEUP : SB_LINEDOWN;
+            
+            unsigned which_sb = (is_horiz) ? WM_HSCROLL : WM_VSCROLL;
+            
+            WPARAM fake_wp = MAKEWPARAM(scroll_amount, 0);
+            
+            WPARAM const active_child =
+            (WPARAM) SendMessage(clientwnd,
+                               WM_MDIGETACTIVE,
+                               NULL,
+                               NULL);
+
+            if(active_child)
+            {
+                SendMessage(clientwnd, which_sb, fake_wp, NULL);
+            
+                SendMessage(clientwnd, WM_MDIACTIVATE, active_child,
+                            NULL);
+            
+                SendMessage((HWND) active_child,
+                            WM_NCACTIVATE,
+                            TRUE,
+                            0);
+            }
+            
+            return 0;
+        }
+        
+        break;
+#endif
+
+
+#if 1
+    case WM_SIZE:
+        
+        if(always)
+        {
+            LRESULT result = DefFrameProc(win, clientwnd, msg, wparam, lparam);
+            
+            if(debug_box)
+            {
+                RECT const r = HM_GetWindowRect(win);
+                
+                SetWindowPos(debug_box,
+                             NULL,
+                             r.right - 220, r.bottom - 60,
+                             0, 0,
+                             SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            
+            return result;
+        }
+        
+        break;
+        
+#endif
+    
+#if 1
+    case WM_MOVE:
+
+        DefFrameProc(win, clientwnd, msg, wparam, lparam);
+        
+        if(debug_box)
+        {
+            RECT const r = HM_GetWindowRect(win);
+            
+            SetWindowPos(debug_box,
+                         NULL,
+                         r.right - 220, r.bottom - 60,
+                         0, 0,
+                         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            
+        }
+        
+        break;
+#endif
+    
     case WM_DISPLAYCHANGE:
         
         if(always)
@@ -29129,6 +29455,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     GetCurrentDirectory(MAX_PATH, currdir);
     
     debug_window = CreateNotificationWindow(framewnd);
+    debug_box    = CreateNotificationBox(framewnd);
     
     while(GetMessage(&msg,0,0,0))
     {
