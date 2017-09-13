@@ -393,7 +393,7 @@ typedef struct
     
     int map_vscroll_delta;
     
-    // \task A buffer for all pixels of the map (experimental)
+    /// A buffer for all pixels of the map (experimental)
     uint8_t map_bits[512 * 512];
     
 } DUNGEDIT;

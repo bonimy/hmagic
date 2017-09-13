@@ -120,6 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
+    <ClInclude Include="CustomStyles.h" />
     <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />

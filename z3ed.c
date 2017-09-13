@@ -1199,6 +1199,8 @@ CreateNotificationWindow(HWND const p_parent)
                      0, 0, SWP_NOSIZE);
         
         ShowWindow(win, SW_SHOW);
+        
+        SetActiveWindow(p_parent);
     }
     
     return win;    
@@ -1415,7 +1417,7 @@ CreateNotificationBox(HWND const p_parent)
     {
         HWND const w = CreateWindowEx
         (
-            WS_EX_LAYERED,
+            WS_EX_LAYERED | WS_EX_TRANSPARENT,
             "HMAGIC_NOTIFY_BOX",
             NULL,
             WS_POPUP,
@@ -1437,6 +1439,8 @@ CreateNotificationBox(HWND const p_parent)
                                        LWA_ALPHA);
             
             ShowWindow(w, SW_SHOW);
+            
+            SetActiveWindow(p_parent);
         }
         
         return w;
@@ -1457,7 +1461,7 @@ CreateNotificationBox(HWND const p_parent)
 
 // =============================================================================
 
-// \task Dummied out on the HMagic2 side for now.
+// \task Dummied out except for staging1 for now.
 
 #if 0
 
@@ -29391,27 +29395,31 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             if(buffer[0])
             {
-                // \task This looks both experimental and potentially buggy.
+                // \note Alternative method of loading sprite names
+                // \task Harden this against bad input.
+                char * const b_start = (char*) calloc(1, 0x1800);
                 
-                b = (unsigned char*) malloc(0x1800);
+                char * b_iter = b_start;
                 
-                *b = *buffer;
+                // -----------------------------
                 
-                ReadFile(h, b + 1, 0x17ff, &bytes_read, 0);
+                b_iter[0] = buffer[0];
+                
+                ReadFile(h, b_iter + 1, 0x17ff, &bytes_read, 0);
                 
                 for(i = 0; i < 256; i++)
                 {
-                    strcpy(sprname[i], (char const *) b);
+                    strcpy(sprname[i], (char const *) b_iter);
                     
-                    b += 9;
+                    b_iter += 9;
                 }
                 
                 for(i = 0; i < 28; i++)
+                {
                     wsprintf(sprname[i + 256], "S%02X", i);
+                }
                 
-                b -= 0x1800;
-                
-                free(b);
+                free(b_start);
                 
                 i = 0;
             }
@@ -29459,6 +29467,24 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     while(GetMessage(&msg,0,0,0))
     {
+        if(debug_box && (msg.hwnd == debug_box) )
+        {
+            if(msg.message == WM_LBUTTONDOWN && ! always)
+            {
+                HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
+                
+                char class_name[0x200];
+                
+                GetClassName(below, class_name, 0x200);
+                
+                msg.hwnd = below;
+                
+                DispatchMessage(&msg);
+                
+                continue;
+            }
+        }
+        
         if(msg.message == WM_MOUSEWHEEL)
         {
             POINT pt;

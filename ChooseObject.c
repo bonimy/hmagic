@@ -271,7 +271,7 @@ dpcdlgproc(HWND win,
         
         ReleaseDC(win, hdc);
         
-        // \task Perhaps functionify this if it shows up a lot.
+        // \task Perhaps functionify this. It shows up about 7 times.
         if(always)
         {
             HWND const sub_wnd = GetDlgItem(win, IDC_CUSTOM2);

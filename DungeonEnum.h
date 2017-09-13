@@ -5,8 +5,7 @@
 
 // =============================================================================
 
-// IDs for controls used in the dungeon superdialog.
-// \task Get rid of manual assignments once we have all the IDs put in properly.
+/// IDs for controls used in the dungeon superdialog.
 enum
 {
     ID_DungDlgFirst   = 3000,

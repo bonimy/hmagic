@@ -102,6 +102,8 @@ PaintDungeonBlocks(RECT       const clip_r,
     
     
     // \task Temporary. We'd prefer to have a const 'ed' object.
+    // This could be adjusted in WM_CREATE or somewhere like that.
+    // Or potentially wherever it's assigned originally.
     ed->bmih.biWidth  = 512;
     ed->bmih.biHeight = 512;
     
@@ -415,7 +417,6 @@ noblock:
     
     case 2:
         
-        // \task Seems to be broken?
         if(vflip)
         {
             b2 -= scan_size * 7;
@@ -452,7 +453,6 @@ noblock:
     
     case 3:
         
-        // \task Seems to be broken?
         if(vflip)
         {            
             tmask = 0xff00ff00;
@@ -2160,6 +2160,7 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                     break;
                 
                 // \task Perhaps a swaple24b() is in order.
+                // or like... hm_memswap
                 i = ldle24b(p_ed->ebuf + p_ed->selobj - 3);
                 
                 stle24b(p_ed->ebuf + p_ed->selobj - 3,
