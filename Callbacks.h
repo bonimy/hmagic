@@ -26,7 +26,11 @@ LRESULT CALLBACK
 dungselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
 
 LRESULT CALLBACK
-dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
+DungeonMapProc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
+
+// Super Dialog procedure
+BOOL CALLBACK
+dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
 
 
 

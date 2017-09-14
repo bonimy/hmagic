@@ -81,7 +81,9 @@ void Updatemap(DUNGEDIT *ed)
         }
     }
     else
-        Drawmap(rom,ed->nbuf,buf+2,ed);
+    {
+        Drawmap(rom, ed->nbuf, buf + 2, ed);
+    }
 }
 
 // =============================================================================
@@ -1909,46 +1911,6 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
-unsigned long
-HM_NumPadKeyDownFilter(MSG const p_packed_msg)
-{
-    unsigned long const key_info = p_packed_msg.lParam;
-    
-    unsigned long const key = p_packed_msg.wParam;
-    
-    // -----------------------------
-    
-    if( ! (key_info & 0x1000000) )
-    {
-        // Allows the num pad directional keys to work regardless of 
-        // whether numlock is on or not. (This block is entered if numlock
-        // is off.)
-        
-        switch(key)
-        {
-           
-        default:
-            break;
-        
-        case VK_RIGHT:
-            return VK_NUMPAD6;
-        
-        case VK_LEFT:
-            return VK_NUMPAD4;
-        
-        case VK_DOWN:
-            return VK_NUMPAD2;
-        
-        case VK_UP:
-            return VK_NUMPAD8;
-        }
-    }
-    
-    return key;
-}
-
-// =============================================================================
-
 void
 DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                      MSG        const p_packed_msg)
@@ -2537,6 +2499,25 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
+/// DCM = "Dungeon Context Menu"
+enum
+{
+    DCM_InsertObject = 1,
+    DCM_InsertDoor,
+    DCM_Remove,
+    DCM_InsertSprite,
+    DCM_ChooseObj,
+    DCM_RemoveAll,
+    DCM_InsertItem,
+    DCM_InsertBlock,
+    DCM_InsertTorch,
+    DCM_DiscardHeader,
+    
+    DCM_GfxSubmenu = 271
+};
+
+// =============================================================================
+
 void
 DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                             MSG        const p_packed_msg)
@@ -2565,38 +2546,38 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     
     if(p_ed->selchk < SD_DungSprLayerSelected)
     {
-        AppendMenu(menu, MF_STRING, 1, "Insert an object");
+        AppendMenu(menu, MF_STRING, DCM_InsertObject, "Insert an object");
         
         if(p_ed->ew.param < 0x8c)
         {
-            AppendMenu(menu, MF_STRING, 2, "Insert a door");
+            AppendMenu(menu, MF_STRING, DCM_InsertDoor, "Insert a door");
         }
     }
     else if(p_ed->selchk == SD_DungSprLayerSelected)
     {
-        AppendMenu(menu, MF_STRING, 4, "Insert an enemy");
+        AppendMenu(menu, MF_STRING, DCM_InsertSprite, "Insert an enemy");
     }
-    else if(p_ed->selchk==7)
+    else if(p_ed->selchk == 7)
     {
-        AppendMenu(menu, MF_STRING, 7,"Insert an item");
+        AppendMenu(menu, MF_STRING, DCM_InsertItem, "Insert an item");
     }
-    else if(p_ed->selchk==8)
+    else if(p_ed->selchk == 8)
     {
-        AppendMenu(menu,MF_STRING,8,"Insert a block");
+        AppendMenu(menu,MF_STRING, DCM_InsertBlock, "Insert a block");
     }
-    else if(p_ed->selchk==9)
+    else if(p_ed->selchk == 9)
     {
-        AppendMenu(menu,MF_STRING,9,"Insert a torch");
+        AppendMenu(menu,MF_STRING, DCM_InsertTorch, "Insert a torch");
     }
     
     if(p_ed->selchk < 7 && p_ed->selobj)
     {
-        AppendMenu(menu, MF_STRING, 5, "Choose an object");
+        AppendMenu(menu, MF_STRING, DCM_ChooseObj, "Choose an object");
     }
     
     if(p_ed->selobj)
     {
-        AppendMenu(menu, MF_STRING, 3, "Remove");
+        AppendMenu(menu, MF_STRING, DCM_Remove, "Remove");
     }
     
     i = 0;
@@ -2611,7 +2592,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     {
         for(i = 0; i < 0x18c; i += 4)
         {
-            if( *(short*) (rom + 0x271de + i) == p_ed->mapnum)
+            if( *(short*) (rom + 0x271de + i) == p_ed->mapnum )
             {
                 i = 1;
                 
@@ -2619,23 +2600,30 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             }
         }
     }
-    else if(p_ed->selchk==9)
-        i=p_ed->tsize;
+    else if(p_ed->selchk == 9)
+    {
+        i = p_ed->tsize;
+    }
     
     if(i)
-        AppendMenu(menu,MF_STRING, 6, "Remove all");
+    {
+        AppendMenu(menu, MF_STRING, DCM_RemoveAll, "Remove all");
+    }
     
-    AppendMenu(menu,MF_STRING,10,"Discard room header");
+    AppendMenu(menu,MF_STRING, DCM_DiscardHeader, "Discard room header");
     
-    menu2=CreateMenu();
+    menu2 = CreateMenu();
     
     for(i=0;i<15;i++)
     {
         wsprintf(text_buf, "%d", i);
         AppendMenu(menu2,MF_STRING,256+i,text_buf);
     }
-    AppendMenu(menu2,MF_STRING,271,"Other...");
-    AppendMenu(menu,MF_POPUP|MF_STRING,(int)menu2,"Edit blocks");
+    
+    AppendMenu(menu2, MF_STRING, DCM_GfxSubmenu, "Other...");
+    
+    AppendMenu(menu, MF_POPUP | MF_STRING,(int) menu2,"Edit blocks");
+    
     GetCursorPos(&pt);
     
     k = TrackPopupMenu(menu,
@@ -2650,9 +2638,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     if(k >= 256)
     {
         if(k >= 264)
-            k+=2;
+            k += 2;
         
-        Editblocks((OVEREDIT*)p_ed,k-256, w);
+        Editblocks((OVEREDIT*) p_ed, k - 256, w);
     }
     else
     {
@@ -2664,8 +2652,10 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
         
         switch(k)
         {
-        case 1:
-            m=p_ed->selchk|1;
+        case DCM_InsertObject:
+            
+            m = p_ed->selchk|1;
+            
             Dungselectchg(p_ed, w, 0);
             p_ed->selchk &= 6;
             
@@ -2681,7 +2671,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                            (LPARAM) p_ed);
             
             if(o==-1) break;
+            
             for(n=m;n<7;n++) p_ed->chkofs[n]+=3;
+            
             p_ed->buf=realloc(p_ed->buf,p_ed->len);
             memmove(p_ed->buf+l+3,p_ed->buf+l,p_ed->len-l-3);
             p_ed->selobj=l;
@@ -2710,7 +2702,8 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             break;
         
-        case 2:
+        case DCM_InsertDoor:
+            
             m=(p_ed->selchk|1)+1;
             Dungselectchg(p_ed, w, 0);
             p_ed->selchk|=1;
@@ -2754,17 +2747,26 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 break;
             }
         
-        case 3:
+        case DCM_Remove:
+            
             Dungselectchg(p_ed, w, 0);
             m=p_ed->selchk;
             l=p_ed->selobj;
-            if(m==9) {
+            
+            if(m == 9)
+            {
                 memcpy(p_ed->tbuf+p_ed->selobj,p_ed->tbuf+p_ed->selobj+2,p_ed->tsize-p_ed->selobj-2);
                 p_ed->tsize-=2;
                 if(p_ed->tsize==2) p_ed->tsize=0;
                 p_ed->tbuf=realloc(p_ed->tbuf,p_ed->tsize);
                 p_ed->modf=1;
-            } else if(m==8) *(short*)(rom+p_ed->selobj)=-1,p_ed->ew.doc->modf=1;
+            }
+            else if(m == 8)
+            {
+                *(short*)(rom + p_ed->selobj) = -1;
+                
+                p_ed->ew.doc->modf = 1;
+            }
             else if(m==7) {
                 memcpy(p_ed->sbuf+p_ed->selobj-2,p_ed->sbuf+p_ed->selobj+1,p_ed->ssize-p_ed->selobj-1);
                 p_ed->ssize-=3;
@@ -2791,7 +2793,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 memcpy(p_ed->buf+l,p_ed->buf+l+p,p_ed->len-l);
                 p_ed->buf=realloc(p_ed->buf,p_ed->len);
                 p_ed->modf=1;
-            } else {
+            }
+            else
+            {
                 dm_k=0;
                 dm_x=0;
                 dm_l=0;
@@ -2808,7 +2812,8 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             break;
         
-        case 4:
+        case DCM_InsertSprite:
+            
             Dungselectchg(p_ed, w, 0);
             o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,512);
             
@@ -2832,14 +2837,15 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             break;
         
-        case 5:
+        case DCM_ChooseObj:
             
             DungeonMap_ObjectSelectorDialog(p_ed, p_packed_msg);
             
             return;
         
-        case 6: // delete all objects, sprites, etc. "REMOVE ALL"
+        case DCM_RemoveAll:
             
+            // delete all objects, sprites, etc. "REMOVE ALL"
             if(p_ed->selchk < SD_DungSprLayerSelected)
             {
                 k = p_ed->selchk;
@@ -2850,7 +2856,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                     break;
                 
                 if(k & 1)
+                {
                     j -= 2;
+                }
                 else
                 {
                     dm_k = 0;
@@ -2903,18 +2911,24 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             Dungselectchg(p_ed, w, 1);
             break;
         
-        case 7:
+        case DCM_InsertItem:
+            
             Dungselectchg(p_ed, w, 0);
-            p_ed->sbuf=realloc(p_ed->sbuf,p_ed->ssize+=3);
-            if(!p_ed->selobj) p_ed->selobj=p_ed->ssize-1;
+            p_ed->sbuf = realloc(p_ed->sbuf,p_ed->ssize+=3);
+            
+            if(!p_ed->selobj)
+                p_ed->selobj=p_ed->ssize-1;
+            
             memmove(p_ed->sbuf+p_ed->selobj+1,p_ed->sbuf+p_ed->selobj-2,p_ed->ssize-p_ed->selobj-1);
             *(short*)(p_ed->sbuf+p_ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
             p_ed->sbuf[p_ed->selobj]=0;
             p_ed->modf=1;
             Dungselectchg(p_ed, w, 1);
+            
             break;
         
-        case 8:
+        case DCM_InsertBlock:
+            
             Dungselectchg(p_ed, w, 0);
             
             for(k=0;k<0x18c;k+=4)
@@ -2926,8 +2940,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                     break;
                 }
             
-            if(k==0x18c)
+            if(k == 0x18c)
                 MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
+            
             p_ed->ew.doc->modf=1;
             
             Updatemap(p_ed);
@@ -2935,7 +2950,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     
             break;
         
-        case 9:
+        case DCM_InsertTorch:
             
             Dungselectchg(p_ed, w, 0);
             k=p_ed->tsize;
@@ -2957,9 +2972,9 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             break;
         
-        case 10:
+        case DCM_DiscardHeader:
             
-            i = askinteger(295,"Use another header","Room #");
+            i = askinteger(295, "Use another header","Room #");
             
             if(i < 0)
                 break;
@@ -3052,6 +3067,8 @@ DungeonMap_GetEditData(HWND const p_win)
 
 // =============================================================================
 
+/// Returns true if the backing data for the editor is a prerequisite for
+/// handling the message. false otherwise.
 BOOL
 DungeonMap_NeedEditData(MSG    const p_packed_msg,
                         void * const p_edit_structure)
@@ -3081,19 +3098,19 @@ DungeonMap_NeedEditData(MSG    const p_packed_msg,
         
         if( ! p_edit_structure )
         {
-            return FALSE;
+            return TRUE;
         }
         
         break;
     }
     
-    return TRUE;
+    return FALSE;
 }
 
 // =============================================================================
 
 LRESULT CALLBACK
-dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
+DungeonMapProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 {
     // Handles the actual dungeon map portion
     // of the dungeon dialog
