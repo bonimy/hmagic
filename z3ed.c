@@ -28763,7 +28763,7 @@ deflt:
     return 0;
 }
 
-int
+BOOL
 Loadsprnames(char   const * const p_buffer,
              size_t         const p_size)
 {
@@ -28784,7 +28784,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         
         name_len = p_buffer[j];
@@ -28797,7 +28797,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         else if(name_len == 0)
         {
@@ -28807,7 +28807,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         
         j += 1;
@@ -28821,7 +28821,7 @@ Loadsprnames(char   const * const p_buffer,
                        MB_OK);
             
             // indicate that we had a problem.
-            return 1;
+            return FALSE;
         }
         
         memcpy(sprname[i],
@@ -28834,8 +28834,305 @@ Loadsprnames(char   const * const p_buffer,
         j += name_len;
     }
     
-    return 0;
+    return TRUE;
 }
+
+// =============================================================================
+
+typedef
+struct
+{
+    BOOL m_valid_file;
+    
+    HANDLE m_h;
+    
+    DWORD m_file_size;
+    
+    char * m_contents;
+    
+} HM_FileStat;
+
+
+// =============================================================================
+
+HM_FileStat
+HM_LoadFileContents(char const * const p_file_name)
+{
+    HM_FileStat fail_state = { FALSE, INVALID_HANDLE_VALUE, 0, NULL };
+    
+    HANDLE const h = CreateFile(p_file_name,
+                                GENERIC_READ,
+                                FILE_SHARE_READ,
+                                0,
+                                OPEN_EXISTING,
+                                0,
+                                0);
+    
+    BOOL const valid_file = (h != INVALID_HANDLE_VALUE);
+    
+    DWORD const file_size = (valid_file) ? GetFileSize(h, 0) : 0;
+    
+    char * const contents = (file_size) ? (char*) calloc(1, file_size) : 0;
+    
+    if(valid_file)
+    {
+        DWORD bytes_read = 0;
+        
+        // -----------------------------
+        
+        ReadFile(h, contents, file_size, &bytes_read, NULL);
+        
+        if(file_size == bytes_read)
+        {
+            HM_FileStat succ_state = { TRUE, h, file_size, contents };
+            
+            return succ_state;
+        }
+    }
+    
+    if(valid_file)
+    {
+        CloseHandle(h);
+    }
+    
+    if(contents)
+    {
+        free(contents);
+    }
+    
+    return fail_state;
+}
+
+// =============================================================================
+
+void
+HM_FreeFileStat(HM_FileStat * const p_s)
+{
+    if( ! p_s )
+    {
+        return;
+    }
+    
+    if(p_s->m_contents)
+    {
+        free(p_s->m_contents);
+        
+        p_s->m_contents = NULL;
+    }
+    
+    if(p_s->m_h != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(p_s->m_h);
+        
+        p_s->m_h = INVALID_HANDLE_VALUE;
+    }
+    
+    p_s->m_valid_file = FALSE;
+    p_s->m_file_size = 0;
+}
+
+// =============================================================================
+
+BOOL
+ValidateAltSpriteNamesFile(HM_FileStat const * const p_s)
+{
+    unsigned i = 0;
+    
+    char const * b = p_s->m_contents;
+    
+    // -----------------------------
+    
+    if(p_s->m_file_size < (256 * 9) )
+    {
+        return FALSE;
+    }
+    
+    // The purpose of this loop is to check that all characters in the file
+    // are printable / displayable. It also verifies that each name
+    // actually contains a null terminator. This limits the names to
+    // 8 characters for a well-formed file that passes validation.
+    for
+    (
+        i = 0;
+        i < 256;
+        i += 1, b += 9
+    )
+    {
+        BOOL found_null = FALSE;
+        
+        unsigned j = 0;
+        
+        // -----------------------------
+        
+        for(j = 0; j < 9; j += 1)
+        {
+            if(b[j] == '\0')
+            {
+                found_null = TRUE;
+                
+                continue;
+            }
+            
+            if( ! isprint( b[j] ) )
+            {
+                return FALSE;
+            }
+        }
+        
+        if( ! found_null )
+        {
+            return FALSE;
+        }
+    }
+    
+    return TRUE;
+}
+
+// =============================================================================
+
+// Creates an example alternate spr names file that should fail validation
+// because it has nonprintable characters (even though they wouldn't be
+// picked up by the copying mechanism, this is a bit of an overzealous
+// check, but it's really hypothetical anyway as we've not seen one of these
+// alternate format sprite names files out in the wild. The program also
+// doesn't seem to have any leftover code to generate one of its own, too.
+void
+CreateBadAltSprNamesFile(void)
+{
+    FILE *f = fopen("altsprname_good.DAT", "wb");
+    
+    int i = 0;
+    
+    for(i = 0; i < 256; i += 1)
+    {
+        char text_buf[0x100] = { 0 };
+        
+        sprintf(text_buf, "spr%02x", i);
+        
+        text_buf[6] = 0x01;
+        text_buf[7] = 0x02;
+        text_buf[8] = 0x03;
+        
+        fwrite(text_buf, 1, 9, f);
+    }
+    
+    fclose(f);
+}
+
+// =============================================================================
+
+// Creates an example alternate spr names file that should pass validation.
+void
+CreateGoodAltSprNamesFile(void)
+{
+    FILE *f = fopen("altsprname_good.DAT", "wb");
+    
+    int i = 0;
+    
+    for(i = 0; i < 256; i += 1)
+    {
+        char text_buf[0x100] = { 0 };
+        
+        sprintf(text_buf, "spr%02x", i);
+        
+        text_buf[8] = 0x00;
+        
+        fwrite(text_buf, 1, 9, f);
+    }
+    
+    fclose(f);
+}
+
+// =============================================================================
+
+// \note Alternative method of loading sprite names
+// Slightly different format, probably dates to an earlier time in the
+// development of Hyrule Magic. In practice limits each sprite name to 8
+// characters. Overlord sprites are coerced into using rather uninformative
+// names in this scheme too.
+BOOL
+LoadAltSpriteNamesFile(HM_FileStat const * const p_s)
+{
+     char const * b = p_s->m_contents;
+     
+     int i = 0;
+     
+     // -----------------------------
+     
+     if( ValidateAltSpriteNamesFile(p_s) == FALSE )
+     {
+         return FALSE;
+     }
+     
+     for(i = 0; i < 256; i++, b += 9)
+     {
+         strcpy(sprname[i], b);
+     }
+     
+     // Give overlord sprites generic as hell names.
+     for(i = 0; i < 28; i++)
+     {
+         sprintf(sprname[i + 256], "S%02X", i);
+     }
+     
+     return TRUE;
+}
+
+// =============================================================================
+
+BOOL
+LoadStdSpriteNamesFile(HM_FileStat const * const p_s)
+{
+    if(p_s->m_file_size < 5)
+    {
+        return FALSE;
+    }
+    else
+    {
+        DWORD const size_alleged = get_32_le((uint8_t *) p_s->m_contents + 1);
+        
+        // Claims to have more data than we read out.
+        if( size_alleged > (p_s->m_file_size - 5) )
+        {
+            return FALSE;
+        }
+        else
+        {
+            return Loadsprnames(&p_s->m_contents[5],
+                                size_alleged);
+        }
+    }
+}
+
+// =============================================================================
+
+BOOL
+LoadSpriteNamesFile(void)
+{
+    BOOL result = FALSE;
+    
+    HM_FileStat s = HM_LoadFileContents("sprname.dat");
+    
+    // -----------------------------
+    
+    if( s.m_valid_file )
+    {
+        if(s.m_contents[0])
+        {
+            result = LoadAltSpriteNamesFile(&s);
+        }
+        else
+        {
+            result = LoadStdSpriteNamesFile(&s);
+        }
+    }
+    
+    HM_FreeFileStat(&s);
+        
+    return result;
+}
+
+// =============================================================================
 
 int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 {
@@ -29181,7 +29478,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                 // Number of bytes able to be read from the section.
                 DWORD n = 0;
                 
-                int spr_load_error = 0;
+                BOOL spr_loaded = FALSE;
                 
                 unsigned char *section_data = 0;
                 
@@ -29210,10 +29507,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     // Use an array of sprite names that has been directly
                     // inlined in the config file.
-                    spr_load_error = Loadsprnames((char const *) section_data,
+                    spr_loaded = Loadsprnames((char const *) section_data,
                                                   section_size);
                     
-                    if(spr_load_error == 0)
+                    if(spr_loaded)
                     {
                         l |= CFG_SPRNAMES_LOADED;
                     }
@@ -29347,18 +29644,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     UpdMRU();
     
-    if( !(l & CFG_SPRNAMES_LOADED) )
+    if( ! (l & CFG_SPRNAMES_LOADED) )
     {
-        h = CreateFile("SPRNAME.DAT",
-                       GENERIC_READ,
-                       FILE_SHARE_READ,
-                       0,
-                       OPEN_EXISTING,
-                       0,
-                       0);
-        
-        if(h == INVALID_HANDLE_VALUE)
-        defaultnames:
+        if( LoadSpriteNamesFile() == FALSE )
         {
             HRSRC const
             spr_names_resource = FindResource(0,
@@ -29386,77 +29674,6 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             UnlockResource(spr_names_handle);
             
             FreeResource(spr_names_resource);
-        }
-        else
-        {
-            DWORD bytes_read = 0;
-            
-            ReadFile(h, buffer, 1, &bytes_read, 0);
-            
-            if(buffer[0])
-            {
-                // \note Alternative method of loading sprite names
-                // \task Harden this against bad input.
-                char * const b_start = (char*) calloc(1, 0x1800);
-                
-                char * b_iter = b_start;
-                
-                // -----------------------------
-                
-                b_iter[0] = buffer[0];
-                
-                ReadFile(h, b_iter + 1, 0x17ff, &bytes_read, 0);
-                
-                for(i = 0; i < 256; i++)
-                {
-                    strcpy(sprname[i], (char const *) b_iter);
-                    
-                    b_iter += 9;
-                }
-                
-                for(i = 0; i < 28; i++)
-                {
-                    wsprintf(sprname[i + 256], "S%02X", i);
-                }
-                
-                free(b_start);
-                
-                i = 0;
-            }
-            else
-            {
-                uint8_t desc_buffer[4];
-                
-                char * spr_names = 0;
-                
-                DWORD num_read     = 0;
-                DWORD size_actual  = 0;
-                DWORD size_alleged = 0;
-                
-                // -----------------------------
-                
-                ReadFile(h, desc_buffer, 4, &num_read, 0);
-                
-                size_alleged = get_32_le(desc_buffer);
-                
-                spr_names = (char*) calloc(1, size_alleged);
-                
-                ReadFile(h, spr_names, size_alleged, &size_actual, 0);
-                
-                if(size_actual == size_alleged)
-                {
-                    i = Loadsprnames(spr_names, size_actual);
-                }
-                
-                free(spr_names);
-            }
-            
-            CloseHandle(h);
-            
-            if(i)
-            {
-                goto defaultnames;
-            }
         }
     }
     
