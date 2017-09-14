@@ -174,7 +174,10 @@ DrawDungeonBlock(DUNGEDIT * const ed,
 
     // \note Kinda clever. This writes in a multiple of 0x10 (0x00 to 0x70,
     // inclusive) to 4 separate byte locations.
-    *(char*) &col = *(((char*)&col) + 1) = *(((char*)&col) + 2) = *(((char*)&col) + 3) = ((n & 0x1c00) >> 6);
+    *(char*) &col = *(((char*)&col) + 1)
+                  = *(((char*)&col) + 2)
+                  = *(((char*)&col) + 3)
+                  = ((n & 0x1c00) >> 6);
     
     if((t & 24) == 24)
     {
@@ -2419,33 +2422,642 @@ selfirst:
 
 // =============================================================================
 
-#define WPROCSIG() (HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
-
-LRESULT CALLBACK
-dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
+void
+DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
+                                MSG const p_packed_msg)
 {
-    // Handles the actual dungeon map portion
-    // of the dungeon dialog
+    int i = 0;
     
-    char text_buf[0x200];
+    HWND const w = p_packed_msg.hwnd;
     
-    SCROLLINFO si;
-    
-    int i, j, k, l, m, n, o, p, q = 0;
-    
-    DUNGEDIT * const ed = (DUNGEDIT*) GetWindowLong(p_win, GWL_USERDATA);
-    
-    HMENU menu,menu2;
-    POINT pt;
-    
-    unsigned char * rom = 0;
-    
-    MSG const packed_msg = HM_PackMessage(p_win, p_msg, p_wp, p_lp);
-
     // -----------------------------
     
+    if( ! p_ed->selobj )
+        return;
+    
+    // We don't have a dialog for detailed manipulation of torches, blocks,
+    // etc.
+    if(p_ed->selchk >= 7)
+        return;
+    
+    if(p_ed->selchk == SD_DungSprLayerSelected)
+    {
+        int q = (p_ed->ebuf[p_ed->selobj+1]>=224)?768:512;
+        
+        i = ShowDialog(hinstance,
+                       MAKEINTRESOURCE(IDD_DIALOG9),
+                       framewnd,
+                       choosesprite,
+                       p_ed->ebuf[p_ed->selobj+2] + q);
+    }
+    else
+    {
+        i = ShowDialog(hinstance,
+                       MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                       framewnd,
+                       choosedung,
+                       (LPARAM) p_ed);
+    }
+    
+    if(i == -1)
+        return;
+    
+    Dungselectchg(p_ed, w, 0);
+    SetFocus(w);
+    
+    if(p_ed->selchk == SD_DungSprLayerSelected)
+    {
+        p_ed->ebuf[p_ed->selobj + 2] = i;
+        
+        if(i & 256)
+            p_ed->ebuf[p_ed->selobj + 1] |= 224;
+        else
+            p_ed->ebuf[p_ed->selobj + 1] &= 31;
+        
+        p_ed->modf=1;
+        
+        Dungselectchg(p_ed, w, 1);
+        
+        return;
+    }
+    else if(p_ed->selchk & 1)
+    {
+        getdoor(p_ed->buf+p_ed->selobj,p_ed->ew.doc->rom);
+        
+        i -= 0x1b8;
+        dm_k = i / 42;
+        dm_l = i % 42;
+        
+        {
+            if(dm_l > 41)
+                dm_l -= 42;
+            
+            if(dm_l > 41)
+                dm_l += 84;
+            
+            setdoor(p_ed->buf + p_ed->selobj);
+            p_ed->modf = 1;
+            
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+            
+            return;
+        }
+    }
+    else
+    {
+        getobj(p_ed->buf + p_ed->selobj);
+        
+        if(i < 0x40)
+        {
+            dm_k = i + 0x100;
+        }
+        else if(i < 0x138)
+        {
+            int _ = (dm_k -= 0x40);
+            int j = obj3_t[dm_k];
+            
+            dm_l = (j == 0) | (j == 2);
+            
+            (void) _;
+        }
+        else
+        {
+            dm_k = ( ( (i - 0x138) >> 4) & 7) + 0xf8;
+            dm_l = (i - 0x138) & 15;
+        }
+        
+        setobj(p_ed, p_ed->buf + p_ed->selobj);
+        Updatemap(p_ed);
+        Dungselectchg(p_ed, w, 1);
+        
+        return;
+    }
+}
+
+// =============================================================================
+
+void
+DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
+                            MSG        const p_packed_msg)
+{
+    char text_buf[0x200];
+    
+    uint8_t const * const rom = p_ed->ew.doc->rom;
+    
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    
+    POINT pt = { 0 };
+    
+    HWND const w = p_packed_msg.hwnd;
+    
+    HMENU const menu = CreatePopupMenu();
+    
+    HMENU menu2 = 0;
+    
+    HM_MouseData const d = HM_GetMouseData(p_packed_msg);
+    
+    // -----------------------------
+    
+    SetFocus(w);
+    
+    if(p_ed->selchk < SD_DungSprLayerSelected)
+    {
+        AppendMenu(menu, MF_STRING, 1, "Insert an object");
+        
+        if(p_ed->ew.param < 0x8c)
+        {
+            AppendMenu(menu, MF_STRING, 2, "Insert a door");
+        }
+    }
+    else if(p_ed->selchk == SD_DungSprLayerSelected)
+    {
+        AppendMenu(menu, MF_STRING, 4, "Insert an enemy");
+    }
+    else if(p_ed->selchk==7)
+    {
+        AppendMenu(menu, MF_STRING, 7,"Insert an item");
+    }
+    else if(p_ed->selchk==8)
+    {
+        AppendMenu(menu,MF_STRING,8,"Insert a block");
+    }
+    else if(p_ed->selchk==9)
+    {
+        AppendMenu(menu,MF_STRING,9,"Insert a torch");
+    }
+    
+    if(p_ed->selchk < 7 && p_ed->selobj)
+    {
+        AppendMenu(menu, MF_STRING, 5, "Choose an object");
+    }
+    
+    if(p_ed->selobj)
+    {
+        AppendMenu(menu, MF_STRING, 3, "Remove");
+    }
+    
+    i = 0;
+    
+    if(p_ed->selchk < SD_DungSprLayerSelected)
+        i = p_ed->chkofs[p_ed->selchk + 1] - p_ed->chkofs[p_ed->selchk] > 2;
+    else if(p_ed->selchk == SD_DungSprLayerSelected)
+        i = p_ed->esize > 1;
+    else if(p_ed->selchk == 7)
+        i = p_ed->ssize > 0;
+    else if(p_ed->selchk == 8)
+    {
+        for(i = 0; i < 0x18c; i += 4)
+        {
+            if( *(short*) (rom + 0x271de + i) == p_ed->mapnum)
+            {
+                i = 1;
+                
+                break;
+            }
+        }
+    }
+    else if(p_ed->selchk==9)
+        i=p_ed->tsize;
+    
+    if(i)
+        AppendMenu(menu,MF_STRING, 6, "Remove all");
+    
+    AppendMenu(menu,MF_STRING,10,"Discard room header");
+    
+    menu2=CreateMenu();
+    
+    for(i=0;i<15;i++)
+    {
+        wsprintf(text_buf, "%d", i);
+        AppendMenu(menu2,MF_STRING,256+i,text_buf);
+    }
+    AppendMenu(menu2,MF_STRING,271,"Other...");
+    AppendMenu(menu,MF_POPUP|MF_STRING,(int)menu2,"Edit blocks");
+    GetCursorPos(&pt);
+    
+    k = TrackPopupMenu(menu,
+                       TPM_RETURNCMD | TPM_LEFTBUTTON | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY,
+                       pt.x, pt.y, 0, w, 0);
+    
+    DestroyMenu(menu);
+    
+    i = (d.m_rel_pos.x) + (p_ed->mapscrollh << 5);
+    j = (d.m_rel_pos.y) + (p_ed->mapscrollv * p_ed->map_vscroll_delta);
+    
+    if(k >= 256)
+    {
+        if(k >= 264)
+            k+=2;
+        
+        Editblocks((OVEREDIT*)p_ed,k-256, w);
+    }
+    else
+    {
+        int l = 0;
+        int m = 0;
+        int n = 0;
+        int o = 0;
+        int p = 0;
+        
+        switch(k)
+        {
+        case 1:
+            m=p_ed->selchk|1;
+            Dungselectchg(p_ed, w, 0);
+            p_ed->selchk &= 6;
+            
+            if(p_ed->selobj>=p_ed->chkofs[m] || !p_ed->selobj)
+                l = p_ed->chkofs[m] - 2;
+            else
+                l = p_ed->selobj;
+            
+            o = ShowDialog(hinstance,
+                           MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                           framewnd,
+                           choosedung,
+                           (LPARAM) p_ed);
+            
+            if(o==-1) break;
+            for(n=m;n<7;n++) p_ed->chkofs[n]+=3;
+            p_ed->buf=realloc(p_ed->buf,p_ed->len);
+            memmove(p_ed->buf+l+3,p_ed->buf+l,p_ed->len-l-3);
+            p_ed->selobj=l;
+            dm_x=((i>>3)&0x3f)|((j<<3)&0xfc0);
+            p_ed->buf[l]=0;
+            p_ed->buf[l+1]=0;
+            p_ed->buf[l+2]=0;
+            
+            if(o < 0x40)
+                dm_k=o + 0x100;
+            else if(o<0x138)
+            {
+                dm_k=o - 0x40;
+                j=obj3_t[dm_k];
+                dm_l=(j==0)|(j==2);
+            }
+            else
+            {
+                dm_k = ( ( (o - 0x138) >> 4) & 7) + 0xf8;
+                dm_l = (o - 0x138) & 15;
+            }
+            
+            setobj(p_ed, p_ed->buf + p_ed->selobj);
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+            
+            break;
+        
+        case 2:
+            m=(p_ed->selchk|1)+1;
+            Dungselectchg(p_ed, w, 0);
+            p_ed->selchk|=1;
+            if(p_ed->selobj=p_ed->chkofs[m-1] || !p_ed->selobj) l=p_ed->chkofs[m]-2;
+            else l=p_ed->selobj;
+            if(l==p_ed->chkofs[m-1]-2) p=4; else p=2;
+            
+            o = ShowDialog(hinstance,
+                           MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
+                           framewnd,choosedung,
+                           (LPARAM)p_ed );
+            
+            if(o == -1)
+                break;
+            
+            for(n = m; n < 7; n++)
+                p_ed->chkofs[n] += p;
+            
+            p_ed->buf = (uint8_t*) realloc(p_ed->buf,p_ed->len);
+            
+            memcpy(p_ed->buf+l+p,p_ed->buf+l,p_ed->len-l-p);
+            if(p==4) { *(short*)(p_ed->buf+l)=-16; l+=2; }
+            p_ed->selobj=l;
+            o-=0x1b8;
+            dm_k = o / 42;
+            dm_l = o % 42;
+            
+            {
+                if(dm_l > 41)
+                    dm_l -= 42;
+                
+                if(dm_l > 41)
+                    dm_l += 84;
+                
+                setdoor(p_ed->buf + p_ed->selobj);
+                p_ed->modf = 1;
+                
+                Updatemap(p_ed);
+                Dungselectchg(p_ed, w, 1);
+                
+                break;
+            }
+        
+        case 3:
+            Dungselectchg(p_ed, w, 0);
+            m=p_ed->selchk;
+            l=p_ed->selobj;
+            if(m==9) {
+                memcpy(p_ed->tbuf+p_ed->selobj,p_ed->tbuf+p_ed->selobj+2,p_ed->tsize-p_ed->selobj-2);
+                p_ed->tsize-=2;
+                if(p_ed->tsize==2) p_ed->tsize=0;
+                p_ed->tbuf=realloc(p_ed->tbuf,p_ed->tsize);
+                p_ed->modf=1;
+            } else if(m==8) *(short*)(rom+p_ed->selobj)=-1,p_ed->ew.doc->modf=1;
+            else if(m==7) {
+                memcpy(p_ed->sbuf+p_ed->selobj-2,p_ed->sbuf+p_ed->selobj+1,p_ed->ssize-p_ed->selobj-1);
+                p_ed->ssize-=3;
+                p_ed->sbuf=realloc(p_ed->sbuf,p_ed->ssize);
+                p_ed->modf=1;
+            }
+            else if(m == SD_DungSprLayerSelected)
+            {
+                memcpy(p_ed->ebuf+p_ed->selobj,p_ed->ebuf+p_ed->selobj+3,p_ed->esize-p_ed->selobj-3);
+                p_ed->esize-=3;
+                p_ed->ebuf=realloc(p_ed->ebuf,p_ed->esize);
+                p_ed->modf=1;
+            }
+            else if(m & 1)
+            {
+                if(p_ed->chkofs[m+1] == p_ed->chkofs[m] + 4)
+                    p = 4,l -= 2;
+                else
+                    p = 2;
+                
+                for(n = m + 1; n < 7; n++)
+                    p_ed->chkofs[n] -= p;
+                
+                memcpy(p_ed->buf+l,p_ed->buf+l+p,p_ed->len-l);
+                p_ed->buf=realloc(p_ed->buf,p_ed->len);
+                p_ed->modf=1;
+            } else {
+                dm_k=0;
+                dm_x=0;
+                dm_l=0;
+                setobj(p_ed,p_ed->buf+l);
+                for(n=m+1;n<7;n++) p_ed->chkofs[n]-=3;
+                memcpy(p_ed->buf+l,p_ed->buf+l+3,p_ed->len-l);
+                p_ed->buf=realloc(p_ed->buf,p_ed->len);
+            }
+            
+            p_ed->selobj = 0;
+            
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+            
+            break;
+        
+        case 4:
+            Dungselectchg(p_ed, w, 0);
+            o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,512);
+            
+            if(o == -1)
+                break;
+            
+            if(!p_ed->selobj)
+                p_ed->selobj = 1;
+            
+            p_ed->esize+=3;
+            p_ed->ebuf=realloc(p_ed->ebuf,p_ed->esize);
+            memmove(p_ed->ebuf+p_ed->selobj+3,p_ed->ebuf+p_ed->selobj,p_ed->esize-p_ed->selobj-3);
+            p_ed->ebuf[p_ed->selobj]=j>>4;
+            i>>=4;
+            if(o&256) i+=224;
+            p_ed->ebuf[p_ed->selobj+1]=i;
+            p_ed->ebuf[p_ed->selobj+2]=o;
+            p_ed->modf = 1;
+            
+            Dungselectchg(p_ed, w, 1);
+            
+            break;
+        
+        case 5:
+            
+            DungeonMap_ObjectSelectorDialog(p_ed, p_packed_msg);
+            
+            return;
+        
+        case 6: // delete all objects, sprites, etc. "REMOVE ALL"
+            
+            if(p_ed->selchk < SD_DungSprLayerSelected)
+            {
+                k = p_ed->selchk;
+                j = p_ed->chkofs[k];
+                i = p_ed->chkofs[k + 1] - 2;
+                
+                if(j == i)
+                    break;
+                
+                if(k & 1)
+                    j -= 2;
+                else
+                {
+                    dm_k = 0;
+                    dm_x = 0;
+                    dm_l = 0;
+                    
+                    for(l = j; l < i; l += 3)
+                        setobj(p_ed, p_ed->buf + l);
+                }
+                
+                memcpy(p_ed->buf + j, p_ed->buf + i, p_ed->len - i);
+                
+                for(k += 1; k < 7; k++)
+                    p_ed->chkofs[k] += j - i;
+                
+                p_ed->buf = realloc(p_ed->buf, p_ed->len);
+                
+                Updatemap(p_ed);
+            }
+            else if(p_ed->selchk == SD_DungSprLayerSelected)
+            {
+                // remove all sprites
+                
+                p_ed->ebuf = realloc(p_ed->ebuf,1);
+                p_ed->esize = 1;
+                p_ed->modf = 1;
+            }
+            else if(p_ed->selchk == 7)
+            {
+                p_ed->sbuf=realloc(p_ed->sbuf,0);
+                p_ed->ssize=0;
+                p_ed->modf=1;
+            }
+            else if(p_ed->selchk==8)
+            {
+                for(i=0;i<0x18c;i+=4)
+                    if(*(short*)(rom + 0x271de + i)==p_ed->mapnum) *(short*)(rom + 0x271de + i)=-1;
+                p_ed->ew.doc->modf=1;
+                Updatemap(p_ed);
+            }
+            else
+            {
+                p_ed->tbuf=realloc(p_ed->tbuf,0);
+                p_ed->tsize=0;
+                p_ed->modf=1;
+                Updatemap(p_ed);
+            }
+            InvalidateRect(w, 0, 0);
+            p_ed->selobj=0;
+            Dungselectchg(p_ed, w, 1);
+            break;
+        
+        case 7:
+            Dungselectchg(p_ed, w, 0);
+            p_ed->sbuf=realloc(p_ed->sbuf,p_ed->ssize+=3);
+            if(!p_ed->selobj) p_ed->selobj=p_ed->ssize-1;
+            memmove(p_ed->sbuf+p_ed->selobj+1,p_ed->sbuf+p_ed->selobj-2,p_ed->ssize-p_ed->selobj-1);
+            *(short*)(p_ed->sbuf+p_ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
+            p_ed->sbuf[p_ed->selobj]=0;
+            p_ed->modf=1;
+            Dungselectchg(p_ed, w, 1);
+            break;
+        
+        case 8:
+            Dungselectchg(p_ed, w, 0);
+            
+            for(k=0;k<0x18c;k+=4)
+                if( is16b_neg1(rom + 0x271de + k) )
+                {
+                    *(short*)(rom + 0x271de + k)=p_ed->mapnum;
+                    *(short*)(rom + 0x271e0 + k)=((i>>2)&0x7e)|((j<<4)&0x1f80);
+                    p_ed->selobj=0x271de + k;
+                    break;
+                }
+            
+            if(k==0x18c)
+                MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
+            p_ed->ew.doc->modf=1;
+            
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+    
+            break;
+        
+        case 9:
+            
+            Dungselectchg(p_ed, w, 0);
+            k=p_ed->tsize;
+            
+            if(!k)
+                k += 2;
+            
+            p_ed->selobj=k;
+            p_ed->tbuf=realloc(p_ed->tbuf,k+=2);
+            p_ed->tsize=k;
+            
+            *(short*)(p_ed->tbuf)=p_ed->mapnum;
+            *(short*)(p_ed->tbuf+k-2)=((i>>2)&0x7e)|((j<<4)&0x1f80);
+            
+            p_ed->modf = 1;
+            
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+            
+            break;
+        
+        case 10:
+            
+            i = askinteger(295,"Use another header","Room #");
+            
+            if(i < 0)
+                break;
+            
+            LoadHeader(p_ed, i);
+            
+            p_ed->hmodf = i + 2;
+            p_ed->modf  = i + 2;
+            
+            Updatemap(p_ed);
+            Dungselectchg(p_ed, w, 1);
+            
+            break;
+        }
+    }
+}
+
+// =============================================================================
+
+void
+DungeonMap_OnSize(DUNGEDIT * const p_ed,
+                  MSG        const p_packed_msg)
+{
+    LPARAM const lp = p_packed_msg.lParam;
+    
+    unsigned const width  = LOWORD(lp);
+    unsigned const height = HIWORD(lp);
+    
+    HWND const w = p_packed_msg.hwnd;
+    
+    // -----------------------------
+    
+    // Do vertical settings...
+    if(always)
+    {
+        SCROLLINFO si = { sizeof(si), SIF_RANGE | SIF_PAGE };
+        
+        unsigned const v_divider = 12;
+        
+        si.nMin = 0;
+        si.nMax = ( ( (512 + 32) / v_divider ) - 1 );
+        
+        si.nPage = (height / v_divider);
+        
+        p_ed->mappagev = si.nPage;
+        
+        p_ed->map_vscroll_delta = v_divider;
+        
+        SetScrollInfo(w, SB_VERT, &si, 1);
+    }
+    
+    if(always)
+    {
+        SCROLLINFO si = { sizeof(si), SIF_RANGE | SIF_PAGE };
+        
+        si.nMin = 0;
+        si.nMax = 15;
+        
+        si.nPage = (width >> 5);
+        
+        p_ed->mappageh = si.nPage;
+        
+        SetScrollInfo(w, SB_HORZ, &si, 1);
+    }
+    
+    p_ed->mapscrollv = Handlescroll(w,
+                                    -1,
+                                    p_ed->mapscrollv,
+                                    p_ed->mappagev,
+                                    SB_VERT,
+                                    16,
+                                    p_ed->map_vscroll_delta);
+    
+    p_ed->mapscrollh = Handlescroll(w,
+                                    -1,
+                                    p_ed->mapscrollh,
+                                    p_ed->mappageh,
+                                    SB_HORZ,
+                                    16,
+                                    32);
+}
+
+// =============================================================================
+
+DUNGEDIT *
+DungeonMap_GetEditData(HWND const p_win)
+{
+    return (DUNGEDIT*) GetWindowLongPtr(p_win, GWLP_USERDATA);
+}
+
+// =============================================================================
+
+BOOL
+DungeonMap_NeedEditData(MSG    const p_packed_msg,
+                        void * const p_edit_structure)
+{
     // Some messages require a valid editor pointer to do anything useful.
-    switch(p_msg)
+    switch(p_packed_msg.message)
     {
     
     default:
@@ -2467,12 +3079,34 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
     case WM_KILLFOCUS:
     case WM_PAINT:
         
-        if( ! ed )
+        if( ! p_edit_structure )
         {
-            return 0;
+            return FALSE;
         }
         
         break;
+    }
+    
+    return TRUE;
+}
+
+// =============================================================================
+
+LRESULT CALLBACK
+dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
+{
+    // Handles the actual dungeon map portion
+    // of the dungeon dialog
+    
+    MSG const packed_msg = HM_PackMessage(p_win, p_msg, p_wp, p_lp);
+
+    DUNGEDIT * const ed = DungeonMap_GetEditData(p_win);
+    
+    // -----------------------------
+    
+    if( DungeonMap_NeedEditData(packed_msg, ed) )
+    {
+        return 0;
     }
     
     switch(p_msg)
@@ -2512,49 +3146,7 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
     
     case WM_SIZE:
         
-        si.cbSize = sizeof(si);
-        
-        si.fMask = SIF_RANGE | SIF_PAGE;
-        
-        {
-            unsigned const height = HIWORD(p_lp);
-            
-            unsigned const divider = 9;
-            
-            si.nMin = 0;
-            si.nMax = ( ( (512 + 1024) / divider ) - 1 );
-            
-            si.nPage = (height / divider);
-            
-            ed->mappagev = si.nPage;
-            ed->map_vscroll_delta = divider;
-        }
-        
-        SetScrollInfo(p_win, SB_VERT, &si, 1);
-        
-        si.nMin = 0;
-        si.nMax = 15;
-        
-        si.nPage = (p_lp & 65535) >> 5;
-        ed->mappageh = si.nPage;
-        
-        SetScrollInfo(p_win, SB_HORZ, &si, 1);
-        
-        ed->mapscrollv = Handlescroll(p_win,
-                                      -1,
-                                      ed->mapscrollv,
-                                      ed->mappagev,
-                                      SB_VERT,
-                                      16,
-                                      ed->map_vscroll_delta);
-        
-        ed->mapscrollh = Handlescroll(p_win,
-                                      -1,
-                                      ed->mapscrollh,
-                                      ed->mappageh,
-                                      SB_HORZ,
-                                      16,
-                                      32);
+        DungeonMap_OnSize(ed, packed_msg);
         
         break;
     
@@ -2603,491 +3195,14 @@ dungmapproc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
         break;
     
     case WM_LBUTTONDBLCLK:
-    chooseobj:
         
-        if(!ed->selobj)
-            break;
-        
-        if(ed->selchk >= 7)
-            break;
-        
-        if(ed->selchk == SD_DungSprLayerSelected)
-        {
-            q = (ed->ebuf[ed->selobj+1]>=224)?768:512;
-            
-            i = ShowDialog(hinstance,
-                           MAKEINTRESOURCE(IDD_DIALOG9),
-                           framewnd,
-                           choosesprite,
-                           ed->ebuf[ed->selobj+2] + q);
-        }
-        else
-        {
-            i = ShowDialog(hinstance,
-                           MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                           framewnd,
-                           choosedung,
-                           (LPARAM) ed);
-        }
-        
-        if(i == -1)
-            break;
-        
-        Dungselectchg(ed, p_win, 0);
-        SetFocus(p_win);
-        
-        if(ed->selchk == SD_DungSprLayerSelected)
-        {
-            ed->ebuf[ed->selobj+2]=i;
-            
-            if(i&256)
-                ed->ebuf[ed->selobj+1]|=224;
-            else
-                ed->ebuf[ed->selobj+1]&=31;
-            
-            ed->modf=1;
-            
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        }
-        else if(ed->selchk & 1)
-        {
-            getdoor(ed->buf+ed->selobj,ed->ew.doc->rom);
-            
-            i -= 0x1b8;
-            dm_k = i / 42;
-            dm_l = i % 42;
-            
-            {
-                if(dm_l > 41)
-                    dm_l -= 42;
-                
-                if(dm_l > 41)
-                    dm_l += 84;
-                
-                setdoor(ed->buf + ed->selobj);
-                ed->modf = 1;
-                
-                Updatemap(ed);
-                Dungselectchg(ed, p_win, 1);
-                
-                break;
-            }
-        }
-        else
-        {
-            getobj(ed->buf+ed->selobj);
-            
-            if(i < 0x40)
-                dm_k = i + 0x100;
-            else if(i < 0x138)
-            {
-                dm_k = i - 0x40;
-                j = obj3_t[dm_k];
-                dm_l = (j == 0) | (j == 2);
-            }
-            else
-            {
-                dm_k = ( ( (i - 0x138) >> 4) & 7) + 0xf8;
-                dm_l = (i - 0x138) & 15;
-            }
-            
-            setobj(ed, ed->buf + ed->selobj);
-            Updatemap(ed);
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        }
+        DungeonMap_ObjectSelectorDialog(ed, packed_msg);
         
         break;
     
     case WM_RBUTTONDOWN:
         
-        SetFocus(p_win);
-        menu = CreatePopupMenu();
-        
-        rom = ed->ew.doc->rom;
-        
-        if(ed->selchk < SD_DungSprLayerSelected)
-        {
-            AppendMenu(menu, MF_STRING, 1, "Insert an object");
-            
-            if(ed->ew.param < 0x8c)
-                AppendMenu(menu,MF_STRING,2,"Insert a door");
-        }
-        else if(ed->selchk == SD_DungSprLayerSelected)
-            AppendMenu(menu, MF_STRING, 4, "Insert an enemy");
-        else if(ed->selchk==7)
-            AppendMenu(menu,MF_STRING,7,"Insert an item");
-        else if(ed->selchk==8)
-            AppendMenu(menu,MF_STRING,8,"Insert a block");
-        else if(ed->selchk==9)
-            AppendMenu(menu,MF_STRING,9,"Insert a torch");
-        
-        if(ed->selchk < 7 && ed->selobj)
-            AppendMenu(menu,MF_STRING,5,"Choose an object");
-        
-        if(ed->selobj)
-            AppendMenu(menu,MF_STRING,3,"Remove");
-        
-        i = 0;
-        
-        if(ed->selchk < SD_DungSprLayerSelected)
-            i = ed->chkofs[ed->selchk + 1] - ed->chkofs[ed->selchk] > 2;
-        else if(ed->selchk == SD_DungSprLayerSelected)
-            i = ed->esize > 1;
-        else if(ed->selchk == 7)
-            i = ed->ssize > 0;
-        else if(ed->selchk == 8)
-        {
-            for(i = 0; i < 0x18c; i += 4)
-            {
-                if( *(short*) (rom + 0x271de + i) == ed->mapnum)
-                {
-                    i = 1;
-                    
-                    break;
-                }
-            }
-        }
-        else if(ed->selchk==9)
-            i=ed->tsize;
-        
-        if(i)
-            AppendMenu(menu,MF_STRING, 6, "Remove all");
-        
-        AppendMenu(menu,MF_STRING,10,"Discard room header");
-        
-        menu2=CreateMenu();
-        
-        for(i=0;i<15;i++)
-        {
-            wsprintf(text_buf, "%d", i);
-            AppendMenu(menu2,MF_STRING,256+i,text_buf);
-        }
-        AppendMenu(menu2,MF_STRING,271,"Other...");
-        AppendMenu(menu,MF_POPUP|MF_STRING,(int)menu2,"Edit blocks");
-        GetCursorPos(&pt);
-        
-        k = TrackPopupMenu(menu,
-                           TPM_RETURNCMD | TPM_LEFTBUTTON | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY,
-                           pt.x, pt.y, 0, p_win, 0);
-        
-        DestroyMenu(menu);
-        
-        i=(p_lp & 65535)+(ed->mapscrollh<<5);
-        j=(p_lp >> 16)+(ed->mapscrollv * ed->map_vscroll_delta);
-        
-        if(k >= 256)
-        {
-            if(k >= 264)
-                k+=2;
-            
-            Editblocks((OVEREDIT*)ed,k-256, p_win);
-        }
-        else
-            switch(k)
-            {
-            case 1:
-                m=ed->selchk|1;
-                Dungselectchg(ed, p_win, 0);
-                ed->selchk &= 6;
-                
-                if(ed->selobj>=ed->chkofs[m] || !ed->selobj)
-                    l = ed->chkofs[m] - 2;
-                else
-                    l = ed->selobj;
-                
-                o = ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                               framewnd,
-                               choosedung,
-                               (LPARAM) ed);
-                
-                if(o==-1) break;
-                for(n=m;n<7;n++) ed->chkofs[n]+=3;
-                ed->buf=realloc(ed->buf,ed->len);
-                memmove(ed->buf+l+3,ed->buf+l,ed->len-l-3);
-                ed->selobj=l;
-                dm_x=((i>>3)&0x3f)|((j<<3)&0xfc0);
-                ed->buf[l]=0;
-                ed->buf[l+1]=0;
-                ed->buf[l+2]=0;
-                
-                if(o < 0x40)
-                    dm_k=o + 0x100;
-                else if(o<0x138)
-                {
-                    dm_k=o - 0x40;
-                    j=obj3_t[dm_k];
-                    dm_l=(j==0)|(j==2);
-                }
-                else
-                {
-                    dm_k = ( ( (o - 0x138) >> 4) & 7) + 0xf8;
-                    dm_l = (o - 0x138) & 15;
-                }
-                
-                setobj(ed, ed->buf + ed->selobj);
-                Updatemap(ed);
-                Dungselectchg(ed, p_win, 1);
-                
-                break;
-            
-            case 2:
-            m=(ed->selchk|1)+1;
-            Dungselectchg(ed, p_win, 0);
-            ed->selchk|=1;
-            if(ed->selobj=ed->chkofs[m-1] || !ed->selobj) l=ed->chkofs[m]-2;
-            else l=ed->selobj;
-            if(l==ed->chkofs[m-1]-2) p=4; else p=2;
-            
-            o = ShowDialog(hinstance,
-                           MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                           framewnd,choosedung,
-                           (LPARAM)ed );
-            
-            if(o == -1)
-                break;
-            
-            for(n = m; n < 7; n++)
-                ed->chkofs[n] += p;
-            
-            ed->buf = (uint8_t*) realloc(ed->buf,ed->len);
-            
-            memcpy(ed->buf+l+p,ed->buf+l,ed->len-l-p);
-            if(p==4) { *(short*)(ed->buf+l)=-16; l+=2; }
-            ed->selobj=l;
-            o-=0x1b8;
-            dm_k = o / 42;
-            dm_l = o % 42;
-            
-            {
-                if(dm_l > 41)
-                    dm_l -= 42;
-                
-                if(dm_l > 41)
-                    dm_l += 84;
-                
-                setdoor(ed->buf + ed->selobj);
-                ed->modf = 1;
-                
-                Updatemap(ed);
-                Dungselectchg(ed, p_win, 1);
-                
-                break;
-            }
-        
-        case 3:
-            Dungselectchg(ed, p_win, 0);
-            m=ed->selchk;
-            l=ed->selobj;
-            if(m==9) {
-                memcpy(ed->tbuf+ed->selobj,ed->tbuf+ed->selobj+2,ed->tsize-ed->selobj-2);
-                ed->tsize-=2;
-                if(ed->tsize==2) ed->tsize=0;
-                ed->tbuf=realloc(ed->tbuf,ed->tsize);
-                ed->modf=1;
-            } else if(m==8) *(short*)(rom+ed->selobj)=-1,ed->ew.doc->modf=1;
-            else if(m==7) {
-                memcpy(ed->sbuf+ed->selobj-2,ed->sbuf+ed->selobj+1,ed->ssize-ed->selobj-1);
-                ed->ssize-=3;
-                ed->sbuf=realloc(ed->sbuf,ed->ssize);
-                ed->modf=1;
-            }
-            else if(m == SD_DungSprLayerSelected)
-            {
-                memcpy(ed->ebuf+ed->selobj,ed->ebuf+ed->selobj+3,ed->esize-ed->selobj-3);
-                ed->esize-=3;
-                ed->ebuf=realloc(ed->ebuf,ed->esize);
-                ed->modf=1;
-            }
-            else if(m & 1)
-            {
-                if(ed->chkofs[m+1] == ed->chkofs[m] + 4)
-                    p = 4,l -= 2;
-                else
-                    p = 2;
-                
-                for(n = m + 1; n < 7; n++)
-                    ed->chkofs[n] -= p;
-                
-                memcpy(ed->buf+l,ed->buf+l+p,ed->len-l);
-                ed->buf=realloc(ed->buf,ed->len);
-                ed->modf=1;
-            } else {
-                dm_k=0;
-                dm_x=0;
-                dm_l=0;
-                setobj(ed,ed->buf+l);
-                for(n=m+1;n<7;n++) ed->chkofs[n]-=3;
-                memcpy(ed->buf+l,ed->buf+l+3,ed->len-l);
-                ed->buf=realloc(ed->buf,ed->len);
-            }
-            
-            ed->selobj = 0;
-            
-            Updatemap(ed);
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        
-        case 4:
-            Dungselectchg(ed, p_win, 0);
-            o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,512);
-            
-            if(o == -1)
-                break;
-            
-            if(!ed->selobj)
-                ed->selobj = 1;
-            
-            ed->esize+=3;
-            ed->ebuf=realloc(ed->ebuf,ed->esize);
-            memmove(ed->ebuf+ed->selobj+3,ed->ebuf+ed->selobj,ed->esize-ed->selobj-3);
-            ed->ebuf[ed->selobj]=j>>4;
-            i>>=4;
-            if(o&256) i+=224;
-            ed->ebuf[ed->selobj+1]=i;
-            ed->ebuf[ed->selobj+2]=o;
-            ed->modf = 1;
-            
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        
-        case 5:
-            goto chooseobj;
-        case 6: // delete all objects, sprites, etc. "REMOVE ALL"
-            
-            if(ed->selchk < SD_DungSprLayerSelected)
-            {
-                k = ed->selchk;
-                j = ed->chkofs[k];
-                i = ed->chkofs[k + 1] - 2;
-                
-                if(j == i)
-                    break;
-                
-                if(k & 1)
-                    j -= 2;
-                else
-                {
-                    dm_k = 0;
-                    dm_x = 0;
-                    dm_l = 0;
-                    
-                    for(l = j; l < i; l += 3)
-                        setobj(ed, ed->buf + l);
-                }
-                
-                memcpy(ed->buf + j, ed->buf + i, ed->len - i);
-                
-                for(k += 1; k < 7; k++)
-                    ed->chkofs[k] += j - i;
-                
-                ed->buf = realloc(ed->buf, ed->len);
-                
-                Updatemap(ed);
-            }
-            else if(ed->selchk == SD_DungSprLayerSelected)
-            {
-                // remove all sprites
-                
-                ed->ebuf = realloc(ed->ebuf,1);
-                ed->esize = 1;
-                ed->modf = 1;
-            }
-            else if(ed->selchk == 7)
-            {
-                ed->sbuf=realloc(ed->sbuf,0);
-                ed->ssize=0;
-                ed->modf=1;
-            }
-            else if(ed->selchk==8)
-            {
-                for(i=0;i<0x18c;i+=4)
-                    if(*(short*)(rom + 0x271de + i)==ed->mapnum) *(short*)(rom + 0x271de + i)=-1;
-                ed->ew.doc->modf=1;
-                Updatemap(ed);
-            }
-            else
-            {
-                ed->tbuf=realloc(ed->tbuf,0);
-                ed->tsize=0;
-                ed->modf=1;
-                Updatemap(ed);
-            }
-            InvalidateRect(p_win, 0, 0);
-            ed->selobj=0;
-            Dungselectchg(ed, p_win, 1);
-            break;
-        
-        case 7:
-            Dungselectchg(ed, p_win, 0);
-            ed->sbuf=realloc(ed->sbuf,ed->ssize+=3);
-            if(!ed->selobj) ed->selobj=ed->ssize-1;
-            memmove(ed->sbuf+ed->selobj+1,ed->sbuf+ed->selobj-2,ed->ssize-ed->selobj-1);
-            *(short*)(ed->sbuf+ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
-            ed->sbuf[ed->selobj]=0;
-            ed->modf=1;
-            Dungselectchg(ed, p_win, 1);
-            break;
-        
-        case 8:
-            Dungselectchg(ed, p_win, 0);
-            
-            for(k=0;k<0x18c;k+=4)
-                if( is16b_neg1(rom + 0x271de + k) )
-                {
-                    *(short*)(rom + 0x271de + k)=ed->mapnum;
-                    *(short*)(rom + 0x271e0 + k)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-                    ed->selobj=0x271de + k;
-                    break;
-                }
-            
-            if(k==0x18c)
-                MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
-            ed->ew.doc->modf=1;
-            
-            Updatemap(ed);
-            Dungselectchg(ed, p_win, 1);
-
-            break;
-        
-        case 9:
-            Dungselectchg(ed, p_win, 0);
-            k=ed->tsize;
-            if(!k) k+=2;
-            ed->selobj=k;
-            ed->tbuf=realloc(ed->tbuf,k+=2);
-            ed->tsize=k;
-            
-            *(short*)(ed->tbuf)=ed->mapnum;
-            *(short*)(ed->tbuf+k-2)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-            
-            ed->modf = 1;
-            
-            Updatemap(ed);
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        
-        case 10:
-            i=askinteger(295,"Use another header","Room #");
-            if(i<0) break;
-            
-            LoadHeader(ed, i);
-            
-            ed->hmodf = i + 2;
-            ed->modf  = i + 2;
-            
-            Updatemap(ed);
-            Dungselectchg(ed, p_win, 1);
-            
-            break;
-        }
+        DungeonMap_OnRightMouseDown(ed, packed_msg);
         
         break;
     

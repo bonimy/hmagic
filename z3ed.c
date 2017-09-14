@@ -1188,7 +1188,7 @@ CreateNotificationWindow(HWND const p_parent)
     
     if(win)
     {
-        unsigned const screen_width  = GetSystemMetrics(SM_CXSCREEN);
+        unsigned const screen_width = GetSystemMetrics(SM_CXSCREEN);
         
         RECT const r = HM_GetWindowRect(win);
         
@@ -1211,7 +1211,7 @@ CreateNotificationWindow(HWND const p_parent)
 SCROLLINFO
 HM_GetVertScrollInfo(HWND const p_win)
 {
-    SCROLLINFO si;
+    SCROLLINFO si = { 0 };
     
     si.cbSize = sizeof(SCROLLINFO);
     
@@ -1227,7 +1227,7 @@ HM_GetVertScrollInfo(HWND const p_win)
 SCROLLINFO
 HM_GetHorizScrollInfo(HWND const p_win)
 {
-    SCROLLINFO si;
+    SCROLLINFO si = { 0 };
     
     si.cbSize = sizeof(SCROLLINFO);
     
@@ -27017,7 +27017,8 @@ deflt:
 }
 
 // window procedure for the main frame window
-long CALLBACK frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+long CALLBACK
+frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     CLIENTCREATESTRUCT ccs;
     
@@ -27187,19 +27188,32 @@ long CALLBACK frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             int const  scroll_amount = d.m_distance > 0
                                      ? SB_LINEUP : SB_LINEDOWN;
             
-            unsigned which_sb = (is_horiz) ? WM_HSCROLL : WM_VSCROLL;
+            SCROLLINFO const si = (is_horiz)
+                                ? HM_GetHorizScrollInfo(clientwnd)
+                                : HM_GetVertScrollInfo(clientwnd);
+            
+            unsigned sb = (is_horiz) ? WM_HSCROLL : WM_VSCROLL;
             
             WPARAM fake_wp = MAKEWPARAM(scroll_amount, 0);
             
             WPARAM const active_child =
             (WPARAM) SendMessage(clientwnd,
-                               WM_MDIGETACTIVE,
-                               NULL,
-                               NULL);
-
+                                 WM_MDIGETACTIVE,
+                                 NULL,
+                                 NULL);
+            
+            // -----------------------------
+            
+            if( (si.nMax - si.nMin) == 0)
+            {
+                // Clearly no scrollbar would be visible in such cases.
+                // Could probably be handled more gracefully, but works.
+                return 0;
+            }
+            
             if(active_child)
             {
-                SendMessage(clientwnd, which_sb, fake_wp, NULL);
+                SendMessage(clientwnd, sb, fake_wp, NULL);
             
                 SendMessage(clientwnd, WM_MDIACTIVATE, active_child,
                             NULL);
@@ -28750,8 +28764,11 @@ dontsave:
         SetWindowPos(param->editwin,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
         goto deflt;
     case WM_CREATE:
+        
         param=(FDOC*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)param);
+        
+        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) param);
+        
         ShowWindow(win,SW_SHOW);
         param->editwin=CreateSuperDialog(&z3_dlg,win,0,0,0,0,(long)param);
     default:
