@@ -886,7 +886,7 @@ CreateNotificationBox(HWND const p_parent)
         
         wc.hCursor = normal_cursor;
         
-        wc.hbrBackground = COLOR_HIGHLIGHTTEXT;
+        wc.hbrBackground = GetSysColorBrush(COLOR_HIGHLIGHTTEXT);
         
         wc.lpszMenuName = NULL;
         
@@ -8368,7 +8368,7 @@ void Mixbuffer(void)
     }
     else
     {
-        d = (wdata) + (wcurbuf * wbuflen);
+        d = (uint8_t*) ( (wdata) + (wcurbuf * wbuflen) );
         
         while(k--)
         {
@@ -15168,13 +15168,22 @@ PaintSprName(HDC hdc,
 
 // =============================================================================
 
+/**
+    \param p_y  Position of the entity relative to upper bound of the clip
+    rectangle. If the upper left coordinate of the entity is above said
+    rectangle, this value will be negative.
+    
+    \param p_window_size this subroutine assumes that the content (paintable)
+    dimensions of the window are square. That is, its height is the same
+    as its width.
+*/
 void
-Paintspr(HDC hdc,
-         int x,
-         int y,
-         int n,
-         int o,
-         int w)
+Paintspr(HDC const p_dc,
+         int const p_x,
+         int const p_y,
+         int const p_hscroll,
+         int const p_vscroll,
+         int const p_window_size)
 {
     size_t const len = strlen(buffer);
     
@@ -15182,17 +15191,17 @@ Paintspr(HDC hdc,
     
     // -----------------------------
     
-    if( (y + textmetric.tmHeight) > (w - o) )
+    if( (p_y + textmetric.tmHeight) > (p_window_size - p_vscroll) )
         return;
     
-    if( (len * textmetric.tmAveCharWidth) + x > (w - n) )
-        final_len = (w - n - x) / textmetric.tmAveCharWidth;
+    if( (len * textmetric.tmAveCharWidth) + p_x > (p_window_size - p_hscroll) )
+        final_len = (p_window_size - p_hscroll - p_x) / textmetric.tmAveCharWidth;
     
     {
         char text_buf[0x100];
         
         sprintf(text_buf, "x = %d, y = %d, n = %d, o = %d, w = %d",
-                x, y, n, o, w);
+                p_x, p_y, p_hscroll, p_vscroll, p_window_size);
         
         SetDlgItemText(debug_window, IDC_STATIC2, text_buf);
     }
@@ -15205,20 +15214,20 @@ Paintspr(HDC hdc,
         final_len = len;
     }
     
-    SetTextColor(hdc, 0);
+    SetTextColor(p_dc, 0);
     
-    TextOut(hdc, x + 1, y + 1, buffer, final_len);
-    TextOut(hdc, x - 1, y - 1, buffer, final_len);
-    TextOut(hdc, x + 1, y - 1, buffer, final_len);
-    TextOut(hdc, x - 1, y + 1, buffer, final_len);
+    TextOut(p_dc, p_x + 1, p_y + 1, buffer, final_len);
+    TextOut(p_dc, p_x - 1, p_y - 1, buffer, final_len);
+    TextOut(p_dc, p_x + 1, p_y - 1, buffer, final_len);
+    TextOut(p_dc, p_x - 1, p_y + 1, buffer, final_len);
     
 #if 0
-    SetTextColor(hdc, 0xffbf3f);
+    SetTextColor(p_dc, 0xffbf3f);
 #else
-    SetTextColor(hdc, 0xfefefe);
+    SetTextColor(p_dc, 0xfefefe);
 #endif
     
-    TextOut(hdc, x, y, buffer, final_len);
+    TextOut(p_dc, p_x, p_y, buffer, final_len);
 }
 
 // =============================================================================

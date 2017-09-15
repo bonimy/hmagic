@@ -186,11 +186,20 @@ uint16_t
 ldle16b(uint8_t const * const p_arr);
 
 uint16_t
+ldle16b_i(uint8_t const * const p_arr,
+          size_t          const p_index);
+
+uint16_t
 ldle16h_i(uint16_t const * const p_arr,
           size_t           const p_index);
 
 uint32_t
 ldle24b(uint8_t const * const p_arr);
+
+/// "indexed load little endian 24-bit value using a byte pointer"
+uint32_t
+ldle24b_i(uint8_t const * const p_arr,
+          unsigned        const p_index);
 
 uint32_t
 ldle32b(uint8_t const * const p_arr);
@@ -200,13 +209,14 @@ stle16b(uint8_t * const p_arr,
         uint16_t  const p_val);
 
 void
+stle16b_i(uint8_t * const p_arr,
+          size_t    const p_index,
+          uint16_t  const p_val);
+
+
+void
 stle24b(uint8_t * const p_arr,
         uint32_t  const p_value);
-
-/// "indexed load little endian 24-bit value using a byte pointer"
-uint32_t
-ldle24b_i(uint8_t const * const p_arr,
-          unsigned        const p_index);
 
 void
 addle16b(uint8_t * const p_arr,
