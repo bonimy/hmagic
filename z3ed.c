@@ -27567,9 +27567,8 @@ saveerror:
             
             l = *(int*)m;
             
-            // Appears to attempt to append ".HDM" to the file path.
-            // \task Should probably fix this as it's endianness dependent.
-            *(int*)m=0x444d482e;
+            // Appears to attempt to append ".HMD" to the file path.
+            strcpy(m, ".HMD");
             
             if(activedoc->nummod)
             {
@@ -27917,7 +27916,8 @@ error:
                     m = doc->filename + strlen(doc->filename);
                 
                 l = *(int*)m; // what is the int value there?
-                *(int*)m = 0x444d482e; // set it manually to a HMD0 file.
+                // change the path extensions .HMD.
+                strcpy(m, ".HMD");
                 
                 h = CreateFile(doc->filename,
                                GENERIC_READ,
