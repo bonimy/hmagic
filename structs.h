@@ -19,7 +19,7 @@
     // having to deal with truncation from int to short or char. They should
     // Get tackled eventually (and carefully).
     // \task Do this at some point.
-#if 0
+#if 1
     #pragma warning(disable:4242)
     #pragma warning(disable:4244)
 #endif
@@ -814,6 +814,12 @@ extern HANDLE shade_brush[8];
 
 extern HCURSOR sizecsor[5];
 
+extern BITMAPINFOHEADER zbmih;
+
+
+extern RGBQUAD const blackcolor;
+
+
 // The handle to the program
 extern HINSTANCE hinstance;
 
@@ -850,73 +856,15 @@ extern uint8_t drawbuf[0x400];
 
 extern uint16_t *dm_buf;
 
-// =============================================================================
+extern char const * mus_str[];
 
-typedef
-struct
-{
-    BOOL m_control_down;
+extern char const * level_str[];
 
-    POINT m_rel_pos;
-    POINT m_screen_pos;
-    
-} HM_MouseMoveData;
+extern int door_ofs;
 
-// =============================================================================
+extern uint16_t const u16_neg1;
 
-/// For use with mouse button down / up messages, click, hover messages, and 
-typedef
-struct
-{
-    /// Full copy of all the flags just for reference.
-    unsigned m_flags;
-    
-    /// Is the shift key down?
-    BOOL m_shift_key;
-    
-    /// Is the control key down?
-    BOOL m_control_key;
-    
-    /// Is the ALT key down?
-    BOOL m_alt_key;
-    
-    POINT m_rel_pos;
-    POINT m_screen_pos;
-    
-} HM_MouseData;
-
-// =============================================================================
-
-typedef
-struct
-{
-    signed int m_distance;
-    
-    /// Full copy of all the flags just for reference.
-    unsigned m_flags;
-    
-    /// Is the shift key down?
-    BOOL m_shift_key;
-    
-    /// Is the control key down?
-    BOOL m_control_key;
-
-    /// Is the ALT key down?
-    BOOL m_alt_key;
-
-    POINT m_screen_pos;
-
-} HM_MouseWheelData;
-
-// =============================================================================
-
-typedef
-struct
-{
-    HWND m_deactivating;
-    HWND m_activating;
-}
-HM_MdiActivateData;
+extern uint32_t const u32_neg1;
 
 // =============================================================================
 

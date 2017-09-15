@@ -113,19 +113,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ChooseObject.c" />
+    <ClCompile Include="DungeonDlg.c" />
     <ClCompile Include="DungeonMap.c" />
+    <ClCompile Include="Wrappers.c" />
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
-    <ClInclude Include="CustomStyles.h" />
     <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />
-    <ClInclude Include="wrappers.h" />
+    <ClInclude Include="Wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico" />
