@@ -17,6 +17,9 @@ choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
 BOOL CALLBACK
 choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam);
 
+BOOL CALLBACK
+editroomprop(HWND win, UINT msg, WPARAM wparam, LPARAM lparam);
+
 // Dungeon-related window procedures.
 
 LRESULT CALLBACK
