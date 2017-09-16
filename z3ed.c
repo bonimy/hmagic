@@ -886,7 +886,7 @@ CreateNotificationBox(HWND const p_parent)
         
         wc.hCursor = normal_cursor;
         
-        wc.hbrBackground = GetSysColorBrush(COLOR_HIGHLIGHTTEXT);
+        wc.hbrBackground = (HBRUSH) (COLOR_HIGHLIGHTTEXT);
         
         wc.lpszMenuName = NULL;
         
@@ -15123,7 +15123,7 @@ TEXTMETRIC textmetric;
 // \note More re-entrant version of another function in that it
 // doesn't write using a global text buffer.
 void
-PaintSprName(HDC hdc,
+PaintSprName(HDC p_dc,
              int x,
              int y,
              int n,
@@ -15137,6 +15137,10 @@ PaintSprName(HDC hdc,
     
     // -----------------------------
     
+    // Probably not strictly necessary, but the program doesn't make a point
+    // to set it anywhere more general.
+    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
+
     // \task It would appear that the clip width is being used as height too?
     // Does this always assume that window area are square?
     if( (y + textmetric.tmHeight) > (p_clip_width - o) )
@@ -15150,20 +15154,20 @@ PaintSprName(HDC hdc,
         final_len = len;
     }
     
-    SetTextColor(hdc, 0);
+    SetTextColor(p_dc, 0);
     
-    TextOut(hdc, x + 1, y + 1, p_name, final_len);
-    TextOut(hdc, x - 1, y - 1, p_name, final_len);
-    TextOut(hdc, x + 1, y - 1, p_name, final_len);
-    TextOut(hdc, x - 1, y + 1, p_name, final_len);
+    TextOut(p_dc, x + 1, y + 1, p_name, final_len);
+    TextOut(p_dc, x - 1, y - 1, p_name, final_len);
+    TextOut(p_dc, x + 1, y - 1, p_name, final_len);
+    TextOut(p_dc, x - 1, y + 1, p_name, final_len);
     
 #if 0
-    SetTextColor(hdc, 0xffbf3f);
+    SetTextColor(p_dc, 0xffbf3f);
 #else
-    SetTextColor(hdc, 0xfefefe);
+    SetTextColor(p_dc, 0xfefefe);
 #endif
     
-    TextOut(hdc,x, y, p_name, final_len);
+    TextOut(p_dc,x, y, p_name, final_len);
 }
 
 // =============================================================================
@@ -15190,6 +15194,10 @@ Paintspr(HDC const p_dc,
     size_t final_len = (signed) len;
     
     // -----------------------------
+    
+    // Probably not strictly necessary, but the program doesn't make a point
+    // to set it anywhere more general.
+    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
     
     if( (p_y + textmetric.tmHeight) > (p_window_size - p_vscroll) )
         return;
@@ -17308,7 +17316,8 @@ void Drawdot(HDC hdc,RECT*rc,int q,int n,int o)
 }
 
 HGDIOBJ
-Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,unsigned char *rom)
+Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
+            uint8_t const * const rom)
 {
     HGDIOBJ oldobj = 0;
     
@@ -23115,28 +23124,256 @@ deflt:
     return 0;
 }
 
-long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+// =============================================================================
+
+void
+OverworldMap_OnPaint(OVEREDIT * const ed,
+                     HWND       const win)
+{
+    RECT rc = { 0 };
+    
+    PAINTSTRUCT ps;
+    
+    HDC const hdc = BeginPaint(win, &ps);
+    
+    HPALETTE const oldpal = SelectPalette(hdc, ed->hpal, 1);
+    
+    HGDIOBJ oldobj = SelectObject(hdc, white_pen);
+    
+    int i = 0;
+    int j = 0;
+    int k = ( (ps.rcPaint.right + 31) & 0xffffffe0 );
+    int l = ( (ps.rcPaint.bottom + 31) & 0xffffffe0 );
+    int m = 0;
+    int n = ed->mapscrollh << 5;
+    int o = ed->mapscrollv << 5;
+    int p = 0;
+    int q = 0;
+    int r = 0;
+    
+    uint16_t * b2 = 0;
+    uint16_t * b3 = 0;
+    uint16_t * b4 = 0;
+    uint16_t * b5 = 0;
+    
+    uint8_t * b6 = 0;
+    
+    // -----------------------------
+    
+    RealizePalette(hdc);
+    
+    if(ed->dtool==2 || ed->dtool==3 || ed->selflag) Getselectionrect(ed,&rc);
+    
+    b4=ed->ov->buf;
+    if(ed->ew.param==128) p=8; else if(ed->ew.param==136) p=0x20; else p=0x10;
+    
+    if(ed->mapsize)
+        q = 0x400;
+    else
+        q = 0x200;
+    
+    for(j = ps.rcPaint.top & 0xffffffe0; j < l; j += 32)
+    {
+        if(j+o >= q)
+            break;
+        
+        i = ps.rcPaint.left&0xffffffe0;
+        b2 = b4 + ed->mapscrollh + (i >> 5) + j + o;
+        
+        if(p == 0x20)
+            if(j + o < 256)
+            {
+                b3 = b2 + 8;
+                b5 = b4 + j + o;
+            }
+            else
+            {
+                p = 16;
+                goto bgchange;
+            }
+        else
+        {
+            
+bgchange:
+            b5 = b4 + 0x400 + ( (j + o) >> 1);
+            b3 = b2 + 0x400 - ( (j + o) >> 1);
+            
+            if(b5 >= b4 + 0x500)
+                b3-=0x100,b5-=0x100;
+        }
+        
+        for(;i<k;i+=32)
+        {
+            if(b3 >= b5 + p)
+                if(ed->ew.param==128)
+                {
+                    b3 = b2 + 256;
+                    b5 = b4 + 256 + j + o;
+                }
+                else
+                    b3 -= p;
+            
+            if(i + n >= q)
+                break;
+            
+            m = *b2;
+            
+            if(ed->dtool == 3)
+            {
+                if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom) m=ed->selblk;
+            }
+            else if(ed->selflag)
+            {
+                if(i >= rc.left && i < rc.right && j >= rc.top && j < rc.bottom)
+                    m = ed->selbuf
+                    [
+                        ( (i + n) >> 5 )
+                      - ed->rectleft
+                      + ( ( (j + o) >> 5 ) - ed->recttop )
+                      * (ed->rectright - ed->rectleft)
+                    ];
+            }
+            
+            if(ed->disp&8)
+            {
+                if(ed->disp&1) {
+                    b6=map16ofs+4;
+                    r=(((i+n)&0x1ff)>>4)+(((j+o)&0x1ff)<<1) + 0x1000;
+                    ovlblk[0]=ed->ovlmap[r];
+                    ovlblk[1]=ed->ovlmap[r+1];
+                    ovlblk[2]=ed->ovlmap[r+32];
+                    ovlblk[3]=ed->ovlmap[r+33];
+                    Drawblock32(ed,*b3,0);
+                } else {
+                    b6=map16ofs;
+                    r = ( (i + n) >> 4 ) + ( (j + o) << 2 );
+                    ovlblk[0]=ed->ovlmap[r];
+                    ovlblk[1]=ed->ovlmap[r+1];
+                    ovlblk[2]=ed->ovlmap[r+64];
+                    ovlblk[3]=ed->ovlmap[r+65];
+                    Drawblock32(ed,m,0);
+                }
+            } else {
+            if(!(ed->disp&1)) goto noback;
+            if((!ed->layering) || (ed->ew.param==128 && ((b3<b5+16 && b3>=b5+8 && b2<b4+256) || (ed->sprset<2 && b2<b4+512 && b3<b5+8))) ||
+                ((ed->ew.param==136) && b2<b5+8 && b2<b4+256)) {
+                Drawblock32(ed,m,0);
+                Drawblock32(ed,*b3,3);
+            } else if(ed->layering==1) {
+                Drawblock32(ed,*b3,0);
+                Drawblock32(ed,m,1);
+            } else noback: Drawblock32(ed,m,0);
+            }
+            Paintblocks(&(ps.rcPaint),hdc,i,j,(DUNGEDIT*)ed);
+            if(ed->disp&8) {
+                for(m=0;m<4;m++) {
+                    if(!(j+o+(m&2))) continue;
+                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-b6[2]]+1))&65536) {
+                        MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
+                        LineTo(hdc,i+blkx[m<<2]+16,j+blky[m<<2]);
+                    }
+                }
+                for(m=0;m<4;m++) {
+                    if(!(i+n+(m&1))) continue;
+                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-1]+1))&65536) {
+                        MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
+                        LineTo(hdc,i+blkx[m<<2],j+blky[m<<2]+16);
+                    }
+                }
+            }
+            if(ed->disp&2) {
+                MoveToEx(hdc,i+31,j,0);
+                LineTo(hdc,i+31,j+31);
+                LineTo(hdc,i-1,j+31);
+                if(ed->disp&8) {
+                    MoveToEx(hdc,i,j+16,0);
+                    LineTo(hdc,i+31,j+16);
+                    MoveToEx(hdc,i+16,j,0);
+                    LineTo(hdc,i+16,j+31);
+                }
+            }
+            b2++;
+            b3++;
+        }
+    }
+    SelectObject(hdc, oldobj);
+    
+    if(rc.right>q-n) rc.right=q-n;
+    
+    if(rc.bottom>q-o) rc.bottom=q-o;
+    
+    if(ed->dtool==2) {
+        if(rc.right>rc.left && rc.bottom>rc.top) FrameRect(hdc,&rc,white_brush);
+    }
+    
+    if(ed->selflag) FrameRect(hdc,&rc,green_brush);
+    
+    if(ed->disp&4)
+    {
+        uint8_t const * const rom = ed->ew.doc->rom;
+        
+        HGDIOBJ oldobj2 = SelectObject(hdc,trk_font);
+        
+        SetBkMode(hdc,TRANSPARENT);
+        q=ed->mapsize?1024:512;
+        oldobj=0;
+        for(i=0;i<6;i++) {
+            if(tool_ovt[ed->tool]==i) continue;
+            oldobj2=Paintovlocs(hdc,ed,i,n,o,q,rom);
+            if(!oldobj) oldobj=oldobj2;
+        }
+        
+        Paintovlocs(hdc,ed,tool_ovt[ed->tool],n,o,q,rom);
+        
+        // Highlight the currently selected entity with a rectanglar
+        // border and background fill.
+        if(ed->selobj != -1)
+        {
+            HGDIOBJ const oldobj2 = SelectObject(hdc, green_pen);
+            HGDIOBJ const oldobj3 = SelectObject(hdc, black_brush);
+            
+            Getoverstring(ed,ed->tool,ed->selobj);
+            
+            rc.left=ed->objx-n;
+            rc.top=ed->objy-o;
+            
+            Getstringobjsize(buffer,&rc);
+            
+            if(rc.right > q - n) rc.right=q-n;
+            if(rc.bottom > q - o) rc.bottom=q-o;
+            
+            Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
+            Paintspr(hdc,rc.left,rc.top,n,o,q);
+            
+            SelectObject(hdc, oldobj2);
+            SelectObject(hdc, oldobj3);
+        }
+        SelectObject(hdc, oldobj);
+    }
+    SelectPalette(hdc, oldpal, 1);
+    EndPaint(win,&ps);
+
+}
+
+// =============================================================================
+
+long CALLBACK
+overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     SCROLLINFO si;
     
     int i = 0; int j = 0; int k = 0; int l = 0;
-    int m = 0; int n = 0; int o = 0; int p = 0;
-    int q = 0; int r = 0;
+    int m = 0; int n = 0; int o = 0;
+    int q = 0;
     
     POINT pt;
-    PAINTSTRUCT ps;
-    HDC hdc;
-    HPALETTE oldpal;
     RECT rc = {0, 0, 0, 0};
     HMENU menu,menu2;
-    HGDIOBJ oldobj,oldobj2;
     
     const static int whirl_ofs[8]={
         0x16b29,0x16b4b,0x16b6d,0x16b8f,0x16ae5,0x16b07,0x16bb1,0x16bd3
     };
     
-    uint16_t * b2 = 0;
-    uint16_t * b3 = 0;
     uint16_t * b4 = 0;
     uint16_t * b5 = 0;
     
@@ -24096,176 +24333,10 @@ movetile:
     
     case WM_PAINT:
         
-        hdc=BeginPaint(win,&ps);
-        oldpal=SelectPalette(hdc,ed->hpal,1);
-        RealizePalette(hdc);
-        k=((ps.rcPaint.right+31)&0xffffffe0);
-        l=((ps.rcPaint.bottom+31)&0xffffffe0);
-        n=ed->mapscrollh<<5;
-        o=ed->mapscrollv<<5;
-        if(ed->dtool==2 || ed->dtool==3 || ed->selflag) Getselectionrect(ed,&rc);
-        b4=ed->ov->buf;
-        if(ed->ew.param==128) p=8; else if(ed->ew.param==136) p=0x20; else p=0x10;
-        oldobj=SelectObject(hdc,white_pen);
-        if(ed->mapsize) q=0x400; else q=0x200;
-        for(j=ps.rcPaint.top&0xffffffe0;j<l;j+=32) {
-            if(j+o>=q) break;
-            i=ps.rcPaint.left&0xffffffe0;
-            b2=b4+ed->mapscrollh+(i>>5)+j+o;
-            
-            if(p == 0x20)
-                if(j + o < 256)
-                {
-                    b3 = b2 + 8;
-                    b5 = b4 + j + o;
-                }
-                else
-                {
-                    p = 16;
-                    goto bgchange;
-                }
-            else
-            {
-                
-bgchange:
-                b5 = b4 + 0x400 + ( (j + o) >> 1);
-                b3 = b2 + 0x400 - ( (j + o) >> 1);
-                
-                if(b5 >= b4 + 0x500)
-                    b3-=0x100,b5-=0x100;
-            }
-            
-            for(;i<k;i+=32)
-            {
-                if(b3 >= b5 + p)
-                    if(ed->ew.param==128)
-                    {
-                        b3 = b2 + 256;
-                        b5 = b4 + 256 + j + o;
-                    }
-                    else
-                        b3 -= p;
-                
-                if(i + n >= q)
-                    break;
-                
-                m = *b2;
-                
-                if(ed->dtool == 3)
-                {
-                    if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom) m=ed->selblk;
-                }
-                else if(ed->selflag)
-                {
-                    if(i >= rc.left && i < rc.right && j >= rc.top && j < rc.bottom)
-                        m = ed->selbuf
-                        [
-                            ( (i + n) >> 5 )
-                          - ed->rectleft
-                          + ( ( (j + o) >> 5 ) - ed->recttop )
-                          * (ed->rectright - ed->rectleft)
-                        ];
-                }
-                
-                if(ed->disp&8)
-                {
-                    if(ed->disp&1) {
-                        b6=map16ofs+4;
-                        r=(((i+n)&0x1ff)>>4)+(((j+o)&0x1ff)<<1) + 0x1000;
-                        ovlblk[0]=ed->ovlmap[r];
-                        ovlblk[1]=ed->ovlmap[r+1];
-                        ovlblk[2]=ed->ovlmap[r+32];
-                        ovlblk[3]=ed->ovlmap[r+33];
-                        Drawblock32(ed,*b3,0);
-                    } else {
-                        b6=map16ofs;
-                        r = ( (i + n) >> 4 ) + ( (j + o) << 2 );
-                        ovlblk[0]=ed->ovlmap[r];
-                        ovlblk[1]=ed->ovlmap[r+1];
-                        ovlblk[2]=ed->ovlmap[r+64];
-                        ovlblk[3]=ed->ovlmap[r+65];
-                        Drawblock32(ed,m,0);
-                    }
-                } else {
-                if(!(ed->disp&1)) goto noback;
-                if((!ed->layering) || (ed->ew.param==128 && ((b3<b5+16 && b3>=b5+8 && b2<b4+256) || (ed->sprset<2 && b2<b4+512 && b3<b5+8))) ||
-                    ((ed->ew.param==136) && b2<b5+8 && b2<b4+256)) {
-                    Drawblock32(ed,m,0);
-                    Drawblock32(ed,*b3,3);
-                } else if(ed->layering==1) {
-                    Drawblock32(ed,*b3,0);
-                    Drawblock32(ed,m,1);
-                } else noback: Drawblock32(ed,m,0);
-                }
-                Paintblocks(&(ps.rcPaint),hdc,i,j,(DUNGEDIT*)ed);
-                if(ed->disp&8) {
-                    for(m=0;m<4;m++) {
-                        if(!(j+o+(m&2))) continue;
-                        if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-b6[2]]+1))&65536) {
-                            MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
-                            LineTo(hdc,i+blkx[m<<2]+16,j+blky[m<<2]);
-                        }
-                    }
-                    for(m=0;m<4;m++) {
-                        if(!(i+n+(m&1))) continue;
-                        if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-1]+1))&65536) {
-                            MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
-                            LineTo(hdc,i+blkx[m<<2],j+blky[m<<2]+16);
-                        }
-                    }
-                }
-                if(ed->disp&2) {
-                    MoveToEx(hdc,i+31,j,0);
-                    LineTo(hdc,i+31,j+31);
-                    LineTo(hdc,i-1,j+31);
-                    if(ed->disp&8) {
-                        MoveToEx(hdc,i,j+16,0);
-                        LineTo(hdc,i+31,j+16);
-                        MoveToEx(hdc,i+16,j,0);
-                        LineTo(hdc,i+16,j+31);
-                    }
-                }
-                b2++;
-                b3++;
-            }
-        }
-        SelectObject(hdc,oldobj);
-        if(rc.right>q-n) rc.right=q-n;
-        if(rc.bottom>q-o) rc.bottom=q-o;
-        if(ed->dtool==2) {
-            if(rc.right>rc.left && rc.bottom>rc.top) FrameRect(hdc,&rc,white_brush);
-        }
-        if(ed->selflag) FrameRect(hdc,&rc,green_brush);
-        if(ed->disp&4) {
-            oldobj2=SelectObject(hdc,trk_font);
-            SetBkMode(hdc,TRANSPARENT);
-            q=ed->mapsize?1024:512;
-            rom=ed->ew.doc->rom;
-            oldobj=0;
-            for(i=0;i<6;i++) {
-                if(tool_ovt[ed->tool]==i) continue;
-                oldobj2=Paintovlocs(hdc,ed,i,n,o,q,rom);
-                if(!oldobj) oldobj=oldobj2;
-            }
-            Paintovlocs(hdc,ed,tool_ovt[ed->tool],n,o,q,rom);
-            if(ed->selobj!=-1) {
-                Getoverstring(ed,ed->tool,ed->selobj);
-                rc.left=ed->objx-n;
-                rc.top=ed->objy-o;
-                Getstringobjsize(buffer,&rc);
-                oldobj2=SelectObject(hdc,green_pen);
-                SelectObject(hdc,black_brush);
-                if(rc.right>q-n) rc.right=q-n;
-                if(rc.bottom>q-o) rc.bottom=q-o;
-                Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-                SelectObject(hdc,oldobj2);
-            }
-            SelectObject(hdc,oldobj);
-        }
-        SelectPalette(hdc,oldpal,1);
-        EndPaint(win,&ps);
+        OverworldMap_OnPaint(ed, win);
+        
         break;
+    
     default:
         return DefWindowProc(win,msg,wparam,lparam);
     }
