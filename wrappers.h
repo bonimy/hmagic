@@ -90,6 +90,17 @@ struct
 
 // =============================================================================
 
+typedef
+struct
+{
+    unsigned m_num_lines;
+    
+    char ** m_lines;
+    
+} HM_TextResource;
+
+// =============================================================================
+
     RECT
     HM_GetWindowRect(HWND const p_win);
 
@@ -172,6 +183,10 @@ struct
     void*
     hm_memdup(void const * const p_arr,
               size_t             p_len);
+
+    char *
+    hm_strndup(char const * const p_str,
+               size_t             p_len);
 
     int __stdcall
     askinteger(int max, char *caption, char *text);

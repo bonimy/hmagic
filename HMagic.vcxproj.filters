@@ -77,4 +77,12 @@
     </CustomBuild>
     <CustomBuild Include="sprname.dat" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="text_resources\entrance_names.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text_resources\area_names.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

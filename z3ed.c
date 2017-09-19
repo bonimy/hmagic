@@ -789,6 +789,135 @@ status_proc(HWND   p_win,
 
 // =============================================================================
 
+typedef void (*ParseAction)(HM_TextResource  * const p_tr,
+                            size_t             const p_line,
+                            char       const * const p_text,
+                            size_t             const p_len);
+
+// =============================================================================
+
+void
+CountLine(HM_TextResource  * const p_tr,
+          size_t             const p_line,
+          char       const * const p_text,
+          size_t             const p_len)
+{
+    (void) p_text, p_line, p_len;
+    
+    p_tr->m_num_lines += 1;
+}
+
+// =============================================================================
+
+void
+CopyLine(HM_TextResource  * const p_tr,
+         size_t             const p_line,
+         char       const * const p_text,
+         size_t             const p_len)
+{
+    p_tr->m_lines[p_line] = hm_strndup(p_text, p_len);
+}
+
+// =============================================================================
+
+void
+ParseTextData(char const      * const p_text,
+              size_t            const p_text_len,
+              HM_TextResource * const p_tr,
+              ParseAction             p_action)
+{
+    size_t i         = 0;
+    size_t num_lines = 0;
+    
+    for(i = 0 ; i < p_text_len; num_lines += 1)
+    {
+        //
+        size_t j = strcspn(p_text + i, "\r\n");
+        
+        size_t const j_orig = j;
+        
+        // Reached the end of the data?
+        if( (i + j) == p_text_len )
+        {
+            p_action(p_tr, num_lines, p_text + i, 0);
+            
+            break;
+        }
+        
+        if( p_text[i + j] == '\r')
+        {
+            j += 1;
+            
+            if( (i + j) == p_text_len )
+            {
+                break;
+            }
+        }
+        
+        if( p_text[i + j] == '\n')
+        {
+            j += 1;
+        }
+        
+        p_action(p_tr, num_lines, p_text + i, j_orig);
+        
+        i += j;
+    }
+}
+
+// =============================================================================
+
+HM_TextResource
+LoadTextFileResource(unsigned p_res_id)
+{
+    HM_TextResource data = { 0 };
+    
+    HRSRC const res = FindResource(hinstance,
+                                   MAKEINTRESOURCE(p_res_id),
+                                   RT_RCDATA);
+    
+    // -----------------------------
+    
+    if(res)
+    {
+        DWORD res_size = SizeofResource(hinstance, res);
+        
+        HGLOBAL const res_handle = LoadResource(hinstance,
+                                                res);
+        
+        // -----------------------------
+        
+        if(res_handle && res_size)
+        {
+            char const * const
+            text_res = (char const *) LockResource(res_handle);
+
+            ParseTextData(text_res,
+                          res_size,
+                          &data,
+                          CountLine);
+            
+            data.m_lines = (char **)
+            calloc(data.m_num_lines,
+                   sizeof(char*));
+            
+            ParseTextData(text_res,
+                          res_size,
+                          &data,
+                          CopyLine);
+
+            
+            UnlockResource(res_handle);
+            
+            FreeResource(res_handle);
+        }
+    }
+    
+    return data;
+}
+
+// =============================================================================
+
 HWND debug_window = 0;
 HWND debug_box = 0;
 
@@ -4488,6 +4617,10 @@ void getobj(unsigned char const * map)
 }
 
 char sprname[0x11c][16];
+
+HM_TextResource entrance_names;
+
+HM_TextResource area_names;
 
 HDC objdc;
 
@@ -14448,7 +14581,7 @@ BOOL CALLBACK z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     static char pal_num[]={
         4,3,3,6,2,20,16,24,20,2,2,16,18,1,1,1
     };
-    char buf[32];
+    char buf[0x200];
     switch(msg) {
     case WM_INITDIALOG:
         SetWindowLong(win,DWL_USER,lparam);
@@ -14468,7 +14601,7 @@ BOOL CALLBACK z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         for(i=0;i<160;i++)
         {
             tvi.item.lParam=i + 0x20000;
-            wsprintf(buf,"Area %02X",i);
+            wsprintf(buf,"Area %02X - %s", i, area_names.m_lines[i]);
             SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
         }
         tvi.item.pszText="Dungeons";
@@ -14481,7 +14614,11 @@ BOOL CALLBACK z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         for(i=0;i<133;i++)
         {
             tvi.item.lParam=i + 0x30000;
-            wsprintf(buf,"Entrance %02X",i);
+            wsprintf(buf,
+                     "Entrance %02X - %s",
+                     i,
+                     entrance_names.m_lines[i]);
+            
             SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
         }
         for(i=0;i<7;i++)
@@ -14672,7 +14809,11 @@ open_edt:
                         }
                     }
                     
-                    wsprintf(buf,"Area %02X",j);
+                    wsprintf(buf,
+                             "Area %02X - %s",
+                             j,
+                             area_names.m_lines[j]);
+                    
                     ov[j].win = Editwin(doc,"ZEOVER",buf,j,sizeof(OVEREDIT));
                     
                     break;
@@ -14707,7 +14848,12 @@ open_edt:
                         if(j >= 0x85)
                             wsprintf(buf,"Start location %02X",j - 0x85);
                         else
-                            wsprintf(buf,"Entrance %02X",j);
+                        {
+                            wsprintf(buf,
+                                     "Entrance %02X - %s",
+                                     j,
+                                     entrance_names.m_lines[j]);
+                        }
                     }
                     else if(j < 0x9f)
                         wsprintf(buf,"Overlay %d",j - 0x8c);
@@ -21502,7 +21648,11 @@ overlaunch:
             }
             else
             {
-                wsprintf(buffer, "Area %02X", j);
+                wsprintf(buffer,
+                         "Area %02X - %s",
+                         j,
+                         area_names.m_lines[j]);
+                
                 ov[j].win = Editwin(ed->ew.doc,"ZEOVER",buffer,j,sizeof(OVEREDIT));
             }
             
@@ -27325,6 +27475,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             FreeResource(spr_names_resource);
         }
     }
+    
+    entrance_names = LoadTextFileResource(IDR_ENTRANCE_NAMES);
+    area_names = LoadTextFileResource(IDR_AREA_NAMES);
     
     GetCurrentDirectory(MAX_PATH, currdir);
     

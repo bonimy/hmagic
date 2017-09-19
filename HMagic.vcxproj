@@ -139,6 +139,10 @@
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="text_resources\area_names.txt" />
+    <None Include="text_resources\entrance_names.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

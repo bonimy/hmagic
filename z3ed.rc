@@ -125,6 +125,14 @@ BEGIN
     LTEXT           "",IDC_STATIC6,68,38,286,13,WS_BORDER
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RCDATA
+//
+
+IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
+IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

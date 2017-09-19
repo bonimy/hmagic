@@ -520,4 +520,27 @@ hm_memdup(void const * const p_arr,
 
 // =============================================================================
 
+char *
+hm_strndup(char const * const p_str,
+           size_t             p_len)
+{
+    char * out = (char*) calloc(p_len + 1, sizeof(char));
+    
+    int i = 0;
+    
+    for(i = 0; i < p_len; i += 1)
+    {
+        out[i] = p_str[i];
+        
+        if(p_str[i] == 0)
+        {
+            break;
+        }
+    }
+    
+    return out;
+}
+
+// =============================================================================
+
 
