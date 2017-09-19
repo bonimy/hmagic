@@ -160,6 +160,10 @@ struct
     uint16_t
     HM_ColQuadTo5bpc(RGBQUAD const p_cr);
 
+    /// Converts RGBQUAD to COLORREF.
+    COLORREF
+    HM_ColQuadToRef(RGBQUAD const p_quad);
+
     BOOL
     HM_BinaryCheckDlgButton(HWND     const p_win,
                             unsigned const p_dlg_control,

@@ -113,15 +113,6 @@ Changeblk8sel(HWND        win,
               BLOCKSEL8 * ed);
 
 void
-Updateobjdisplay(CHOOSEDUNG * ed,
-                 int          num);
-
-void
-Getdungselrect(int          i,
-               RECT       * rc,
-               CHOOSEDUNG * ed);
-
-void
 Updatemap(DUNGEDIT *ed);
 
 void
@@ -163,6 +154,15 @@ Closeroom(DUNGEDIT * const ed);
 
 void
 Saveroom(DUNGEDIT * const ed);
+
+void
+Paintdungeon(DUNGEDIT * const ed,
+             HDC hdc,
+             RECT *rc,
+             int x,int y,
+             int k,int l,
+             int n,int o,
+             unsigned short const *buf);
 
 // =============================================================================
 

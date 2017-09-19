@@ -358,6 +358,18 @@ HM_ColQuadTo5bpc(RGBQUAD const p_cr)
 
 // =============================================================================
 
+COLORREF
+HM_ColQuadToRef(RGBQUAD const p_quad)
+{
+    COLORREF cr = 0;
+    
+    cr |= ( p_quad.rgbBlue << 16) | (p_quad.rgbGreen <<  8) | (p_quad.rgbRed);
+    
+    return cr;
+}
+
+// =============================================================================
+
 BOOL
 HM_BinaryCheckDlgButton(HWND     const p_win,
                         unsigned const p_dlg_control,

@@ -11261,104 +11261,6 @@ Paintdungeon(DUNGEDIT * const ed,
 
 // =============================================================================
 
-void Updateobjdisplay(CHOOSEDUNG*ed,int num)
-{
-    int i=num+(ed->scroll<<2),j,k,l,m,n,o,p;
-    
-    uint16_t objbuf[8192];
-    
-    unsigned char obj[6];
-    
-    RECT rc;
-    
-    for(j=0;j<8192;j++) objbuf[j]=0x1e9;
-    if(i>=0x260) return;
-    else if(i>=0x1b8) {
-        obj[0]=0xf0;
-        obj[1]=0xff;
-        obj[2]=(i - 0x1b8)/42;
-        obj[3]=((i - 0x1b8)%42)<<1;
-        obj[4]=0xff;
-        obj[5]=0xff;
-        getdoor(obj+2,ed->ed->ew.doc->rom);
-        rc.left=(dm_x&0x3f)<<3;
-        rc.top=(dm_x&0xfc0)>>3;
-    } else {
-        if(i<0x40) {
-            obj[0]=0xfc;
-            obj[1]=0;
-            obj[2]=i;
-        } else if(i<0x138) {
-            obj[0]=0;
-            obj[1]=0;
-            switch(obj3_t[i - 0x40]&15) {
-            case 0: case 2:
-                obj[1]=1;
-                break;  
-            }
-            obj[2]=i - 0x40;
-        } else {
-            obj[0] = i & 3;
-            obj[1] = ( (i - 0x138) >> 2) & 3;
-            obj[2] = 0xf8 + ( ( (i - 0x138) >> 4) & 7);
-        }
-        obj[3]=255;
-        obj[4]=255;
-        getobj(obj);
-        rc.left=0;
-        rc.top=0;
-    }
-    Getdungobjsize(ed->ed->selchk,&rc,0,0,1);
-    if(i<0x1b8) {
-        if(rc.top<0) j=-rc.top>>3; else j=0;
-        if(rc.left<0) k=-rc.left>>3; else k=0;
-        if(i<0x40) {
-            obj[0]|=k>>4;
-            obj[1]=(k<<4)|(j>>2);
-            obj[2]|=k<<6;
-        } else {
-            obj[0]|=k<<2;
-            obj[1]|=j<<2;
-        }
-        rc.right+=k<<3;
-        rc.bottom+=j<<3;
-        rc.left+=k<<3;
-        rc.top+=j<<3;
-    }
-    dm_buf=objbuf;
-    Drawmap(ed->ed->ew.doc->rom,objbuf,obj,ed->ed);
-    Paintdungeon(ed->ed,objdc,&rc,rc.left,rc.top,rc.right,rc.bottom,0,0,objbuf);
-    rc.right-=rc.left;
-    rc.bottom-=rc.top;
-    n=rc.right;
-    if(rc.bottom>n) n=rc.bottom;
-    n++;
-    j=ed->w>>2;
-    k=ed->h>>2;
-    l=(rc.right)*j/n;
-    m=(rc.bottom)*k/n;
-    o=((((i&3)<<1)+1)*ed->w>>3);
-    p=(((((i>>2)&3)<<1)+1)*ed->h>>3);
-    StretchBlt(ed->bufdc,o-(l>>1),p-(m>>1),l,m,objdc,rc.left,rc.top,rc.right,rc.bottom,SRCCOPY);
-    if(i<0x40) l=i + 0x100;
-    else if(i<0x138) l=i - 0x40;
-    else if(i<0x1b8) l=i + 0xe48;
-    else l=i - 0x1b8;
-    wsprintf(buffer,"%03X",l);
-    SetTextColor(ed->bufdc,0);
-    TextOut(ed->bufdc,o+1,p+1,buffer,3);
-    SetTextColor(ed->bufdc,0xffbf3f);
-    TextOut(ed->bufdc,o,p,buffer,3);
-}
-
-void Getdungselrect(int i,RECT*rc,CHOOSEDUNG*ed)
-{
-    rc->left   = (i & 3) * ed->w >> 2;
-    rc->top    = (i >> 2) * ed->h >> 2;
-    rc->right  = rc->left + (ed->w >> 2);
-    rc->bottom = rc->top + (ed->h >> 2);
-}
-
 void
 Setpalette(HWND const win, HPALETTE const pal)
 {
@@ -14504,27 +14406,34 @@ nowmap:
 
 int Editblocks(OVEREDIT *ed, int num, HWND win)
 {
-    int x[2];
     int i;
     
-    // \task Pointer problem on 64-bit (and just generally)
-    x[0]=(int)ed;
+    // First slot is for the editor pointer, second is for the blockset to
+    // edit.
+    LPARAM x[2];
     
-    if(num==17)
+    // -----------------------------
+
+    // \task Pointer problem on 64-bit (and just generally)
+    x[0] = (LPARAM) ed;
+    
+    if(num == 17)
     {
-        num=askinteger(219,"Edit blocks","Which blocks?");
+        num = askinteger(219,
+                         "Edit blocks",
+                         "Which blocks?");
         
-        if(num==-1)
+        if(num == -1)
             return 0;
         
-        Getblocks(ed->ew.doc,num);
+        Getblocks(ed->ew.doc, num);
         
         num += 32;
     }
     
-    x[1]=num;
+    x[1] = num;
     
-    i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG16,win,blockdlgproc,(long)x);
+    i = ShowDialog(hinstance,(LPSTR)IDD_DIALOG16,win,blockdlgproc, (LPARAM) x);
     
     if(num >= 32 && num < 256)
         Releaseblks(ed->ew.doc, num - 32);
@@ -15287,8 +15196,8 @@ PaintSprName(HDC p_dc,
     // to set it anywhere more general.
     SetTextAlign(p_dc, TA_LEFT | TA_TOP);
 
-    // \task It would appear that the clip width is being used as height too?
-    // Does this always assume that window area are square?
+    // \note This subroutine assumes a usable window area that has square
+    // dimension.
     if( (y + textmetric.tmHeight) > (p_clip_width - o) )
         return;
     
@@ -15340,6 +15249,9 @@ Paintspr(HDC const p_dc,
     size_t final_len = (signed) len;
     
     // -----------------------------
+    
+    // \task 1. sprite names don't display on the bottom line.
+    // 2. sprites can be moved off the edge of the map on the left side.
     
     // Probably not strictly necessary, but the program doesn't make a point
     // to set it anywhere more general.
@@ -19470,7 +19382,7 @@ void Palselrect(BLKEDIT8 *ed, HWND win, RECT *rc)
 // (at the very least in the case of dungeon objects)
 long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-    int i,j,k,l,m,n;
+    int i,j,k,l,m;
     
     BLKEDIT8*ed;
     
@@ -19515,18 +19427,18 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     HBRUSH const oldob2 = newobj;
                     
                     if(oed->hpal)
-                        newobj = CreateSolidBrush(0x1000000 + ((short*)(oed->pal))[i+(j<<4)]);
+                    {
+                        // \task Perhaps test this in 256 color mode if possible.
+                        // MSDN seems to indicate that this is wrong, but ......
+                        // there is some evidence that this is how you generate
+                        // a COLORREF from the currently realized palette maybe?
+                        newobj = CreateSolidBrush(0x1000000 + ((short*)(oed->pal))[ i + (j << 4) ]);
+                    }
                     else
                     {
-                        // \task Useless? No, but confusing (next line consumes
-                        // this value)
-                        n = i + (j << 4);
+                        COLORREF cr = HM_ColQuadToRef( oed->pal[ i + (j << 4) ] );
                         
-                        n = (oed->pal[n].rgbBlue  << 16)
-                          + (oed->pal[n].rgbGreen <<  8)
-                          + (oed->pal[n].rgbRed);
-                        
-                        newobj = CreateSolidBrush(n);
+                        newobj = CreateSolidBrush(cr);
                     }
                     
                     SelectObject(hdc, newobj);
@@ -19534,7 +19446,11 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     if(oldob2)
                         DeleteObject(oldob2);
                     
-                    Rectangle(hdc,i*ed->pwidth>>4,j*ed->pheight>>4,(i+1)*ed->pwidth>>4,(j+1)*ed->pheight>>4);
+                    Rectangle(hdc,
+                              i * ed->pwidth >> 4,
+                              j * ed->pheight >> 4,
+                              (i + 1) * ed->pwidth >> 4,
+                              (j + 1) * ed->pheight >> 4);
                 }
             }
             
@@ -22785,13 +22701,16 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_KEYDOWN:
         
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        switch(wparam) {
+        ed = (SAMPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        
+        switch(wparam)
+        {
+        
         case VK_DELETE:
             zw=ed->zw;
             if(zw->copy!=-1) break;
             
-            if(ed->sell==ed->selr)
+            if(ed->sell == ed->selr)
             {
                 // \task This logic deletes the whole sample if there is
                 // is not a selected region of width greater than zero.
@@ -25450,16 +25369,13 @@ saveerror:
              || strrchr(activedoc->filename, '\\') > m
             )
             {
-                // \task I think the warnings are right. This should
-                // probably be activedoc, not doc.
                 m = activedoc->filename + strlen(activedoc->filename);
             }
             
             l = *(int*)m;
             
-            // Appears to attempt to append ".HDM" to the file path.
-            // \task Should probably fix this as it's endianness dependent.
-            *(int*)m=0x444d482e;
+            // Appears to attempt to append ".HMD" to the file path.
+            strcpy(m, ".HMD");
             
             if(activedoc->nummod)
             {
@@ -25807,7 +25723,8 @@ error:
                     m = doc->filename + strlen(doc->filename);
                 
                 l = *(int*)m; // what is the int value there?
-                *(int*)m = 0x444d482e; // set it manually to a HMD0 file.
+                // change the path extensions .HMD.
+                strcpy(m, ".HMD");
                 
                 h = CreateFile(doc->filename,
                                GENERIC_READ,
