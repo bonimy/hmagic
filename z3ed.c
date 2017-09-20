@@ -118,6 +118,11 @@ int cfg_flag = CFG_NOFLAGS;
         SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),
     };
 
+    enum
+    {
+        SD_OverShowMarkers = 1 << 2
+    };
+
 // =============================================================================
 
 // Sound volume level.
@@ -15091,12 +15096,12 @@ PaintSprName(HDC p_dc,
     as its width.
 */
 void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         int const p_window_size)
+Paintspr(HDC    const p_dc,
+         int    const p_x,
+         int    const p_y,
+         int    const p_hscroll,
+         int    const p_vscroll,
+         size_t const p_window_size)
 {
     size_t const len = strlen(buffer);
     
@@ -15104,15 +15109,15 @@ Paintspr(HDC const p_dc,
     
     // -----------------------------
     
-    // \task 1. sprite names don't display on the bottom line.
-    // 2. sprites can be moved off the edge of the map on the left side.
+    // \task Small nitpick, but "secrets" drawn at the far right
+    // edge of the screen can leave a half circle artifact.
+    // also the very bottom of the screen. This is owing to their
+    // being 8 pixel aligned. Certainly fixable but will have to look
+    // a bit in depth.
     
     // Probably not strictly necessary, but the program doesn't make a point
     // to set it anywhere more general.
     SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-    
-    if( (p_y + textmetric.tmHeight) > (p_window_size - p_vscroll) )
-        return;
     
     if( (len * textmetric.tmAveCharWidth) + p_x > (p_window_size - p_hscroll) )
         final_len = (p_window_size - p_hscroll - p_x) / textmetric.tmAveCharWidth;
@@ -15125,9 +15130,6 @@ Paintspr(HDC const p_dc,
         
         SetDlgItemText(debug_window, IDC_STATIC2, text_buf);
     }
-    
-    if(final_len <= 0)
-        return;
     
     if(final_len > len)
     {
@@ -20342,7 +20344,10 @@ void Updatesprites(void)
             if(win) {
                 win=GetDlgItem(GetDlgItem(win,2000),3001);
                 oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(oe->disp&4)) continue;
+                
+                if( ! (oe->disp & SD_OverShowMarkers) )
+                    continue;
+                
                 k=oe->esize[oe->sprset];
                 l=oe->ebuf[oe->sprset];
                 for(j=0;j<k;j++) {
@@ -20369,9 +20374,13 @@ void Updatesprites(void)
             if(win) {
                 win=GetDlgItem(GetDlgItem(win,2000), ID_DungEditWindow);
                 ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(ed->disp&4)) break;
-                k=ed->esize;
-                l=ed->ebuf;
+                
+                if( ! (ed->disp & SD_OverShowMarkers) )
+                    break;
+                
+                k = ed->esize;
+                l = ed->ebuf;
+                
                 for(j=1;j<k;j++) {
                     rc.left=((l[j+1]&31)<<4)-(ed->mapscrollh<<5);
                     rc.top=((l[j]&31)<<4)-(ed->mapscrollv<<5);
@@ -23227,7 +23236,7 @@ bgchange:
     
     if(ed->selflag) FrameRect(hdc,&rc,green_brush);
     
-    if(ed->disp&4)
+    if(ed->disp & SD_OverShowMarkers)
     {
         uint8_t const * const rom = ed->ew.doc->rom;
         
@@ -23261,17 +23270,20 @@ bgchange:
             if(rc.right > q - n) rc.right=q-n;
             if(rc.bottom > q - o) rc.bottom=q-o;
             
-            Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
-            Paintspr(hdc,rc.left,rc.top,n,o,q);
+            Rectangle(hdc, rc.left, rc.top,rc.right,rc.bottom);
+            
+            Paintspr(hdc, rc.left, rc.top,n,o,q);
             
             SelectObject(hdc, oldobj2);
             SelectObject(hdc, oldobj3);
         }
+        
         SelectObject(hdc, oldobj);
     }
+    
     SelectPalette(hdc, oldpal, 1);
-    EndPaint(win,&ps);
-
+    
+    EndPaint(win, &ps);
 }
 
 // =============================================================================
@@ -23862,7 +23874,9 @@ updent:
         if(l>q) l=q-1;
         if(k<0) k=0;
         if(l<0) l=0;
-        switch(ed->dtool) {
+        switch(ed->dtool)
+        {
+        
         case 1:
             if(ed->disp&8) {
                 k>>=4;
@@ -23911,6 +23925,7 @@ updent:
             }
             ed->ov->modf=1;
             break;
+        
         case 2:
         case 3:
             k>>=5;
@@ -23949,9 +23964,13 @@ updent:
             }
             break;
         case 4: case 6: case 8: case 9: case 10: case 11:
+            
             rom=ed->ew.doc->rom;
-            if(ed->disp&4) {
-                if(msg==WM_LBUTTONDOWN) {
+            
+            if(ed->disp & SD_OverShowMarkers)
+            {
+                if(msg == WM_LBUTTONDOWN)
+                {
                     Overselchg(ed,win);
                     switch(ed->tool) {
                     case 3:
@@ -24066,8 +24085,11 @@ foundobj:
                     ed->selobj=-1;
                     ed->dtool=0;
                     ReleaseCapture();
-                } else {
-                    switch(ed->tool) {
+                }
+                else
+                {
+                    switch(ed->tool)
+                    {
                     case 3:
                         b5=(uint16_t*)(ed->ew.doc->rom + 0xdba71);
                         m=0;
@@ -24091,30 +24113,65 @@ movetile:
                         Getstringobjsize("00",&rc);
                         InvalidateRect(win,&rc,0);
                         break;
+                    
                     case 5:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        if(k==ed->selx && l==ed->sely) return 0;
-                        m=ed->sprset;
-                        b6=ed->ebuf[ed->sprset];
-                        rc.left=ed->objx-n;
+                        
+                        k &= ~0xf;
+                        l &= ~0xf;
+                        
+                        if(k == ed->selx && l == ed->sely)
+                            return 0;
+                        
+                        m = ed->sprset;
+                        
+                        b6 = ed->ebuf[ed->sprset];
+                        
+                        rc.left = ed->objx - n;
                         rc.top=ed->objy-o;
+                        
                         Getstringobjsize(Getoverstring(ed,5,ed->selobj),&rc);
-                        InvalidateRect(win,&rc,0);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        b6[ed->selobj]=ed->objy>>4;
-                        b6[ed->selobj+1]=ed->objx>>4;
+                        
+                        InvalidateRect(win, &rc, 0);
+                        
+                        ed->objx += k - ed->selx;
+                        ed->objy += l - ed->sely;
+                        
+
+                        // Clamp X and Y coordinates of the sprite to acceptable
+                        // ranges.
+                        if(always)
+                        {
+                            int max_pos = (512 << ed->mapsize) - 0x10;
+                            
+                            if(ed->objx < 0)
+                                ed->objx = 0;
+                            else if(ed->objx > max_pos)
+                                ed->objx = max_pos;
+                            
+                            if(ed->objy < 0)
+                                ed->objy = 0;
+                            else if(ed->objy > max_pos)
+                                ed->objy = max_pos;
+                        }
+                        
+                        b6[ed->selobj]     = ed->objy >> 4;
+                        b6[ed->selobj + 1] = ed->objx >> 4;
+                        
                         rc.right+=k-ed->selx;
                         rc.bottom+=l-ed->sely;
                         rc.left=ed->objx-n;
                         rc.top=ed->objy-o;
+                        
                         ed->selx=k;
                         ed->sely=l;
+                        
                         InvalidateRect(win,&rc,0);
+                        
                         ed->e_modf[m]=1;
                         ed->ov->modf=1;
+                        
                         break;
+                    
                     case 7:
                         Overselchg(ed,win);
                         ed->objx+=k-ed->selx;
@@ -26956,7 +27013,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 #if 0
     trk_font = GetStockObject(ANSI_FIXED_FONT);
 #else
-    trk_font = CreateFont(0, 0,
+    trk_font = CreateFont(16, 0,
                           0, 0,
                           0,
                           FALSE, FALSE, FALSE,
