@@ -787,39 +787,6 @@ extern SUPERDLG overdlg,
                 patchdlg,
                 z3_dlg;
 
-extern HPEN green_pen,
-     null_pen,
-     white_pen,
-     blue_pen;
-
-extern HBRUSH
-       black_brush,
-       white_brush,
-       green_brush,
-       yellow_brush,
-       purple_brush,
-       red_brush,
-       blue_brush,
-       gray_brush;
-
-extern HGDIOBJ trk_font;
-
-extern HCURSOR normal_cursor,
-        forbid_cursor,
-        wait_cursor;
-
-extern HBITMAP arrows_imgs[4];
-
-extern HANDLE shade_brush[8];
-
-extern HCURSOR sizecsor[5];
-
-extern BITMAPINFOHEADER zbmih;
-
-
-extern RGBQUAD const blackcolor;
-
-
 // The handle to the program
 extern HINSTANCE hinstance;
 

@@ -62,6 +62,9 @@
     <ClInclude Include="Wrappers.h">
       <Filter>Header Files\General</Filter>
     </ClInclude>
+    <ClInclude Include="GdiObjects.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">

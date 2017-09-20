@@ -118,6 +118,12 @@ int cfg_flag = CFG_NOFLAGS;
         SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),
     };
 
+
+    enum
+    {
+        SD_OverShowMarkers = 1 << 2,
+    };
+
 // =============================================================================
 
 // Sound volume level.
@@ -23231,10 +23237,17 @@ OverworldMap_OnPaint(OVEREDIT * const ed,
     
     RealizePalette(hdc);
     
-    if(ed->dtool==2 || ed->dtool==3 || ed->selflag) Getselectionrect(ed,&rc);
+    if(ed->dtool == 2 || ed->dtool == 3 || ed->selflag)
+        Getselectionrect(ed, &rc);
     
-    b4=ed->ov->buf;
-    if(ed->ew.param==128) p=8; else if(ed->ew.param==136) p=0x20; else p=0x10;
+    b4 = ed->ov->buf;
+    
+    if(ed->ew.param == 128)
+        p = 8;
+    else if(ed->ew.param == 136)
+        p = 0x20;
+    else
+        p = 0x10;
     
     if(ed->mapsize)
         q = 0x400;
@@ -23247,9 +23260,11 @@ OverworldMap_OnPaint(OVEREDIT * const ed,
             break;
         
         i = ps.rcPaint.left&0xffffffe0;
+        
         b2 = b4 + ed->mapscrollh + (i >> 5) + j + o;
         
         if(p == 0x20)
+        {
             if(j + o < 256)
             {
                 b3 = b2 + 8;
@@ -23260,18 +23275,23 @@ OverworldMap_OnPaint(OVEREDIT * const ed,
                 p = 16;
                 goto bgchange;
             }
+        }
         else
         {
             
-bgchange:
+        bgchange:
+            
             b5 = b4 + 0x400 + ( (j + o) >> 1);
             b3 = b2 + 0x400 - ( (j + o) >> 1);
             
             if(b5 >= b4 + 0x500)
-                b3-=0x100,b5-=0x100;
+            {
+                b3 -= 0x100;
+                b5 -= 0x100;
+            }
         }
         
-        for(;i<k;i+=32)
+        for(; i < k; i += 32)
         {
             if(b3 >= b5 + p)
                 if(ed->ew.param==128)
@@ -23289,7 +23309,8 @@ bgchange:
             
             if(ed->dtool == 3)
             {
-                if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom) m=ed->selblk;
+                if(i >= rc.left && i < rc.right && j >= rc.top && j < rc.bottom)
+                    m = ed->selblk;
             }
             else if(ed->selflag)
             {
@@ -23303,9 +23324,10 @@ bgchange:
                     ];
             }
             
-            if(ed->disp&8)
+            if(ed->disp & 8)
             {
-                if(ed->disp&1) {
+                if(ed->disp & 1)
+                {
                     b6=map16ofs+4;
                     r=(((i+n)&0x1ff)>>4)+(((j+o)&0x1ff)<<1) + 0x1000;
                     ovlblk[0]=ed->ovlmap[r];
@@ -23313,7 +23335,9 @@ bgchange:
                     ovlblk[2]=ed->ovlmap[r+32];
                     ovlblk[3]=ed->ovlmap[r+33];
                     Drawblock32(ed,*b3,0);
-                } else {
+                }
+                else
+                {
                     b6=map16ofs;
                     r = ( (i + n) >> 4 ) + ( (j + o) << 2 );
                     ovlblk[0]=ed->ovlmap[r];
@@ -23322,35 +23346,59 @@ bgchange:
                     ovlblk[3]=ed->ovlmap[r+65];
                     Drawblock32(ed,m,0);
                 }
-            } else {
-            if(!(ed->disp&1)) goto noback;
-            if((!ed->layering) || (ed->ew.param==128 && ((b3<b5+16 && b3>=b5+8 && b2<b4+256) || (ed->sprset<2 && b2<b4+512 && b3<b5+8))) ||
-                ((ed->ew.param==136) && b2<b5+8 && b2<b4+256)) {
-                Drawblock32(ed,m,0);
-                Drawblock32(ed,*b3,3);
-            } else if(ed->layering==1) {
-                Drawblock32(ed,*b3,0);
-                Drawblock32(ed,m,1);
-            } else noback: Drawblock32(ed,m,0);
             }
+            else
+            {
+                if(!(ed->disp & 1))
+                    goto noback;
+                
+                if((!ed->layering) || (ed->ew.param==128 && ((b3<b5+16 && b3>=b5+8 && b2<b4+256) || (ed->sprset<2 && b2<b4+512 && b3<b5+8))) ||
+                    ((ed->ew.param==136) && b2<b5+8 && b2<b4+256)) {
+                    Drawblock32(ed,m,0);
+                    Drawblock32(ed,*b3,3);
+                }
+                else if(ed->layering==1)
+                {
+                    Drawblock32(ed,*b3,0);
+                    Drawblock32(ed,m,1);
+                }
+                else
+                {
+                
+                noback:
+                    Drawblock32(ed,m,0);
+                }
+            }
+            
             Paintblocks(&(ps.rcPaint),hdc,i,j,(DUNGEDIT*)ed);
-            if(ed->disp&8) {
-                for(m=0;m<4;m++) {
-                    if(!(j+o+(m&2))) continue;
-                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-b6[2]]+1))&65536) {
+            
+            if(ed->disp & 8)
+            {
+                for(m=0;m<4;m++)
+                {
+                    if(!(j+o+(m&2)))
+                        continue;
+                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-b6[2]]+1)) & 65536)
+                    {
                         MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
                         LineTo(hdc,i+blkx[m<<2]+16,j+blky[m<<2]);
                     }
                 }
-                for(m=0;m<4;m++) {
-                    if(!(i+n+(m&1))) continue;
-                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-1]+1))&65536) {
+                
+                for(m=0;m<4;m++)
+                {
+                    if(!(i+n+(m&1)))
+                        continue;
+                    if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-1]+1))&65536)
+                    {
                         MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
                         LineTo(hdc,i+blkx[m<<2],j+blky[m<<2]+16);
                     }
                 }
             }
-            if(ed->disp&2) {
+            
+            if(ed->disp & 2)
+            {
                 MoveToEx(hdc,i+31,j,0);
                 LineTo(hdc,i+31,j+31);
                 LineTo(hdc,i-1,j+31);
@@ -23361,6 +23409,7 @@ bgchange:
                     LineTo(hdc,i+16,j+31);
                 }
             }
+            
             b2++;
             b3++;
         }
@@ -23375,21 +23424,31 @@ bgchange:
         if(rc.right>rc.left && rc.bottom>rc.top) FrameRect(hdc,&rc,white_brush);
     }
     
-    if(ed->selflag) FrameRect(hdc,&rc,green_brush);
-    
-    if(ed->disp&4)
+    if(ed->selflag)
     {
-        uint8_t const * const rom = ed->ew.doc->rom;
+        FrameRect(hdc, &rc, green_brush);
+    }
+    
+    if(ed->disp & SD_OverShowMarkers)
+    {
+         uint8_t const * const rom = ed->ew.doc->rom;
         
-        HGDIOBJ oldobj2 = SelectObject(hdc,trk_font);
+        HGDIOBJ oldobj2 = SelectObject(hdc, trk_font);
         
-        SetBkMode(hdc,TRANSPARENT);
-        q=ed->mapsize?1024:512;
-        oldobj=0;
-        for(i=0;i<6;i++) {
-            if(tool_ovt[ed->tool]==i) continue;
-            oldobj2=Paintovlocs(hdc,ed,i,n,o,q,rom);
-            if(!oldobj) oldobj=oldobj2;
+        SetBkMode(hdc, TRANSPARENT);
+        
+        q = ed->mapsize ? 1024 : 512;
+        oldobj = 0;
+        
+        for(i = 0; i < 6; i++)
+        {
+            if(tool_ovt[ed->tool] == i)
+                continue;
+            
+            oldobj2 = Paintovlocs(hdc,ed,i,n,o,q,rom);
+            
+            if(!oldobj)
+                oldobj = oldobj2;
         }
         
         Paintovlocs(hdc,ed,tool_ovt[ed->tool],n,o,q,rom);
@@ -23401,26 +23460,32 @@ bgchange:
             HGDIOBJ const oldobj2 = SelectObject(hdc, green_pen);
             HGDIOBJ const oldobj3 = SelectObject(hdc, black_brush);
             
-            Getoverstring(ed,ed->tool,ed->selobj);
+            Getoverstring(ed, ed->tool, ed->selobj);
             
-            rc.left=ed->objx-n;
-            rc.top=ed->objy-o;
+            rc.left = ed->objx-n;
+            rc.top  = ed->objy-o;
             
-            Getstringobjsize(buffer,&rc);
+            Getstringobjsize(buffer, &rc);
             
-            if(rc.right > q - n) rc.right=q-n;
-            if(rc.bottom > q - o) rc.bottom=q-o;
+            if(rc.right > q - n)
+                rc.right = q - n;
             
-            Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
-            Paintspr(hdc,rc.left,rc.top,n,o,q);
+            if(rc.bottom > q - o)
+                rc.bottom = q - o;
+            
+            Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
+            Paintspr(hdc, rc.left, rc.top, n, o, q);
             
             SelectObject(hdc, oldobj2);
             SelectObject(hdc, oldobj3);
         }
+        
         SelectObject(hdc, oldobj);
     }
+    
     SelectPalette(hdc, oldpal, 1);
-    EndPaint(win,&ps);
+    
+    EndPaint(win, &ps);
 
 }
 
@@ -26415,6 +26480,7 @@ nomod:
     return 0;
 }
 
+// Window procedure for the document window with the large tree control.
 long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
 {
     FDOC *param;
@@ -26425,6 +26491,7 @@ long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
     
     switch(msg)
     {
+    
     case WM_MDIACTIVATE:
         activedoc=(FDOC*)GetWindowLong(win,GWL_USERDATA);
         

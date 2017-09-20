@@ -538,7 +538,7 @@ hm_strndup(char const * const p_str,
 {
     char * out = (char*) calloc(p_len + 1, sizeof(char));
     
-    int i = 0;
+    size_t i = 0;
     
     for(i = 0; i < p_len; i += 1)
     {

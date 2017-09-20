@@ -6,14 +6,7 @@
     #include "wrappers.h"
 
     #include "DungeonEnum.h"
-
-// =============================================================================
-
-// \task Needs header too
-extern HPEN tint_pen;
-extern HBRUSH tint_br;
-
-// \task end externs that need header.
+    #include "GdiObjects.h"
 
 // =============================================================================
 

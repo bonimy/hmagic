@@ -1,6 +1,11 @@
 
     #include "structs.h"
+
+    #include "GdiObjects.h"
+
     #include "prototypes.h"
+
+
 
 // ==============================================================================
 

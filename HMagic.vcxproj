@@ -124,6 +124,7 @@
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
     <ClInclude Include="DungeonEnum.h" />
+    <ClInclude Include="GdiObjects.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />

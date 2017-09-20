@@ -4,6 +4,7 @@
 // For ease of compiling.
 #include "structs.h"
 
+#include "GdiObjects.h"
 
 #include "prototypes.h"
 
