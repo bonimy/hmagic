@@ -51,6 +51,7 @@ HM_GetWindowPos(HWND const p_win)
     return pt;
 }
 
+// =============================================================================
 
 POINT
 HM_GetClientPos(HWND const p_win)
@@ -62,6 +63,8 @@ HM_GetClientPos(HWND const p_win)
     return pt;
 }
 
+// =============================================================================
+
 POINT
 HM_PointClientToScreen(HWND  const p_win,
                        POINT const p_rel_pos)
@@ -72,6 +75,17 @@ HM_PointClientToScreen(HWND  const p_win,
     screen_pos.y += p_rel_pos.y;
     
     return screen_pos;
+}
+
+// =============================================================================
+
+RECT
+HM_GetDlgItemRect(HWND     const p_dlg,
+                  unsigned const p_item_id)
+{
+    HWND const child_wnd = GetDlgItem(p_dlg, p_item_id);
+    
+    return HM_GetClientRect(child_wnd);
 }
 
 // =============================================================================

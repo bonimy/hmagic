@@ -443,8 +443,8 @@ Openroom(DUNGEDIT * const ed,
     HM_BinaryCheckDlgButton(win, ID_DungObjLayer1, (layer == 0) );
     HM_BinaryCheckDlgButton(win, ID_DungObjLayer2, (layer == 2) );
     HM_BinaryCheckDlgButton(win, ID_DungObjLayer3, (layer == 4) );
-    HM_BinaryCheckDlgButton(win, ID_DungSprLayer, (layer == 6) );
-    HM_BinaryCheckDlgButton(win, ID_DungItemLayer, (layer == 7) );
+    HM_BinaryCheckDlgButton(win, ID_DungSprLayer, (layer == SD_DungSprLayerSelected) );
+    HM_BinaryCheckDlgButton(win, ID_DungItemLayer, (layer == SD_DungItemLayerSelected) );
     HM_BinaryCheckDlgButton(win, ID_DungBlockLayer, (layer == 8) );
     HM_BinaryCheckDlgButton(win, ID_DungTorchLayer, (layer == 9) );
     
@@ -1475,7 +1475,7 @@ no_obj:
             
             Dungselectchg(ed,hc,0);
             
-            ed->selchk = 6;
+            ed->selchk = SD_DungSprLayerSelected;
             ed->selobj = ed->esize > 2;
             
             Dungselectchg(ed,hc,1);
@@ -1870,7 +1870,7 @@ updpal2:
             
             hc = GetDlgItem(win, ID_DungEditWindow);
             Dungselectchg(ed,hc,0);
-            ed->selchk=7;
+            ed->selchk = SD_DungItemLayerSelected;
             ed->selobj=(ed->ssize>2)?2:0;
             Dungselectchg(ed,hc,1);
             
