@@ -396,6 +396,8 @@ typedef struct
     /// A buffer for all pixels of the map (experimental)
     uint8_t map_bits[512 * 512];
     
+    RECT m_selected_obj_rect;
+    
 } DUNGEDIT;
 
 typedef struct

@@ -17,6 +17,89 @@ int szcofs[16] =
 
 // =============================================================================
 
+const static char* chest_str[] =
+{
+    "Swd&&Sh1",
+    "Sword 2",
+    "Sword 3",
+    "Sword 4",
+    "Shield 1",
+    "Shield 2",
+    "Shield 3",
+    "Firerod",
+    "Icerod",
+    "Hammer",
+    "Hookshot",
+    "Bow",
+    "Boomerang",
+    "Powder",
+    "Bee",
+    "Bombos",
+    "Ether",
+    "Quake",
+    "Lamp",
+    "Shovel",
+    "Flute",
+    "Red cane",
+    "Bottle",
+    "Heart piece",
+    "Blue cane",
+    "Cape",
+    "Mirror",
+    "Power glove",
+    "Titan glove",
+    "Wordbook",
+    "Flippers",
+    "Pearl",
+    "Crystal",
+    "Net",
+    "Armor 2",
+    "Armor 3",
+    "Key",
+    "Compass",
+    "LiarHeart",
+    "Bomb",
+    "3 bombs",
+    "Mushroom",
+    "Red boom.",
+    "Red pot",
+    "Green pot",
+    "Blue pot",
+    "Red pot",
+    "Green pot",
+    "Blue pot",
+    "10 bombs",
+    "Big key",
+    "Map",
+    "1 rupee",
+    "5 rupees",
+    "20 rupees",
+    "Pendant 1",
+    "Pendant 2",
+    "Pendant 3",
+    "Bow&&Arrows",
+    "Bow&&S.Arr",
+    "Bee",
+    "Fairy",
+    "MuteHeart",
+    "HeartCont.",
+    "100 rupees",
+    "50 rupees",
+    "Heart",
+    "Arrow",
+    "10 arrows",
+    "Magic",
+    "300 rupees",
+    "20 rupees",
+    "Bee",
+    "Sword 1",
+    "Flute",
+    "Boots",
+    "No alternate"
+};
+
+// =============================================================================
+
 // Is this the one that draws the dungeon?
 void Updatemap(DUNGEDIT *ed)
 {
@@ -77,6 +160,210 @@ void Updatemap(DUNGEDIT *ed)
     {
         Drawmap(rom, ed->nbuf, buf + 2, ed);
     }
+}
+
+// =============================================================================
+
+void
+Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
+{
+    char text_buf[0x200];
+    
+    int const vdelta = ed->map_vscroll_delta;
+    
+    RECT rc;
+    unsigned char*rom=ed->ew.doc->rom;
+    int i,j,k,l;
+    static char *dir_str[4]={"Up","Down","Left","Right"};
+    
+    if(f)
+        ed->ischest=0;
+    
+    if(!ed->selobj)
+    {
+        if(f)
+        {
+            text_buf[0]=0;
+        }
+    }
+    else if(ed->selchk == 9)
+    {
+        dm_x = (*(short*) (ed->tbuf + ed->selobj)) >> 1;
+        
+        if(f)
+            wsprintf(text_buf,
+                     "Torch\nX: %02X\nY: %02X\nBG%d\nP: %d",
+                     dm_x & 63,
+                     (dm_x >> 6) & 63,
+                     ( (dm_x >> 12) & 1) + 1,
+                     (dm_x >> 13) & 7);
+    }
+    else if(ed->selchk == 8)
+    {
+        dm_x = (*(short*) (rom + ed->selobj + 2)) >> 1;
+        
+        if(f)
+            wsprintf(text_buf,
+                     "Block\nX: %02X\nY: %02X\nBG%d",
+                     dm_x & 63,
+                     (dm_x >> 6) & 63,
+                     (dm_x >> 12) + 1);
+    }
+    else if(ed->selchk == 7)
+    {
+        dm_x = *(short*) (ed->sbuf + ed->selobj - 2) >> 1;
+        dm_k = ed->sbuf[ed->selobj];
+        cur_sec = Getsecretstring(rom, dm_k);
+        
+        if(f)
+            wsprintf(text_buf,
+                     "Item %02X\nX: %02X\nY: %02X\nBG%d",
+                     dm_k,
+                     dm_x & 63,
+                     (dm_x >> 6) & 63,
+                     (dm_x >> 12) + 1);
+    }
+    else if(ed->selchk == 6)
+    {
+        dm_x = ((ed->ebuf[ed->selobj+1]&31)<<1)+((ed->ebuf[ed->selobj]&31)<<7);
+        dm_dl = ed->ebuf[ed->selobj]>>7;
+        dm_l = ((ed->ebuf[ed->selobj]&0x60)>>2)|((ed->ebuf[ed->selobj+1]&0xe0)>>5);
+        dm_k = ed->ebuf[ed->selobj + 2] + (((dm_l & 7) == 7) ? 256 : 0);
+        
+        if(f)
+            wsprintf(text_buf,
+                     "Spr %02X\nX: %02X\nY: %02X\nBG%d\nP: %02X",dm_k,dm_x&63,dm_x>>6,dm_dl+1,dm_l);
+    }
+    else if(ed->selchk & 1)
+    {
+        getdoor(ed->buf+ed->selobj,rom);
+        
+        if(f)
+            wsprintf(text_buf,
+                     "Dir: %s\nType: %d\nPos: %d\n",
+                     dir_str[dm_k],
+                     dm_l,
+                     dm_dl);
+    }
+    else
+    {
+        getobj(ed->buf + ed->selobj);
+        
+        if(f)
+        {
+            if(dm_k >= 0xf8 && dm_k < 0x100) // Subtype 2 object
+            {
+                wsprintf(text_buf,
+                         "Obj: %03X:%X\nX: %02X\nY: %02X",
+                         dm_k,
+                         dm_l,
+                         dm_x & 0x3f,
+                         dm_x >> 6);
+                
+                // If it's a chest object...
+                if( (dm_k == 0xf9 && dm_l == 9) || (dm_k == 0xfb && dm_l == 1) )
+                {
+                    for(k = 0; k < ed->chestnum; k++)
+                        if(ed->selobj == ed->chestloc[k])
+                            break;
+                    
+                    for(l = 0; l < 0x1f8; l += 3)
+                    {
+                        if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
+                        {
+                            k--;
+                            
+                            if(k < 0)
+                            {
+                                k = rom[0xe970 + l];
+                                i = rom[0x3b528 + k];
+                                
+                                if(i == 255)
+                                    i = 76;
+                                
+                                wsprintf(text_buf + 21,
+                                         (rom[0xe96f + l] & 128) ? "\n%d:%s\n(%s)\n(Big)" : "\n%d:%s\n(%s)",
+                                         k,
+                                         chest_str[k],
+                                         chest_str[i]);
+                                
+                                // This is a chest object >_>.
+                                ed->ischest=1;
+                                
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+                wsprintf(text_buf,"Obj: %03X\nX: %02X\nY: %02X",dm_k,dm_x&0x3f,dm_x>>6);
+            
+            if(dm_k<0xf8)
+                wsprintf(text_buf + 20, "\nSize: %02X", dm_l);
+        }
+    }
+    
+    if(f)
+    {
+        SetDlgItemText(ed->dlg, ID_DungDetailText, text_buf);
+    }
+    
+    if(!ed->selobj)
+        return;
+    
+    k = ed->mapscrollh;
+    l = ed->mapscrollv;
+    
+    i = ( (dm_x & 0x3f) << 3) - (k << 5);
+    j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l * vdelta);
+    
+    if(f && ed->selobj)
+    {
+        if(i < 0)
+            k += i >> 5;
+        
+        if(j < 0)
+            l += (j / vdelta);
+        
+        if( ( (i + 32) >> 5) >= ed->mappageh)
+            k += ( (i + 32) >> 5) - ed->mappageh;
+        
+        if( ( (j + vdelta) / vdelta) >= ed->mappagev )
+            l += ( (j + vdelta) / vdelta) - ed->mappagev;
+        
+        if(k != ed->mapscrollh)
+        {
+            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION + (k << 16), 0);
+        }
+        
+        if(l != ed->mapscrollv)
+        {
+            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION + (l << 16), 0);
+        }
+    }
+    
+    rc.left = ((dm_x & 0x3f) << 3);
+    rc.top  = (((dm_x >> 6) & 0x3f) << 3);
+    
+    Getdungobjsize(ed->selchk, &rc, 0, 0, 0);
+    
+    ed->selrect = rc;
+    
+    rc.left -= k << 5;
+    rc.top  -= l * vdelta;
+    
+    rc.right  -= k << 5;
+    rc.bottom -= l * vdelta;
+    
+    ed->objt = dm_k;
+    ed->objl = dm_l;
+    
+    InvalidateRect(hc, &ed->m_selected_obj_rect, 1);
+    
+    ed->m_selected_obj_rect = rc;
+    
+    InvalidateRect(hc, &rc, 0);
 }
 
 // =============================================================================
@@ -707,6 +994,23 @@ PaintDungeon(DUNGEDIT * const p_ed,
     }
 }
 
+// =============================================================================
+
+void
+DungeonMap_DrawDot(HDC    const p_dc,
+                   int    const p_x,
+                   int    const p_y,
+                   HPEN   const p_pen,
+                   HBRUSH const p_brush)
+{
+    HGDIOBJ const old_pen = SelectObject(p_dc, p_pen);
+    HGDIOBJ const old_brush = SelectObject(p_dc, p_brush);
+    
+    Ellipse(p_dc, p_x, p_y, p_x + 16, p_y + 16);
+    
+    SelectObject(p_dc, old_pen);
+    SelectObject(p_dc, old_brush);
+}
 
 // =============================================================================
 
@@ -722,7 +1026,11 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     PAINTSTRUCT ps;
     
-    HDC const hdc = BeginPaint(p_win, &ps);
+    HDC const base_dc = BeginPaint(p_win, &ps);
+    
+    HDC const hdc = CreateCompatibleDC(base_dc);
+    
+    HBITMAP bm;
     
     HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal, 1);
     
@@ -750,11 +1058,30 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     if( HM_IsEmptyRect(clip_r) )
     {
+        DeleteDC(hdc); 
+        
         EndPaint(p_win, &ps);
 
         return;
     }
 
+    
+    {
+        HGDIOBJ tiny_bm;
+        
+        RECT cr = HM_GetClientRect(p_win);
+        
+        bm = CreateCompatibleBitmap(base_dc,
+                                    cr.right - cr.left,
+                                    cr.bottom - cr.top);
+        tiny_bm = SelectObject(hdc, bm);
+        
+        DeleteObject(tiny_bm);
+        
+        FillRect(hdc,
+                 &clip_r,
+                 (HBRUSH) GetClassLongPtr(p_win, GCLP_HBRBACKGROUND) );
+    }
     
     if( ! tint_pen) { tint_pen = CreatePen(PS_SOLID, 3, RGB(0x90, 0xff, 0x90) ); }
     if( ! tint_br)  { tint_br = CreateSolidBrush( RGB(0x80, 0x80, 0x80) ); }
@@ -766,17 +1093,6 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     if(k + n > 0x200)
         k = 0x200 - n;
-    
-    if
-    (
-        ( (clip_r.left + n) >= 0x200)
-     || ( (clip_r.top + o) >= 0x200)
-    )
-    {
-        EndPaint(p_win, &ps);
-        
-        return;
-    }
     
     if(data_r.right > 0x200)
     {
@@ -797,8 +1113,6 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     {
         int i = 0;
         
-        HGDIOBJ const oldobj2 = SelectObject(hdc,purple_brush);
-        
         SetBkMode(hdc, TRANSPARENT);
         
         for(i = 1; i < p_ed->esize; i += 3)
@@ -806,30 +1120,38 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
             int const j = ( (p_ed->ebuf[i + 1] & 31) << 4) - n;
             int const k = ( (p_ed->ebuf[i] & 31) << 4) - o;
             
-            Ellipse(hdc, j, k, j + 16, k + 16);
+            RECT spr_rect = { j, k, 0, 0 };
             
             strcpy(text_buf, Getsprstring(p_ed, i));
             
-            PaintSprName(hdc,j,k,n,o,512, text_buf);
+            Getstringobjsize(text_buf, &spr_rect);
+            
+            DungeonMap_DrawDot(hdc, j, k,
+                               null_pen,
+                               purple_brush);
+            
+            PaintSprName(hdc, j, k, &spr_rect, text_buf);
         }
-        
-        SelectObject(hdc, red_brush);
         
         for(i = 0; i < p_ed->ssize; i += 3)
         {
             int const k_pre = ldle16b(p_ed->sbuf + i);
             
-            int const k = ((k_pre & 0x1f80) >> 4) - o;
             int const j = ((k_pre & 0x7e) << 2) - n;
+            int const k = ((k_pre & 0x1f80) >> 4) - o;
             
-            Ellipse(hdc, j, k, j + 16, k + 16);
+            RECT item_rect = { j, k, 0, 0 };
             
             strcpy(text_buf, Getsecretstring(rom, p_ed->sbuf[i + 2]));
             
-            PaintSprName(hdc, j, k, n, o, 512, text_buf);
+            Getstringobjsize(text_buf, &item_rect);
+            
+            DungeonMap_DrawDot(hdc, j, k,
+                               null_pen,
+                               red_brush);
+            
+            PaintSprName(hdc, j, k, &item_rect, text_buf);
         }
-        
-        SelectObject(hdc, oldobj2);
     }
     
     so = p_ed->selobj;
@@ -892,16 +1214,29 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                 HGDIOBJ const oldobj2 = SelectObject(hdc, green_pen);
                 HGDIOBJ const oldobj3 = SelectObject(hdc, black_brush);
                 
-                // -----------------------------
+                HBRUSH const brush = (p_ed->selchk == SD_DungSprLayerSelected)
+                                   ? purple_brush
+                                   : red_brush;
                 
-                HM_DrawRectangle(hdc, rc);
+                // -----------------------------
                 
                 if(p_ed->selchk == SD_DungSprLayerSelected)
                     strcpy(text_buf, Getsprstring(p_ed, so));
                 else
                     strcpy(text_buf, Getsecretstring(rom, dm_k));
                 
-                PaintSprName(hdc,rc.left,rc.top,n,o,512, text_buf);
+                HM_DrawRectangle(hdc, rc);
+                
+                DungeonMap_DrawDot(hdc,
+                                   rc.left,
+                                   rc.top,
+                                   white_pen,
+                                   brush);
+                
+                PaintSprName(hdc, rc.left, rc.top, &rc, text_buf);
+                
+                FrameRect(hdc, &rc, green_brush);
+                
                 SelectObject(hdc,oldobj2);
                 SelectObject(hdc,oldobj3);
             }
@@ -989,9 +1324,23 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
         }
     }
     
-    SelectObject(hdc, oldfont);
+    BitBlt(base_dc,
+           clip_r.left,
+           clip_r.top,
+           clip_r.right - clip_r.left,
+           clip_r.bottom - clip_r.top,
+           hdc,
+           clip_r.left,
+           clip_r.top,
+           SRCCOPY);
     
-    SelectPalette(hdc, oldpal, 1);
+    DeleteDC(hdc);
+    
+    DeleteObject(bm);
+    
+    SelectObject(base_dc, oldfont);
+    
+    SelectPalette(base_dc, oldpal, 1);
     
     EndPaint(p_win, &ps);
 }
@@ -3235,6 +3584,12 @@ DungeonMapProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
         ed->withfocus &= -2;
         
         Dungselectchg(ed, p_win, 0);
+        
+        break;
+    
+    case WM_ERASEBKGND:
+        
+        // We'll do erasure in the paint handler to avoid flicker.
         
         break;
     

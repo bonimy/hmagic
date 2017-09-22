@@ -18,9 +18,7 @@ void
 PaintSprName(HDC hdc,
              int x,
              int y,
-             int n,
-             int o,
-             int          const p_clip_width,
+             RECT const * const p_clip,
              char const * const p_name);
 
 void
@@ -59,6 +57,9 @@ getdoor(uint8_t const *       map,
 void
 setdoor(unsigned char *map);
 
+
+void
+Getstringobjsize(char const * str, RECT *rc);
 
 void
 Getdungobjsize(int chk,RECT*rc,int n,int o,int p);

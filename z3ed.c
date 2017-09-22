@@ -4631,18 +4631,33 @@ HDC objdc;
 
 HBITMAP objbmp;
 
+// =============================================================================
+
 void Getstringobjsize(char const * str, RECT *rc)
 {
-    GetTextExtentPoint(objdc,str,strlen(str),(LPSIZE)&(rc->right));
-    rc->bottom++;
-    rc->right++;
-    if(rc->bottom<16) rc->bottom=16;
-    if(rc->right<16) rc->right=16;
-    rc->right+=rc->left;
-    rc->bottom+=rc->top;
+    SIZE s;
+    
+    GetTextExtentPoint32(objdc,str,strlen(str), &s);
+    
+    rc->bottom = s.cy;
+    rc->right = s.cx;
+    
+    if(rc->bottom < 16)
+        rc->bottom = 16;
+    
+    if(rc->right < 16)
+        rc->right = 16;
+    
+    rc->bottom += rc->top;
+    rc->right  += rc->left;
 }
+
+// =============================================================================
+
 const static char obj4_h[4]={5,7,11,15};
 const static char obj4_w[4]={8,16,24,32};
+
+// \task This can probably be moved to DungeonMap.c
 void Getdungobjsize(int chk,RECT*rc,int n,int o,int p)
 {
     // Loads object sizes
@@ -4778,8 +4793,13 @@ void Getdungobjsize(int chk,RECT*rc,int n,int o,int p)
         if(dm_k>=0x11c) f="Crash"; else f=sprname[dm_k];
         Getstringobjsize(f,rc);
 blah2:
+
+// \note Disabled because it prevents us from extending marker text
+// outside of the de facto map area.
+#if 0
         if(rc->right>512-n) rc->right=512-n;
         if(rc->bottom>512-o) rc->bottom=512-o;
+#endif
         goto blah;
     }
     rc->right+=rc->left;
@@ -4800,6 +4820,9 @@ blah:
             rc->bottom = 512 - o;
         }
         
+// \note Disabled because it prevents us from extending marker text
+// outside of the de facto map area.
+#if 0
         if(rc->right > 512 - n)
         {
             rc->left = -n;
@@ -4812,6 +4835,7 @@ blah:
             rc->top    = -o;
             rc->bottom = 512 - o;
         }
+#endif
     }
 }
 
@@ -10333,86 +10357,6 @@ updsongs:
     return FALSE;
 }
 
-const static char* chest_str[]={
-    "Swd&&Sh1",
-    "Sword 2",
-    "Sword 3",
-    "Sword 4",
-    "Shield 1",
-    "Shield 2",
-    "Shield 3",
-    "Firerod",
-    "Icerod",
-    "Hammer",
-    "Hookshot",
-    "Bow",
-    "Boomerang",
-    "Powder",
-    "Bee",
-    "Bombos",
-    "Ether",
-    "Quake",
-    "Lamp",
-    "Shovel",
-    "Flute",
-    "Red cane",
-    "Bottle",
-    "Heart piece",
-    "Blue cane",
-    "Cape",
-    "Mirror",
-    "Power glove",
-    "Titan glove",
-    "Wordbook",
-    "Flippers",
-    "Pearl",
-    "Crystal",
-    "Net",
-    "Armor 2",
-    "Armor 3",
-    "Key",
-    "Compass",
-    "LiarHeart",
-    "Bomb",
-    "3 bombs",
-    "Mushroom",
-    "Red boom.",
-    "Red pot",
-    "Green pot",
-    "Blue pot",
-    "Red pot",
-    "Green pot",
-    "Blue pot",
-    "10 bombs",
-    "Big key",
-    "Map",
-    "1 rupee",
-    "5 rupees",
-    "20 rupees",
-    "Pendant 1",
-    "Pendant 2",
-    "Pendant 3",
-    "Bow&&Arrows",
-    "Bow&&S.Arr",
-    "Bee",
-    "Fairy",
-    "MuteHeart",
-    "HeartCont.",
-    "100 rupees",
-    "50 rupees",
-    "Heart",
-    "Arrow",
-    "10 arrows",
-    "Magic",
-    "300 rupees",
-    "20 rupees",
-    "Bee",
-    "Sword 1",
-    "Flute",
-    "Boots",
-    "No alternate"
-};
-
 char* sec_str[]={
     "Hole",
     "Warp",
@@ -10442,172 +10386,7 @@ Getsecretstring(uint8_t const * const rom,
     return a ? sprname[a] : "Nothing";
 }
 
-void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
-{
-    int const vdelta = ed->map_vscroll_delta;
-    
-    RECT rc;
-    unsigned char*rom=ed->ew.doc->rom;
-    int i,j,k,l;
-    static char *dir_str[4]={"Up","Down","Left","Right"};
-    
-    if(f)
-        ed->ischest=0;
-    
-    if(!ed->selobj)
-    {
-        if(f)
-            buffer[0]=0;
-    }
-    else if(ed->selchk == 9)
-    {
-        dm_x = (*(short*) (ed->tbuf + ed->selobj)) >> 1;
-        
-        if(f)
-            wsprintf(buffer,"Torch\nX: %02X\nY: %02X\nBG%d\nP: %d",dm_x&63,(dm_x>>6)&63,((dm_x>>12)&1)+1,(dm_x>>13)&7);
-    }
-    else if(ed->selchk == 8)
-    {
-        dm_x = (*(short*) (rom + ed->selobj + 2)) >> 1;
-        
-        if(f)
-            wsprintf(buffer,"Block\nX: %02X\nY: %02X\nBG%d",dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
-    }
-    else if(ed->selchk == 7)
-    {
-        dm_x = *(short*) (ed->sbuf + ed->selobj - 2) >> 1;
-        dm_k = ed->sbuf[ed->selobj];
-        cur_sec = Getsecretstring(rom, dm_k);
-        
-        if(f)
-            wsprintf(buffer,"Item %02X\nX: %02X\nY: %02X\nBG%d",dm_k,dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
-    }
-    else if(ed->selchk == 6)
-    {
-        dm_x = ((ed->ebuf[ed->selobj+1]&31)<<1)+((ed->ebuf[ed->selobj]&31)<<7);
-        dm_dl = ed->ebuf[ed->selobj]>>7;
-        dm_l = ((ed->ebuf[ed->selobj]&0x60)>>2)|((ed->ebuf[ed->selobj+1]&0xe0)>>5);
-        dm_k = ed->ebuf[ed->selobj + 2] + (((dm_l & 7) == 7) ? 256 : 0);
-        
-        if(f)
-            wsprintf(buffer,"Spr %02X\nX: %02X\nY: %02X\nBG%d\nP: %02X",dm_k,dm_x&63,dm_x>>6,dm_dl+1,dm_l);
-    }
-    else if(ed->selchk & 1)
-    {
-        getdoor(ed->buf+ed->selobj,rom);
-        
-        if(f)
-            wsprintf(buffer,"Dir: %s\nType: %d\nPos: %d\n",dir_str[dm_k],dm_l,dm_dl);
-    }
-    else
-    {
-        getobj(ed->buf + ed->selobj);
-        
-        if(f)
-        {
-            if(dm_k >= 0xf8 && dm_k < 0x100) // Subtype 2 object
-            {
-                wsprintf(buffer,"Obj: %03X:%X\nX: %02X\nY: %02X",dm_k,dm_l,dm_x & 0x3f,dm_x >> 6);
-                
-                // If it's a chest object...
-                if( (dm_k == 0xf9 && dm_l == 9) || (dm_k == 0xfb && dm_l == 1) )
-                {
-                    for(k = 0; k < ed->chestnum; k++)
-                        if(ed->selobj == ed->chestloc[k])
-                            break;
-                    
-                    for(l = 0; l < 0x1f8; l += 3)
-                    {
-                        if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
-                        {
-                            k--;
-                            
-                            if(k < 0)
-                            {
-                                k = rom[0xe970 + l];
-                                i = rom[0x3b528 + k];
-                                
-                                if(i == 255)
-                                    i = 76;
-                                
-                                wsprintf(buffer + 21,
-                                         (rom[0xe96f + l] & 128) ? "\n%d:%s\n(%s)\n(Big)" : "\n%d:%s\n(%s)",
-                                         k,
-                                         chest_str[k],
-                                         chest_str[i]);
-                                
-                                // This is a chest object >_>.
-                                ed->ischest=1;
-                                
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-                wsprintf(buffer,"Obj: %03X\nX: %02X\nY: %02X",dm_k,dm_x&0x3f,dm_x>>6);
-            
-            if(dm_k<0xf8)
-                wsprintf(buffer + 20, "\nSize: %02X", dm_l);
-        }
-    }
-    
-    if(f)
-        SetDlgItemText(ed->dlg, ID_DungDetailText, buffer);
-    
-    if(!ed->selobj)
-        return;
-    
-    k = ed->mapscrollh;
-    l = ed->mapscrollv;
-    
-    i = ( (dm_x & 0x3f) << 3) - (k << 5);
-    j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l * vdelta);
-    
-    if(f && ed->selobj)
-    {
-        if(i < 0)
-            k += i >> 5;
-        
-        if(j < 0)
-            l += (j / vdelta);
-        
-        if( ( (i + 32) >> 5) >= ed->mappageh)
-            k += ( (i + 32) >> 5) - ed->mappageh;
-        
-        if( ( (j + vdelta) / vdelta) >= ed->mappagev )
-            l += ( (j + vdelta) / vdelta) - ed->mappagev;
-        
-        if(k != ed->mapscrollh)
-        {
-            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION + (k << 16), 0);
-        }
-        
-        if(l != ed->mapscrollv)
-        {
-            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION + (l << 16), 0);
-        }
-    }
-    
-    rc.left = ((dm_x & 0x3f) << 3);
-    rc.top  = (((dm_x >> 6) & 0x3f) << 3);
-    
-    Getdungobjsize(ed->selchk, &rc, 0, 0, 0);
-    
-    ed->selrect = rc;
-    
-    rc.left -= k << 5;
-    rc.top  -= l * vdelta;
-    
-    rc.right  -= k << 5;
-    rc.bottom -= l * vdelta;
-    
-    ed->objt = dm_k;
-    ed->objl = dm_l;
-    
-    InvalidateRect(hc,&rc,0);
-}
+// =============================================================================
 
 //Drawblock#********************************
 
@@ -15186,40 +14965,23 @@ void
 PaintSprName(HDC p_dc,
              int x,
              int y,
-             int n,
-             int o,
-             int          const p_clip_width,
+             RECT const * const p_clip,
              char const * const p_name)
 {
     size_t len = strlen(p_name);
-    
-    size_t final_len = len;
     
     // -----------------------------
     
     // Probably not strictly necessary, but the program doesn't make a point
     // to set it anywhere more general.
     SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-
-    // \note This subroutine assumes a usable window area that has square
-    // dimension.
-    if( (y + textmetric.tmHeight) > (p_clip_width - o) )
-        return;
-    
-    if( (len * textmetric.tmAveCharWidth) + x > (p_clip_width - n) )
-        final_len = (p_clip_width - n - x) / textmetric.tmAveCharWidth;
-    
-    if(final_len > len)
-    {
-        final_len = len;
-    }
     
     SetTextColor(p_dc, 0);
     
-    TextOut(p_dc, x + 1, y + 1, p_name, final_len);
-    TextOut(p_dc, x - 1, y - 1, p_name, final_len);
-    TextOut(p_dc, x + 1, y - 1, p_name, final_len);
-    TextOut(p_dc, x - 1, y + 1, p_name, final_len);
+    ExtTextOut(p_dc, x + 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x - 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x + 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x - 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
     
 #if 0
     SetTextColor(p_dc, 0xffbf3f);
@@ -15227,7 +14989,7 @@ PaintSprName(HDC p_dc,
     SetTextColor(p_dc, 0xfefefe);
 #endif
     
-    TextOut(p_dc,x, y, p_name, final_len);
+    ExtTextOut(p_dc,x, y, ETO_CLIPPED, p_clip, p_name, len, NULL);
 }
 
 // =============================================================================
