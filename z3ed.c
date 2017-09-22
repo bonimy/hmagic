@@ -28,6 +28,13 @@
 
     - Improved error handling in writing and reading of
     *.cfg files (checking for incorrect sizes or I/O errors)
+
+    - Fixed bug in Dungeon item handling (red markers) that made it very
+    difficult to select one on BG2 by clicking. Furthermore, even if one
+    managed to select one by some other means, such as left and rigth arrow
+    keys, the data would be mishandled and revert the BG setting of the item
+    to BG1. The object details static text control paid attention to BG1 / BG2
+    settings but the code involved in moving them did not.
 */
 
 #include "structs.h"
@@ -1913,12 +1920,10 @@ BOOL CALLBACK port(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 
 void Updatesize(HWND win)
 {
-    RECT rc;
-    
-    GetClientRect(win,&rc);
+    RECT rc = HM_GetClientRect(win);
     
     // the '0' is SIZE_RESTORED.
-    SendMessage(win,WM_SIZE,0,(rc.bottom<<16)+rc.right);
+    SendMessage(win, WM_SIZE, 0, (rc.bottom << 16) + rc.right);
 }
 
 long CALLBACK superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -3945,14 +3950,15 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
 
 //LoadPal***********************************
 
-void Changeselect(HWND hc,int sel)
+void
+Changeselect(HWND hc, int sel)
 {
     int sc;
     int i;
-    RECT rc;
-    OVEREDIT*ed;
-    ed=(OVEREDIT*)GetWindowLong(hc,GWL_USERDATA);
-    GetClientRect(hc,&rc);
+    
+    RECT rc = HM_GetClientRect(hc);
+    OVEREDIT *ed = (OVEREDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
+    
     rc.top=((ed->sel_select>>2)-ed->sel_scroll)<<5;
     rc.bottom=rc.top+32;
     ed->selblk=sel;
@@ -5536,7 +5542,8 @@ rows4:
                     }
                     m=5;
                     dm_x=n;
-                    while(m--) {
+                    while(m--)
+                    {
                         dm_buf[dm_x  + 0x117]=dm_buf[dm_x + 0x158]=dm_buf[dm_x + 0x199]=
                         dm_buf[dm_x  + 0x1da]=dm_buf[dm_x + 0x21b]=dm_buf[dm_x + 0x25c]=dm_buf[dm_x + 0x29d]=
                         (dm_buf[dm_x + 0x282]=dm_buf[dm_x + 0x243]=dm_buf[dm_x + 0x204]=
@@ -5809,11 +5816,11 @@ rows4:
 case25:
                 dm_l+=6;
                 while(dm_l--) {
-                    dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
-                    dm_buf[dm_x + 0x1040]=dm_buf[dm_x + 0x40]=dm_rd[1];
-                    dm_buf[dm_x + 0x1080]=dm_buf[dm_x + 0x80]=dm_rd[2];
-                    dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
-                    dm_buf[dm_x + 0x1100]=dm_buf[dm_x + 0x100]=dm_rd[4];
+                    dm_buf[dm_x + 0x1000] = dm_buf[dm_x]=dm_rd[0];
+                    dm_buf[dm_x + 0x1040] = dm_buf[dm_x + 0x40]=dm_rd[1];
+                    dm_buf[dm_x + 0x1080] = dm_buf[dm_x + 0x80]=dm_rd[2];
+                    dm_buf[dm_x + 0x10c0] = dm_buf[dm_x + 0xc0]=dm_rd[3];
+                    dm_buf[dm_x + 0x1100] = dm_buf[dm_x + 0x100]=dm_rd[4];
                     dm_x+=n;
                 }
                 break;
@@ -6385,7 +6392,7 @@ c182:
                         dm_wr[128]=dm_wr[129]=dm_wr[130]=*dm_rd;
                         dm_wr+=3;
                     }
-                    dm_wr=tmp + 0xc0;
+                    dm_wr = tmp + 0xc0;
                 }
                 break;
             case 196:
@@ -6485,7 +6492,7 @@ grid4x4:
                 while(l--) {
                     tmp=dm_wr;
                     draw4x4X(dm_l);
-                    dm_wr=tmp + 0x100;
+                    dm_wr = tmp + 0x100;
                 }
                 break;
             case 216: case 218:
@@ -8923,8 +8930,6 @@ LoadText(FDOC * const doc)
                 
                 data_pos++;
             }
-            
-            // 0x7f is a terminator byte for each message
             else if(a == 0x7f)
             {
                 // 0x7f is a terminator byte for each message
@@ -10473,16 +10478,18 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
         if(f)
             wsprintf(buffer,"Block\nX: %02X\nY: %02X\nBG%d",dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
     }
-    else if(ed->selchk == 7)
+    else if(ed->selchk == SD_DungItemLayerSelected)
     {
-        dm_x = *(short*) (ed->sbuf + ed->selobj - 2) >> 1;
+        dm_x = ldle16b(ed->sbuf + ed->selobj - 2) >> 1;
         dm_k = ed->sbuf[ed->selobj];
         cur_sec = Getsecretstring(rom, dm_k);
         
         if(f)
-            wsprintf(buffer,"Item %02X\nX: %02X\nY: %02X\nBG%d",dm_k,dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
+            wsprintf(buffer,
+                     "Item %02X\nX: %02X\nY: %02X\nBG%d",
+                     dm_k, dm_x & 63,(dm_x >> 6) & 63, (dm_x >> 12) + 1);
     }
-    else if(ed->selchk == 6)
+    else if(ed->selchk == SD_DungSprLayerSelected)
     {
         dm_x = ((ed->ebuf[ed->selobj+1]&31)<<1)+((ed->ebuf[ed->selobj]&31)<<7);
         dm_dl = ed->ebuf[ed->selobj]>>7;
@@ -10490,7 +10497,9 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
         dm_k = ed->ebuf[ed->selobj + 2] + (((dm_l & 7) == 7) ? 256 : 0);
         
         if(f)
-            wsprintf(buffer,"Spr %02X\nX: %02X\nY: %02X\nBG%d\nP: %02X",dm_k,dm_x&63,dm_x>>6,dm_dl+1,dm_l);
+            wsprintf(buffer,
+                     "Spr %02X\nX: %02X\nY: %02X\nBG%d\nP: %02X",
+                     dm_k, dm_x & 63, dm_x >> 6, dm_dl + 1, dm_l);
     }
     else if(ed->selchk & 1)
     {
@@ -11310,9 +11319,11 @@ DUNGEDIT*dunged;
 void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
 {
     int i;
-    RECT rc;
+    
+    RECT rc = HM_GetClientRect(hc);
+    
     HPALETTE oldpal;
-    GetClientRect(hc,&rc);
+    
     bs->sel=0;
     bs->scroll=0;
     bs->flags=0;
@@ -11321,16 +11332,21 @@ void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
     bs->h=rc.bottom;
     bs->bufdc=CreateCompatibleDC(hdc);
     bs->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
+    
     SelectObject(bs->bufdc,bs->bufbmp);
     SelectObject(bs->bufdc,white_pen);
     SelectObject(bs->bufdc,black_brush);
     oldpal=SelectPalette(objdc,hpal,1);
     SelectPalette(bs->bufdc,hpal,1);
     Rectangle(bs->bufdc,0,0,bs->w,bs->h);
+    
     for(i=0;i<256;i++) Updateblk8sel(bs,i);
+    
     SelectPalette(objdc,oldpal,1);
     SelectPalette(bs->bufdc,oldpal,1);
-    SetWindowLong(hc,GWL_USERDATA,(int)bs);
+    
+    SetWindowLong(hc, GWLP_USERDATA, (LONG_PTR) bs);
+    
     Updatesize(hc);
 }
 
@@ -12802,10 +12818,14 @@ BOOL CALLBACK wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetWindowLong(hc,GWL_USERDATA,(long)ed);
         Updatesize(hc);
         bs=&(ed->bs);
-        hdc=GetDC(win);
-        hc=GetDlgItem(win,3001);
-        GetClientRect(hc,&rc);
-        bs->ed=(OVEREDIT*)ed;
+        
+        hdc = GetDC(win);
+        
+        hc = GetDlgItem(win, 3001);
+        
+        rc = HM_GetClientRect(hc);
+        
+        bs->ed = (OVEREDIT*)ed;
         bs->sel=0;
         bs->scroll=0;
         bs->flags=0;
@@ -12814,8 +12834,10 @@ BOOL CALLBACK wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         bs->h=rc.bottom;
         bs->bufdc=CreateCompatibleDC(hdc);
         bs->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
+        
         ReleaseDC(win,hdc);
         Addgraphwin((DUNGEDIT*)ed,2);
+        
         Setdispwin((DUNGEDIT*)ed);
         SelectObject(bs->bufdc,bs->bufbmp);
         SelectObject(bs->bufdc,white_pen);
@@ -13722,17 +13744,22 @@ int loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
     }
     return 1;
 }
-void Changeblk16sel(HWND win,BLOCKSEL16*ed)
+
+void
+Changeblk16sel(HWND win, BLOCKSEL16*ed)
 {
-    RECT rc,rc2;
+    RECT rc = HM_GetClientRect(win);
+    RECT rc2;
+    
     int i=ed->sel-(ed->scroll<<4);
-    GetClientRect(win,&rc);
+    
     rc2.left=(rc.right>>1)-64+((i&7)<<4);
     rc2.right=rc2.left+16;
     rc2.top=(i&0xfff8)<<1;
     rc2.bottom=rc2.top+16;
     InvalidateRect(win,&rc2,0);
 }
+
 void SetBS16(BLOCKSEL16*bs,int i,HWND hc)
 {
     int j;
@@ -14054,8 +14081,10 @@ BOOL CALLBACK blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         memcpy(ed->pal, oed->pal, 1024);
         
         ed->blkwnd = hc;
+        
         hc = GetDlgItem(win, IDC_CUSTOM2);
-        GetClientRect(hc, &rc);
+        
+        rc = HM_GetClientRect(hc);
         
         ed->pwidth = rc.right;
         ed->pheight = rc.bottom;
@@ -14070,7 +14099,7 @@ BOOL CALLBACK blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 ed->buf[j] |= i;
         }
         
-        SetWindowLong(hc, GWL_USERDATA, (int) ed);
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) ed);
         
         break;
     
@@ -15206,8 +15235,10 @@ PaintSprName(HDC p_dc,
     if( (y + textmetric.tmHeight) > (p_clip_width - o) )
         return;
     
+#if 0
     if( (len * textmetric.tmAveCharWidth) + x > (p_clip_width - n) )
         final_len = (p_clip_width - n - x) / textmetric.tmAveCharWidth;
+#endif
     
     if(final_len > len)
     {
@@ -15948,7 +15979,7 @@ long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_PAINT:
         ed=(PALEDIT*)GetWindowLong(win,GWL_USERDATA);
         hdc=BeginPaint(win,&ps);
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         k=0;
         
         m = ( rc.right - (ed->palw << 4) ) >> 1;
@@ -15995,9 +16026,9 @@ long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
         
-        ed = (PALEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (PALEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
-        GetClientRect(win, &rc);
+        rc = HM_GetClientRect(win);
         
         m = ( rc.right - (ed->palw << 4) ) >> 1;
         n = ( rc.bottom - (ed->palh << 4) ) >> 1;
@@ -16356,7 +16387,7 @@ selchg:
         j=(lparam>>16)/textmetric.tmHeight+ed->scroll;
         if(j>ed->len) j=ed->len;
         if(j<0) j=0;
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         if(msg!=WM_MOUSEMOVE) if(j<ed->len) {
             sc=ed->ew.doc->scmd+ed->tbl[j];     
             i=lparam&65535;
@@ -16372,7 +16403,7 @@ selchg:
             else k=-1;
             goto dontgetrc2;
 updfld:
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
 dontgetrc2:
             if(k==ed->csel && j==ed->sel) {
                 switch(k) {
@@ -16420,7 +16451,7 @@ setrow:
         ed->sel=j;
         goto dontgetrc;
 updrow:
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
 dontgetrc:
         if(j>=ed->scroll+ed->page) {
             k=j-ed->page;
@@ -16470,34 +16501,49 @@ modfrow:
             if(!mark_doc) break;
             goto unmark;
         case 'L':
-            if(mark_doc!=ed->ew.doc || mark_sr!=ed->ew.param) {
-unmark:
-                if(mark_doc) {
-                    oldobj=mark_doc->sr[mark_sr].editor;
-                    if(oldobj) {
-                        oldobj=GetDlgItem(GetDlgItem(oldobj,2000),3000);
-                        GetClientRect(oldobj,&rc);
-                        Trackchgsel(oldobj,&rc,(TRACKEDIT*)GetWindowLong(oldobj,GWL_USERDATA));
+            if(mark_doc!=ed->ew.doc || mark_sr!=ed->ew.param)
+            {
+                
+            unmark:
+                
+                if(mark_doc)
+                {
+                    HWND w = mark_doc->sr[mark_sr].editor;
+                    
+                    if(w)
+                    {
+                        HWND sw = GetDlgItem(GetDlgItem(w, 2000), 3000);
+                        rc = HM_GetClientRect(sw);
+                        Trackchgsel(sw, &rc,
+                                    (TRACKEDIT*) GetWindowLongPtr(sw, GWLP_USERDATA));
                     }
                 }
-                if(wparam=='U') {
-                    mark_doc=0;
+                
+                if(wparam=='U')
+                {
+                    mark_doc = 0;
                     break;
                 }
+                
                 mark_doc=ed->ew.doc;
                 mark_sr=ed->ew.param;
                 mark_first=mark_last=ed->tbl[mark_start=mark_end=ed->sel];
-                GetClientRect(win,&rc);
-            } else {
-                GetClientRect(win,&rc);
+                rc = HM_GetClientRect(win);
+            }
+            else
+            {
+                rc = HM_GetClientRect(win);
                 Trackchgsel(win,&rc,ed);
                 j=ed->sel;
                 if(j>=ed->len) j=ed->len-1;
                 if(ed->sel>=mark_start) mark_last=ed->tbl[mark_end=j];
                 else mark_first=ed->tbl[mark_start=j];
             }
+            
             Trackchgsel(win,&rc,ed);
+            
             break;
+        
         case 'M':
             if(!mark_doc) break;
             if(mark_doc!=ed->ew.doc) {
@@ -16608,7 +16654,7 @@ unmark:
         switch(wparam) {
         case VK_DOWN:
             if(ed->sel==ed->len) break;
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
             j=ed->sel+1;
             goto setrow;
         case VK_UP:
@@ -16782,7 +16828,7 @@ digkey:
             sc=ed->ew.doc->scmd+ed->tbl[j];
             k=ed->csel;
             if(j==-1 || k==-1) break;
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
             m=wparam-'0';
             switch(k) {
             case 0:
@@ -19137,7 +19183,7 @@ BOOL CALLBACK editblock16(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         *(int*)(ed->blks+2)=((int*)l)[1];
         SetWindowLong(win,GWL_USERDATA,(int)ed);
         hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
+        rc = HM_GetClientRect(hc);
         ed->w=rc.right;
         ed->h=rc.bottom;
         hdc=GetDC(win);
@@ -19745,7 +19791,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
     
     RealizePalette(hdc);
     
-    GetClientRect(p_win, &rc);
+    rc = HM_GetClientRect(p_win);
     
     j = ( (ps.rcPaint.bottom + 31) >> 5) << 2;
     
@@ -19920,7 +19966,7 @@ blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     case WM_LBUTTONDOWN:
         ed=(BLOCKSEL16*)GetWindowLong(win,GWL_USERDATA);
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         
         i = (rc.right >> 1) - 64;
         
@@ -19996,7 +20042,7 @@ BOOL CALLBACK editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetWindowLong(hc,GWL_USERDATA,(int)ed);
         Updatesize(hc);
         hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
+        rc = HM_GetClientRect(hc);
         ed->w=rc.right;
         ed->h=rc.bottom;
         hdc=GetDC(win);
@@ -20230,7 +20276,7 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_LBUTTONDOWN:
         ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         i=(rc.right>>1)-64;
         j=lparam&65535;
         
@@ -20258,7 +20304,7 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         oldpal = SelectPalette(hdc, ed->hpal, 1);
         
         RealizePalette(hdc);
-        GetClientRect(win, &rc);
+        rc = HM_GetClientRect(win);
         
         j = ((ps.rcPaint.bottom + 31) >> 5) << 2;
         
@@ -20932,7 +20978,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         // this assumes that the game code for loading these values hasn't
         // changed.
         lw_default_bd = HM_RgbFrom5bpc( ldle16b(rom + 0x75625) );
-
+        
         // Slightly different green shade for zora falls / master sword grove.
         extended_bd   = HM_RgbFrom5bpc( ldle16b(rom + 0x75640) );
         
@@ -22781,7 +22827,7 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->flag|=4;
         ed->flag&=-9;
         i=((short)lparam+ed->scroll)*ed->zoom>>16;
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         if(wparam&MK_SHIFT) {
             if(i<ed->sell) ed->flag|=8;
             goto selectmore;
@@ -22800,7 +22846,7 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_MOUSEMOVE:
         ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
         if(ed->flag&4) {
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
 selectmore:
             rc2=rc;
             Getsampsel(ed,&rc);

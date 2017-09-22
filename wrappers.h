@@ -107,6 +107,10 @@ struct
     RECT
     HM_GetClientRect(HWND const p_win);
 
+    RECT
+    HM_GetDlgItemRect(HWND     const p_dlg,
+                      unsigned const p_item_id);
+    
     SCROLLINFO
     HM_GetVertScrollInfo(HWND const p_win);
 

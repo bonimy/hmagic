@@ -2,7 +2,8 @@
     #include "structs.h"
 
     #include "GdiObjects.h"
-
+    #include "wrappers.h"
+    
     #include "prototypes.h"
 
     #include "DungeonEnum.h"
@@ -465,13 +466,7 @@ dpcdlgproc(HWND win,
         
         ReleaseDC(win, hdc);
         
-        // \task Perhaps functionify this. It shows up about 7 times.
-        if(always)
-        {
-            HWND const sub_wnd = GetDlgItem(win, IDC_CUSTOM2);
-            
-            GetClientRect(sub_wnd, &rc);
-        }
+        rc = HM_GetDlgItemRect(win, IDC_CUSTOM2);
         
         dpce->w=rc.right;
         dpce->h=rc.bottom;
@@ -868,13 +863,18 @@ BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             i=0x6a;
         
         ed->scroll=i;
-        hdc=GetDC(win);
-        hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
-        ed->w=rc.right;
-        ed->h=rc.bottom;
-        ed->bufdc=CreateCompatibleDC(hdc);
-        ed->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
+        hdc = GetDC(win);
+        
+        hc = GetDlgItem(win,IDC_CUSTOM1);
+        
+        rc = HM_GetClientRect(hc);
+        
+        ed->w = rc.right;
+        ed->h = rc.bottom;
+        
+        ed->bufdc = CreateCompatibleDC(hdc);
+        ed->bufbmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+        
         ReleaseDC(win,hdc);
         SetBkMode(ed->bufdc,TRANSPARENT);
         SelectObject(ed->bufdc,ed->bufbmp);

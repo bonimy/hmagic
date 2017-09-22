@@ -724,6 +724,8 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     HDC const hdc = BeginPaint(p_win, &ps);
     
+    HBRUSH const bg_brush = GetClassLongPtr(p_win, GCLP_HBRBACKGROUND);
+    
     HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal, 1);
     
     HGDIOBJ const oldfont = SelectObject(hdc, trk_font);
@@ -754,7 +756,6 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
 
         return;
     }
-
     
     if( ! tint_pen) { tint_pen = CreatePen(PS_SOLID, 3, RGB(0x90, 0xff, 0x90) ); }
     if( ! tint_br)  { tint_br = CreateSolidBrush( RGB(0x80, 0x80, 0x80) ); }
@@ -819,12 +820,13 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
         {
             int const k_pre = ldle16b(p_ed->sbuf + i);
             
-            int const k = ((k_pre & 0x1f80) >> 4) - o;
-            int const j = ((k_pre & 0x7e) << 2) - n;
+            int const k = ( (k_pre & 0x1f80) >> 4 ) - o;
+            int const j = ( (k_pre &   0x7e) << 2 ) - n;
             
             Ellipse(hdc, j, k, j + 16, k + 16);
             
-            strcpy(text_buf, Getsecretstring(rom, p_ed->sbuf[i + 2]));
+            strcpy(text_buf,
+                   Getsecretstring(rom, p_ed->sbuf[i + 2]) );
             
             PaintSprName(hdc, j, k, n, o, 512, text_buf);
         }
@@ -844,7 +846,7 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
         {
             dm_x=(*(short*)(rom + so + 2)>>1)&0xfff;
         }
-        else if(p_ed->selchk==7)
+        else if(p_ed->selchk == SD_DungItemLayerSelected)
         {
             dm_x=(*(short*)(p_ed->sbuf+so-2)>>1)&0xfff;
             dm_k=p_ed->sbuf[so];
@@ -1093,7 +1095,7 @@ DungeonMap_OnLeftMouseDown(DUNGEDIT * const p_ed,
         int q = 0;
         
         // -----------------------------
-            
+        
         if
         (
             p_ed->selobj
@@ -1132,7 +1134,7 @@ DungeonMap_OnLeftMouseDown(DUNGEDIT * const p_ed,
             n = 2, m = p_ed->tsize - 2, q = 2;
         else if(i == 8)
             n = 0x271de, m = 0x27366, q = 4;
-        else if(i == 7)
+        else if(i == SD_DungItemLayerSelected)
             n = 0, m = p_ed->ssize - 3, q = 3;
         else if(i == SD_DungSprLayerSelected)
             n = 1, m = p_ed->esize - 3, q = 3;
@@ -1173,7 +1175,7 @@ DungeonMap_OnLeftMouseDown(DUNGEDIT * const p_ed,
                 
                 dm_x = (*(short*) (rom + m + 2) >> 1) & 0xfff;
             }
-            else if(i == 7)
+            else if(i == SD_DungItemLayerSelected)
             {
                 dm_x = *(short*) (p_ed->sbuf + m) >> 1;
                 dm_k = p_ed->sbuf[m + 2];
@@ -1191,14 +1193,14 @@ DungeonMap_OnLeftMouseDown(DUNGEDIT * const p_ed,
             else
                 getobj(p_ed->buf + m);
             
-            rc.left = ((dm_x & 0x3f) << 3);
-            rc.top = ((dm_x >> 6) << 3);
+            rc.left = ( ( (dm_x >> 0) & 0x3f ) << 3);
+            rc.top  = ( ( (dm_x >> 6) & 0x3f ) << 3);
             
             Getdungobjsize(i, &rc, 0, 0, 0);
             
             if(o >= rc.left && o < rc.right && p >= rc.top && p < rc.bottom)
             {
-                if(i == 7)
+                if(i == SD_DungItemLayerSelected)
                     m += 2;
                 
                 p_ed->selobj = m;
@@ -1252,38 +1254,61 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
     
     if(p_ed->withfocus & 2)
     {
-        if(o > p_ed->dragx + 7 || o < p_ed->dragx || p > p_ed->dragy+7 || p < p_ed->dragy)
+        if
+        (
+            o > p_ed->dragx + 7
+         || o < p_ed->dragx
+         || p > p_ed->dragy + 7
+         || p < p_ed->dragy
+        )
         {
             if(p_ed->selchk == 9)
+            {
                 dm_x = *(short*)(p_ed->tbuf+p_ed->selobj) >> 1;
+            }
             else if(p_ed->selchk == 8)
+            {
                 dm_x = *(short*)(p_ed->ew.doc->rom + p_ed->selobj + 2) >> 1;
-            else if(p_ed->selchk == 7)
+            }
+            else if(p_ed->selchk == SD_DungItemLayerSelected)
+            {
                 dm_x = *(short*)(p_ed->sbuf + p_ed->selobj - 2) >> 1;
+            }
             else if(p_ed->selchk == SD_DungSprLayerSelected)
             {
-                dm_x = ( (p_ed->ebuf[p_ed->selobj] & 31) << 7)
-                     + ( (p_ed->ebuf[p_ed->selobj  + 1] & 31) << 1);
+                dm_x = ( (p_ed->ebuf[p_ed->selobj + 0] & 31) << 7)
+                     + ( (p_ed->ebuf[p_ed->selobj + 1] & 31) << 1);
             }
             else if(p_ed->selchk & 1)
+            {
                 return;
+            }
             else
+            {
                 getobj(p_ed->buf + p_ed->selobj);
+            }
             
             i = (o - p_ed->dragx) >> 3;
             j = (p - p_ed->dragy) >> 3;
             
-            if(!(i||j))
+            if( ! (i || j) )
+            {
                 return;
+            }
             
             if(p_ed->selchk == SD_DungSprLayerSelected)
-                i &= -2, j &= -2;
+            {
+                i &= -2;
+                j &= -2;
+            }
             
             k = (dm_x & 0x3f) + i;
             l = ((dm_x >> 6) & 0x3f) + j;
             
             if(k > 0x3f || k < 0 || l > 0x3f || l < 0)
+            {
                 p_ed->withfocus |= 4;
+            }
             else
             {
                 Dungselectchg(p_ed, w, 0);
@@ -1300,9 +1325,17 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
                     *(short*)(p_ed->ew.doc->rom + p_ed->selobj+2) = dm_x << 1;
                     goto ncursor;
                 }
-                else if(p_ed->selchk == 7)
+                else if(p_ed->selchk == SD_DungItemLayerSelected)
                 {
-                    *(short*)(p_ed->sbuf+p_ed->selobj-2) = dm_x<<1;
+                    uint8_t * const coord = p_ed->sbuf + p_ed->selobj - 2;
+                    
+                    // Preserve the background the item is on.
+                    uint16_t new_pos = ldle16b(coord) & 0x2000;
+                    
+                    new_pos |= (dm_x << 1);
+                    
+                    stle16b(coord, new_pos);
+                    
                     goto modfx;
                 }
                 else if(p_ed->selchk & 1)
@@ -1525,10 +1558,10 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
     if(!p_ed->selobj)
         return;
     
-    if(p_ed->selchk > 7)
+    if(p_ed->selchk > SD_DungItemLayerSelected)
         return;
     
-    if(p_ed->selchk == 7)
+    if(p_ed->selchk == SD_DungItemLayerSelected)
     {
         // \note Other keyboard inputs are handled in WM_KEYDOWN.
         switch(c)
@@ -1916,11 +1949,11 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
     
     // -----------------------------
     
-    if(p_ed->selchk > 7)
+    if(p_ed->selchk > SD_DungItemLayerSelected)
     {
         return;
     }
-    else if(p_ed->selchk == 7)
+    else if(p_ed->selchk == SD_DungItemLayerSelected)
     {
         if(key == VK_RIGHT)
         {
@@ -2392,7 +2425,7 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
     
     // We don't have a dialog for detailed manipulation of torches, blocks,
     // etc.
-    if(p_ed->selchk >= 7)
+    if(p_ed->selchk >= SD_DungItemLayerSelected)
         return;
     
     if(p_ed->selchk == SD_DungSprLayerSelected)
@@ -2550,7 +2583,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     {
         AppendMenu(menu, MF_STRING, DCM_InsertSprite, "Insert an enemy");
     }
-    else if(p_ed->selchk == 7)
+    else if(p_ed->selchk == SD_DungItemLayerSelected)
     {
         AppendMenu(menu, MF_STRING, DCM_InsertItem, "Insert an item");
     }
@@ -2563,7 +2596,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
         AppendMenu(menu,MF_STRING, DCM_InsertTorch, "Insert a torch");
     }
     
-    if(p_ed->selchk < 7 && p_ed->selobj)
+    if( (p_ed->selchk < SD_DungItemLayerSelected) && p_ed->selobj)
     {
         AppendMenu(menu, MF_STRING, DCM_ChooseObj, "Choose an object");
     }
@@ -2579,7 +2612,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
         i = p_ed->chkofs[p_ed->selchk + 1] - p_ed->chkofs[p_ed->selchk] > 2;
     else if(p_ed->selchk == SD_DungSprLayerSelected)
         i = p_ed->esize > 1;
-    else if(p_ed->selchk == 7)
+    else if(p_ed->selchk == SD_DungItemLayerSelected)
         i = p_ed->ssize > 0;
     else if(p_ed->selchk == 8)
     {
@@ -2665,7 +2698,8 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             if(o==-1) break;
             
-            for(n=m;n<7;n++) p_ed->chkofs[n]+=3;
+            for(n = m; n < 7; n++)
+                p_ed->chkofs[n]+=3;
             
             p_ed->buf=realloc(p_ed->buf,p_ed->len);
             memmove(p_ed->buf+l+3,p_ed->buf+l,p_ed->len-l-3);
@@ -2760,7 +2794,8 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 
                 p_ed->ew.doc->modf = 1;
             }
-            else if(m==7) {
+            else if(m == SD_DungItemLayerSelected)
+            {
                 memcpy(p_ed->sbuf+p_ed->selobj-2,p_ed->sbuf+p_ed->selobj+1,p_ed->ssize-p_ed->selobj-1);
                 p_ed->ssize-=3;
                 p_ed->sbuf=realloc(p_ed->sbuf,p_ed->ssize);
@@ -2879,7 +2914,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 p_ed->esize = 1;
                 p_ed->modf = 1;
             }
-            else if(p_ed->selchk == 7)
+            else if(p_ed->selchk == SD_DungItemLayerSelected)
             {
                 p_ed->sbuf=realloc(p_ed->sbuf,0);
                 p_ed->ssize=0;
@@ -3237,6 +3272,10 @@ DungeonMapProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
         Dungselectchg(ed, p_win, 0);
         
         break;
+    
+    case WM_ERASEBKGND:
+        
+        return FALSE;
     
     case WM_PAINT:
         
