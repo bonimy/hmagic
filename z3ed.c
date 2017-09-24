@@ -229,7 +229,8 @@ unsigned short ovlblk[4];
 HPEN green_pen,
      null_pen,
      white_pen,
-     blue_pen;
+     blue_pen,
+     black_pen;
 
 HBRUSH black_brush,
        white_brush,
@@ -27000,7 +27001,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     null_pen  = (HPEN) GetStockObject(NULL_PEN);
     white_pen = (HPEN) GetStockObject(WHITE_PEN);
-    blue_pen  = (HPEN) CreatePen(PS_SOLID,0,0xff0000);
+    
+    blue_pen  = (HPEN) CreatePen(PS_SOLID, 0, 0xff0000);
+    
+    black_pen = (HPEN) GetStockObject(BLACK_PEN);
     
     for(i=0;i<8;i++)
         shade_brush[i]=CreateSolidBrush(i * 0x1f1f1f);

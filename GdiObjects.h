@@ -9,7 +9,8 @@
          null_pen,
          white_pen,
          blue_pen,
-         tint_pen;
+         tint_pen,
+         black_pen;
     
     extern HBRUSH
            black_brush,

@@ -445,8 +445,8 @@ Openroom(DUNGEDIT * const ed,
     HM_BinaryCheckDlgButton(win, ID_DungObjLayer3, (layer == 4) );
     HM_BinaryCheckDlgButton(win, ID_DungSprLayer, (layer == SD_DungSprLayerSelected) );
     HM_BinaryCheckDlgButton(win, ID_DungItemLayer, (layer == SD_DungItemLayerSelected) );
-    HM_BinaryCheckDlgButton(win, ID_DungBlockLayer, (layer == 8) );
-    HM_BinaryCheckDlgButton(win, ID_DungTorchLayer, (layer == 9) );
+    HM_BinaryCheckDlgButton(win, ID_DungBlockLayer, (layer == SD_DungBlockLayerSelected) );
+    HM_BinaryCheckDlgButton(win, ID_DungTorchLayer, (layer == SD_DungTorchLayerSelected) );
     
     // this is the "layout", ranging from 0-7
     SetDlgItemInt(win, ID_DungLayout, ed->buf[1] >> 2, 0);

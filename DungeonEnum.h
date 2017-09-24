@@ -118,6 +118,8 @@ enum
     {
         SD_DungSprLayerSelected = 6,
         SD_DungItemLayerSelected,
+        SD_DungBlockLayerSelected,
+        SD_DungTorchLayerSelected,
     };
 
 
