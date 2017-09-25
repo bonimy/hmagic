@@ -135,25 +135,26 @@ void Updatemap(DUNGEDIT *ed)
         
         for(i = 0; i < 0x18c; i += 4)
         {
-            if(*(short*)(rom + 0x271de + i) == ed->mapnum)
+            if( ldle16b(rom + 0x271de + i) == ed->mapnum)
             {
-                dm_x = (*(short*)(rom + 0x271e0 + i) & 0x3fff)>>1;
+                dm_x = ( ldle16b(rom + 0x271e0 + i) & 0x3fff ) >> 1;
                 
-                ed->nbuf[dm_x]=0x1922;
-                ed->nbuf[dm_x+64]=0x1932;
-                ed->nbuf[dm_x+1]=0x1923;
-                ed->nbuf[dm_x+65]=0x1933;
+                ed->nbuf[dm_x]      = 0x1922;
+                ed->nbuf[dm_x + 64] = 0x1932;
+                ed->nbuf[dm_x +  1] = 0x1923;
+                ed->nbuf[dm_x + 65] = 0x1933;
             }
         }
         
         for(i = 2; i < ed->tsize; i += 2)
         {
-            dm_x = *(short*) (ed->tbuf + i) & 0x1fff;
+            dm_x = ldle16b(ed->tbuf + i) & 0x1fff;
             dm_x >>= 1;
-            ed->nbuf[dm_x] = 0xde0;
-            ed->nbuf[dm_x+64] = 0xdf0;
-            ed->nbuf[dm_x+1] = 0x4de0;
-            ed->nbuf[dm_x+65] = 0x4df0;
+            
+            ed->nbuf[dm_x]      = 0xde0;
+            ed->nbuf[dm_x + 64] = 0xdf0;
+            ed->nbuf[dm_x +  1] = 0x4de0;
+            ed->nbuf[dm_x + 65] = 0x4df0;
         }
     }
     else
@@ -282,7 +283,7 @@ Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
                     
                     for(l = 0; l < 0x1f8; l += 3)
                     {
-                        if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
+                        if( ( ldle16b(rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
                         {
                             k--;
                             
@@ -630,7 +631,7 @@ noblock:
             
             for(a = 0; a < 8; a++)
             {
-                *(int*) b2 = 0;
+                *(int*) b2     = 0;
                 ((int*) b2)[1] = 0;
                 
                 b2 -= scan_size;
@@ -1669,7 +1670,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
         {
             if(p_ed->selchk == SD_DungTorchLayerSelected)
             {
-                dm_x = *(short*)(p_ed->tbuf + p_ed->selobj) >> 1;
+                dm_x = ldle16b(p_ed->tbuf + p_ed->selobj) >> 1;
             }
             else if(p_ed->selchk == SD_DungBlockLayerSelected)
             {
@@ -1677,7 +1678,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
             }
             else if(p_ed->selchk == SD_DungItemLayerSelected)
             {
-                dm_x = *(short*)(p_ed->sbuf + p_ed->selobj - 2) >> 1;
+                dm_x = ldle16b(p_ed->sbuf + p_ed->selobj - 2) >> 1;
             }
             else if(p_ed->selchk == SD_DungSprLayerSelected)
             {
@@ -2204,17 +2205,19 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == j)
                 break;
             
-            i = *(int*) (p_ed->buf + p_ed->selobj);
+            i = ldle24b(p_ed->buf + p_ed->selobj);
             
-            memmove(p_ed->buf + j + 3, p_ed->buf + j, p_ed->selobj - j);
+            memmove(p_ed->buf + j + 3,
+                    p_ed->buf + j,
+                    p_ed->selobj - j);
             
-            *(short*)(p_ed->buf + j) = i;
+            stle24b(p_ed->buf + j, i);
             
-            p_ed->buf[j + 2] = i >> 16;
             p_ed->selobj = j;
             p_ed->modf = 1;
             
             Updatemap(p_ed);
+            
             Dungselectchg(p_ed, w, 1);
             
             return 0;
@@ -2226,15 +2229,14 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk + 1] - 5)
                 break;
             
-            i=*(int*)(p_ed->buf+p_ed->selobj);
+            i = ldle24b(p_ed->buf + p_ed->selobj);
             
             memcpy(p_ed->buf + p_ed->selobj,
                    p_ed->buf + p_ed->selobj + 3,
                    j - p_ed->selobj);
             
-            *(short*)(p_ed->buf + j) = i;
+            stle24b(p_ed->buf + j, i);
             
-            p_ed->buf[j + 2] = i >> 16;
             p_ed->selobj = j;
             p_ed->modf = 1;
             
@@ -2245,20 +2247,25 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
         
         case 'B':
             
-            if(p_ed->selobj == p_ed->chkofs[p_ed->selchk])
+            if( p_ed->selobj == p_ed->chkofs[p_ed->selchk] )
+            {
                 break;
+            }
             
-            i=*(int*)(p_ed->buf + p_ed->selobj - 3);
-            *(short*)(p_ed->buf + p_ed->selobj - 3) = *(short*)(p_ed->buf + p_ed->selobj);
+            i = ldle24b(p_ed->buf + p_ed->selobj - 3);
+            
+            stle16b(p_ed->buf + p_ed->selobj - 3,
+                    ldle16b(p_ed->buf + p_ed->selobj) );
             
             p_ed->buf[p_ed->selobj - 1] = p_ed->buf[p_ed->selobj + 2];
-            *(short*)(p_ed->buf + p_ed->selobj)=i;
             
-            p_ed->buf[p_ed->selobj + 2] = i >> 16;
+            stle24b(p_ed->buf + p_ed->selobj, i);
+            
             p_ed->selobj -= 3;
             p_ed->modf = 1;
             
             Updatemap(p_ed);
+            
             Dungselectchg(p_ed, w, 1);
             
             return 0;
@@ -2268,13 +2275,15 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk + 1] - 5)
                 break;
             
-            i = *(int*) (p_ed->buf + p_ed->selobj + 3);
-            *(short*)(p_ed->buf + p_ed->selobj + 3) = *(short*)(p_ed->buf + p_ed->selobj);
+            i = ldle24b(p_ed->buf + p_ed->selobj + 3);
+            
+            stle16b(p_ed->buf + p_ed->selobj + 3,
+                    ldle16b(p_ed->buf + p_ed->selobj) );
             
             p_ed->buf[p_ed->selobj + 5] = p_ed->buf[p_ed->selobj + 2];
-            *(short*)(p_ed->buf + p_ed->selobj) = i;
             
-            p_ed->buf[p_ed->selobj + 2] = i >> 16;
+            stle24b(p_ed->buf + p_ed->selobj, i);
+            
             p_ed->selobj += 3;
             p_ed->modf = 1;
             
@@ -2296,7 +2305,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             for(l = 0; l < 0x1f8; l += 3)
             {
                 // If the room index in the data matches the room index of the room we're looking at...
-                if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == p_ed->mapnum)
+                if( ( ldle16b(rom + 0xe96e + l) & 0x7fff ) == p_ed->mapnum )
                 {
                     k--;
                     
@@ -2334,7 +2343,10 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
                     if( is16b_neg1(rom + 0xe96e + l) )
                     {
                         // Note that if it is a big chest (0xFB) we will set the MSBit.
-                        *(short*)(rom + 0xe96e + l) = p_ed->mapnum | ((p_ed->buf[p_ed->selobj + 2] == 0xfb) ? 0x8000 : 0);
+                        stle16b(rom + 0xe96e + l,
+                                p_ed->mapnum
+                              | ( (p_ed->buf[p_ed->selobj + 2] == 0xfb)
+                              ? 0x8000 : 0) );
                         
                         // Give it a default value of zero (sword + blue shield)
                         m = 0;
@@ -2368,13 +2380,14 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == j)
                 break;
             
-            i = *(short*)(p_ed->buf + p_ed->selobj);
+            i = ldle16b(p_ed->buf + p_ed->selobj);
             
             memmove(p_ed->buf + j + 2,
                     p_ed->buf + j,
                     p_ed->selobj - j - 2);
             
-            *(short*)(p_ed->buf + j) = i;
+            stle16b(p_ed->buf + j, i);
+            
             p_ed->selobj = j;
             p_ed->modf = 1;
             
@@ -2390,13 +2403,14 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == j)
                 break;
             
-            i = *(short*)(p_ed->buf + p_ed->selobj);
+            i = ldle16b(p_ed->buf + p_ed->selobj);
             
             memmove(p_ed->buf + p_ed->selobj,
                     p_ed->buf + p_ed->selobj + 2,
                     j - p_ed->selobj);
             
-            *(short*)(p_ed->buf + j) = i;
+            stle16b(p_ed->buf + j, i);
+            
             p_ed->selobj = j;
             p_ed->modf = 1;
             
@@ -2410,9 +2424,12 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk])
                 break;
             
-            i = *(short*)(p_ed->buf + p_ed->selobj - 2);
-            *(short*)(p_ed->buf + p_ed->selobj - 2) = *(short*)(p_ed->buf + p_ed->selobj);
-            *(short*)(p_ed->buf + p_ed->selobj) = i;
+            i = ldle16b(p_ed->buf + p_ed->selobj - 2);
+            
+            stle16b(p_ed->buf + p_ed->selobj - 2,
+                    ldle16b(p_ed->buf + p_ed->selobj) );
+            
+            stle16b(p_ed->buf + p_ed->selobj, i);
             
             p_ed->selobj -= 2;
             p_ed->modf = 1;
@@ -2427,9 +2444,12 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if( p_ed->selobj == p_ed->chkofs[p_ed->selchk + 1] - 4 )
                 break;
             
-            i = *(short*)(p_ed->buf+p_ed->selobj + 2);
-            *(short*)(p_ed->buf + p_ed->selobj + 2) = *(short*)(p_ed->buf + p_ed->selobj);
-            *(short*)(p_ed->buf + p_ed->selobj) = i;
+            i = ldle16b(p_ed->buf+p_ed->selobj + 2);
+            
+            stle16b(p_ed->buf + p_ed->selobj + 2,
+                    ldle16b(p_ed->buf + p_ed->selobj) );
+            
+            stle16b(p_ed->buf + p_ed->selobj, i);
             
             p_ed->selobj += 2;
             p_ed->modf = 1;
@@ -2522,7 +2542,8 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
             
             case VK_NUMPAD8:
                 
-                *((short*)(p_ed->sbuf+p_ed->selobj - 2)) -= 128;
+                addle16b(p_ed->sbuf + p_ed->selobj - 2,
+                         u16_neg(128) );
                 
                 p_ed->modf=1;
                 
@@ -2530,7 +2551,8 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
             
             case VK_NUMPAD2:
                 
-                *((short*)(p_ed->sbuf+p_ed->selobj - 2)) += 128;
+                addle16b(p_ed->sbuf + p_ed->selobj - 2,
+                         128);
                 
                 p_ed->modf=1;
                 
@@ -3059,7 +3081,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
 {
     char text_buf[0x200];
     
-    uint8_t const * const rom = p_ed->ew.doc->rom;
+    uint8_t * const rom = p_ed->ew.doc->rom;
     
     int i = 0;
     int j = 0;
@@ -3133,7 +3155,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     {
         for(i = 0; i < 0x18c; i += 4)
         {
-            if( *(short*) (rom + 0x271de + i) == p_ed->mapnum )
+            if( ldle16b(rom + 0x271de + i) == p_ed->mapnum )
             {
                 i = 1;
                 
@@ -3264,10 +3286,20 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             for(n = m; n < 7; n++)
                 p_ed->chkofs[n] += p;
             
-            p_ed->buf = (uint8_t*) realloc(p_ed->buf,p_ed->len);
+            p_ed->buf = (uint8_t*) realloc(p_ed->buf, p_ed->len);
             
-            memcpy(p_ed->buf+l+p,p_ed->buf+l,p_ed->len-l-p);
-            if(p==4) { *(short*)(p_ed->buf+l)=-16; l+=2; }
+            memcpy(p_ed->buf + l + p,
+                   p_ed->buf + l,
+                   p_ed->len - l - p);
+            
+            if(p == 4)
+            {
+                stle16b(p_ed->buf + l,
+                        u16_neg(16) );
+                
+                l += 2;
+            }
+            
             p_ed->selobj=l;
             o-=0x1b8;
             dm_k = o / 42;
@@ -3305,7 +3337,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             }
             else if(m == SD_DungBlockLayerSelected)
             {
-                *(short*)(rom + p_ed->selobj) = -1;
+                stle16b(rom + p_ed->selobj, u16_neg1);
                 
                 p_ed->ew.doc->modf = 1;
             }
@@ -3437,9 +3469,14 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             }
             else if(p_ed->selchk == SD_DungBlockLayerSelected)
             {
-                for(i=0;i<0x18c;i+=4)
-                    if(*(short*)(rom + 0x271de + i)==p_ed->mapnum) *(short*)(rom + 0x271de + i)=-1;
-                p_ed->ew.doc->modf=1;
+                for(i = 0; i < 0x18c; i += 4)
+                {
+                    if( ldle16b(rom + 0x271de + i) == p_ed->mapnum )
+                        stle16b(rom + 0x271de + i, u16_neg1);
+                }
+                
+                p_ed->ew.doc->modf = 1;
+                
                 Updatemap(p_ed);
             }
             else
@@ -3447,6 +3484,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 p_ed->tbuf = (uint8_t*) realloc(p_ed->tbuf,0);
                 p_ed->tsize=0;
                 p_ed->modf=1;
+                
                 Updatemap(p_ed);
             }
             InvalidateRect(w, 0, 0);
@@ -3463,8 +3501,11 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
                 p_ed->selobj=p_ed->ssize-1;
             
             memmove(p_ed->sbuf+p_ed->selobj+1,p_ed->sbuf+p_ed->selobj-2,p_ed->ssize-p_ed->selobj-1);
-            *(short*)(p_ed->sbuf+p_ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
-            p_ed->sbuf[p_ed->selobj]=0;
+            
+            stle16b(p_ed->sbuf + p_ed->selobj - 2,
+                    ( (i >> 2) & 0x7e) + ( (j << 4) & 0x1f80 ) );
+            
+            p_ed->sbuf[p_ed->selobj] = 0;
             p_ed->modf=1;
             Dungselectchg(p_ed, w, 1);
             
@@ -3474,19 +3515,30 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             
             Dungselectchg(p_ed, w, 0);
             
-            for(k=0;k<0x18c;k+=4)
+            for(k = 0; k < 0x18c; k += 4)
+            {
                 if( is16b_neg1(rom + 0x271de + k) )
                 {
-                    *(short*)(rom + 0x271de + k)=p_ed->mapnum;
-                    *(short*)(rom + 0x271e0 + k)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-                    p_ed->selobj=0x271de + k;
+                    stle16b(rom + 0x271de + k, p_ed->mapnum);
+                    
+                    stle16b(rom + 0x271e0 + k,
+                            ( (i >> 2) & 0x7e) | ( (j << 4) & 0x1f80 ) );
+                    
+                    p_ed->selobj = 0x271de + k;
+                    
                     break;
                 }
+            }
             
             if(k == 0x18c)
-                MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
+            {
+                MessageBox(framewnd,
+                           "You can't add anymore blocks",
+                           "Bad error happened",
+                           MB_OK);
+            }
             
-            p_ed->ew.doc->modf=1;
+            p_ed->ew.doc->modf = 1;
             
             Updatemap(p_ed);
             Dungselectchg(p_ed, w, 1);
@@ -3505,9 +3557,10 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
             p_ed->tbuf   = (uint8_t*) realloc(p_ed->tbuf, k += 2);
             p_ed->tsize = k;
             
-            *(short*)(p_ed->tbuf) = p_ed->mapnum;
-            *(short*)(p_ed->tbuf + k - 2) = ( (i >> 2) &   0x7e )
-                                          | ( (j << 4) & 0x1f80 );
+            stle16b(p_ed->tbuf, p_ed->mapnum);
+            
+            stle16b(p_ed->tbuf + k - 2,
+                    ( (i >> 2) &   0x7e ) | ( (j << 4) & 0x1f80 ) );
             
             p_ed->modf = 1;
             

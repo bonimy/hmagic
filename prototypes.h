@@ -242,8 +242,8 @@ int
 is16h_neg1_i(uint16_t const * const p_arr,
              size_t           const p_index);
 
-
-
+uint16_t
+u16_neg(int const p_value);
 
 int
 truth(int value);
