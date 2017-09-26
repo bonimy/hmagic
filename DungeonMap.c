@@ -100,6 +100,76 @@ const static char* chest_str[] =
 
 // =============================================================================
 
+typedef uint8_t * rom_ty;
+typedef uint8_t const * rom_cty;
+
+uint8_t *
+DungEdit_GetRom(DUNGEDIT const * const p_ed)
+{
+    return p_ed->ew.doc->rom;
+}
+
+// =============================================================================
+
+rom_ty
+DungEdit_LayoutPtr(DUNGEDIT const * const p_ed)
+{
+    rom_ty const rom = DungEdit_GetRom(p_ed);
+    
+    uint32_t base = romaddr( ldle24b(rom + 0x882d) );
+    
+    unsigned layout_num = ( ( p_ed->buf[1] >> 2) & 0x07 );
+    
+    // Location of a long "lda addr, x" instruction that reads
+    return ( rom + (base + (layout_num * 3) ) );
+}
+
+// =============================================================================
+
+void
+getobj(uint8_t const * const p_map)
+{
+    uint16_t i = ldle16b(p_map);
+    
+    unsigned char j = i & 0xfc;
+    
+    // -----------------------------
+    
+    if(j == 0xfc)
+    {
+        // subtype 2 objects
+        
+        dm_x = ( (i & 3) << 4 ) | (i >> 12);
+        
+        i = ldle16b(p_map + 1);
+        
+        dm_x += ( (i & 15) << 8 ) | ( (i & 0xc000) >> 8 );
+        
+        dm_k = ((i & 0x3f00) >> 8) + 0x100;
+    }
+    else
+    {
+        // Type 1.1.x and 1.3.x objects. (subtypes 1 and 3)
+        
+        dm_x = ( (i >> 2) & 0x003f ) | ( (i >> 4) & 0x0fc0 );
+        
+        dm_k = p_map[2];
+        
+        if(dm_k < 0xf8)
+        {
+            // subtype 1 objects.
+            dm_l = ( (i & 3) << 2 ) | ( (i & 0x0300) >> 8 );
+        }
+        else
+        {
+            // subtype 3 objects.
+            dm_l = (i & 3) | ( (i & 0x0300) >> 6 );
+        }
+    }
+}
+
+// =============================================================================
+
 // Is this the one that draws the dungeon?
 void Updatemap(DUNGEDIT *ed)
 {
@@ -109,7 +179,7 @@ void Updatemap(DUNGEDIT *ed)
     
     uint8_t const * buf = ed->buf;
     
-    uint8_t const * const rom = ed->ew.doc->rom;
+    rom_cty const rom = DungEdit_GetRom(ed);
     
     dm_buf = nbuf;
     
@@ -125,7 +195,7 @@ void Updatemap(DUNGEDIT *ed)
     {
         Drawmap(rom,
                 ed->nbuf,
-                rom + romaddr(*(int*) (rom + romaddr(*(int*) (rom + 0x882d)) + (buf[1] >> 2) * 3)),
+                rom + romaddr( ldle24b( DungEdit_LayoutPtr(ed) ) ),
                 ed);
         
         buf = Drawmap(rom, ed->nbuf, buf + 2, ed);
@@ -391,10 +461,10 @@ Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
 // =============================================================================
 
 void
-PaintDungeonBlocks(RECT       const clip_r,
-                   RECT       const data_r,
-                   HDC        const p_dc,
-                   DUNGEDIT * const ed)
+PaintDungeonBlocks(RECT             const clip_r,
+                   RECT             const data_r,
+                   HDC              const p_dc,
+                   DUNGEDIT const * const ed)
 {
     HDC const mem_dc = CreateCompatibleDC(p_dc);
     
@@ -405,11 +475,7 @@ PaintDungeonBlocks(RECT       const clip_r,
                                                   512);
     
     
-    // \task Temporary. We'd prefer to have a const 'ed' object.
-    // This could be adjusted in WM_CREATE or somewhere like that.
-    // Or potentially wherever it's assigned originally.
-    ed->bmih.biWidth  = 512;
-    ed->bmih.biHeight = 512;
+    // -----------------------------
     
     SetDIBits(mem_dc,
               mem_bm,

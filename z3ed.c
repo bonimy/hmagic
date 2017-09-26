@@ -4608,34 +4608,6 @@ const unsigned char obj3_t[248]={
     0,0,0,0,0,0,0,0
 };
 
-void getobj(unsigned char const * map)
-{
-    unsigned short i;
-    unsigned char j;
-    
-    i = *(unsigned short*) map;
-    
-    j = i & 0xfc;
-    
-    if(j == 0xfc) // subtype 3 object
-    {
-        dm_x = ((i & 3) << 4) | (i >> 12);
-        map++;
-        i = *(unsigned short*) map;
-        dm_x += ((i & 15) << 8) | ((i & 0xc000u) >> 8);
-        dm_k = ((i & 0x3f00) >> 8) + 0x100;
-    }
-    else
-    {
-        dm_x = ((j >> 2) | ((i & 0xfc00u) >> 4));
-        dm_k = map[2];
-        if(dm_k < 0xf8) // subtype 1 object
-            dm_l = ((i & 3) << 2)|((i & 0x300u) >> 8);
-        else
-            dm_l = (i & 3) | ((i & 0x300u) >> 6);
-    }
-}
-
 char sprname[0x11c][16];
 
 HM_TextResource entrance_names;

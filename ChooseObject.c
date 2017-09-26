@@ -86,7 +86,7 @@ Updateobjdisplay(CHOOSEDUNG const * const ed,
     
     int j,k,l,m,n,o,p;
     
-    uint16_t objbuf[8192];
+    uint16_t objbuf[0x2000];
     
     unsigned char obj[6];
     
@@ -96,8 +96,10 @@ Updateobjdisplay(CHOOSEDUNG const * const ed,
     // \note This assumes that this particular constant is always a blank
     // tile. Whether someone could screw that up via editing with HM itself,
     // I don't know.
-    for(j =0; j < 8192; j++)
-        objbuf[j] = 0x1e9;
+    for(j = 0; j < 0x2000; j++)
+    {
+        objbuf[j] = 0x01e9;
+    }
     
     // Create a fake object stream that contains just one object.
     if(i >= 0x260)
@@ -199,16 +201,25 @@ Updateobjdisplay(CHOOSEDUNG const * const ed,
     
     Drawmap(ed->ed->ew.doc->rom,objbuf,obj,ed->ed);
     
-    Paintdungeon(ed->ed,
-                 objdc,
-                 &rc,
-                 rc.left,
-                 rc.top,
-                 rc.right,
-                 rc.bottom,
-                 0,
-                 0,
-                 objbuf);
+    {
+        BITMAPINFOHEADER backup_bmih = ed->ed->bmih;
+        
+        ed->ed->bmih.biWidth  = 0x20;
+        ed->ed->bmih.biHeight = 0x20;
+        
+        Paintdungeon(ed->ed,
+                     objdc,
+                     &rc,
+                     rc.left,
+                     rc.top,
+                     rc.right,
+                     rc.bottom,
+                     0,
+                     0,
+                     objbuf);
+        
+        ed->ed->bmih = backup_bmih;
+    }
     
     rc.right  -= rc.left;
     rc.bottom -= rc.top;
@@ -226,7 +237,17 @@ Updateobjdisplay(CHOOSEDUNG const * const ed,
     o = ((((i&3)<<1)+1)*ed->w>>3);
     p = (((((i>>2)&3)<<1)+1)*ed->h>>3);
     
-    StretchBlt(ed->bufdc,o-(l>>1),p-(m>>1),l,m,objdc,rc.left,rc.top,rc.right,rc.bottom,SRCCOPY);
+    StretchBlt(ed->bufdc,
+               o - (l >> 1),
+               p - (m >> 1),
+               l,
+               m,
+               objdc,
+               rc.left,
+               rc.top,
+               rc.right,
+               rc.bottom,
+               SRCCOPY);
     
     if(i < 0x40)
         l = i + 0x100;
@@ -310,72 +331,114 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         rc.right=rc.left+(j<<3);
         rc.top=(dpce->h>>1)-(k<<2);
         rc.bottom=rc.right+(k<<3);
-        if(r&128) {
-        for(n=0;n<k;n+=4) {
-            for(m=0;m<j;m+=4) {
-                o=4;
-                p=4;
-                if(m>j-4) o=j&3;
-                if(n>k-4) p=k&3;
-                for(q=0;q<p;q++) {
-                    for(i=0;i<o;i++) {
-                        Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+i],0);
+        
+        if(r & 128)
+        {
+            BITMAPINFOHEADER backup = dunged->bmih;
+            
+            dunged->bmih.biWidth  = 32;
+            dunged->bmih.biHeight = 32;
+            
+            for(n = 0; n < k; n += 4)
+            {
+                for(m = 0; m < j; m += 4)
+                {
+                    o=4;
+                    p=4;
+                    
+                    if(m > j - 4)
+                        o = j & 3;
+                    
+                    if(n > k - 4)
+                        p = k & 3;
+                    
+                    for(q=0;q<p;q++)
+                    {
+                        for(i=0;i<o;i++)
+                        {
+                            Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+i],0);
+                        }
+                        l+=j;
                     }
-                    l+=j;
+                    
+                    l-=j*p-o;
+                    
+                    o<<=3;
+                    p<<=3;
+                    
+                    SetDIBitsToDevice(hdc,
+                                      rc.left + (m << 3),
+                                      rc.top + (n << 3),
+                                      o,
+                                      p,
+                                      0,
+                                      0,
+                                      0,
+                                      32,
+                                      drawbuf + ( (32 - p) << 5),
+                                      (BITMAPINFO*) &(dunged->bmih),
+                                      dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
                 }
-                l-=j*p-o;
-                o<<=3;
-                p<<=3;
-                SetDIBitsToDevice(hdc,
-                                  rc.left + (m << 3),
-                                  rc.top + (n << 3),
-                                  o,
-                                  p,
-                                  0,
-                                  0,
-                                  0,
-                                  32,
-                                  drawbuf + ( (32 - p) << 5),
-                                  (BITMAPINFO*) &(dunged->bmih),
-                                  dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
+                
+                l += 3 * j;
             }
-            l+=3*j;
+            
+            dunged->bmih = backup;
         }
-        } else {
-        for(m=0;m<j;m+=4) {
-            for(n=0;n<k;n+=4) {
-                o=4;
-                p=4;
-                if(m>j-4) o=j&3;
-                if(n>k-4) p=k&3;
-                for(i=0;i<o;i++) {
-                    for(q=0;q<p;q++) {
-                        Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+q],0);
+        else
+        {
+            BITMAPINFOHEADER backup = dunged->bmih;
+
+            dunged->bmih.biWidth  = 32;
+            dunged->bmih.biHeight = 32;
+
+            for(m=0;m<j;m+=4)
+            {
+                for(n=0;n<k;n+=4)
+                {
+                    o=4;
+                    p=4;
+                    if(m>j-4) o=j&3;
+                    if(n>k-4) p=k&3;
+                    for(i=0;i<o;i++)
+                    {
+                        for(q=0;q<p;q++)
+                        {
+                            Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+q],0);
+                        }
+                        
+                        l += k;
                     }
-                    l+=k;
+                    
+                    l -= k * o - p;
+                    o <<= 3;
+                    p <<= 3;
+                    
+                    SetDIBitsToDevice(hdc,
+                                      rc.left + (m << 3),
+                                      rc.top + (n << 3),
+                                      o,
+                                      p,
+                                      0,
+                                      0,
+                                      0,
+                                      32,
+                                      drawbuf + ( (32 - p) << 5),
+                                      (BITMAPINFO*) &(dunged->bmih),
+                                      dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
                 }
-                l-=k*o-p;
-                o<<=3;
-                p<<=3;
-                SetDIBitsToDevice(hdc,
-                                  rc.left + (m << 3),
-                                  rc.top + (n << 3),
-                                  o,
-                                  p,
-                                  0,
-                                  0,
-                                  0,
-                                  32,
-                                  drawbuf + ( (32 - p) << 5),
-                                  (BITMAPINFO*) &(dunged->bmih),
-                                  dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
+                l+=3*k;
             }
-            l+=3*k;
+            
+            dunged->bmih = backup;
         }
-        }
+        
         EndPaint(win,&ps);
+        
         break;
+    
     default:
+        
         return DefWindowProc(win,msg,wparam,lparam);
     }
     return 0;
@@ -828,13 +891,17 @@ BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_INITDIALOG:
-        ed=malloc(sizeof(CHOOSEDUNG));
-        ed->dlg=win;
-        de=ed->ed=(DUNGEDIT*)lparam;
         
-        if(de->selchk&1)
+        ed = (CHOOSEDUNG*) calloc(1, sizeof(CHOOSEDUNG) );
+        
+        ed->dlg=win;
+        
+        de = ed->ed = (DUNGEDIT*) lparam;
+        
+        if(de->selchk & 1)
         {
-            getdoor(de->buf+de->selobj,de->ew.doc->rom);
+            getdoor(de->buf + de->selobj, de->ew.doc->rom);
+            
             i = dm_k * 42 + 0x1b8 + dm_l;
         }
         else
@@ -906,17 +973,22 @@ BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         EnableWindow(GetDlgItem(win,IDC_BUTTON1),dp_tab[ed->sel]);
 upddisp:
         
-        for(i=0;i<16;i++)
-            Updateobjdisplay(ed,i);
+        for(i = 0; i < 16; i++)
+        {
+            Updateobjdisplay(ed, i);
+        }
         
-        InvalidateRect(hc,0,0);
+        InvalidateRect(hc, 0, 0);
         
         break;
     
     case WM_DESTROY:
+        
         ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
+        
         DeleteDC(ed->bufdc);
         DeleteObject(ed->bufbmp);
+        
         free(ed);
         
         break;

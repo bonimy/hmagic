@@ -1310,8 +1310,13 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         // it's the bit map information header... whatever that is.
         ed->bmih = zbmih;
+        
+        ed->bmih.biWidth  = 512;
+        ed->bmih.biHeight = 512;
+        
         ed->selchk = 0;
         ed->withfocus = 0;
+        
         ed->disp = (SD_DungShowBothBGs | SD_DungShowMarkers);
         ed->anim = 0;
         ed->init = 0;
