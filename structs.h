@@ -747,6 +747,41 @@ typedef struct
 
 // =============================================================================
 
+typedef
+struct
+{
+    unsigned torches;
+    unsigned torch_count;
+        
+} dungeon_offsets_ty;
+
+typedef
+struct
+{
+    unsigned dummy;
+    
+} overworld_offsets_ty;
+
+typedef
+struct
+{
+    dungeon_offsets_ty dungeon;
+    
+    overworld_offsets_ty overworld;
+
+} offsets_ty;
+
+// =============================================================================
+
+extern offsets_ty offsets;
+
+// =============================================================================
+
+typedef uint8_t * rom_ty;
+typedef uint8_t const * rom_cty;
+
+// =============================================================================
+
 extern SDCREATE *firstdlg, *lastdlg;
 
 extern FDOC *mark_doc;

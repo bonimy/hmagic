@@ -45,7 +45,7 @@ Drawmap(unsigned char  const * const rom,
         DUNGEDIT             * const ed);
 
 void
-getobj(unsigned char const * map);
+getobj(uint8_t const * const map);
 
 void
 setobj(DUNGEDIT*ed, unsigned char *map);

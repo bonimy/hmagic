@@ -47,6 +47,19 @@
 
 // =============================================================================
 
+offsets_ty offsets =
+{
+    {
+        0x2736a,
+        0x88c1
+    },
+    {
+        0x33333
+    }
+};
+
+// =============================================================================
+
 short dm_x;
 short dm_k;
 
@@ -1398,8 +1411,8 @@ loopstart3:
 samesound:
 
     //begin fourth transfer
-    buf1 = src_rom + 0x2736a;
-    buf2 = port_rom + 0x2736a;
+    buf1 = src_rom + offsets.dungeon.torches;
+    buf2 = port_rom + offsets.dungeon.torches;
 
     if(buf1 == buf2)
     {
@@ -1408,7 +1421,7 @@ samesound:
     }
 
     // find the data for the first rom.
-    l = *(short*)(src_rom + 0x88c11);
+    l = ldle16b(src_rom + offsets.dungeon.torch_count);
     
     for(i = 0; ; i += 2)
     {
@@ -1444,7 +1457,7 @@ samesound:
 
     //do it for the port rom now.
 
-    l = *(short*)(port_rom + 0x88c11);
+    l = ldle16b(port_rom + offsets.dungeon.torch_count);
     
     for(i = 0; ; i += 2)
     {
@@ -24504,129 +24517,144 @@ BOOL CALLBACK duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 
 //Duproom*************************************************************
 
-//rompropdlg#***************************************************
+// =============================================================================
 
-BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL
+RomProperties_OnInitDialog(FDOC const * const doc,
+                           HWND         const win)
 {
-    FDOC *doc;
+    rom_cty const rom = doc->rom;
     
-    unsigned char *rom;
+    rom_cty const torch_count = (rom + offsets.dungeon.torch_count);
     
-    short i,
+    short i = 0,
           j,
           k,
           l,
           m,
           n;
     
+    // -----------------------------
+    
+    for(i = 21; i >= 0; i--)
+        if(rom[0x7fc0 + i] != 32)
+            break;
+    
+    // Copy the game image's internal title.
+    memcpy(buffer, doc->rom + 0x7fc0, i + 1);
+    
+    buffer[i + 1] = 0;
+    
+    SetDlgItemText(win, IDC_EDIT1, buffer);
+    
+    j = k = l = m = n = 0;
+    
+    // Checking how long it takes us to find an empty pushable block
+    // in the dungeon data.
+    for(i = 0; i < 0x18c; i += 4)
+    {
+        if( get_16_le(rom + 0x271de + i) != -1)
+            j++;
+    }
+    
+    // Checking number of entrance markers on overworld.
+    for(i=0;i<129;i++)
+    {
+        if( ! is16b_neg1_i(rom + 0xdb96f, i) )
+            k++;
+    }
+    
+    // Checking number of exit to overworld markers (in general, these
+    // are used in the ending sequence too to transition to overworld
+    // scenes.
+    for(i=0;i<79;i++)
+        if(rom[0x15e28 + i] != 255)
+            l++;
+    
+    // Checking number of hole markers on overworld.
+    for(i = 0; i < 19; i++)
+        if( ! is16b_neg1_i(rom + 0xdb826, i) )
+            m++;
+    
+    // Checking number of whirlpool markers on overworld.
+    for(i = 0; i < 9; i++)
+    {
+        char char_i = i;
+        
+        buffer[768+i] =
+        (
+            is16b_neg1_i(rom + 0x16ae5, i) ? '-'
+                                           : (char_i + '0')
+        );
+    }
+    
+    buffer[777] = 0;
+    
+    for( ; i < 17; i++)
+        if(((short*)(rom + 0x16ae5))[i]!=-1)
+            n++;
+    
+    i = *(short*)(rom + 0xdde7);
+    
+    wsprintf(buffer,
+             "Sprites: OV:%d, D:%d, Free:%d\n"
+             "OV Secrets: %d used, %d free\n"
+             "Dungeon secrets: %d used, %d free\n"
+             "Dungeon maps: %d used, %d free\n"
+             "Graphics: %d used, %d free\n"
+             "Blocks: %d/99\n"
+             "Torches: %d/288\n"
+             "Entrances: %d/129\n"
+             "Exits: %d/79\n"
+             "Holes: %d/19\n"
+             "Bird locations set: %s\n"
+             "Whirlpools: %d/8\n"
+             "Expansion size: %d\n"
+             "D. headers: %d used, %d free",
+             doc->dungspr - 0x4cb41,
+             doc->sprend - doc->dungspr - 0x300,
+             0x4ec9f - doc->sprend,
+             doc->sctend - 0xdc3f9,
+             0xdc894 - doc->sctend,
+             i + 0x2217,
+             -0x1950 - i,
+             doc->dmend - 0x57621,
+             0x57ce0 - doc->dmend,
+             doc->gfxend - 0x8b800,
+             0xc4000 - doc->gfxend,
+             j,
+             ldle16b(torch_count),
+             k,
+             l,
+             m,
+             buffer+768,
+             n,
+             doc->mapexp ? (doc->fsize - doc->mapexp)
+                         : 0,
+             *(short*) (rom + 0x27780) + 2174,
+             -*(short*)(rom + 0x27780));
+    
+    SetDlgItemText(win,IDC_STATIC2,buffer);
+    
+    return TRUE;
+}
+
+// =============================================================================
+
+BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+    FDOC *doc;
+    
     switch(msg)
     {
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLong(win, DWL_USER, lparam);
         
         doc = (FDOC*) lparam;
         
-        rom = doc->rom;
-        
-        for(i = 21; i >= 0; i--)
-            if(rom[0x7fc0 + i] != 32)
-                break;
-        
-        // Copy the game image's internal title.
-        memcpy(buffer, doc->rom + 0x7fc0, i + 1);
-        
-        buffer[i + 1] = 0;
-        
-        SetDlgItemText(win, IDC_EDIT1, buffer);
-        
-        j = k = l = m = n = 0;
-        
-        // Checking how long it takes us to find an empty pushable block
-        // in the dungeon data.
-        for(i=0;i<0x18c;i+=4)
-            if( get_16_le(rom + 0x271de + i) != -1)
-                j++;
-        
-        // Checking number of entrance markers on overworld.
-        for(i=0;i<129;i++)
-            if( ! is16b_neg1_i(rom + 0xdb96f, i) )
-                k++;
-        
-        // Checking number of exit to overworld markers (in general, these
-        // are used in the ending sequence too to transition to overworld
-        // scenes.
-        for(i=0;i<79;i++)
-            if(rom[0x15e28 + i] != 255)
-                l++;
-        
-        // Checking number of hole markers on overworld.
-        for(i = 0; i < 19; i++)
-            if( ! is16b_neg1_i(rom + 0xdb826, i) )
-                m++;
-        
-        // Checking number of whirlpool markers on overworld.
-        for(i = 0; i < 9; i++)
-        {
-            char char_i = i;
-            
-            buffer[768+i] =
-            (
-                is16b_neg1_i(rom + 0x16ae5, i) ? '-'
-                                               : (char_i + '0')
-            );
-        }
-        
-        buffer[777] = 0;
-        
-        for( ; i < 17; i++)
-            if(((short*)(rom + 0x16ae5))[i]!=-1)
-                n++;
-        
-        i=*(short*)(rom + 0xdde7);
-        
-        wsprintf(buffer,
-                 "Sprites: OV:%d, D:%d, Free:%d\n"
-                 "OV Secrets: %d used, %d free\n"
-                 "Dungeon secrets: %d used, %d free\n"
-                 "Dungeon maps: %d used, %d free\n"
-                 "Graphics: %d used, %d free\n"
-                 "Blocks: %d/99\n"
-                 "Torches: %d/288\n"
-                 "Entrances: %d/129\n"
-                 "Exits: %d/79\n"
-                 "Holes: %d/19\n"
-                 "Bird locations set: %s\n"
-                 "Whirlpools: %d/8\n"
-                 "Expansion size: %d\n"
-                 "D. headers: %d used, %d free",
-                 doc->dungspr - 0x4cb41,
-                 doc->sprend - doc->dungspr - 0x300,
-                 0x4ec9f - doc->sprend,
-                 doc->sctend - 0xdc3f9,
-                 0xdc894 - doc->sctend,
-                 i + 0x2217,
-                 -0x1950 - i,
-                 doc->dmend - 0x57621,
-                 0x57ce0 - doc->dmend,
-                 doc->gfxend - 0x8b800,
-                 0xc4000 - doc->gfxend,
-                 j,
-                 get_16_le(rom + 0x88c1),
-                 k,
-                 l,
-                 m,
-                 buffer+768,
-                 n,
-                 doc->mapexp ? (doc->fsize - doc->mapexp)
-                             : 0,
-                 *(short*) (rom + 0x27780) + 2174,
-                 -*(short*)(rom + 0x27780));
-        
-        SetDlgItemText(win,IDC_STATIC2,buffer);
-        
-        break;
+        return RomProperties_OnInitDialog(doc, win);
     
     case WM_COMMAND:
         
@@ -24660,10 +24688,12 @@ BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 
 void Updatepals(void)
 {
-    DUNGEDIT*ed=firstgraph;
-    while(ed) {
+    DUNGEDIT*ed = (DUNGEDIT*) firstgraph;
+    
+    while(ed)
+    {
         SendMessage(ed->dlg,4002,0,0);
-        ed=(DUNGEDIT*)(ed->nextgraph);
+        ed = (DUNGEDIT*)(ed->nextgraph);
     }
 }
 
@@ -26150,7 +26180,7 @@ nomod:
             
             activedoc->modf=1;
             
-            for(i=0;i<0x128;i++)
+            for(i = 0; i < 0x128; i++)
             {
                 if(activedoc->dungs[i])
                 {
@@ -26169,11 +26199,18 @@ nomod:
             
             rom = activedoc->rom;
             
-            // \task Is this correct? I'm suspicious of writing a 32-bit value
-            // to the rom directly.
-            put_32_le(rom + 0x2736a, u32_neg1);
+            if(always)
+            {
+                rom_ty const torches = rom + offsets.dungeon.torches;
+                
+                rom_ty const torch_count = (rom + offsets.dungeon.torch_count);
+                
+                stle16b(torches,     u16_neg1);
+                stle16b(torches + 2, u16_neg1);
+                
+                stle16b(torch_count, 4);
+            }
             
-            put_16_le(rom + 0x88c1, 4);
             
             activedoc->modf = 1;
             
@@ -26188,7 +26225,7 @@ nomod:
             
             for(i = 0; i < 129; i++)
             {
-                put_16_le_i(rom + 0xdb96f, i, -1);
+                stle16b_i(rom + 0xdb96f, i, u16_neg1);
             }
             
         upddisp:

@@ -418,6 +418,10 @@ Openroom(DUNGEDIT * const ed,
 {
     uint8_t const * const rom = ed->ew.doc->rom;
     
+    rom_cty const torches = (rom + offsets.dungeon.torches);
+    
+    rom_cty const torch_count = (rom + offsets.dungeon.torch_count);
+    
     // Get the base address for this room in the rom.
     uint8_t const * buf = 0;
 
@@ -530,9 +534,9 @@ Openroom(DUNGEDIT * const ed,
     
     memcpy(ed->sbuf,buf,i);
     
-    buf = rom + 0x2736a;
+    buf = torches;
     
-    num_torches = ldle16b(rom + 0x88c1);
+    num_torches = ldle16b(torch_count);
     
     for(i = 0; ; i += 2)
     {
@@ -554,7 +558,7 @@ Openroom(DUNGEDIT * const ed,
                 break;
         }
         
-        if(*(short*)(buf + j) == map)
+        if( ldle16b(buf + j) == map)
         {
             ed->tbuf = (uint8_t*) malloc(ed->tsize = i - j);
             
@@ -657,11 +661,17 @@ void Savedungsecret(FDOC*doc,int num,unsigned char*buf,int size)
 void
 Saveroom(DUNGEDIT * const ed)
 {
-    unsigned char *rom = ed->ew.doc->rom; // get our romfile from the Dungedit struct.
+    uint8_t * const rom = ed->ew.doc->rom; // get our romfile from the Dungedit struct.
+    
+    rom_ty const torches = rom + offsets.dungeon.torches;
+    
+    rom_ty const torch_count = rom + offsets.dungeon.torch_count;
     
     int l;
     int m;
     int n;
+    
+    // -----------------------------
     
     if( !ed->modf ) // if the dungeon map hasn't been modified, do nothing.
         return;
@@ -703,9 +713,9 @@ Saveroom(DUNGEDIT * const ed)
         
         Savedungsecret(ed->ew.doc, ed->mapnum, ed->sbuf, ed->ssize);
         
-        k = get_16_le(rom + 0x88c1);
+        k = get_16_le(torch_count);
         
-        if( is16b_neg1(rom + 0x2736a) )
+        if( is16b_neg1(torches) )
             k = 0;
         
         for(i = 0; i < k; i += 2)
@@ -719,11 +729,11 @@ Saveroom(DUNGEDIT * const ed)
             {
                 j += 2;
                 
-                if( is16b_neg1(rom + 0x2736a + j) )
+                if( is16b_neg1(torches + j) )
                     break;
             }
             
-            if( get_16_le(rom + 0x2736a + i) == ed->mapnum )
+            if( get_16_le(torches + i) == ed->mapnum )
             {
                 if(!ed->tsize)
                     j += 2;
@@ -731,8 +741,8 @@ Saveroom(DUNGEDIT * const ed)
                 if(k + i + ed->tsize - j > 0x120)
                     goto noroom;
                 
-                memmove(rom + 0x2736a + i + ed->tsize, rom + 0x2736a + j, k - j);
-                memcpy(rom + 0x2736a + i, ed->tbuf, ed->tsize);
+                memmove(torches + i + ed->tsize, torches + j, k - j);
+                memcpy(torches + i, ed->tbuf, ed->tsize);
                 
                 k += i + ed->tsize - j;
                 
@@ -756,9 +766,9 @@ Saveroom(DUNGEDIT * const ed)
             }
             else
             {
-                memcpy(rom + 0x2736a + k, ed->tbuf, ed->tsize);
+                memcpy(torches + k, ed->tbuf, ed->tsize);
                 
-                stle16b(rom + 0x2736a + k + j - 2, u16_neg1);
+                stle16b(torches + k + j - 2, u16_neg1);
                 
                 k += j;
             }
@@ -777,10 +787,10 @@ Saveroom(DUNGEDIT * const ed)
         {
             k = 4;
             
-            ldle32b(rom + 0x2736a) == u32_neg1;
+            ldle32b(torches) == u32_neg1;
         }
         
-        stle16b(rom + 0x88c1, k);
+        stle16b(torch_count, k);
         
         m = ed->hmodf;
         
