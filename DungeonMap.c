@@ -170,6 +170,190 @@ getobj(uint8_t const * const p_map)
 
 // =============================================================================
 
+int
+wrap_clamp(int p_value, int p_left, int p_right)
+{
+    if(p_value < p_left)
+    {
+        return p_right;
+    }
+    
+    if(p_value > p_right)
+    {
+        return p_left;
+    }
+    
+    return p_value;
+}
+
+// =============================================================================
+
+typedef
+struct
+{
+    int m_x;
+    int m_y;
+    
+    BOOL m_bg;
+    
+} torch_ty;
+
+// =============================================================================
+
+void
+TorchCheckTemporary(DUNGEDIT const * const p_ed)
+{
+    int i = 0;
+    
+    rom_cty tbuf = DungEdit_GetRom(p_ed) + offsets.dungeon.torches;
+    
+    for(i = 0; i < 0x120; i += 2)
+    {
+        uint16_t room = ldle16b(tbuf + i + 0);
+        
+        int j = 2;
+        
+        for(j = 2; (i + j) < 0x120; j += 2)
+        {
+            uint16_t data = ldle16b(tbuf + i + j);
+            
+            if(data == 0xffff)
+            {
+                break;
+            }
+            
+            if(data & 0xc000)
+            {
+                // \note it was determined that the only rooms
+                // like this were in Ganon's boss room.
+                MessageBox(NULL, "Found a room with funky data", NULL, MB_OK);
+            }
+        }
+        
+        i += j;
+    }
+}
+
+// =============================================================================
+
+
+torch_ty
+GetTorch(DUNGEDIT const * const p_ed)
+{
+    uint16_t data = ldle16b(p_ed->tbuf + p_ed->selobj);
+    
+    torch_ty t;
+    
+    t.m_x = ( (data >> 1) & 0x3f );
+    t.m_y = ( (data >> 7) & 0x3f );
+    
+    t.m_bg = truth(data & 0x2000);
+    
+    return t;
+}
+
+void
+SetTorch(DUNGEDIT * const p_ed,
+         HWND       const p_w,
+         torch_ty         p_t)
+{
+    uint16_t data = 0;
+    
+    // -----------------------------
+    
+    // Done to invalidate the current torch rectangle before being moved.
+    Dungselectchg(p_ed, p_w, 0);
+    
+    // Clamp the x and y coordinates so that they range from 0 to 0x3f.
+    // Otherwise they'll hang off the edge of the map and likely
+    // not be functional.
+    p_t.m_x = wrap_clamp(p_t.m_x, 0, 0x3e);
+    p_t.m_y = wrap_clamp(p_t.m_y, 0, 0x3e);
+    
+    data |= ( (p_t.m_x & 0x3f) <<  1 );
+    data |= ( (p_t.m_y & 0x3f) <<  7 );
+    data |= ( truth(p_t.m_bg)  << 13 );
+    
+    stle16b(p_ed->tbuf + p_ed->selobj, data);
+    
+    p_ed->modf = 1;
+    
+    Updatemap(p_ed);
+    
+    Dungselectchg(p_ed, p_w, 1);
+}
+
+POINT
+GetMovementDelta(unsigned long p_key)
+{
+    POINT pt = { 0 , 0 };
+    
+    switch(p_key)
+    {
+        
+    default:
+        
+        break;
+    
+    case VK_NUMPAD1:
+        
+        pt.x -= 1;
+        pt.y += 1;
+        
+        break;
+    
+    case VK_NUMPAD2:
+        
+        pt.y += 1;
+        
+        break;
+        
+    case VK_NUMPAD3:
+        
+        pt.x += 1;
+        pt.y += 1;
+        
+        break;
+    
+    case VK_NUMPAD4:
+        
+        pt.x -= 1;
+        
+        break;
+        
+    case VK_NUMPAD6:
+        
+        pt.x += 1;
+        
+        break;
+        
+    case VK_NUMPAD7:
+        
+        pt.x -= 1;
+        pt.y -= 1;
+        
+        break;
+    
+    case VK_NUMPAD8:
+        
+        pt.y -= 1;
+        
+        break;
+    
+    case VK_NUMPAD9:
+        
+        pt.x += 1;
+        pt.y -= 1;
+        
+        break;
+    
+    }
+    
+    return pt;
+}
+
+// =============================================================================
+
 // Is this the one that draws the dungeon?
 void Updatemap(DUNGEDIT *ed)
 {
@@ -1774,10 +1958,17 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
                 j &= -2;
             }
             
-            k = (dm_x & 0x3f) + i;
-            l = ((dm_x >> 6) & 0x3f) + j;
+            k = ( (dm_x >> 0) & 0x3f ) + i;
+            l = ( (dm_x >> 6) & 0x3f ) + j;
             
-            if(k > 0x3f || k < 0 || l > 0x3f || l < 0)
+            if
+            (
+                (k > 0x3f || k < 0 || l > 0x3f || l < 0)
+             || (
+                    (p_ed->selchk == SD_DungTorchLayerSelected)
+                 && (k > 0x3e || k < 0 || l > 0x3e || l < 0)
+                )
+            )
             {
                 p_ed->withfocus |= 4;
             }
@@ -1789,6 +1980,16 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
                 
                 if(p_ed->selchk == SD_DungTorchLayerSelected)
                 {
+
+#if 1
+                    torch_ty t = GetTorch(p_ed);
+                    
+                    t.m_x = k;
+                    t.m_y = l;
+                    
+                    SetTorch(p_ed, w, t);
+#else
+                    
                     uint8_t * const coord = p_ed->tbuf + p_ed->selobj;
                     
                     uint16_t new_pos = ldle16b(coord) & 0xe000;
@@ -1796,6 +1997,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
                     new_pos |= (dm_x << 1);
                     
                     stle16b(coord, new_pos);
+#endif
                     
                     goto modfx;
                 }
@@ -2060,12 +2262,16 @@ DungeonMap_OnTorchChar(DUNGEDIT * const p_ed,
         return HM_DefWindowProc(p_packed_msg);
     
     case '-':
-        
+      
+// Disabled for now because we're trying out using key down message handling
+// instead.
+#if 0
         p_ed->tbuf[p_ed->selobj + 1] ^= 0x20;
         
         p_ed->modf = 1;
         
         Dungselectchg(p_ed, w, 1);
+#endif
         
         break;
 
@@ -2271,6 +2477,9 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == j)
                 break;
             
+            // Make the object to the start of the loading order
+            // on this layer.
+            
             i = ldle24b(p_ed->buf + p_ed->selobj);
             
             memmove(p_ed->buf + j + 3,
@@ -2294,6 +2503,9 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk + 1] - 5)
                 break;
+            
+            // Make the object to the end of the loading order
+            // on this layer.
             
             i = ldle24b(p_ed->buf + p_ed->selobj);
             
@@ -2439,6 +2651,8 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
         switch(c)
         {
         
+        // \note How would one enter this? Ctrl-B on a terminal, but in
+        // Windows?
         case 2:
             
             j = p_ed->chkofs[p_ed->selchk];
@@ -2447,6 +2661,9 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
                 break;
             
             i = ldle16b(p_ed->buf + p_ed->selobj);
+            
+            // Move the door to the beginning of the loading order on this
+            // layer.
             
             memmove(p_ed->buf + j + 2,
                     p_ed->buf + j,
@@ -2462,12 +2679,17 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             return 0;
         
+        // \note How would one enter this? Ctrl-V on a terminal for sure, but
+        // in Windows?
         case 22:
             
             j = p_ed->chkofs[p_ed->selchk + 1] - 4;
             
             if(p_ed->selobj == j)
                 break;
+            
+            // Move the door to the very end of the loading order on this
+            // layer.
             
             i = ldle16b(p_ed->buf + p_ed->selobj);
             
@@ -2489,6 +2711,9 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk])
                 break;
+            
+            // Move the door earlier in the loading order by trading places
+            // with the prior door.
             
             i = ldle16b(p_ed->buf + p_ed->selobj - 2);
             
@@ -2512,6 +2737,9 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             i = ldle16b(p_ed->buf+p_ed->selobj + 2);
             
+            // Move the door later in the loading order by trading places
+            // with the immediately following door.
+            
             stle16b(p_ed->buf + p_ed->selobj + 2,
                     ldle16b(p_ed->buf + p_ed->selobj) );
             
@@ -2532,6 +2760,60 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
+LRESULT
+DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
+                      MSG        const p_packed_msg)
+{
+    unsigned long const key = HM_NumPadKeyDownFilter(p_packed_msg);
+    
+    torch_ty sel_torch = GetTorch(p_ed);
+    
+    HWND const w = p_packed_msg.hwnd;
+    
+    // -----------------------------
+    
+    switch(key)
+    {
+    
+    default:
+        
+        break;
+    
+    case VK_SUBTRACT:
+
+        sel_torch.m_bg = ! (sel_torch.m_bg);
+        
+        SetTorch(p_ed, w, sel_torch);
+        
+        break;
+    
+    case VK_NUMPAD1:
+    case VK_NUMPAD2:
+    case VK_NUMPAD3:
+    case VK_NUMPAD4:
+    case VK_NUMPAD6:
+    case VK_NUMPAD7:
+    case VK_NUMPAD8:
+    case VK_NUMPAD9:
+        
+        if(always)
+        {
+            POINT delta = GetMovementDelta(key);
+            
+            sel_torch.m_x += delta.x;
+            sel_torch.m_y += delta.y;
+            
+            SetTorch(p_ed, w, sel_torch);
+        }
+        
+        return 0;
+    }
+
+    return HM_DefWindowProc(p_packed_msg);
+}
+
+// =============================================================================
+
 void
 DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                      MSG        const p_packed_msg)
@@ -2544,6 +2826,19 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
     
     // -----------------------------
     
+    switch(p_ed->selchk)
+    {
+
+    default:
+        
+        break;
+
+    case SD_DungTorchLayerSelected:
+        DungeonMap_OnTorchKey(p_ed, p_packed_msg);
+        
+        return;
+    }
+
     if(p_ed->selchk > SD_DungItemLayerSelected)
     {
         return;

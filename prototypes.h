@@ -28,6 +28,9 @@ Drawblock(OVEREDIT const * const ed,
           int const n,
           int const t);
 
+// \param   f Indicates whether to update the object information
+// static text control (would typically do this when an object
+// is selected and state changes.
 void
 Dungselectchg(DUNGEDIT * ed,
               HWND       hc,
