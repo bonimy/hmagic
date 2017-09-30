@@ -1,9 +1,17 @@
 
-#include "windows.h"
-
 #if ! defined HMAGIC_GDI_OBJECTS_HEADER_GUARD
 
     #define HMAGIC_GDI_OBJECTS_HEADER_GUARD
+
+// =============================================================================
+
+    #pragma warning(push, 0)
+    
+    #include "windows.h"
+    
+    #pragma warning(pop)
+
+// =============================================================================
 
     extern HPEN green_pen,
          null_pen,
@@ -39,6 +47,6 @@
 
     extern RGBQUAD const blackcolor;
 
-
+// =============================================================================
 
 #endif

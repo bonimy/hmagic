@@ -37,8 +37,6 @@
 
     #include "resource.h"
 
-
-
 // =============================================================================
 
 enum
@@ -281,9 +279,18 @@ typedef struct
     EDITWIN ew;
     HWND dlg;
     unsigned short flag,init,editsamp;
-    int width,height,pageh,pagev,zoom,scroll,page,sell,selr;
+    int width,height,pageh,pagev,zoom,scroll,page;
+    
+    /// Left hand sample selection point
+    int sell;
+    
+    /// Right hand sample selection point
+    int selr;
+    
     int editinst;
-    ZWAVE*zw;
+    
+    ZWAVE *zw;
+    
 } SAMPEDIT;
 
 typedef struct
@@ -393,7 +400,7 @@ typedef struct
     
     int map_vscroll_delta;
     
-    /// A buffer for all pixels of the map (experimental)
+    /// A buffer for all pixels of the map
     uint8_t map_bits[512 * 512];
     
     RECT m_selected_obj_rect;

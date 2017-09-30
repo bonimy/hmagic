@@ -10,6 +10,26 @@
 // \task A note to merge the changes in the standalone project file
 // for Epoch 2 into the repo.
 
+/**
+    \task Remaining things Puzzledude claims are borked:
+
+    -overworld items are bugged if you edit them and save, same for whirlpools
+    -pretty much all options: empty all... (dungeons rooms, exits, entrances)
+    simply repoint all pointers to an empty room rather than actually make
+    empty space
+
+    -choosing "remove all overworld exits" also removes special white dots which tells the game what screen to load in the ending sequence
+    -choosing "remove all overworld exits" also removes the "entrance" from Ganon room to the Triforce shrine
+
+    -global grid editing in the overworld makes crashes or forcefully puts in
+    all entrances (yellow dots) for some reason
+    (despite the fact the entrances are not inserted yet)
+
+    -false dungeon room pointer calculation if too much data, thus can not
+    handle space problems if more data (main problem of the program)
+*/
+
+
 /** 
     \task Epoch3 change list
     
@@ -35,6 +55,7 @@
     keys, the data would be mishandled and revert the BG setting of the item
     to BG1. The object details static text control paid attention to BG1 / BG2
     settings but the code involved in moving them did not.
+ 
 */
 
 #include "structs.h"
@@ -68,11 +89,6 @@ unsigned short copy_w,copy_h;
 unsigned short * copybuf = 0;
 
 uint8_t const u8_neg1 = (uint8_t) (~0);
-
-static HGDIOBJ gray_pen = 0;
-
-HPEN tint_pen = 0;
-HBRUSH tint_br = 0;
 
 int const always = 1;
 
@@ -243,7 +259,9 @@ HPEN green_pen,
      null_pen,
      white_pen,
      blue_pen,
-     black_pen;
+     black_pen,
+     gray_pen = 0,
+     tint_pen = 0;
 
 HBRUSH black_brush,
        white_brush,
@@ -252,7 +270,8 @@ HBRUSH black_brush,
        purple_brush,
        red_brush,
        blue_brush,
-       gray_brush;
+       gray_brush,
+       tint_br = 0;
 
 HGDIOBJ trk_font;
 
@@ -3979,6 +3998,7 @@ Changeselect(HWND hc, int sel)
     int i;
     
     RECT rc = HM_GetClientRect(hc);
+    
     OVEREDIT *ed = (OVEREDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
     
     rc.top=((ed->sel_select>>2)-ed->sel_scroll)<<5;
@@ -10385,9 +10405,7 @@ Getsecretstring(uint8_t const * const rom,
     return a ? sprname[a] : "Nothing";
 }
 
-
 // =============================================================================
-//Drawblock#********************************
 
 void
 Drawblock(OVEREDIT const * const ed,
@@ -21693,22 +21711,22 @@ SD_ENTRY over_sd[] =
 SD_ENTRY dung_sd[]={
     {"STATIC","",0,0,60,20, ID_DungRoomNumber, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Room:",4,72,40,52, ID_DungStatic1, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",54,72,30,52, ID_DungEntrRoomNumber, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",54,72,30,52, ID_DungEntrRoomNumber, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Y:",4,48,15,28, ID_DungStatic2, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",29,48,40,28, ID_DungEntrYCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",29,48,40,28, ID_DungEntrYCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","X:",4,24,15,4, ID_DungStatic3, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",29,24,40,4, ID_DungEntrXCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",29,24,40,4, ID_DungEntrXCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Y scroll:",79,48,40,28, ID_DungStatic4, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","X scroll:",79,24,40,4, ID_DungStatic5, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","CX:",173,24,20,4, ID_DungStatic17, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","CY:",239,24,20,4, ID_DungStatic18, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"BUTTON","More",301,24,36,4, ID_DungEntrProps, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"STATIC","Blockset:",104,72,45,52, ID_DungStatic8, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Music:",204,72,40,52, ID_DungStatic9, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"COMBOBOX","",254,72,80,-44, ID_DungEntrSong, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
     {"STATIC","Dungeon:",204,48,48,28, ID_DungStatic10, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
@@ -21721,21 +21739,21 @@ SD_ENTRY dung_sd[]={
     {"BUTTON","",135,0,20,20, ID_DungDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","Jump",160,0,40,20, ID_DungChangeRoom, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Floor 1:",204,0,55,20, ID_DungStatic6, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Floor 2:",204,24,55,20, ID_DungStatic7, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Blockset:",298,0,55,20, ID_DungStatic13, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","EnemyBlk:",395,0,55,20, ID_DungStatic16, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Palette:",298,24,55,20, ID_DungStatic14, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Collision:",395,24,50,20, ID_DungStatic15, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",450,24,90,120, ID_DungCollSettings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"BUTTON","Exit",550,24,40,24, ID_DungExit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Layout:",0,24,40,20, ID_DungStatic11, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","More",490,0,30,24, ID_DungEditHeader, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","BG2:",75,24,30,20, ID_DungStatic12, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",105,24,95,100, ID_DungBG2Settings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"BUTTON","Starting location",0,86,340,0, ID_DungStartLocGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
@@ -22382,7 +22400,7 @@ SUPERDLG z3_dlg={
     "",z3dlgproc,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,60,60,1,z3_sd
 };
 
-long CALLBACK overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
     
@@ -22512,8 +22530,11 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         {
         
         case VK_DELETE:
-            zw=ed->zw;
-            if(zw->copy!=-1) break;
+            
+            zw = ed->zw;
+            
+            if(zw->copy != -1)
+                break;
             
             if(ed->sell == ed->selr)
             {
@@ -22522,8 +22543,10 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 // Is this really intuitive? Seems like a great way to lose
                 // work.
                 
-                zw->end=0;
-                zw->buf=realloc(zw->buf,2);
+                zw->end = 0;
+                
+                zw->buf = (short*) realloc(zw->buf, 2);
+                
                 zw->buf[0]=0;
                 zw->lopst=0;
                 ed->sell=0;
@@ -24732,7 +24755,7 @@ deflt:
 }
 
 // window procedure for the main frame window
-long CALLBACK
+LRESULT CALLBACK
 frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     CLIENTCREATESTRUCT ccs;
@@ -26349,7 +26372,7 @@ nomod:
 }
 
 // Window procedure for the document window with the large tree control.
-long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
 {
     FDOC *param;
     
@@ -26785,10 +26808,10 @@ LoadSpriteNamesFile(void)
 
 // =============================================================================
 
+void HM_RegisterClasses(HINSTANCE p_inst);
+
 int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 {
-    WNDCLASS wc;
-    
     HMENU hmenu;
     
     HANDLE h,h2;
@@ -26823,161 +26846,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     // set the global instance variable to this program.
     hinstance=hinst;
     
-    wc.style=0;
-    wc.lpfnWndProc=frameproc;
-    wc.cbClsExtra=0;
-    wc.cbWndExtra=0;
-    wc.hInstance=hinst;
-    wc.hIcon=LoadIcon(hinstance,MAKEINTRESOURCE(IDI_ICON1));
-    wc.hCursor = normal_cursor = LoadCursor(0,IDC_ARROW);
-    wc.hbrBackground=0;
-    wc.lpszMenuName=0;
-    wc.lpszClassName="ZEFRAME";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=docproc;
-    wc.lpszClassName="ZEDOC";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=overproc;
-    wc.lpszClassName="ZEOVER";
-    RegisterClass(&wc);
-    
-    // dungeon dialogue editing.
-    wc.lpfnWndProc=dungproc;
-    wc.lpszClassName="ZEDUNGEON";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=musbankproc;
-    wc.lpszClassName="MUSBANK";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackeditproc;
-    wc.lpszClassName="TRACKEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspproc;
-    wc.lpszClassName="PERSPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=patchproc;
-    wc.lpszClassName="PATCHLOAD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=texteditproc;
-    wc.lpszClassName="ZTXTEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=wmapproc;
-    wc.lpszClassName="WORLDMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapproc;
-    wc.lpszClassName="LEVELMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=tmapproc;
-    wc.lpszClassName="TILEMAP";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=blksel16proc;
-    wc.lpszClassName="BLKSEL16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blkedit32proc;
-    wc.lpszClassName="BLKEDIT32";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel8proc;
-    wc.lpszClassName="BLKSEL8";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=blkedit16proc;
-    wc.lpszClassName="BLKEDIT16";
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=(HBRUSH)(COLOR_APPWORKSPACE+1);
-    wc.lpfnWndProc=blkedit8proc;
-    wc.lpszClassName="BLKEDIT8";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=overmapproc;
-    wc.lpszClassName="OVERWORLD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel32proc;
-    wc.lpszClassName="BLKSEL32";
-    RegisterClass(&wc);
-    
-    wc.hCursor=0;
-    wc.lpfnWndProc=DungeonMapProc;
-    wc.lpszClassName="DUNGEON";
-    RegisterClass(&wc);
-    
-    wc.hCursor = normal_cursor;
-    wc.lpfnWndProc=wmapdispproc;
-    wc.lpszClassName="WMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dungselproc;
-    wc.lpszClassName="DUNGSEL";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=tmapdispproc;
-    wc.lpszClassName="TMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blk16search;
-    wc.lpszClassName="SEARCH16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=palselproc;
-    wc.lpszClassName="PALSELECT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapdispproc;
-    wc.lpszClassName="LMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dpceditproc;
-    wc.lpszClassName="DPCEDIT";
-    RegisterClass(&wc);
-    
-    wc.style=CS_HREDRAW|CS_VREDRAW;
-    wc.lpfnWndProc=palproc;
-    wc.lpszClassName="PALEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapblksproc;
-    wc.lpszClassName="LMAPBLKS";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackerproc;
-    wc.lpszClassName="TRAX0R";
-    wc.style=0;
-    wc.hbrBackground=white_brush;
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=black_brush;
-    wc.lpfnWndProc=sampdispproc;
-    wc.lpszClassName="SAMPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspdispproc;
-    wc.lpszClassName="PERSPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=superdlgproc;
-    wc.lpszClassName="SUPERDLG";
-    wc.hbrBackground=(HBRUSH)(wver?COLOR_WINDOW+1:COLOR_BTNFACE+1);
-    wc.cbWndExtra=12;
-    RegisterClass(&wc);
-    
-    // all the windows classes have been registered.
+    HM_RegisterClasses(hinst);
     
     //  postmsgfunc=&PostMessage;
     //  wsprintf(buffer,"%08X",hinstance);

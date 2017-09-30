@@ -237,6 +237,8 @@ Updateobjdisplay(CHOOSEDUNG const * const ed,
     o = ((((i&3)<<1)+1)*ed->w>>3);
     p = (((((i>>2)&3)<<1)+1)*ed->h>>3);
     
+    SetStretchBltMode(ed->bufdc, HALFTONE);
+    
     StretchBlt(ed->bufdc,
                o - (l >> 1),
                p - (m >> 1),
@@ -388,10 +390,10 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         else
         {
             BITMAPINFOHEADER backup = dunged->bmih;
-
+            
             dunged->bmih.biWidth  = 32;
             dunged->bmih.biHeight = 32;
-
+            
             for(m=0;m<j;m+=4)
             {
                 for(n=0;n<k;n+=4)
@@ -717,8 +719,6 @@ DungeonObjSelector_OnPaint(CHOOSEDUNG const * const ed,
         Getdungselrect(i, &rc, ed);
         FrameRect(hdc, &rc, green_brush);
     }
-    
-    { RECT rc = { 0x20, 0x20, 0x38, 0x38}; FillRect(hdc, &rc, blue_brush); }
     
     SelectPalette(hdc, oldpal, 0);
     
