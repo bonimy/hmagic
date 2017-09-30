@@ -116,6 +116,7 @@
     <ClCompile Include="DungeonDlg.c" />
     <ClCompile Include="DungeonMap.c" />
     <ClCompile Include="DungonHeader.c" />
+    <ClCompile Include="WindowClasses.c" />
     <ClCompile Include="Wrappers.c" />
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>

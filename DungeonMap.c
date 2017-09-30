@@ -3,9 +3,10 @@
 
     #include "Callbacks.h"
     #include "prototypes.h"
-    #include "wrappers.h"
+    #include "Wrappers.h"
 
     #include "DungeonEnum.h"
+
     #include "GdiObjects.h"
 
 // =============================================================================
@@ -354,7 +355,8 @@ GetMovementDelta(unsigned long p_key)
 
 // =============================================================================
 
-// Is this the one that draws the dungeon?
+/// Refreshes the BG1 and BG2 tilemaps using the layout,
+/// objects on all layers, and blocks and torches.
 void Updatemap(DUNGEDIT *ed)
 {
     int i;
@@ -725,7 +727,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     int mask,tmask;
     
     // -----------------------------
-
+    
     // \note Kinda clever. This writes in a multiple of 0x10 (0x00 to 0x70,
     // inclusive) to 4 separate byte locations.
     *(char*) &col = *(((char*)&col) + 1)
@@ -1333,10 +1335,11 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
         DeleteDC(hdc); 
         
         EndPaint(p_win, &ps);
-
+        
         return;
     }
-        
+    
+    if(always)
     {
         HGDIOBJ tiny_bm;
         
@@ -2233,6 +2236,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
 // =============================================================================
 
 /// Compact way of calling DefWindowProc().
+// \task Move this to Wrappers.c / .h
 LRESULT
 HM_DefWindowProc(MSG const p_packed_msg)
 {
@@ -2274,7 +2278,6 @@ DungeonMap_OnTorchChar(DUNGEDIT * const p_ed,
 #endif
         
         break;
-
     }
     
     return 0;
@@ -2496,7 +2499,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             Dungselectchg(p_ed, w, 1);
             
             return 0;
-    
+        
         case 22:
             
             j = p_ed->chkofs[p_ed->selchk + 1] - 5;
@@ -2532,10 +2535,8 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             i = ldle24b(p_ed->buf + p_ed->selobj - 3);
             
-            stle16b(p_ed->buf + p_ed->selobj - 3,
-                    ldle16b(p_ed->buf + p_ed->selobj) );
-            
-            p_ed->buf[p_ed->selobj - 1] = p_ed->buf[p_ed->selobj + 2];
+            stle24b(p_ed->buf + p_ed->selobj - 3,
+                    ldle24b(p_ed->buf + p_ed->selobj) );
             
             stle24b(p_ed->buf + p_ed->selobj, i);
             
@@ -2555,10 +2556,8 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             
             i = ldle24b(p_ed->buf + p_ed->selobj + 3);
             
-            stle16b(p_ed->buf + p_ed->selobj + 3,
-                    ldle16b(p_ed->buf + p_ed->selobj) );
-            
-            p_ed->buf[p_ed->selobj + 5] = p_ed->buf[p_ed->selobj + 2];
+            stle24b(p_ed->buf + p_ed->selobj + 3,
+                    ldle24b(p_ed->buf + p_ed->selobj) );
             
             stle24b(p_ed->buf + p_ed->selobj, i);
             
@@ -3281,20 +3280,32 @@ selfirst:
             if(dm_k==0x100) dm_k=0;
             if(dm_k==0x140) dm_k=0x100;
             goto upd;
+        
         case 'N':
+            
             getobj(p_ed->buf+p_ed->selobj);
+            
             dm_k--;
-            if(dm_k==0xff) dm_k=0x13f;
+            
+            if(dm_k == 0xff)
+                dm_k = 0x13f;
             
             // \task Just a gentle reminder that if we change this to
             // an unsigned type we will probably have problems
             // (due to integer promotion rules).
-            if(dm_k==-1) dm_k=0xff;
+            if(dm_k == u16_neg1)
+                dm_k = 0xff;
+            
         upd:
-            setobj(p_ed,p_ed->buf+p_ed->selobj);
+            
+            setobj(p_ed, p_ed->buf + p_ed->selobj);
+        
         updmap:
+            
             Updatemap(p_ed);
+
         updsel:
+            
             Dungselectchg(p_ed, w, 1);
         }
     }
@@ -3322,7 +3333,9 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
     
     if(p_ed->selchk == SD_DungSprLayerSelected)
     {
-        int q = (p_ed->ebuf[p_ed->selobj+1]>=224)?768:512;
+        int q = (p_ed->ebuf[p_ed->selobj + 1] >= 224)
+              ? 768
+              : 512;
         
         i = ShowDialog(hinstance,
                        MAKEINTRESOURCE(IDD_DIALOG9),

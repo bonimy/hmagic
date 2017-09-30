@@ -42,6 +42,9 @@
     <ClCompile Include="DungonHeader.c">
       <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
+    <ClCompile Include="WindowClasses.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">

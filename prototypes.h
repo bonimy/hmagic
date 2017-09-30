@@ -60,7 +60,6 @@ getdoor(uint8_t const *       map,
 void
 setdoor(unsigned char *map);
 
-
 void
 Getstringobjsize(char const * str, RECT *rc);
 
@@ -216,7 +215,6 @@ void
 stle16b_i(uint8_t * const p_arr,
           size_t    const p_index,
           uint16_t  const p_val);
-
 
 void
 stle24b(uint8_t * const p_arr,
