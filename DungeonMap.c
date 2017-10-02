@@ -195,9 +195,26 @@ struct
     int m_x;
     int m_y;
     
+    /// Technically only the top bit of this is used, but it seems to only
+    /// be used in Ganon's room for pre-lit torches that can be made unlit
+    /// via other code.
+    int m_extra_bits;
+    
     BOOL m_bg;
     
 } torch_ty;
+
+// =============================================================================
+
+typedef
+struct
+{
+    int m_x;
+    int m_y;
+    
+    BOOL m_bg;
+    
+} block_ty;
 
 // =============================================================================
 
@@ -237,7 +254,6 @@ TorchCheckTemporary(DUNGEDIT const * const p_ed)
 
 // =============================================================================
 
-
 torch_ty
 GetTorch(DUNGEDIT const * const p_ed)
 {
@@ -250,8 +266,12 @@ GetTorch(DUNGEDIT const * const p_ed)
     
     t.m_bg = truth(data & 0x2000);
     
+    t.m_extra_bits = ( (data >> 14) & 0x03 );
+    
     return t;
 }
+
+// =============================================================================
 
 void
 SetTorch(DUNGEDIT * const p_ed,
@@ -274,6 +294,7 @@ SetTorch(DUNGEDIT * const p_ed,
     data |= ( (p_t.m_x & 0x3f) <<  1 );
     data |= ( (p_t.m_y & 0x3f) <<  7 );
     data |= ( truth(p_t.m_bg)  << 13 );
+    data |= ( p_t.m_extra_bits << 14 );
     
     stle16b(p_ed->tbuf + p_ed->selobj, data);
     
@@ -283,6 +304,64 @@ SetTorch(DUNGEDIT * const p_ed,
     
     Dungselectchg(p_ed, p_w, 1);
 }
+
+// =============================================================================
+
+block_ty
+GetPushBlock(DUNGEDIT const * const p_ed)
+{
+    rom_cty rom = DungEdit_GetRom(p_ed);
+    
+    uint16_t data = ldle16b(rom + p_ed->selobj + 2);
+    
+    // -----------------------------
+    
+    block_ty b;
+    
+    b.m_x = ( (data >> 1) & 0x3f );
+    b.m_y = ( (data >> 7) & 0x3f );
+    
+    b.m_bg = truth(data & 0x2000);
+    
+    return b;
+}
+
+// =============================================================================
+
+void
+SetPushBlock(DUNGEDIT * const p_ed,
+             HWND       const p_w,
+             block_ty         p_b)
+{
+    uint16_t data = 0;
+    
+    rom_ty rom = DungEdit_GetRom(p_ed);
+    
+    // -----------------------------
+    
+    // Done to invalidate the current torch rectangle before being moved.
+    Dungselectchg(p_ed, p_w, 0);
+    
+    // Clamp the x and y coordinates so that they range from 0 to 0x3f.
+    // Otherwise they'll hang off the edge of the map and likely
+    // not be functional.
+    p_b.m_x = wrap_clamp(p_b.m_x, 0, 0x3e);
+    p_b.m_y = wrap_clamp(p_b.m_y, 0, 0x3e);
+    
+    data |= ( (p_b.m_x & 0x3f) <<  1 );
+    data |= ( (p_b.m_y & 0x3f) <<  7 );
+    data |= ( truth(p_b.m_bg)  << 13 );
+    
+    stle16b(rom + p_ed->selobj + 2, data);
+    
+    p_ed->modf = 1;
+    
+    Updatemap(p_ed);
+    
+    Dungselectchg(p_ed, p_w, 1);
+}
+
+// =============================================================================
 
 POINT
 GetMovementDelta(unsigned long p_key)
@@ -1968,7 +2047,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
             (
                 (k > 0x3f || k < 0 || l > 0x3f || l < 0)
              || (
-                    (p_ed->selchk == SD_DungTorchLayerSelected)
+                    (p_ed->selchk == SD_DungTorchLayerSelected || p_ed->selchk == SD_DungBlockLayerSelected)
                  && (k > 0x3e || k < 0 || l > 0x3e || l < 0)
                 )
             )
@@ -2249,78 +2328,6 @@ HM_DefWindowProc(MSG const p_packed_msg)
 // =============================================================================
 
 LRESULT
-DungeonMap_OnTorchChar(DUNGEDIT * const p_ed,
-                       MSG        const p_packed_msg)
-{
-    unsigned const c = p_packed_msg.wParam;
-    
-    HWND const w = p_packed_msg.hwnd;
-    
-    // -----------------------------
-    
-    switch(c)
-    {
-    
-    default:
-        
-        return HM_DefWindowProc(p_packed_msg);
-    
-    case '-':
-      
-// Disabled for now because we're trying out using key down message handling
-// instead.
-#if 0
-        p_ed->tbuf[p_ed->selobj + 1] ^= 0x20;
-        
-        p_ed->modf = 1;
-        
-        Dungselectchg(p_ed, w, 1);
-#endif
-        
-        break;
-    }
-    
-    return 0;
-}
-
-// =============================================================================
-
-LRESULT
-DungeonMap_OnBlockChar(DUNGEDIT * const p_ed,
-                       MSG        const p_packed_msg)
-{
-    uint8_t * const coord = (p_ed->ew.doc->rom + p_ed->selobj + 2);
-    
-    unsigned const c = p_packed_msg.wParam;
-    
-    HWND const w = p_packed_msg.hwnd;
-    
-    // -----------------------------
-    
-    switch(c)
-    {
-    
-    default:
-        
-        return HM_DefWindowProc(p_packed_msg);
-    
-    case '-':
-        
-        stle16b(coord, ldle16b(coord) ^ 0x2000);
-        
-        p_ed->modf = 1;
-        
-        Dungselectchg(p_ed, w, 1);
-        
-        break;
-    }
-    
-    return 0;
-}
-
-// =============================================================================
-
-LRESULT
 DungeonMap_OnChar(DUNGEDIT * const p_ed,
                   MSG        const p_packed_msg)
 {
@@ -2331,20 +2338,27 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
     // -----------------------------
     
     if(c >= 64)
+    {
         c &= 0xdf;
+    }
     
     if( ! p_ed->selobj )
         return 0;
     
-    if(p_ed->selchk == SD_DungTorchLayerSelected)
+    switch(p_ed->selchk)
     {
-        return DungeonMap_OnTorchChar(p_ed, p_packed_msg);
+    
+    default:
+        
+        break;
+    
+    case SD_DungBlockLayerSelected:
+    case SD_DungTorchLayerSelected:
+        
+        return HM_DefWindowProc(p_packed_msg);
     }
-    else if(p_ed->selchk == SD_DungBlockLayerSelected)
-    {
-        return DungeonMap_OnBlockChar(p_ed, p_packed_msg);
-    }
-    else if(p_ed->selchk == SD_DungItemLayerSelected)
+    
+    if(p_ed->selchk == SD_DungItemLayerSelected)
     {
         // \note Other keyboard inputs are handled in WM_KEYDOWN.
         switch(c)
@@ -2412,7 +2426,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             return 0;
         }
     }
-    else if(!(p_ed->selchk & 1))
+    else if( ! (p_ed->selchk & 1) )
     {
         uint8_t * const rom = p_ed->ew.doc->rom;
         
@@ -2642,10 +2656,12 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             }
         }
     }
-    else
+    else if(p_ed->selchk & 1)
     {
         int i = 0;
         int j = 0;
+        
+        // Is a door object
         
         switch(c)
         {
@@ -2784,7 +2800,7 @@ DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
         
         SetTorch(p_ed, w, sel_torch);
         
-        break;
+        return 0;
     
     case VK_NUMPAD1:
     case VK_NUMPAD2:
@@ -2813,6 +2829,61 @@ DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
+LRESULT
+DungeonMap_OnBlockKey(DUNGEDIT * const p_ed,
+                      MSG        const p_packed_msg)
+{
+    unsigned long const key = HM_NumPadKeyDownFilter(p_packed_msg);
+    
+    block_ty b = GetPushBlock(p_ed);
+    
+    HWND const w = p_packed_msg.hwnd;
+    
+    // -----------------------------
+    
+    switch(key)
+    {
+    
+    default:
+        
+        break;
+    
+    case VK_SUBTRACT:
+    case VK_OEM_MINUS:
+        
+        b.m_bg = ! truth(b.m_bg);
+        
+        SetPushBlock(p_ed, w, b);
+        
+        return 0;
+        
+    case VK_NUMPAD1:
+    case VK_NUMPAD2:
+    case VK_NUMPAD3:
+    case VK_NUMPAD4:
+    case VK_NUMPAD6:
+    case VK_NUMPAD7:
+    case VK_NUMPAD8:
+    case VK_NUMPAD9:
+        
+        if(always)
+        {
+            POINT delta = GetMovementDelta(key);
+            
+            b.m_x += delta.x;
+            b.m_y += delta.y;
+            
+            SetPushBlock(p_ed, w, b);
+        }
+        
+        return 0;
+    }
+    
+    return HM_DefWindowProc(p_packed_msg);
+}
+
+// =============================================================================
+
 void
 DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                      MSG        const p_packed_msg)
@@ -2833,16 +2904,19 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
         break;
 
     case SD_DungTorchLayerSelected:
+        
         DungeonMap_OnTorchKey(p_ed, p_packed_msg);
+        
+        return;
+        
+    case SD_DungBlockLayerSelected:
+        
+        DungeonMap_OnBlockKey(p_ed, p_packed_msg);
         
         return;
     }
 
-    if(p_ed->selchk > SD_DungItemLayerSelected)
-    {
-        return;
-    }
-    else if(p_ed->selchk == SD_DungItemLayerSelected)
+    if(p_ed->selchk == SD_DungItemLayerSelected)
     {
         if(key == VK_RIGHT)
         {
