@@ -1,7 +1,7 @@
 
 #if ! defined HMAGIC_WRAPPERS_HEADER_GUARD
 
-    #define HMAGIG_WRAPPERS_HEADER_GUARD
+    #define HMAGIC_WRAPPERS_HEADER_GUARD
 
     #include "structs.h"
 

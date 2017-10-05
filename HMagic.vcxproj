@@ -113,10 +113,25 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ChooseObject.c" />
+    <ClCompile Include="DocumentFrame.c" />
     <ClCompile Include="DungeonDlg.c" />
+    <ClCompile Include="DungeonFrame.c" />
+    <ClCompile Include="DungeonLogic.c" />
     <ClCompile Include="DungeonMap.c" />
     <ClCompile Include="DungonHeader.c" />
+    <ClCompile Include="OverworldDlg.c" />
+    <ClCompile Include="OverworldEdit.c" />
+    <ClCompile Include="OverworldFrame.c" />
+    <ClCompile Include="OverworldMap.c" />
+    <ClCompile Include="PaletteEdit.c" />
+    <ClCompile Include="PaletteFrame.c" />
+    <ClCompile Include="PaletteSelector.c" />
+    <ClCompile Include="RomProperties.c" />
     <ClCompile Include="WindowClasses.c" />
+    <ClCompile Include="WorldMapDisplay.c" />
+    <ClCompile Include="WorldMapDlg.c" />
+    <ClCompile Include="WorldMapFrame.c" />
+    <ClCompile Include="WorldMapLogic.c" />
     <ClCompile Include="Wrappers.c" />
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>
@@ -125,10 +140,15 @@
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
     <ClInclude Include="DungeonEnum.h" />
+    <ClInclude Include="DungeonLogic.h" />
     <ClInclude Include="GdiObjects.h" />
+    <ClInclude Include="OverworldEdit.h" />
+    <ClInclude Include="OverworldEnum.h" />
+    <ClInclude Include="PaletteEdit.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />
+    <ClInclude Include="WorldMapLogic.h" />
     <ClInclude Include="Wrappers.h" />
   </ItemGroup>
   <ItemGroup>

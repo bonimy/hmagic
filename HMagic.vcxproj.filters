@@ -22,6 +22,24 @@
     <Filter Include="Header Files\General">
       <UniqueIdentifier>{4004e306-2cf4-4403-b46f-faf456ebae03}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Palette">
+      <UniqueIdentifier>{ebc2c0db-d173-4a91-af9b-7d0da47ef26d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Palette">
+      <UniqueIdentifier>{0210680b-1104-4d60-a0fe-94c1b11b9948}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Overworld">
+      <UniqueIdentifier>{959f21f3-a601-4368-86a2-e3ddb71fcc9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Overworld">
+      <UniqueIdentifier>{ca0b16c5-4e9d-4998-ab64-8ef8c7cdcb3a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\World Map">
+      <UniqueIdentifier>{d1ea3d90-19ef-4438-aa8b-390ed2ff1d6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\World Map">
+      <UniqueIdentifier>{58cf0cac-dac6-4170-b976-ad641d1d821e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -45,6 +63,51 @@
     <ClCompile Include="WindowClasses.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PaletteFrame.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="PaletteEdit.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="PaletteSelector.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="DocumentFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RomProperties.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldMap.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldEdit.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonFrame.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldFrame.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapDisplay.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapLogic.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapDlg.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapFrame.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonLogic.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -67,6 +130,21 @@
     </ClInclude>
     <ClInclude Include="GdiObjects.h">
       <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="PaletteEdit.h">
+      <Filter>Header Files\Palette</Filter>
+    </ClInclude>
+    <ClInclude Include="OverworldEdit.h">
+      <Filter>Header Files\Overworld</Filter>
+    </ClInclude>
+    <ClInclude Include="OverworldEnum.h">
+      <Filter>Header Files\Overworld</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldMapLogic.h">
+      <Filter>Header Files\World Map</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonLogic.h">
+      <Filter>Header Files\Dungeon</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

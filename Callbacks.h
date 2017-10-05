@@ -26,14 +26,12 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     // Root document window procedure.
     HM_DeclareWndProc(docproc);
-
-
+    
 // =============================================================================
 
     // Dungeon-related procedures.
     
     // Dialogs
-    HM_DeclareDlgProc(choosesprite);
     HM_DeclareDlgProc(choosedung);
     HM_DeclareDlgProc(editroomprop);
 
@@ -52,6 +50,12 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     // Overworld-related window procedures
 
+    // Dialogs
+    HM_DeclareDlgProc(editexit);
+    HM_DeclareDlgProc(editwhirl);
+    HM_DeclareDlgProc(editovprop);
+    HM_DeclareDlgProc(findblks);
+
     // Windows
     HM_DeclareWndProc(blksel8proc);
     HM_DeclareWndProc(blkedit8proc);
@@ -65,7 +69,10 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     HM_DeclareWndProc(overmapproc);
 
-    // Child frame window procedure
+    // Super Dialog procedure.
+    HM_DeclareDlgProc(overdlgproc);
+
+    // Child frame window procedure.
     HM_DeclareWndProc(overproc);
 
 // =============================================================================
@@ -75,7 +82,7 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 // =============================================================================
 
-    // Music-related window procedures
+    // Music-related window procedures.
     HM_DeclareWndProc(sampdispproc);
     HM_DeclareWndProc(trackeditproc);
     HM_DeclareWndProc(trackerproc);
@@ -84,9 +91,10 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 // =============================================================================
 
-    // Palette-related procedures
+    // Palette-related procedures.
     HM_DeclareWndProc(palselproc);
 
+    // Child frame window procedure.
     HM_DeclareWndProc(palproc);
 
 // =============================================================================
@@ -95,6 +103,9 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     // Windows
     HM_DeclareWndProc(wmapdispproc);
+
+    // Super Dialog Procedure.
+    HM_DeclareDlgProc(wmapdlgproc);
 
     // World Map-related window procedures.
     HM_DeclareWndProc(wmapproc);
@@ -129,6 +140,18 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     // ASM-related procedures.
     HM_DeclareWndProc(patchproc);
+
+// =============================================================================
+
+    // Window procedures for dialogs that aren't custom classes.
+
+    HM_DeclareDlgProc(choosesprite);
+
+    HM_DeclareDlgProc(editsprname);
+
+    HM_DeclareDlgProc(rompropdlg);
+
+
 
 // =============================================================================
 

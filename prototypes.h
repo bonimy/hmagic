@@ -5,9 +5,6 @@
 
 #include "structs.h"
 
-// Mainly for sprintf
-#include "stdio.h"
-
 int
 ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param);
 
@@ -32,20 +29,14 @@ Drawblock(OVEREDIT const * const ed,
 // static text control (would typically do this when an object
 // is selected and state changes.
 void
-Dungselectchg(DUNGEDIT * ed,
-              HWND       hc,
-              int        f);
+Dungselectchg(DUNGEDIT * const ed,
+              HWND       const hc,
+              int        const f);
 
 void
 fill4x2(uint8_t  const * const rom,
         uint16_t       * const nbuf,
         uint16_t const * const buf);
-
-unsigned char const *
-Drawmap(unsigned char  const * const rom,
-        unsigned short       * const nbuf,
-        unsigned char  const *       map,
-        DUNGEDIT             * const ed);
 
 void
 getobj(uint8_t const * const map);
@@ -167,6 +158,93 @@ Paintdungeon(DUNGEDIT * const ed,
              int n,int o,
              unsigned short const *buf);
 
+void
+Updatesize(HWND win);
+
+HWND
+CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,
+                  LPARAM lparam);
+
+void
+Unloadovl(FDOC *doc);
+
+void
+Unloadsongs(FDOC*param);
+
+void
+Stopsong(void);
+
+void
+Drawdot(HDC hdc, RECT * rc, int q, int n, int o);
+
+/**
+    \param p_y  Position of the entity relative to upper bound of the clip
+    rectangle. If the upper left coordinate of the entity is above said
+    rectangle, this value will be negative.
+    
+    \param p_window_size this subroutine assumes that the content (paintable)
+    dimensions of the window are square. That is, its height is the same
+    as its width.
+*/
+void
+Paintspr(HDC const p_dc,
+         int const p_x,
+         int const p_y,
+         int const p_hscroll,
+         int const p_vscroll,
+         size_t const p_window_size);
+
+// \note Not sure whether to make a task for this or not. While it appears
+// at first glance to be dungeon related, this is type punning, and the
+// actual object would be chosen from many different types.
+void Setdispwin(DUNGEDIT *ed);
+
+void Delgraphwin(DUNGEDIT*ed);
+
+uint8_t *
+Uncompress(uint8_t const *       src,
+           int           * const size,
+           int             const p_big_endian);
+
+
+int
+Savesecrets(FDOC          * const doc,
+            int             const num,
+            uint8_t const * const buf,
+            int             const size);
+
+uint8_t *
+Compress(uint8_t const * const src,
+         int             const oldsize,
+         int           * const size,
+         int             const flag);
+
+
+void
+LoadOverlays(FDOC * const doc);
+
+int
+loadoverovl(FDOC *doc, uint16_t *buf, int mapnum);
+
+void
+SetBS16(BLOCKSEL16*bs,int i,HWND hc);
+
+HWND
+Editwin(FDOC       * const doc,
+        char const * const wclass,
+        char const * const title,
+        LPARAM       const param,
+        int          const size);
+
+int
+Fixscrollpos(unsigned char*rom,
+             int x,int y,
+             int sx,int sy,
+             int cx,int cy,
+             int dp,
+             int m,int l,
+             int door1,int door2);
+
 // =============================================================================
 
 // utility functions.
@@ -219,6 +297,10 @@ stle16b_i(uint8_t * const p_arr,
 void
 stle24b(uint8_t * const p_arr,
         uint32_t  const p_value);
+
+void
+stle32b(uint8_t  * const p_arr,
+        uint32_t   const p_val);
 
 void
 addle16b(uint8_t * const p_arr,

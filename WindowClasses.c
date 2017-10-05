@@ -176,11 +176,11 @@ HM_RegisterClasses(HINSTANCE p_inst)
     wc.lpszClassName="DPCEDIT";
     RegisterClass(&wc);
     
-    wc.style=CS_HREDRAW|CS_VREDRAW;
     wc.lpfnWndProc=palproc;
     wc.lpszClassName="PALEDIT";
     RegisterClass(&wc);
     
+    wc.style=CS_HREDRAW|CS_VREDRAW;
     wc.lpfnWndProc=lmapblksproc;
     wc.lpszClassName="LMAPBLKS";
     RegisterClass(&wc);

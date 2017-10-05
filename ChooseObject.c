@@ -7,6 +7,7 @@
     #include "prototypes.h"
 
     #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
 // =============================================================================
 

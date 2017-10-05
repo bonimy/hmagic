@@ -6,6 +6,7 @@
     #include "Wrappers.h"
 
     #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
     #include "GdiObjects.h"
 
@@ -195,12 +196,13 @@ struct
     int m_x;
     int m_y;
     
-    /// Technically only the top bit of this is used, but it seems to only
-    /// be used in Ganon's room for pre-lit torches that can be made unlit
-    /// via other code.
-    int m_extra_bits;
-    
     BOOL m_bg;
+    
+    BOOL m_unused_bit;
+    
+    /// Seems to only be used in Ganon's room for pre-lit torches that can be
+    /// made unlit via other code.
+    BOOL m_starts_lit;
     
 } torch_ty;
 
@@ -214,43 +216,12 @@ struct
     
     BOOL m_bg;
     
+    /// Set if moving the block is capable of triggering an event in the room.
+    BOOL m_can_trigger;
+    
+    BOOL m_unused_bit;
+    
 } block_ty;
-
-// =============================================================================
-
-void
-TorchCheckTemporary(DUNGEDIT const * const p_ed)
-{
-    int i = 0;
-    
-    rom_cty tbuf = DungEdit_GetRom(p_ed) + offsets.dungeon.torches;
-    
-    for(i = 0; i < 0x120; i += 2)
-    {
-        uint16_t room = ldle16b(tbuf + i + 0);
-        
-        int j = 2;
-        
-        for(j = 2; (i + j) < 0x120; j += 2)
-        {
-            uint16_t data = ldle16b(tbuf + i + j);
-            
-            if(data == 0xffff)
-            {
-                break;
-            }
-            
-            if(data & 0xc000)
-            {
-                // \note it was determined that the only rooms
-                // like this were in Ganon's boss room.
-                MessageBox(NULL, "Found a room with funky data", NULL, MB_OK);
-            }
-        }
-        
-        i += j;
-    }
-}
 
 // =============================================================================
 
@@ -266,7 +237,9 @@ GetTorch(DUNGEDIT const * const p_ed)
     
     t.m_bg = truth(data & 0x2000);
     
-    t.m_extra_bits = ( (data >> 14) & 0x03 );
+    t.m_unused_bit = truth(data & 0x4000);
+    
+    t.m_starts_lit = truth(data & 0x8000);
     
     return t;
 }
@@ -291,10 +264,11 @@ SetTorch(DUNGEDIT * const p_ed,
     p_t.m_x = wrap_clamp(p_t.m_x, 0, 0x3e);
     p_t.m_y = wrap_clamp(p_t.m_y, 0, 0x3e);
     
-    data |= ( (p_t.m_x & 0x3f) <<  1 );
-    data |= ( (p_t.m_y & 0x3f) <<  7 );
-    data |= ( truth(p_t.m_bg)  << 13 );
-    data |= ( p_t.m_extra_bits << 14 );
+    data |= ( (p_t.m_x & 0x3f)        <<  1 );
+    data |= ( (p_t.m_y & 0x3f)        <<  7 );
+    data |= ( truth(p_t.m_bg)         << 13 );
+    data |= ( truth(p_t.m_unused_bit) << 14 );
+    data |= ( truth(p_t.m_starts_lit) << 15 );
     
     stle16b(p_ed->tbuf + p_ed->selobj, data);
     
@@ -323,6 +297,10 @@ GetPushBlock(DUNGEDIT const * const p_ed)
     
     b.m_bg = truth(data & 0x2000);
     
+    b.m_can_trigger = ! truth(data & 0x4000);
+    
+    b.m_unused_bit = truth(data & 0x8000);
+    
     return b;
 }
 
@@ -348,9 +326,11 @@ SetPushBlock(DUNGEDIT * const p_ed,
     p_b.m_x = wrap_clamp(p_b.m_x, 0, 0x3e);
     p_b.m_y = wrap_clamp(p_b.m_y, 0, 0x3e);
     
-    data |= ( (p_b.m_x & 0x3f) <<  1 );
-    data |= ( (p_b.m_y & 0x3f) <<  7 );
-    data |= ( truth(p_b.m_bg)  << 13 );
+    data |= ( (p_b.m_x & 0x3f)           <<  1 );
+    data |= ( (p_b.m_y & 0x3f)           <<  7 );
+    data |= ( truth(p_b.m_bg)            << 13 );
+    data |= ( ! truth(p_b.m_can_trigger) << 14 );
+    data |= ( truth(p_b.m_unused_bit)    << 15 );
     
     stle16b(rom + p_ed->selobj + 2, data);
     
@@ -501,7 +481,8 @@ void Updatemap(DUNGEDIT *ed)
 // =============================================================================
 
 void
-Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
+Dungselectchg(DUNGEDIT * const ed, HWND const hc,
+              int const f)
 {
     char text_buf[0x200];
     
@@ -527,23 +508,42 @@ Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
         dm_x = ( ldle16b(ed->tbuf + ed->selobj) >> 1);
         
         if(f)
+        {
+            torch_ty t = GetTorch(ed);
+            
+            // -----------------------------
+            
             wsprintf(text_buf,
-                     "Torch\nX: %02X\nY: %02X\nBG%d\nP: %d",
-                     ( (dm_x >> 0) & 63 ),
-                     ( (dm_x >> 6) & 63 ),
-                     ( (dm_x >> 12) & 1) + 1,
-                     (dm_x >> 13) & 7);
+                     "Torch\n"
+                     "X: %02X\n"
+                     "Y: %02X\n"
+                     "BG%d\n"
+                     "Lit: %s",
+                     t.m_x,
+                     t.m_y,
+                     t.m_bg + 1,
+                     t.m_starts_lit ? "True" : "False");
+        }
     }
     else if(ed->selchk == SD_DungBlockLayerSelected)
     {
         dm_x = ( ldle16b(rom + ed->selobj + 2) >> 1 );
         
         if(f)
+        {
+            block_ty const b = GetPushBlock(ed);
+            
             wsprintf(text_buf,
-                     "Block\nX: %02X\nY: %02X\nBG%d",
-                     dm_x & 63,
-                     (dm_x >> 6) & 63,
-                     (dm_x >> 12) + 1);
+                     "Block\n"
+                     "X: %02X\n"
+                     "Y: %02X\n"
+                     "BG%d\n"
+                     "Trig: %s",
+                     b.m_x,
+                     b.m_y,
+                     ( ! b.m_bg ) + 1,
+                     b.m_can_trigger ? "True" : "False");
+        }
     }
     else if(ed->selchk == SD_DungItemLayerSelected)
     {
@@ -1349,6 +1349,126 @@ PaintDungeon(DUNGEDIT * const p_ed,
 
 // =============================================================================
 
+SIZE
+HM_GetRectSize(RECT const p_rect)
+{
+    SIZE s = { 0 };
+    
+    // -----------------------------
+    
+    s.cx = p_rect.right - p_rect.left;
+    s.cy = p_rect.bottom - p_rect.top;
+    
+    return s;
+}
+
+// =============================================================================
+
+RECT
+HM_RectAtOrigin(RECT const p_rect)
+{
+    RECT new_rect = p_rect;
+    
+    // -----------------------------
+    
+    OffsetRect(&new_rect, -p_rect.left, -p_rect.top);
+    
+    return new_rect;
+}
+
+// =============================================================================
+
+BOOL
+HM_BitBlt(HDC   const p_targ_dc,
+          RECT  const p_targ_rect,
+          HDC   const p_src_dc,
+          RECT  const p_src_rect,
+          DWORD const p_raster_op)
+{
+    SIZE s = HM_GetRectSize(p_targ_rect);
+    
+    BOOL b =
+    BitBlt(p_targ_dc,
+           p_targ_rect.left,
+           p_targ_rect.top,
+           s.cx,
+           s.cy,
+           p_src_dc,
+           p_src_rect.left,
+           p_src_rect.top,
+           p_raster_op);
+    
+    return b;
+}
+
+// =============================================================================
+
+BOOL
+HM_AlphaBlend(HDC           const p_targ_dc,
+              HDC           const p_src_dc,
+              RECT          const p_rect,
+              BLENDFUNCTION const p_bf)
+{
+    SIZE s = HM_GetRectSize(p_rect);
+    
+    BOOL b =
+    AlphaBlend(p_targ_dc,
+               p_rect.left,
+               p_rect.top,
+               s.cx,
+               s.cy,
+               p_src_dc,
+               0,
+               0,
+               s.cx,
+               s.cy,
+               p_bf);
+    
+    return b;
+}
+
+// =============================================================================
+
+void
+HM_DrawAlphaRectangle(HDC     const p_targ_dc,
+                      RECT    const p_rect,
+                      uint8_t const p_opacity)
+{
+    BLENDFUNCTION bf = { AC_SRC_OVER, 0, p_opacity, AC_SRC_OVER };
+    
+    HDC alpha_dc = CreateCompatibleDC(p_targ_dc);
+    
+    RECT alpha_rect = HM_RectAtOrigin(p_rect);
+    
+    HBITMAP const alpha_bm =
+    CreateCompatibleBitmap(p_targ_dc,
+                           p_rect.right- p_rect.left,
+                           p_rect.bottom - p_rect.top);
+    
+    HGDIOBJ const tiny_bm = SelectObject(alpha_dc, alpha_bm);
+    
+    HGDIOBJ const targ_pen   = GetCurrentObject(p_targ_dc, OBJ_PEN);
+    HGDIOBJ const targ_brush = GetCurrentObject(p_targ_dc, OBJ_BRUSH);
+    
+    HGDIOBJ const old_pen   = SelectObject(alpha_dc, targ_pen);
+    HGDIOBJ const old_brush = SelectObject(alpha_dc, targ_brush);
+    
+    // -----------------------------
+    
+    HM_DrawRectangle(alpha_dc, alpha_rect);
+    
+    HM_AlphaBlend(p_targ_dc, alpha_dc, p_rect, bf);
+    
+    SelectObject(alpha_dc, old_pen);
+    SelectObject(alpha_dc, old_brush);
+    
+    DeleteObject(tiny_bm);
+    DeleteObject(alpha_bm);
+    DeleteDC(alpha_dc);
+}
+
+// =============================================================================
+
 void
 DungeonMap_DrawDot(HDC    const p_dc,
                    int    const p_x,
@@ -1367,13 +1487,192 @@ DungeonMap_DrawDot(HDC    const p_dc,
 
 // =============================================================================
 
+typedef
+struct
+{
+    BITMAPINFOHEADER m_ih;
+    RGBQUAD m_colors[256];
+}
+HM_BitmapInfo;
+ 
+void
+DungeonMap_PaintMarkers(DUNGEDIT const * const p_ed,
+                        HDC              const p_dc,
+                        int              const p_hscroll,
+                        int              const p_vscroll,
+                        RECT             const p_clip_rect)
+{
+    int i = 0;
+    int so = p_ed->selobj;
+    
+    char text_buf[0x200] = { 0 };
+    
+    rom_cty rom = DungEdit_GetRom(p_ed);
+    
+    BLENDFUNCTION const bf = { AC_SRC_OVER, 0, 0xc0, AC_SRC_OVER };
+    
+    SIZE s = HM_GetRectSize(p_clip_rect);
+    
+    HDC const alpha_dc = CreateCompatibleDC(p_dc);
+    
+    HBITMAP alpha_bm = CreateCompatibleBitmap(p_dc, s.cx, s.cy);
+    
+    HGDIOBJ tiny_bm = SelectObject(alpha_dc, alpha_bm);
+    
+    HGDIOBJ old_font = SelectObject(alpha_dc, trk_font);
+    
+    HM_BitmapInfo bmi = { 0 };
+    
+    RECT alpha_rect = HM_RectAtOrigin(p_clip_rect);
+    
+    // -----------------------------
+    
+    bmi.m_ih.biSize = sizeof(BITMAPINFOHEADER);
+    
+    GetDIBits(alpha_dc, alpha_bm, 0, s.cy, 0, (BITMAPINFO*) &bmi,
+              DIB_RGB_COLORS);
+    
+    DeleteObject(tiny_bm);
+    
+    HM_BitBlt(alpha_dc, alpha_rect, p_dc, p_clip_rect, SRCCOPY);
+    
+    SetBkMode(p_dc, TRANSPARENT);
+    SetBkMode(alpha_dc, TRANSPARENT);
+    
+    for(i = 1; i < p_ed->esize; i += 3)
+    {
+        int const j = ( (p_ed->ebuf[i + 1] & 31) << 4) - p_hscroll;
+        int const k = ( (p_ed->ebuf[i] & 31) << 4) - p_vscroll;
+        
+        RECT spr_rect = { j, k, 0, 0 };
+        
+        strcpy(text_buf, Getsprstring(p_ed, i));
+        
+        Getstringobjsize(text_buf, &spr_rect);
+        
+        DungeonMap_DrawDot(alpha_dc,
+                           j,
+                           k,
+                           black_pen,
+                           purple_brush);
+        
+        PaintSprName(alpha_dc, j, k, &spr_rect, text_buf);
+    }
+    
+    for(i = 0; i < p_ed->ssize; i += 3)
+    {
+        int const k_pre = ldle16b(p_ed->sbuf + i);
+        
+        int const j = ( (k_pre &   0x7e) << 2) - p_hscroll;
+        int const k = ( (k_pre & 0x1f80) >> 4) - p_vscroll;
+        
+        RECT item_rect = { j, k, 0, 0 };
+        
+        strcpy(text_buf,
+               Getsecretstring(rom, p_ed->sbuf[i + 2]) );
+        
+        Getstringobjsize(text_buf, &item_rect);
+        
+        DungeonMap_DrawDot(alpha_dc, j, k,
+                           black_pen,
+                           red_brush);
+        
+        PaintSprName(alpha_dc, j, k, &item_rect, text_buf);
+    }
+    
+    if
+    (
+        (
+            (p_ed->selchk == SD_DungSprLayerSelected)
+         || (p_ed->selchk == SD_DungItemLayerSelected)
+        )
+     && so
+    )
+    {
+        RECT rc = p_ed->selrect;
+        
+        HGDIOBJ const oldobj2 = SelectObject(alpha_dc, green_pen);
+        HGDIOBJ const oldobj3 = SelectObject(alpha_dc, black_brush);
+        
+        HBRUSH const brush = (p_ed->selchk == SD_DungSprLayerSelected)
+                           ? purple_brush
+                           : red_brush;
+        
+        static HBRUSH blue_green_brush = 0;
+        
+        // -----------------------------
+        
+        OffsetRect(&rc,
+                   -p_hscroll,
+                   -p_vscroll);
+        
+        if(blue_green_brush == 0)
+        {
+            blue_green_brush = CreateSolidBrush( RGB(0x40, 0xff, 0xaf) );
+        }
+        
+        if(p_ed->selchk == SD_DungItemLayerSelected)
+        {
+            dm_x = ( ldle16b(p_ed->sbuf + so - 2) >> 1) & 0xfff;
+            dm_k = p_ed->sbuf[so];
+            cur_sec = Getsecretstring(rom, dm_k);              
+        }
+        else if(p_ed->selchk == SD_DungSprLayerSelected)
+        {
+            dm_x = ( (p_ed->ebuf[so + 1] & 31) << 1 )
+                 + ( (p_ed->ebuf[so]     & 31) << 7 );
+            
+            dm_k = p_ed->ebuf[so + 2]
+                 + ( (p_ed->ebuf[so + 1] >= 224) ? 256 : 0 );
+        }
+        
+        if(p_ed->selchk == SD_DungSprLayerSelected)
+            strcpy(text_buf, Getsprstring(p_ed, so));
+        else
+            strcpy(text_buf, Getsecretstring(rom, dm_k));
+        
+        HM_DrawAlphaRectangle(alpha_dc, rc, 0xb0);
+        
+        DungeonMap_DrawDot(p_dc,
+                           rc.left,
+                           rc.top,
+                           white_pen,
+                           brush);
+        
+        DungeonMap_DrawDot(alpha_dc,
+                           rc.left,
+                           rc.top,
+                           white_pen,
+                           brush);
+        
+        // Draw text on both but the selection rectangle only on the alpha
+        // layer.
+        PaintSprName(p_dc, rc.left, rc.top, &rc, text_buf);
+        PaintSprName(alpha_dc, rc.left, rc.top, &rc, text_buf);
+        
+        FrameRect(alpha_dc, &rc, blue_green_brush);
+        
+        SelectObject(alpha_dc, oldobj2);
+        SelectObject(alpha_dc, oldobj3);
+    }
+    
+    HM_AlphaBlend(p_dc, alpha_dc, p_clip_rect, bf);
+    
+    SelectObject(alpha_dc, old_font);
+    
+    DeleteObject(alpha_bm);
+    DeleteDC(alpha_dc);
+}
+
+// =============================================================================
+
 void
 DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                    HWND       const p_win)
 {
-    char text_buf[0x200];
-    
     uint8_t const * const rom = p_ed->ew.doc->rom;
+    
+    RECT cr = HM_GetClientRect(p_win);
     
     RECT rc;
     
@@ -1381,13 +1680,13 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     HDC const base_dc = BeginPaint(p_win, &ps);
     
-    HDC const hdc = CreateCompatibleDC(base_dc);
+    HDC const dc = CreateCompatibleDC(base_dc);
     
-    HBITMAP bm;
+    HBITMAP bm = 0;
     
-    HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal, 1);
+    HPALETTE const oldpal = SelectPalette(dc, p_ed->hpal, 1);
     
-    HGDIOBJ const oldfont = SelectObject(hdc, trk_font);
+    HGDIOBJ const oldfont = SelectObject(dc, trk_font);
     
     int const n = p_ed->mapscrollh << 5;
     int const o = (p_ed->mapscrollv * p_ed->map_vscroll_delta);
@@ -1411,7 +1710,7 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     
     if( HM_IsEmptyRect(clip_r) )
     {
-        DeleteDC(hdc); 
+        DeleteDC(dc); 
         
         EndPaint(p_win, &ps);
         
@@ -1422,16 +1721,15 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     {
         HGDIOBJ tiny_bm;
         
-        RECT cr = HM_GetClientRect(p_win);
-        
         bm = CreateCompatibleBitmap(base_dc,
                                     cr.right - cr.left,
                                     cr.bottom - cr.top);
-        tiny_bm = SelectObject(hdc, bm);
+        
+        tiny_bm = SelectObject(dc, bm);
         
         DeleteObject(tiny_bm);
         
-        FillRect(hdc,
+        FillRect(dc,
                  &clip_r,
                  (HBRUSH) GetClassLongPtr(p_win, GCLP_HBRBACKGROUND) );
     }
@@ -1439,7 +1737,7 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     if( ! tint_pen) { tint_pen = CreatePen(PS_SOLID, 3, RGB(0x90, 0xff, 0x90) ); }
     if( ! tint_br)  { tint_br = CreateSolidBrush( RGB(0x80, 0x80, 0x80) ); }
     
-    RealizePalette(hdc);
+    RealizePalette(dc);
     
     if(l + o > 0x200)
         l = 0x200 - o;
@@ -1458,54 +1756,13 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
     }
     
     PaintDungeon(p_ed,
-                 hdc,
+                 dc,
                  clip_r,
                  data_r);
     
     if(p_ed->disp & SD_DungShowMarkers)
     {
-        int i = 0;
-        
-        SetBkMode(hdc, TRANSPARENT);
-        
-        for(i = 1; i < p_ed->esize; i += 3)
-        {
-            int const j = ( (p_ed->ebuf[i + 1] & 31) << 4) - n;
-            int const k = ( (p_ed->ebuf[i] & 31) << 4) - o;
-            
-            RECT spr_rect = { j, k, 0, 0 };
-            
-            strcpy(text_buf, Getsprstring(p_ed, i));
-            
-            Getstringobjsize(text_buf, &spr_rect);
-            
-            DungeonMap_DrawDot(hdc, j, k,
-                               black_pen,
-                               purple_brush);
-            
-            PaintSprName(hdc, j, k, &spr_rect, text_buf);
-        }
-        
-        for(i = 0; i < p_ed->ssize; i += 3)
-        {
-            int const k_pre = ldle16b(p_ed->sbuf + i);
-            
-            int const j = ( (k_pre &   0x7e) << 2) - n;
-            int const k = ( (k_pre & 0x1f80) >> 4) - o;
-            
-            RECT item_rect = { j, k, 0, 0 };
-            
-            strcpy(text_buf,
-                   Getsecretstring(rom, p_ed->sbuf[i + 2]) );
-            
-            Getstringobjsize(text_buf, &item_rect);
-            
-            DungeonMap_DrawDot(hdc, j, k,
-                               black_pen,
-                               red_brush);
-            
-            PaintSprName(hdc, j, k, &item_rect, text_buf);
-        }
+        DungeonMap_PaintMarkers(p_ed, dc, n, o, cr);
     }
     
     so = p_ed->selobj;
@@ -1519,20 +1776,6 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
         else if(p_ed->selchk == SD_DungBlockLayerSelected)
         {
             dm_x = ( ldle16b(rom + so + 2) >> 1 ) & 0xfff;
-        }
-        else if(p_ed->selchk == SD_DungItemLayerSelected)
-        {
-            dm_x = ( ldle16b(p_ed->sbuf + so - 2) >> 1) & 0xfff;
-            dm_k = p_ed->sbuf[so];
-            cur_sec = Getsecretstring(rom, dm_k);              
-        }
-        else if(p_ed->selchk == SD_DungSprLayerSelected)
-        {
-            dm_x = ( (p_ed->ebuf[so + 1] & 31) << 1 )
-                 + ( (p_ed->ebuf[so]     & 31) << 7 );
-            
-            dm_k = p_ed->ebuf[so + 2]
-                 + ( (p_ed->ebuf[so + 1] >= 224) ? 256 : 0 );
         }
         else if(p_ed->selchk & 1)
         {
@@ -1570,52 +1813,18 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
             
             if
             (
-                p_ed->selchk >= SD_DungSprLayerSelected
-             && p_ed->selchk < 8
-             && (p_ed->disp & SD_DungShowMarkers)
+                (p_ed->selchk != SD_DungSprLayerSelected)
+            && (p_ed->selchk != SD_DungItemLayerSelected)
             )
             {
-                HGDIOBJ const oldobj2 = SelectObject(hdc, green_pen);
-                HGDIOBJ const oldobj3 = SelectObject(hdc, black_brush);
-                
-                HBRUSH const brush = (p_ed->selchk == SD_DungSprLayerSelected)
-                                   ? purple_brush
-                                   : red_brush;
-                
-                // -----------------------------
-                
-                if(p_ed->selchk == SD_DungSprLayerSelected)
-                    strcpy(text_buf, Getsprstring(p_ed, so));
-                else
-                    strcpy(text_buf, Getsecretstring(rom, dm_k));
-                
-                HM_DrawRectangle(hdc, rc);
-                
-                DungeonMap_DrawDot(hdc,
-                                   rc.left,
-                                   rc.top,
-                                   white_pen,
-                                   brush);
-                
-                PaintSprName(hdc, rc.left, rc.top, &rc, text_buf);
-                
-                FrameRect(hdc, &rc, green_brush);
-                
-                SelectObject(hdc,oldobj2);
-                SelectObject(hdc,oldobj3);
-            }
-            else
-            {
-                
-#if 1
                 BOOL r = 0;
                 
-                HDC other_dc = CreateCompatibleDC(hdc);
+                HDC other_dc = CreateCompatibleDC(dc);
                 
                 unsigned width = rc.right - rc.left;
                 unsigned height = rc.bottom - rc.top;
                 
-                HBITMAP other_bm = CreateCompatibleBitmap(hdc,
+                HBITMAP other_bm = CreateCompatibleBitmap(dc,
                                                           width,
                                                           height);
                 
@@ -1634,40 +1843,24 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                 
                 RECT rc2 = { 0, 0, width, height };
                 
-#if 0
-                BitBlt(other_dc,
-                       rc2.left,
-                       rc2.top,
-                       width,
-                       height,
-                       hdc,
-                       rc.left,
-                       rc.top,
-                       SRCCOPY);
-                
-                r = FrameRect(other_dc, &rc2, green_brush);
-#else
                 r = Rectangle(other_dc, rc2.left, rc2.top, rc2.right, rc2.bottom);
-#endif
-                
                 
                 bf.BlendOp = AC_SRC_OVER;
                 bf.BlendFlags = 0;
                 bf.SourceConstantAlpha = 0x80;
                 bf.AlphaFormat = 0;
                 
-                r = AlphaBlend(hdc,
-                           rc.left,
-                           rc.top,
-                           width,
-                           height,
-                           other_dc,
-                           0,
-                           0, 
-                           width,
-                           height,
-                           bf);
-                
+                r = AlphaBlend(dc,
+                              rc.left,
+                              rc.top,
+                              width,
+                              height,
+                              other_dc,
+                              0,
+                              0, 
+                              width,
+                              height,
+                              bf);
                 
                 SelectObject(other_dc, old_pen);
                 SelectObject(other_dc, old_br);
@@ -1676,14 +1869,6 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                 DeleteObject(tiny_bm);
                 
                 DeleteDC(other_dc);
-                
-                // r = FrameRect(hdc, &rc, blue_brush);
-                
-#else
-                FrameRect(hdc,
-                          &rc,
-                          (p_ed->withfocus & 1) ? green_brush : gray_brush);
-#endif
             }
         }
     }
@@ -1693,12 +1878,12 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
            clip_r.top,
            clip_r.right - clip_r.left,
            clip_r.bottom - clip_r.top,
-           hdc,
+           dc,
            clip_r.left,
            clip_r.top,
            SRCCOPY);
     
-    DeleteDC(hdc);
+    DeleteDC(dc);
     
     DeleteObject(bm);
     
@@ -2781,7 +2966,7 @@ DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
 {
     unsigned long const key = HM_NumPadKeyDownFilter(p_packed_msg);
     
-    torch_ty sel_torch = GetTorch(p_ed);
+    torch_ty t = GetTorch(p_ed);
     
     HWND const w = p_packed_msg.hwnd;
     
@@ -2795,13 +2980,23 @@ DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
         break;
     
     case VK_SUBTRACT:
+    case VK_OEM_MINUS:
 
-        sel_torch.m_bg = ! (sel_torch.m_bg);
+        t.m_bg = ! truth(t.m_bg);
         
-        SetTorch(p_ed, w, sel_torch);
+        SetTorch(p_ed, w, t);
         
         return 0;
     
+    case VK_ADD:
+    case VK_OEM_PLUS:
+
+        t.m_starts_lit = ! truth(t.m_starts_lit);
+        
+        SetTorch(p_ed, w, t);
+        
+        return 0;
+
     case VK_NUMPAD1:
     case VK_NUMPAD2:
     case VK_NUMPAD3:
@@ -2815,10 +3010,10 @@ DungeonMap_OnTorchKey(DUNGEDIT * const p_ed,
         {
             POINT delta = GetMovementDelta(key);
             
-            sel_torch.m_x += delta.x;
-            sel_torch.m_y += delta.y;
+            t.m_x += delta.x;
+            t.m_y += delta.y;
             
-            SetTorch(p_ed, w, sel_torch);
+            SetTorch(p_ed, w, t);
         }
         
         return 0;
@@ -2852,6 +3047,15 @@ DungeonMap_OnBlockKey(DUNGEDIT * const p_ed,
     case VK_OEM_MINUS:
         
         b.m_bg = ! truth(b.m_bg);
+        
+        SetPushBlock(p_ed, w, b);
+        
+        return 0;
+        
+    case VK_ADD:
+    case VK_OEM_PLUS:
+        
+        b.m_can_trigger = ! truth(b.m_can_trigger);
         
         SetPushBlock(p_ed, w, b);
         

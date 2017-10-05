@@ -787,7 +787,7 @@ Saveroom(DUNGEDIT * const ed)
         {
             k = 4;
             
-            ldle32b(torches) == u32_neg1;
+            stle32b(torches, u32_neg1);
         }
         
         stle16b(torch_count, k);
@@ -1470,6 +1470,8 @@ no_obj:
             
             Dungselectchg(ed,hc,1);
             
+            InvalidateRect(hc, 0, 0);
+            
             break;
         
         case ID_DungObjLayer2:
@@ -1494,6 +1496,8 @@ no_obj:
             ed->selobj = ed->esize > 2;
             
             Dungselectchg(ed,hc,1);
+            
+            InvalidateRect(hc, 0, 0);
             
             break;
         
@@ -1889,6 +1893,8 @@ updpal2:
             ed->selobj=(ed->ssize>2)?2:0;
             Dungselectchg(ed,hc,1);
             
+            InvalidateRect(hc, 0, 0);
+            
             break;
         
         case ID_DungBlockLayer:
@@ -1899,6 +1905,8 @@ updpal2:
             ed->selobj=0;
             Dungselectchg(ed,hc,1);
             
+            InvalidateRect(hc, 0, 0);
+            
             break;
         
         case ID_DungTorchLayer:
@@ -1908,6 +1916,8 @@ updpal2:
             ed->selchk=9;
             ed->selobj=(ed->tsize>2)?2:0;
             Dungselectchg(ed,hc,1);
+            
+            InvalidateRect(hc, 0, 0);
             
             break;
         

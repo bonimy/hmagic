@@ -1,7 +1,7 @@
 
-#if !defined HMAGIC_DUNGEONEUM_HEADER_GUARD
+#if !defined HMAGIC_DUNGEON_ENUM_HEADER_GUARD
 
-    #define HMAGIC_DUNGEONEUM_HEADER_GUARD
+    #define HMAGIC_DUNGEON_ENUM_HEADER_GUARD
 
 // =============================================================================
 

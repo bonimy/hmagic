@@ -27,6 +27,7 @@
     #pragma warning(push, 0)
 
     #include <windows.h>
+    #include <stdio.h>
     #include <stdint.h>
     #include <commctrl.h>
     #include <mmsystem.h>
@@ -789,10 +790,15 @@ typedef uint8_t const * rom_cty;
 
 // =============================================================================
 
+typedef char text_buf_ty[0x200];
+
+// =============================================================================
+
 extern SDCREATE *firstdlg, *lastdlg;
 
 extern FDOC *mark_doc;
 extern FDOC *firstdoc, *lastdoc, *activedoc;
+extern FDOC *sounddoc;
 
 extern DUNGEDIT * dispwnd;
 
@@ -839,6 +845,11 @@ extern HWND framewnd, clientwnd;
 extern short dm_x;
 extern short dm_k;
 
+extern uint16_t *dm_rd;
+extern uint16_t *dm_wr;
+extern uint16_t *dm_buf;
+extern uint16_t *dm_tmp;
+
 extern unsigned char dm_l, dm_dl;
 
 extern const char obj3_h[248];
@@ -876,6 +887,14 @@ extern int door_ofs;
 extern uint16_t const u16_neg1;
 
 extern uint32_t const u32_neg1;
+
+extern int sndinit;
+
+extern const uint8_t map16ofs[];
+
+extern char sprname[0x11c][16];
+
+extern int issplit;
 
 // =============================================================================
 
