@@ -1,8 +1,8 @@
 
-// For FDOC
 #include "structs.h"
-
 #include "prototypes.h"
+
+#include "HMagicUtility.h"
 
 // =============================================================================
 
@@ -42,7 +42,7 @@ RomProperties_OnInitDialog(FDOC const * const doc,
     // in the dungeon data.
     for(i = 0; i < 0x18c; i += 4)
     {
-        if( get_16_le(rom + 0x271de + i) != -1)
+        if( ldle16b(rom + 0x271de + i) != -1)
             j++;
     }
     

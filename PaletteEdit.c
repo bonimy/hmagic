@@ -1,8 +1,7 @@
 
 #include "structs.h"
 
-// For utility function romaddr.
-#include "prototypes.h"
+#include "HMagicUtility.h"
 
 // =============================================================================
 

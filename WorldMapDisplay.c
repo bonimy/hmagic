@@ -5,6 +5,8 @@
 #include "GdiObjects.h"
 #include "Callbacks.h"
 
+#include "HMagicUtility.h"
+
 #include "WorldMapLogic.h"
 
 // For map_ind.
@@ -718,8 +720,8 @@ updlayout:
                         b1[m]=o|(l&64);
                         
                         b3[m] =
-                        ( ( ( j - get_16_le_i(rom + 0x12944, o) ) >> 3 ) & 0x7e )
-                      + ( ( ( k - get_16_le_i(rom + 0x128c4, o) ) << 3 ) & 0x1f80 )
+                        ( ( ( j - ldle16b_i(rom + 0x12944, o) ) >> 3 ) & 0x7e )
+                      + ( ( ( k - ldle16b_i(rom + 0x128c4, o) ) << 3 ) & 0x1f80 )
                       - 0x400;
                     }
                     ed->ew.doc->modf=1;

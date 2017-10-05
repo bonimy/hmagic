@@ -1,11 +1,10 @@
 
     #include "structs.h"
+    #include "prototypes.h"
 
     #include "GdiObjects.h"
 
-    #include "prototypes.h"
-
-
+    #include "HMagicUtility.h"
 
 // ==============================================================================
 

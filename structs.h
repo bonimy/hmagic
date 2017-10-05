@@ -790,6 +790,8 @@ typedef uint8_t const * rom_cty;
 
 // =============================================================================
 
+/// A convenience type for when we need a buffer larger enough to do common
+/// types of C string manipulation (sprintf, MessageBox, etc).
 typedef char text_buf_ty[0x200];
 
 // =============================================================================
@@ -895,6 +897,11 @@ extern const uint8_t map16ofs[];
 extern char sprname[0x11c][16];
 
 extern int issplit;
+
+extern int mouse_x;
+extern int mouse_y;
+
+extern int palmode;
 
 // =============================================================================
 

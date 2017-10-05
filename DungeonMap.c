@@ -5,6 +5,8 @@
     #include "prototypes.h"
     #include "Wrappers.h"
 
+    #include "HMagicUtility.h"
+
     #include "DungeonEnum.h"
     #include "DungeonLogic.h"
 

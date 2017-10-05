@@ -40,6 +40,15 @@
     <Filter Include="Header Files\World Map">
       <UniqueIdentifier>{58cf0cac-dac6-4170-b976-ad641d1d821e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Text">
+      <UniqueIdentifier>{69311a16-0edf-426b-ae12-2a126aee6436}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Text">
+      <UniqueIdentifier>{075436c0-d378-4417-ad89-50c35a892a05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ScreenEditors">
+      <UniqueIdentifier>{04c462b1-f565-4fdc-97a1-74049127cb14}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -108,6 +117,36 @@
     <ClCompile Include="DungeonLogic.c">
       <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
+    <ClCompile Include="TextLogic.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16_SearchDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Zelda3_Dialog.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenEditorLogic.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextDlg.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicLogic.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextFrame.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicConfigDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicUtility.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -145,6 +184,24 @@
     </ClInclude>
     <ClInclude Include="DungeonLogic.h">
       <Filter>Header Files\Dungeon</Filter>
+    </ClInclude>
+    <ClInclude Include="TextEnum.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="TextLogic.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenEditorLogic.h">
+      <Filter>Header Files\ScreenEditors</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicLogic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicEnum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicUtility.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

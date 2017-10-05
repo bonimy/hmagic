@@ -194,12 +194,20 @@ Paintspr(HDC const p_dc,
          int const p_vscroll,
          size_t const p_window_size);
 
-// \note Not sure whether to make a task for this or not. While it appears
+// \note Not sure whether to make a task for these or not. While it appears
 // at first glance to be dungeon related, this is type punning, and the
 // actual object would be chosen from many different types.
-void Setdispwin(DUNGEDIT *ed);
+void
+Setdispwin(DUNGEDIT *ed);
 
-void Delgraphwin(DUNGEDIT*ed);
+void
+Delgraphwin(DUNGEDIT*ed);
+
+void
+Setpalmode(DUNGEDIT *ed);
+
+void
+Setfullmode(DUNGEDIT *ed);
 
 uint8_t *
 Uncompress(uint8_t const *       src,
@@ -245,90 +253,28 @@ Fixscrollpos(unsigned char*rom,
              int m,int l,
              int door1,int door2);
 
-// =============================================================================
-
-// utility functions.
-
-int
-romaddr(int const addr);
-
-// \deprecated
-uint16_t
-get_16_le(unsigned char const * const p_arr);
-
-/// \deprecated
-/// Get little endian 16-bit value from an offset plus an index
-/// This saves you from having to multiply an index by two.
-uint16_t
-get_16_le_i(unsigned char const * const p_arr,
-            size_t                const p_index);
-
-uint16_t
-ldle16b(uint8_t const * const p_arr);
-
-uint16_t
-ldle16b_i(uint8_t const * const p_arr,
-          size_t          const p_index);
-
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index);
-
-uint32_t
-ldle24b(uint8_t const * const p_arr);
-
-/// "indexed load little endian 24-bit value using a byte pointer"
-uint32_t
-ldle24b_i(uint8_t const * const p_arr,
-          unsigned        const p_index);
-
-uint32_t
-ldle32b(uint8_t const * const p_arr);
-
+// \task These belong in a *Logic.h header flie
 void
-stle16b(uint8_t * const p_arr,
-        uint16_t  const p_val);
-
+Savedungmap(LMAPEDIT*ed);
 void
-stle16b_i(uint8_t * const p_arr,
-          size_t    const p_index,
-          uint16_t  const p_val);
-
+Savetmap(TMAPEDIT*ed);
 void
-stle24b(uint8_t * const p_arr,
-        uint32_t  const p_value);
-
+Savepersp(PERSPEDIT*ed);
 void
-stle32b(uint8_t  * const p_arr,
-        uint32_t   const p_val);
-
+Loadsongs(FDOC * const doc);
 void
-addle16b(uint8_t * const p_arr,
-         uint16_t  const p_addend);
-
+Savesongs(FDOC *doc);
 void
-addle16b_i(uint8_t * const p_arr,
-           size_t    const p_index,
-           uint16_t  const p_addend);
-
+SaveOverlays(FDOC * const doc);
 int
-is16b_neg1(uint8_t const * const p_arr);
-
-int
-is16b_neg1_i(uint8_t const * const p_arr,
-             size_t          const p_index);
-
-int
-is16h_neg1(uint16_t const * const p_arr);
-
-int
-is16h_neg1_i(uint16_t const * const p_arr,
-             size_t           const p_index);
-
-uint16_t
-u16_neg(int const p_value);
-
-int
-truth(int value);
+Buildpatches(FDOC * const doc);
+void
+Removepatches(FDOC * const doc);
+void
+Exitsound(void);
+void
+midinoteoff(ZCHANNEL * const zch);
+void
+Updatesprites(void);
 
 #endif

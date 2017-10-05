@@ -1,10 +1,11 @@
 
 #include "structs.h"
+#include "prototypes.h"
 
 #include "Wrappers.h"
 #include "GdiObjects.h"
 
-#include "prototypes.h"
+#include "HMagicUtility.h"
 
 #include "PaletteEdit.h"
 

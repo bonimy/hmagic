@@ -64,14 +64,24 @@
 #include "Callbacks.h"
 #include "Wrappers.h"
 
-#include "DungeonEnum.h"
+#include "HMagicEnum.h"
+#include "HMagicLogic.h"
+#include "HMagicUtility.h"
+
 #include "OverworldEnum.h"
+
+#include "DungeonEnum.h"
+#include "DungeonLogic.h"
 
 // For SavePal() mainly.
 #include "PaletteEdit.h"
 
 // For DrawBlock32() mainly.
 #include "OverworldEdit.h"
+
+// For text enumerations and Load / Save text functions.
+#include "TextEnum.h"
+#include "TextLogic.h"
 
 // \task Probably will move this once the worldmap super dialog procedure gets
 // its own file.
@@ -103,57 +113,15 @@ uint16_t const u16_neg1 = (uint16_t) (~0);
 
 uint32_t const u32_neg1 = (uint32_t) (~0);
 
-int mouse_x, mouse_y;
-
-enum
-{
-    CFG_NOFLAGS         = 0,
-    CFG_SPRNAMES_LOADED = 1 << 0,
-    CFG_MRU_LOADED      = 1 << 1,
-    CFG_SNDVOL_LOADED   = 1 << 2,
-    CFG_MIDI_LOADED     = 1 << 3,
-    CFG_ASM_LOADED      = 1 << 4
-};
-
-enum
-{
-    ID_MRU1 = 5000,
-    ID_MRU2,
-    ID_MRU3,
-    ID_MRU4
-};
-
-int cfg_modf = 0;
-
-int cfg_flag = CFG_NOFLAGS;
+int mouse_x;
+int mouse_y;
 
 // =============================================================================
-
-    enum
-    {
-        ID_TextFirst = 3000,
-        
-        ID_TextEntriesListControl = ID_TextFirst,
-        ID_TextEditWindow,
-        ID_TextSetTextButton,
-        ID_TextEditTextRadio,
-        ID_TextEditDictionaryRadio,
-        
-        ID_TextAfterLast,
-        ID_TextNumControls = (ID_TextAfterLast - ID_TextFirst)
-    
-    };
-
-// =============================================================================
-
-// Sound volume level.
-uint16_t soundvol = 180;
 
 // windows version number
 int wver;
 
 int palmode=0;
-int mruload=0;
 int mark_sr;
 int mark_start,mark_end,mark_first,mark_last;
 
@@ -162,10 +130,6 @@ int door_ofs = 0;
 int issplit = 0;
 
 char namebuf[MAX_PATH] = "";
-
-char vererror_str[] = "This file was edited with a newer version of Gigasoft Hyrule Magic. You need version %d.%00d or higher to open it.";
-char *mrulist[4] = { 0, 0, 0, 0 };
-char currdir[MAX_PATH];
 
 char buffer[0x400];
 
@@ -272,8 +236,6 @@ RGBQUAD darkcolor={80,136,144,0};
 
 RGBQUAD const blackcolor={0,0,0,0};
 
-HMENU filemenu;
-
 BITMAPINFOHEADER zbmih={sizeof(BITMAPINFOHEADER),32,32,1,8,BI_RGB,0,0,0,256,0};
 
 SDCREATE *firstdlg = 0, *lastdlg = 0;
@@ -291,503 +253,11 @@ SSBLOCK **ssblt = 0;
 
 char sprname[0x11c][16];
 
-HM_TextResource entrance_names;
-
 HM_TextResource area_names;
 
 HDC objdc;
 
 HBITMAP objbmp;
-
-// =============================================================================
-
-// this calculates rom addresses from (lo-rom) cpu addresses
-int romaddr(int const addr)
-{
-    int ret = 0;
-    
-    if( !(addr & 0x8000) )
-    {
-        // e.g. 0x44444 -> 0x00000 -> return 0;
-        ret = 0;
-    }
-    else
-    {
-        // e.g. 0x289AB -> 0x109AB
-        ret = ( (addr & 0x3f0000) >> 1) | (addr & 0x7fff );
-    }
-    
-    return ret;
-}
-
-// =============================================================================
-
-/// Converts a cpu address to a rom address by combining a bank byte and
-/// a 16-bit address within that bank.
-uint32_t
-rom_addr_split(uint8_t  const p_bank,
-               uint16_t const p_addr)
-{
-    BOOL const even_bank = ( (p_bank % 2) == 0 );
-    
-    uint32_t const upper = (p_bank >> 1) << 16;
-    
-    uint32_t const lower = (even_bank) ? p_addr - 0x8000
-                                       : p_addr;
-    
-    // -----------------------------
-    
-    if(p_addr < 0x8000)
-    {
-        return 0;
-    }
-    
-    return (upper | lower); 
-}
-
-// =============================================================================
-
-// this calculates (lo-rom) cpu addresses from rom addreses.
-int
-cpuaddr(int addr)
-{
-    return ((addr&0x1f8000)<<1) | (addr&0x7fff) | 0x8000;
-}
-
-// =============================================================================
-
-void*
-recalloc(void   const * const p_old_buf,
-         size_t         const p_new_count,
-         size_t         const p_old_count,
-         size_t         const p_element_size)
-{
-    void * const new_buf = calloc(p_new_count, p_element_size);
-    
-    if(new_buf)
-    {
-        // Copy using the smaller of the two count values.
-        size_t const limit_count = p_old_count > p_new_count ? p_new_count
-                                                             : p_old_count;
-        
-        memcpy(new_buf, p_old_buf, (limit_count * p_element_size) );
-    }
-    
-    return new_buf;
-}
-
-// =============================================================================
-
-// "load little endian value at the given byte offset and shift to get its
-// value relative to the base offset (powers of 256, essentially)"
-unsigned
-ldle(uint8_t const * const p_arr,
-     unsigned        const p_index)
-{
-    uint32_t v = p_arr[p_index];
-    
-    v <<= (8 * p_index);
-    
-    return v;
-}
-
-// Helper function to get the first byte in a little endian number
-uint32_t
-ldle0(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 0);
-}
-
-// Helper function to get the second byte in a little endian number
-uint32_t
-ldle1(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 1);
-}
-
-// Helper function to get the third byte in a little endian number
-uint32_t
-ldle2(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 2);
-}
-
-// Helper function to get the third byte in a little endian number
-uint32_t
-ldle3(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 3);
-}
-
-// =============================================================================
-
-void
-stle(uint8_t  * const p_arr,
-     size_t     const p_index,
-     unsigned   const p_val)
-{
-    uint8_t v = (p_val >> (8 * p_index) ) & 0xff;
-    
-    p_arr[p_index] = v;
-}
-
-void
-stle0(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 0, p_val);
-}
-
-void
-stle1(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 1, p_val);
-}
-
-void
-stle2(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 2, p_val);
-}
-
-void
-stle3(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 3, p_val);
-}
-
-// =============================================================================
-
-unsigned long
-get_32_le(unsigned char const * const p_arr)
-{
-    unsigned v = 0;
-    
-    v |= (p_arr[0] <<  0);
-    v |= (p_arr[1] <<  8);
-    v |= (p_arr[2] << 16);
-    v |= (p_arr[3] << 24);
-    
-    return v;
-}
-
-/// Convenience function so we can work with char* in addition to
-/// unsigned char*
-unsigned long
-get_32_le_str(char const * const p_arr)
-{
-    return get_32_le( (unsigned char const * ) p_arr );
-}
-
-// =============================================================================
-
-uint16_t
-get_16_le(unsigned char const * const p_arr)
-{
-    uint16_t v = 0;
-    
-    v |= (p_arr[0] << 0);
-    v |= (p_arr[1] << 8);
-    
-    return v;
-}
-
-/// Convenience function so we can work with char* in addition to
-/// unsigned char*
-uint16_t
-get_16_le_str(char const * const p_arr)
-{
-    return get_16_le( (unsigned char const * ) p_arr );
-}
-
-/// Get little endian 16-bit value from an offset plus an index
-/// This saves you from having to multiply an index by two.
-uint16_t
-get_16_le_i(unsigned char const * const p_arr,
-            size_t                const p_index)
-{
-    return get_16_le(p_arr + (p_index * 2));
-}
-
-// =============================================================================
-
-void
-put_16_le(unsigned char * const p_arr,
-          uint16_t        const p_val)
-{
-    p_arr[0] = ( (p_val >> 0) & 0xff );
-    p_arr[1] = ( (p_val >> 8) & 0xff );
-}
-
-// =============================================================================
-
-void
-add_16_le(uint8_t  * const p_arr,
-          uint16_t   const p_val)
-{
-    uint16_t v = get_16_le(p_arr);
-    
-    v += p_val;
-    
-    put_16_le(p_arr, v);
-}
-
-// =============================================================================
-
-void
-add_16_le_i(uint8_t  * const p_arr,
-            uint16_t   const p_val,
-            size_t     const p_index)
-{
-    size_t const offset = (p_index * 2);
-    
-    add_16_le(p_arr + offset, p_val);
-}
-
-// =============================================================================
-
-void
-put_16_le_str(char     * const p_arr,
-              uint16_t   const p_val)
-{
-    put_16_le( (unsigned char *) p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-put_16_le_i(unsigned char * const p_arr,
-            size_t          const p_index,
-            short           const p_val)
-{
-    put_16_le(p_arr + (p_index * 2), p_val);
-}
-
-// =============================================================================
-
-void
-put_32_le(uint8_t  * const p_arr,
-          uint32_t   const p_val)
-{
-    p_arr[0] = ( (p_val >>  0) & 0xff );
-    p_arr[1] = ( (p_val >>  8) & 0xff );
-    p_arr[2] = ( (p_val >> 16) & 0xff );
-    p_arr[3] = ( (p_val >> 24) & 0xff );
-}
-
-void
-put_32_le_str(char     * const p_arr,
-              uint32_t   const p_val)
-{
-    put_32_le( (unsigned char *) p_arr, p_val);
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from 
-uint16_t
-ldle16b(uint8_t const * const p_arr)
-{
-    uint16_t v = 0;
-    
-    v |= ( ldle0(p_arr) | ldle1(p_arr) );
-    
-    return v;
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from an arrays of bytes.
-// This version provides an index that will be multiplied by 2 and added to the
-// base address.
-uint16_t
-ldle16b_i(uint8_t const * const p_arr,
-          size_t          const p_index)
-{
-    return ldle16b(p_arr + (2 * p_index) );
-}
-
-// =============================================================================
-
-uint16_t
-ldle16h(uint16_t const * const p_arr)
-{
-    return ldle16b( (uint8_t *) p_arr);
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from a pointer to a
-// halfword.
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index)
-{
-    return ldle16b_i((uint8_t *) p_arr, p_index);
-}
-
-// =============================================================================
-
-// "load little endian 24-bit value using a byte pointer"
-uint32_t
-ldle24b(uint8_t const * const p_arr)
-{
-    uint32_t v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr);
-    
-    return v;
-}
-
-// =============================================================================
-
-uint32_t
-ldle24b_i(uint8_t const * const p_arr,
-          unsigned        const p_index)
-{
-    uint32_t v = ldle24b( p_arr + (p_index * 3) );
-    
-    return v;
-}
-
-// =============================================================================
-
-uint32_t
-ldle32b(uint8_t const * const p_arr)
-{
-    uint32_t v = 0;
-    
-    v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr) | ldle3(p_arr);
-    
-    return v;
-}        
-
-// =============================================================================
-
-void
-stle16b(uint8_t * const p_arr,
-        uint16_t  const p_val)
-{
-    stle0(p_arr, p_val);
-    stle1(p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-stle16b_i(uint8_t * const p_arr,
-          size_t    const p_index,
-          uint16_t  const p_val)
-{
-    stle16b(p_arr + (p_index * 2), p_val);
-}
-
-// =============================================================================
-
-// "store little endian 24-bit value using a byte pointer"
-void
-stle24b(uint8_t  * const p_arr,
-        uint32_t   const p_val)
-{
-    stle0(p_arr, p_val);
-    stle1(p_arr, p_val);
-    stle2(p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-stle32b(uint8_t  * const p_arr,
-        uint32_t   const p_val)
-{
-    stle0(p_arr, p_val);
-    stle1(p_arr, p_val);
-    stle2(p_arr, p_val);
-    stle3(p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-addle16b(uint8_t * const p_arr,
-         uint16_t  const p_addend)
-{
-    uint16_t v = ldle16b(p_arr);
-    
-    v += p_addend;
-    
-    stle16b(p_arr, v);
-}
-
-// =============================================================================
-
-void
-addle16b_i(uint8_t * const p_arr,
-           size_t    const p_index,
-           uint16_t  const p_addend)
-{
-    uint16_t v = ldle16b_i(p_arr, p_index);
-    
-    v += p_addend;
-    
-    stle16b_i(p_arr, p_index, v);
-}
-
-// =============================================================================
-
-// Read a half word at the given octec-pointer and if its bit pattern is
-// 0xffff, return one. Else, zero. Note that endianness is irrelevant for
-// this check.
-int
-is16b_neg1(uint8_t const * const p_arr)
-{
-    uint16_t v = ((uint16_t*) p_arr)[0];
-    
-    return (v == 0xffff);
-}
-
-// =============================================================================
-
-int
-is16b_neg1_i(uint8_t const * const p_arr,
-             size_t          const p_index)
-{
-    return is16b_neg1(p_arr + (2 * p_index) );
-}
-
-// =============================================================================
-
-// Read a half word at the given halfword-pointer and if its bit patter is
-// 0xffff, return one. Else, zero.
-int
-is16h_neg1(uint16_t const * const p_arr)
-{
-    return (p_arr[0] == 0xffff);
-}
-
-int
-is16h_neg1_i(uint16_t const * const p_arr,
-             size_t           const p_index)
-{
-    return is16h_neg1(p_arr + p_index);
-}
-
-// =============================================================================
-
-uint16_t
-u16_neg(int const p_value)
-{
-    return (uint16_t) ( - p_value );
-}
-
-// =============================================================================
-
-int
-truth(int value)
-{
-    return (value != 0);
-}
 
 // =============================================================================
 
@@ -1663,7 +1133,7 @@ void RelocateHeaders(HWND win, FDOC *doc, int dest)
         
         memcpy(headerBuffer, rom + absolute, 0x0E);
         
-        put_16_le(rom + romHeaderDest + j, pointerEntry);
+        stle16b(rom + romHeaderDest + j, pointerEntry);
         
         absolute = ((int) pointerEntry) & 0xFFFF;
         absolute += (cpuHeaderDest & 0xFF0000);
@@ -2757,14 +2227,14 @@ Uncompress(uint8_t const *       src,
             
             // rle 16-bit alternating copy
             
-            d = get_16_le(src);
+            d = ldle16b(src);
             
             src += 2;
             
             while(c > 1)
             {
                 // copy that 16-bit number c/2 times into the b2 buffer.
-                put_16_le(b2 + bd, d);
+                stle16b(b2 + bd, d);
                 
                 bd += 2;
                 c -= 2; // hence c/2
@@ -2801,7 +2271,7 @@ Uncompress(uint8_t const *       src,
             }
             else
             {
-                d = get_16_le(src);
+                d = ldle16b(src);
             }
             
             while(c--)
@@ -3645,10 +3115,10 @@ nochange:
     j = cpuaddr(l[668]);
     
     rom[0x9c25] = (uint8_t) (j >> 16);
-    put_16_le(rom + 0x9c2a, (j & 0xffff) );
+    stle16b(rom + 0x9c2a, (j & 0xffff) );
     
     rom[0xcbad] = (uint8_t) (j >> 16);
-    put_16_le(rom + 0xcba2, (j & 0xffff) );
+    stle16b(rom + 0xcba2, (j & 0xffff) );
     
     for(i = 0; i < 19; i++)
     {
@@ -4024,7 +3494,7 @@ LoadHeader(DUNGEDIT * const ed,
     
     // -----------------------------
     
-    i = get_16_le_i(rom + 0x27502, map);
+    i = ldle16b_i(rom + 0x27502, map);
     
     l = 14;
     
@@ -4033,7 +3503,7 @@ LoadHeader(DUNGEDIT * const ed,
     {
         // m gives the upper limit for the header.
         // if is less than 14 bytes from i.
-        m = get_16_le_i(rom + 0x27502, j);
+        m = ldle16b_i(rom + 0x27502, j);
         
         // \task When merging with other branches, note that
         // m and i are compared. If one is 16-bit, for example,
@@ -4719,11 +4189,11 @@ void Savesongs(FDOC *doc)
                 
                 for(n = 0; n < 8; n++)
                 {
-                    put_16_le_i(trtbl->buf,
-                                n,
-                                Savescmd(doc, sp->tbl[n], p, q) );
+                    stle16b_i(trtbl->buf,
+                              n,
+                              Savescmd(doc, sp->tbl[n], p, q) );
                     
-                    if( get_16_le_i(trtbl->buf, n) )
+                    if( ldle16b_i(trtbl->buf, n) )
                         Addspcreloc(trtbl,n<<1),q=0;
                 }
                 
@@ -5014,7 +4484,8 @@ noerror:
     SetCursor(normal_cursor);
 }
 
-void Loadsongs(FDOC*doc)
+void
+Loadsongs(FDOC * const doc)
 {
     unsigned char*b,*c,*d;
     short*e;
@@ -5228,9 +4699,6 @@ error:
 HWAVEOUT hwo;
 int sndinit=0;
 
-// Sound device?
-int sounddev=0x10001;
-
 WAVEHDR *wbufs;
 
 int wcurbuf;
@@ -5250,7 +4718,6 @@ int envdat[]={
 char midinst[16],midivol[16],midipan[16],midibank[16],midipbr[16];
 short midipb[16];
 ZMIXWAVE zwaves[8];
-ZCHANNEL zchans[8];
 short *wdata;
 int*mixbuf;
 int exitsound=0;
@@ -5278,11 +4745,12 @@ const unsigned char nvol[16]={
     0x19,0x32,0x4c,0x65,0x72,0x7f,0x8c,0x98,0xa5,0xb2,0xbf,0xcb,0xd8,0xe5,0xf2,0xfc
 };
 
-unsigned char pbwayflag,volflag,pbstatflag,pbflag,fqflag,noteflag;
+unsigned char pbwayflag;
 
-unsigned char activeflag=255,sndinterp=0;
+unsigned char pbstatflag,pbflag,fqflag,noteflag;
 
-void midinoteoff(ZCHANNEL*zch)
+void
+midinoteoff(ZCHANNEL * const zch)
 {
     if(zch->midnote!=0xff)
     {
@@ -5309,27 +4777,6 @@ void Stopsong(void)
     else for(i=0;i<8;i++) midinoteoff(zchans+i);
 }
 int mix_freq,mix_flags;
-
-enum
-{
-    MIDI_ARR_WORDS = 0x19,
-    MIDI_ARR_BYTES = MIDI_ARR_WORDS * 2,
-};
-
-unsigned short midi_inst[MIDI_ARR_WORDS] =
-{
-    0x0050,0x0077,0x002f,0x0050,0x0051,0x001b,0x0051,0x0051,
-    0x004d,0x0030,0x002c,0x0039,0x00b1,0x004f,0x000b,0x0004,
-    0x10a5,0x0038,0x003c,0x00a8,0x00a8,0x0036,0x0048,0x0035,
-    0x001a
-};
-
-unsigned short midi_trans[MIDI_ARR_WORDS]={
-    0x00fb,0x0005,0x000c,0x0c00,0x0000,0x0002,0xfb02,0xf602,
-    0x0027,0x0000,0x0000,0xf400,0x0024,0x0000,0x0018,0x000c,
-    0x0020,0x0000,0x0000,0x0028,0x0028,0x000c,0x000c,0x0001,
-    0x0000
-};
 
 int midi_timer;
 int ws_freq=22050,ws_bufs=24,ws_len=256,ws_flags=3;
@@ -6145,7 +5592,8 @@ int CALLBACK soundfunc(LPVOID param)
     return 0;
 }
 
-void Exitsound(void)
+void
+Exitsound(void)
 {
     int n;
     
@@ -6387,6 +5835,8 @@ short AllocScmd(FDOC*doc)
     return i;
 }
 
+// =============================================================================
+
 void NewSR(FDOC*doc,int bank)
 {
     SCMD*sc;
@@ -6411,456 +5861,7 @@ void NewSR(FDOC*doc,int bank)
 // =============================================================================
 
 void
-LoadText(FDOC * const doc)
-{
-    int i = 0;
-    int data_pos = 0xe0000;
-    
-    int k;
-    int l;
-    
-    int m = 64;
-    
-    unsigned char a;
-    unsigned char *rom = doc->rom;
-    
-    // temporary buffer for each individual text message
-    unsigned char *b;
-    
-    int bd, bs;
-    
-    // text buffer?
-    doc->tbuf = malloc(256);
-    
-    for( ; ; )
-    {
-        bs = 128; // bs is the current maximum size for the buffer (can change as needed)
-        
-        bd = 2; // the size of the useful data in the message buffer
-        
-        b = (uint8_t*) malloc(128); // temporary buffer...
-        
-        for( ; ; )
-        {
-            a = rom[data_pos];
-            
-            if(a == 0x80)
-            {
-                // 0x80 tells us to go to the second data set 
-                data_pos = 0x75f40;
-            }
-            else if(a == 0xff)
-            {
-                // 0xff is the terminator byte for all text data, period
-                
-                doc->t_number = i; // the number of loaded pieces
-                doc->t_loaded = 1; // indicate that text is loaded and return
-                
-                return;
-            }
-            
-            else if(a < 0x67)
-            {
-                // if it's a character, increment the position in the main buffer
-                // updating that second buffer... not sure what it's for
-                data_pos++;
-                b[bd++] = a;
-            }
-            else if(a >= 0x88)
-            {
-                // use the dictionary to load the characters up
-                k = *(short*)(rom + 0x745f3 + (a << 1));
-                l = *(short*)(rom + 0x745f5 + (a << 1));
-                
-                while(k < l)
-                {
-                    b[bd++] = rom[0x78000 + k];
-                    k++;
-                }
-                
-                data_pos++;
-            }
-            else if(a == 0x7f)
-            {
-                // 0x7f is a terminator byte for each message
-                data_pos++;
-                
-                break;
-            }
-            else
-            {
-                // 0x7536B is a length indicator for each byte code
-                l = rom[0x7536b + a];
-                
-                while(l--)
-                    b[bd++] = rom[data_pos++];
-            }
-            
-            if(bd >= bs - 64)
-            {
-                // if the text data won't fit into the current buffer, reallocate
-                // and add 128 bytes to the temporary buffer
-                bs += 128;
-                b = (uint8_t*) realloc(b, bs);
-            }
-        }
-        
-        *(short*) b = bd;
-        
-        b = realloc(b, bd);
-        
-        if(i == m)
-        {
-            m += 64;
-            doc->tbuf = realloc(doc->tbuf, m << 2);
-        }
-        
-        doc->tbuf[i++] = b;
-    }
-}
-
-// =============================================================================
-
-void
-Savetext(FDOC*doc)
-{
-    int i,bd,j,k;
-    short l,m,n,o,p,q,r,v,t,u,w;
-    
-    // \task Can b2 overflow or is this just... fantasy?
-    unsigned char*b, b2[2048];
-    unsigned char*rom=doc->rom;
-    
-    size_t write_pos = 0xe0000;
-    
-    if(!doc->t_modf)
-        return;
-    
-    doc->t_modf=0;
-    
-    w = ( get_16_le(rom + 0x74703) - 0xc705 ) >> 1;
-    
-    for(i=0;i<doc->t_number;i++) {
-        b=doc->tbuf[i];
-        m=bd=0;
-        k=*(short*)b;
-        j=2;
-        r=w;
-        for(;j<k;)
-        {
-            q=b2[bd++]=b[j++];
-            if(q>=0x67) {
-                l=rom[0x7536b + q] - 1;
-                while(l--) b2[bd++]=b[j++];
-                m=bd;
-            }
-            if(bd>m+1) {
-                o=*(short*)(rom + 0x74703);
-                v=255;
-                t=w;
-                for(l=0;l<w;l++) {
-                    n=o;
-                    o=*(short*)(rom + 0x74705 + (l<<1));
-                    p=o-n-bd+m;
-                    if(p>=0) if(!memcmp(rom + 0x78000 + n,b2+m,bd-m)) {
-                        if(p<v) t=l,v=p;
-                        if(!p) {r=t;u=j;break;}
-                    }
-                }
-                if(t==w || b[j] >= 0x67) {
-                    if(r!=w) {
-                        b2[m]=r + 0x88;
-                        m++;
-                        j=u;
-                        bd=m;
-                        r=w;
-                    } else m=bd-1;
-                }
-            }
-        }
-        
-        write_pos += bd;
-        
-        // The subtraction of two accounts for the need for a message
-        // terminator code (0x7f) and the potential need for a master
-        // terminator code for all of the text data (0xff).
-        if( (write_pos < 0xe0000) && (write_pos > (0x77400 - 2) ) )
-        {
-            doc->t_modf = 1;
-            
-            MessageBox(framewnd,
-                       "Not enough space for monologue.",
-                       "Bad error happened",
-                       MB_OK);
-            
-            return;
-        }
-        
-        // Check if writing this message would put us past the end of the first
-        // bank where text data can reside. The subtraction of two is to
-        // account for a message terminator code (0x7f) as well as a possible
-        // additional bank switch code (0x80).
-        if( write_pos > (0xe8000 - 2) )
-        {
-            rom[write_pos - bd] = 0x80;
-            write_pos = 0x75f40 + bd;
-        }
-        
-        memcpy(rom + write_pos - bd, b2, bd);
-        
-        rom[write_pos++] = 0x7f;
-    }
-    
-    rom[write_pos] = 0xff;
-    
-    doc->modf = 1;
-}
-
-// =============================================================================
-
-const char z_alphabet[]=
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?-.,\0>()@£${}\"\0\0\0\0'\0\0\0\0\0\0\0 <\0\0\0\0";
-const static char*tsym_str[]=
-{
-    "Up",
-    "Down",
-    "Left",
-    "Right",
-    0,
-    "1HeartL",
-    "1HeartR",
-    "2HeartL",
-    "3HeartL",
-    "3HeartR",
-    "4HeartL",
-    "4HeartR",
-    0,0,
-    "A",
-    "B",
-    "X",
-    "Y"
-};
-const static char*tcmd_str[]={
-    "NextPic",
-    "Choose",
-    "Item",
-    "Name",
-    "Window",
-    "Number",
-    "Position",
-    "ScrollSpd",
-    "Selchg",
-    "Crash",
-    "Choose3",
-    "Choose2",
-    "Scroll",
-    "1",
-    "2",
-    "3",
-    "Color",
-    "Wait",
-    "Sound",
-    "Speed",
-    "Mark",
-    "Mark2",
-    "Clear",
-    "Waitkey",
-};
-
-// =============================================================================
-
-void
-Makeasciistring(FDOC          const * const doc,
-                char                * const buf,
-                unsigned char const * const buf2,
-                int                   const bufsize)
-{
-    int i;
-    
-    short j,k,l,m,n;
-    j=*(short*)buf2;
-    l=2;
-    for(i=0;i<bufsize-1;) {
-        if(l>=j) break;
-        k=buf2[l++];
-        if(k<0x5f)
-        {
-            if(!z_alphabet[k])
-            {
-                if(k==0x43) m=wsprintf(buffer,"...");
-                else m=wsprintf(buffer,"[%s]",tsym_str[k - 0x4d]);
-                goto longstring;
-            }
-            else
-            {
-                buf[i++]=z_alphabet[k];
-            }
-        }
-        else if(k >= 0x67 && k < 0x7f)
-        {
-            m=wsprintf(buffer,"[%s",tcmd_str[k - 0x67]);
-            n=doc->rom[0x7536b + k] - 1;
-            while(n--) m+=wsprintf(buffer+m," %02X",buf2[l++]);
-            buffer[m++]=']';
-longstring:
-            n = 0;
-            
-            while(m--)
-            {
-                buf[i++] = buffer[n++];
-                
-                if(i == bufsize - 1)
-                    break;
-            }
-        }
-        else
-        {
-            m = wsprintf(buffer, "[%02X]",k);
-            
-            goto longstring;
-        }
-    }
-    
-    buf[i] = 0;
-}
-
-// =============================================================================
-
-char * text_error;
-
-// =============================================================================
-
-uint8_t * Makezeldastring(FDOC *doc, char *buf)
-{
-    uint8_t * b2 = (uint8_t*) malloc(128);
-    char *n;
-    
-    int bd = 2, bs = 128;
-    
-    short j,l,m,k;
-    
-    for(;;)
-    {
-        j = *(buf++);
-        
-        // look for a [ character
-        if(j == '[')
-        {
-            // m is the distance to the ] character
-            m = strcspn(buf," ]");
-            
-            for(l = 0; l < 18; l++)
-                if(tsym_str[l] && (!tsym_str[l][m]) && !_strnicmp(buf,tsym_str[l],m))
-                    break;
-            
-            // the condition l == 18 means it did not find any string in the
-            // special symbol strings list to match this one
-            if(l == 18)
-            {
-                for(l = 0; l < 24; l++)
-                    if((!tcmd_str[l][m]) && !_strnicmp(buf,tcmd_str[l],m))
-                        break;
-                
-                // if this condition is true it means we didn't find a match in the 
-                // command strings either
-                if(l == 24)
-                {
-                    // strtol converts a string to a long data type
-                    j = (short) strtol(buf, &n, 16);
-                    
-                    // k is the distance from the start of the command to the 
-                    k = n - buf;
-                    
-                    // if the string doesn't match the pattern [XX] fogedda boud it                 
-                    if(k > 2 || k < 1)
-                    {
-                        buf[m] = 0;
-                        wsprintf(buffer, "Invalid command \"%s\"", buf);
-                        
-error:
-                        
-                        MessageBox(framewnd, buffer, "Bad error happened", MB_OK);
-                        free(b2);
-                        text_error = buf;
-                        
-                        return 0;
-                    };
-                    
-                    m = k;
-                    b2[bd++] = (char) j;
-                    l = 0;
-                }
-                else
-                    b2[bd++] = l + 0x67, l = doc->rom[0x753d2 + l] - 1;
-            }
-            else
-                b2[bd++] = l + 0x4d, l = 0;
-            
-            buf += m;
-            
-            while(l--)
-            {
-                if(*buf!=' ')
-                {
-syntaxerror:
-                    wsprintf(buffer,"Syntax error: '%c'",*buf);
-                    
-                    goto error;
-                }
-                
-                buf++;
-                
-                j = (short) strtol(buf,&n,16);
-                m = n - buf;
-                
-                if(m > 2 || m < 1)
-                {
-                    wsprintf(buffer,"Invalid number");
-                    goto error;
-                };
-                
-                buf += m;
-                b2[bd++] = (char) j;
-            }
-            
-            if(*buf!=']')
-                goto syntaxerror;
-            
-            buf++;
-        }
-        else
-        {
-            if(!j)
-                break;
-            
-            for(l = 0; l < 0x5f; l++)
-                if(z_alphabet[l] == j)
-                    break;
-            
-            if(l == 0x5f)
-            {
-                wsprintf(buffer,"Invalid character '%c'",j);
-                goto error;
-            }
-            
-            b2[bd++] = (char) l;
-        }
-        
-        if(bd > bs - 64)
-        {
-            bs += 128;
-            b2 = (uint8_t*) realloc(b2, bs);
-        }
-    }
-    
-    // \task Shouldn't we just structurize this stuff and store the length
-    // as a member? for pete's sake...
-    *(unsigned short*) b2 = bd;
-    
-    return b2;
-}
-
-void Removepatches(FDOC*doc)
+Removepatches(FDOC * const doc)
 {
     int j,k;
     PATCH*p;
@@ -6879,7 +5880,6 @@ void Removepatches(FDOC*doc)
     doc->patches=0;
     doc->numseg=0;
 }
-char asmpath[MAX_PATH];
 HACCEL actab;
 void ProcessMessage(MSG*msg)
 {
@@ -6973,7 +5973,8 @@ FileTimeEarlier(FILETIME const p_left,
 
 // =============================================================================
 
-int Buildpatches(FDOC*doc)
+int
+Buildpatches(FDOC * const doc)
 {
     DWORD q = 0;
     
@@ -7279,246 +6280,7 @@ BOOL CALLBACK patchdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-BOOL CALLBACK
-textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    TEXTEDIT * ed;
-    
-    FDOC *doc;
-    
-    int i, j, k, l, m;
-    
-    char *b = 0;
-    
-    uint8_t * c = 0;
-    
-    unsigned char *rom;
-    
-    HWND hc;
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        SetWindowLong(win, DWL_USER, lparam);
-        
-        ed = (TEXTEDIT*) lparam;
-        
-        CheckDlgButton(win, 3003, BST_CHECKED);
-        
-        ed->dlg = win;
-        ed->num = 0;
-        
-        doc = ed->ew.doc;
-        
-        if( ! doc->t_loaded)
-        {
-            LoadText(doc);
-        }
-        
-    updstrings:
-        
-        hc = GetDlgItem(win,3000);
-        
-        b = (char*) malloc(256);
-        
-        if(ed->num)
-        {
-            rom = doc->rom;
-            
-            j = ( get_16_le(rom + 0x74703) - 0xc705 ) >> 1;
-            
-            l = get_16_le(rom + 0x74703);
-            
-            for(i = 0; i < j; i++)
-            {
-                k = get_16_le_i(rom + 0x74705, i);
-                
-                memcpy(b+130,rom+l + 0x78000,k-l);
-                
-                *(short*)(b+128)=k-l+2;
-                
-                Makeasciistring(doc, b, b + 128, 128);
-                
-                wsprintf(buffer, "%03d: %s", i, b);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (long) buffer);
-                
-                l = k;
-            }
-        }
-        else
-        {
-            for(i = 0; i < doc->t_number; i++)
-            {
-                Makeasciistring(doc, b, doc->tbuf[i], 256);
-                
-                wsprintf(buffer, "%03d: %s", i, b);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (long) buffer);
-            }
-        }
-        
-        free(b);
-        
-        break;
-    
-    case WM_CLOSE:
-        
-        return 1;
-    
-    case WM_COMMAND:
-        
-        ed = (TEXTEDIT*) GetWindowLong(win, DWL_USER);
-        
-        if(!ed)
-            break;
-        
-        doc = ed->ew.doc;
-        
-        rom = doc->rom;
-        
-        switch(wparam)
-        {
-        
-        case 3000 | (LBN_DBLCLK << 16):
-            
-            i = SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
-            
-            if(i != -1)
-            {
-                b = malloc(2048);
-                
-                if(ed->num)
-                {
-                    k=((short*)(rom + 0x74705))[i];
-                    l=((short*)(rom + 0x74703))[i];
-                    memcpy(b+1026,rom+l + 0x78000,k-l);
-                    *(short*)(b+1024)=k-l+2;
-                    Makeasciistring(doc,b,b+1024,1024);
-                }
-                else
-                {
-                    Makeasciistring(doc, b, doc->tbuf[i], 2048);
-                }
-                
-                SetDlgItemText(win, 3001, b);
-                
-                free(b);
-            }
-            else
-            {
-                SetDlgItemText(win, 3001, 0);
-            }
-            
-            break;
-        
-        case 3002:
-            
-            i = SendDlgItemMessage(win,
-                                   3000,
-                                   LB_GETCURSEL,
-                                   0,
-                                   0);
-            
-            if(i != -1)
-            {
-                b = malloc(2048);
-                
-                GetDlgItemText(win, 3001, b, 2048);
-                
-                c = Makezeldastring(doc, b);
-                
-                hc = GetDlgItem(win, 3000);
-                
-                if(c)
-                {
-                    if(ed->num)
-                    {
-                        m = (*(short*)c) - 2;
-                        j = *(unsigned short*) (rom + 0x77ffe + *(short*)(rom + 0x74703));
-                        k = ((unsigned short*) (rom + 0x74705))[i];
-                        l = ((unsigned short*) (rom + 0x74703))[i];
-                        
-                        if(j + m + l - k > 0xc8d9)
-                        {
-                            MessageBeep(0);
-                            free(c);
-                            free(b);
-                            
-                            break;
-                        }
-                        
-                        memcpy(rom + 0x68000 + l + m, rom + 0x68000 + k, j - k);
-                        memcpy(rom + 0x68000 + l, c + 2, m);
-                        k -= l;
-                        
-                        l = ( get_16_le(rom + 0x74703) - 0xc703 ) >> 1;
-                        
-                        for(j = i + 1; j < l; j++)
-                            ((short*) (rom + 0x74703))[j] += m - k;
-                    }
-                    else
-                    {
-                        free(doc->tbuf[i]);
-                        doc->tbuf[i] = c;
-                    }
-                    
-                    Makeasciistring(doc,b,c,256);
-                    wsprintf(buffer,"%03d: %s",i,b);
-                    
-                    if(ed->num)
-                        free(c);
-                    
-                    SendMessage(hc, LB_DELETESTRING, i, 0);
-                    SendMessage(hc, LB_INSERTSTRING, i, (long)buffer);
-                    SendMessage(hc, LB_SETCURSEL, i, 0);
-                }
-                else
-                {
-                    i = text_error - b;
-                    
-                    hc = GetDlgItem(win, 3001);
-                    
-                    SendMessage(hc, EM_SETSEL, i, i);
-                    
-                    SetFocus(hc);
-                    
-                    free(b);
-                    
-                    break;
-                }
-                
-                free(b);
-                
-                doc->t_modf = 1;
-            }
-            
-            break;
-        
-        case 3003:
-            
-            ed->num = 0;
-            
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
-            
-            goto updstrings;
-        
-        case 3004:
-            
-            ed->num = 1;
-            
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
-            
-            goto updstrings;
-        }
-        
-        break;
-    }
-    
-    return FALSE;
-}
+// =============================================================================
 
 int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size2)
 {
@@ -8308,8 +7070,6 @@ noblock:
 
 //Drawblock*********************************
 
-int gbtnt=0;
-
 void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
 {
     int a,
@@ -9054,6 +7814,7 @@ int __stdcall askinteger(int max,char*caption,char*text)
     
     return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
 }
+
 static char*screen_text[]={
     "Title screen",
     "Naming screen",
@@ -9087,9 +7848,10 @@ char const * level_str[] =
     "Agahnim 2"
 };
 
-//Setpalmode#*******************************
+// =============================================================================
 
-void Setpalmode(DUNGEDIT *ed)
+void
+Setpalmode(DUNGEDIT *ed)
 {
     int i,
         j,
@@ -9119,11 +7881,10 @@ void Setpalmode(DUNGEDIT *ed)
         ((short*)(&(ed->pal)))[i] = (i - k) & 255;
 }
 
-//Setpalmode********************************
+// =============================================================================
 
-//Setfullmode#******************************
-
-void Setfullmode(DUNGEDIT *ed)
+void
+Setfullmode(DUNGEDIT *ed)
 {
     int pal[256];
     
@@ -9871,251 +8632,6 @@ updscrn:
 
 // =============================================================================
 
-int Keyscroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size2)
-{
-    int i;
-    switch(wparam) {
-    case VK_UP:
-        i=SB_LINEUP;
-        break;
-    case VK_DOWN:
-        i=SB_LINEDOWN;
-        break;
-    case VK_PRIOR:
-        i=SB_PAGEUP;
-        break;
-    case VK_NEXT:
-        i=SB_PAGEDOWN;
-        break;
-    case VK_HOME:
-        i=SB_TOP;
-        break;
-    case VK_END:
-        i=SB_BOTTOM;
-        break;
-    default:
-        return sc;
-    }
-    return Handlescroll(win,i,sc,page,scdir,size,size2);
-}
-
-// =============================================================================
-
-void
-Blk16Search_OnPaint(OVEREDIT const * const p_ed,
-                    HWND             const p_win)
-{
-    unsigned char const * const rom = p_ed->ew.doc->rom;
-    
-    int i = 0,
-        j = 0,
-        m = 0;
-    
-    PAINTSTRUCT ps;
-    
-    HDC const hdc = BeginPaint(p_win, &ps);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal,1);
-    
-    HGDIOBJ const oldbrush = SelectObject(hdc, trk_font);
-    HGDIOBJ const oldobj2 = SelectObject(hdc, white_pen);
-    
-    // -----------------------------
-    
-    RealizePalette(hdc);
-    
-    i = (ps.rcPaint.top >> 4);
-    j = ( (ps.rcPaint.bottom + 15) >> 4);
-    
-    FillRect(hdc,&(ps.rcPaint), black_brush);
-    
-    m = i + p_ed->schscroll;
-    
-    SetTextColor(hdc, 0xffffff);
-    
-    SetBkColor(hdc, 0);
-    
-    for( ; i < j; i += 2)
-    {
-        int k = 0;
-        
-        for(k = 0; k < 1024; k++)
-            drawbuf[k] = 0;
-        
-        for(k = 0; k < 2; k++)
-        {
-            int l = 0;
-            
-            unsigned short const * o = 0;
-            
-            RECT rc;
-            
-            if(m >= 0xea8)
-                break;
-            
-            o = (unsigned short*) (rom + 0x78000 + (m << 3));
-            
-            for(l = 0; l < 4; l++)
-                Drawblock(p_ed,
-                          blkx[l] + 8,
-                          blky[l] + (k << 4),
-                          *(o++),
-                          0);
-            rc.left=4;
-            rc.right=20;
-            rc.top = ( (i + k) << 4) + 2;
-            rc.bottom=rc.top+12;
-            
-            DrawFrameControl(hdc,&rc,DFC_BUTTON,
-                             ((p_ed->selsch[m>>3]&(1<<(m&7))) ? (DFCS_BUTTONCHECK | DFCS_CHECKED):DFCS_BUTTONCHECK)
-                             +((p_ed->schpush == m) ? DFCS_PUSHED : 0));
-            
-            rc.left=24;
-            rc.right=40;
-            
-            DrawFrameControl(hdc,
-                             &rc,
-                             DFC_BUTTON,
-                             ((p_ed->selsch[0x1d5 + (m >> 3)] & (1 << (m & 7)))
-                           ? (DFCS_BUTTONCHECK|DFCS_CHECKED)
-                           : DFCS_BUTTONCHECK)
-                           +((p_ed->schpush==m + 0xea8)?DFCS_PUSHED:0));
-            
-            rc.left=44;
-            rc.right=60;
-            
-            DrawFrameControl(hdc,
-                             &rc,
-                             DFC_BUTTON,
-                             ((p_ed->selsch[0x3aa + (m >> 3)] & (1 << (m & 7)))
-                           ? (DFCS_BUTTONCHECK|DFCS_CHECKED)
-                           : DFCS_BUTTONCHECK)
-                           + ((p_ed->schpush== m + 0x1d50) ? DFCS_PUSHED : 0));
-            
-            wsprintf(buffer,"%04d",m);
-            
-            TextOut(hdc,64,rc.top,buffer,4);
-            
-            m++;
-        }
-        
-        k = i << 4;
-        
-        Paintblocks(&(ps.rcPaint),hdc,100,k, (DUNGEDIT*) p_ed);
-        
-        MoveToEx(hdc,108,k,0);
-        LineTo(hdc,124,k);
-        
-        MoveToEx(hdc,108,k+16,0);
-        LineTo(hdc,124,k+16);
-    }
-    
-    SelectObject(hdc, oldbrush);
-    SelectObject(hdc, oldobj2);
-    
-    SelectPalette(hdc, oldpal, 1);
-    
-    EndPaint(p_win, &ps);
-}
-
-// =============================================================================
-
-LRESULT CALLBACK
-blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    OVEREDIT *ed;
-    RECT rc;
-    SCROLLINFO si;
-    int i,j,k;
-    
-    switch(msg) {
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS|DLGC_WANTARROWS;
-    case WM_KEYDOWN:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(wparam >= 48 && wparam < 58)
-        {
-            wparam -= 48;
-            
-            ed->schtyped /* <<=4 */ *=10;
-            ed->schtyped+=wparam;
-            ed->schtyped%=5000;
-            ed->schscroll=Handlescroll(win,SB_THUMBPOSITION|(ed->schtyped<<16),ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        } else ed->schscroll=Keyscroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    case WM_SIZE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nMin=0;
-        si.nMax=0xea8;
-        si.nPage=lparam>>20;
-        ed->schpage=si.nPage;
-        SetScrollInfo(win,SB_VERT,&si,1);
-        ed->schscroll=Handlescroll(win,-1,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    case WM_VSCROLL:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->schscroll=Handlescroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    
-    case WM_PAINT:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(ed)
-        {
-            Blk16Search_OnPaint(ed, win);
-        }
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-        SetFocus(win);
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        i=(short)lparam;
-        j=lparam>>16;
-        k=(j>>4)+ed->schscroll;
-        if(k<0 || k>=0xea8) break;
-        if(ed->schpush!=-1)
-            InvalidateRect(win,&(ed->schrc),0);
-        if((j&15)>=2 && (j&15)<14) {
-            if(i>4 && i<20) j=0,rc.left=4;
-            else if(i>24 && i<40) j=0xea8,rc.left=24;
-            else if(i>44 && i<60) j=0x1d50,rc.left=44;
-            else break;
-            ed->schpush=k+j;
-            rc.right=rc.left+16;
-            rc.top = ( (k - ed->schscroll) << 4) + 2;
-            rc.bottom=rc.top+12;
-            ed->schrc=rc;
-            InvalidateRect(win,&rc,0);
-            SetCapture(win);
-        }
-        break;
-    case WM_LBUTTONUP:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->schpush!=-1) {
-            i=(short)lparam;
-            j=lparam>>16;
-            rc=ed->schrc;
-            if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom)
-            ed->selsch[ed->schpush>>3]^=(1<<(ed->schpush&7));
-            ed->schpush=-1;
-            InvalidateRect(win,&(ed->schrc),0);
-            ReleaseCapture();
-        }
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
 BOOL CALLBACK
 findblks(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -10445,7 +8961,8 @@ loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
 
 // =============================================================================
 
-void SaveOverlays(FDOC *doc)
+void
+SaveOverlays(FDOC * const doc)
 {
     int i, // counter variable
         j = 0,
@@ -10621,8 +9138,6 @@ nextovl:;
     doc->oolend = j + 0x77764;
     doc->o_modf = 0;
 }
-
-// SaveOverlays**********************************
 
 // =============================================================================
 
@@ -11368,469 +9883,7 @@ int Editblocks(OVEREDIT *ed, int num, HWND win)
     return i;
 }
 
-BOOL CALLBACK z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    FDOC*doc;
-    HWND hc;
-    int i,j,k,l;
-    TVINSERTSTRUCT tvi;
-    TVHITTESTINFO hti;
-    TVITEM*itemstr;
-    HTREEITEM hitem;
-    RECT rc;
-    ZOVER*ov;
-    OVEREDIT*oed;
-    unsigned char*rom;
-    int lp;
-    static char *pal_text[]={
-        "Sword",
-        "Shield",
-        "Clothes",
-        "World colors 1",
-        "World colors 2",
-        "Area colors 1",
-        "Area colors 2",
-        "Enemies 1",
-        "Dungeons",
-        "Miscellanous colors",
-        "World map",
-        "Enemies 2",
-        "Other sprites",
-        "Dungeon map",
-        "Triforce",
-        "Crystal"
-    };
-    static char*locs_text[]={
-        "Pendant 1",
-        "Pendant 2",
-        "Pendant 3",
-        "Agahnim 1",
-        "Crystal 2",
-        "Crystal 1",
-        "Crystal 3",
-        "Crystal 6",
-        "Crystal 5",
-        "Crystal 7",
-        "Crystal 4",
-        "Agahnim 2"
-    };
-    static char pal_num[]={
-        4,3,3,6,2,20,16,24,20,2,2,16,18,1,1,1
-    };
-    char buf[0x200];
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        doc=(FDOC*)lparam;
-        hc=GetDlgItem(win,3000);
-        tvi.hParent=0;
-        tvi.hInsertAfter=TVI_LAST;
-        tvi.item.mask=TVIF_CHILDREN|TVIF_PARAM|TVIF_TEXT|TVIF_STATE;
-        tvi.item.stateMask=TVIS_BOLD;
-        tvi.item.state=0;
-        tvi.item.lParam=0;
-        tvi.item.pszText="Overworld";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<160;i++)
-        {
-            tvi.item.lParam=i + 0x20000;
-            wsprintf(buf,"Area %02X - %s", i, area_names.m_lines[i]);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Dungeons";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<133;i++)
-        {
-            tvi.item.lParam=i + 0x30000;
-            wsprintf(buf,
-                     "Entrance %02X - %s",
-                     i,
-                     entrance_names.m_lines[i]);
-            
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<7;i++)
-        {
-            tvi.item.lParam=i + 0x30085;
-            wsprintf(buf,"Starting location %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<19;i++)
-        {
-            tvi.item.lParam=i + 0x3008c;
-            wsprintf(buf,"Overlay %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<8;i++)
-        {
-            tvi.item.lParam=i + 0x3009f;
-            wsprintf(buf,"Layout %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.lParam=0x300a7;
-        tvi.item.pszText="Watergate overlay";
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Music";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<3;i++)
-        {
-            tvi.item.lParam=i + 0x40000;
-            wsprintf(buf,"Bank %d",i+1);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.lParam=0x40003;
-        tvi.item.pszText="Waves";
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="World maps";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Normal world";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x60000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Dark world";
-        tvi.item.lParam=0x60001;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Monologue";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x50000;
-        tvi.hParent=0;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Palettes";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        hitem=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        k=0;
-        for(i=0;i<16;i++) {
-            l=pal_num[i];
-            tvi.item.pszText=pal_text[i];
-            tvi.item.cChildren=1;
-            tvi.item.lParam=0;
-            tvi.hParent=hitem;
-            tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-            tvi.item.pszText=buf;
-            tvi.item.cChildren=0;
-            for(j=0;j<l;j++) {
-                tvi.item.lParam=k + 0x70000;
-                wsprintf(buf,"%s pal %d",pal_text[i],j);
-                SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-                k++;
-            }
-        }
-        tvi.item.pszText="Dungeon maps";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<14;i++)
-        {
-            tvi.item.lParam=i + 0x80000;
-            tvi.item.pszText = (char*) level_str[i+1];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Dungeon properties";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<12;i++)
-        {
-            tvi.item.lParam=i + 0x90000;
-            tvi.item.pszText=locs_text[i];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Menu screens";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<11;i++)
-        {
-            tvi.item.lParam=i + 0xa0000;
-            tvi.item.pszText=screen_text[i];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="3D Objects";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0xb0000;
-        tvi.hParent=0;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Link's graphics";
-        tvi.item.lParam=0xc0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="ASM hacks";
-        tvi.item.lParam=0xd0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Graphic schemes";
-        tvi.item.lParam=0xe0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        break;
-    case WM_NOTIFY:
-        switch(wparam) {
-        case 3000:
-            switch(((NMHDR*)lparam)->code) {
-            case NM_DBLCLK:
-                GetWindowRect(((NMHDR*)lparam)->hwndFrom,&rc);
-                
-                hti.pt.x = mouse_x-rc.left;
-                hti.pt.y = mouse_y-rc.top;
-                hitem = (HTREEITEM) SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_HITTEST,0,(long)&hti);
-                
-                if(!hitem)
-                    break;
-                
-                if(!(hti.flags & TVHT_ONITEM))
-                    break;
-                
-                itemstr = &(tvi.item);
-                itemstr->hItem = hitem;
-                itemstr->mask = TVIF_PARAM;
-                
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
-                
-                lp = itemstr->lParam;
-open_edt:
-                
-                doc = (FDOC*)GetWindowLong(win,DWL_USER);
-                j = lp & 0xffff;
-                
-                switch(lp>>16)
-                {
-
-                    // double clicked on an overworld area
-                case 2:
-                    ov = doc->overworld;
-                    
-                    if(j < 128)
-                        j = doc->rom[0x125ec + (j & 0x3f)] | (j & 0x40);
-                    
-                    for(i=0;i<4;i++)
-                    {
-                        k = map_ind[i];
-                        
-                        if(j >= k && ov[j - k].win)
-                        {
-                            hc = ov[j - k].win;
-                            oed = (OVEREDIT*)GetWindowLong(hc,GWL_USERDATA);
-                            
-                            if(i && !(oed->mapsize))
-                                continue;
-                            
-                            SendMessage(clientwnd,WM_MDIACTIVATE,(int)hc,0);
-                            
-                            hc = GetDlgItem(oed->dlg,3001);
-                            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION|((i&1)<<20),0);
-                            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION|((i&2)<<19),0);
-                            
-                            return FALSE;
-                        }
-                    }
-                    
-                    wsprintf(buf,
-                             "Area %02X - %s",
-                             j,
-                             area_names.m_lines[j]);
-                    
-                    ov[j].win = Editwin(doc,"ZEOVER",buf,j,sizeof(OVEREDIT));
-                    
-                    break;
-                
-                case 3:
-                    
-                    // double clicked on a dungeon item
-                    if(doc->ents[j])
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (int) (doc->ents[j]),
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    if(j < 0x8c)
-                    {
-                        k = ((short*) (doc->rom + (j >= 0x85 ? 0x15a64 : 0x14813)))[j];
-                        
-                        if(doc->dungs[k])
-                        {
-                            MessageBox(framewnd,
-                                       "The room is already open in another editor",
-                                       "Bad error happened",
-                                       MB_OK);
-                            
-                            break;
-                        }
-                        
-                        if(j >= 0x85)
-                            wsprintf(buf,"Start location %02X",j - 0x85);
-                        else
-                        {
-                            wsprintf(buf,
-                                     "Entrance %02X - %s",
-                                     j,
-                                     entrance_names.m_lines[j]);
-                        }
-                    }
-                    else if(j < 0x9f)
-                        wsprintf(buf,"Overlay %d",j - 0x8c);
-                    else if(j < 0xa7)
-                        wsprintf(buf,"Layout %d",j - 0x9f);
-                    else
-                        wsprintf(buf,"Watergate overlay");
-                    
-                    hc = Editwin(doc,"ZEDUNGEON",buf,j, sizeof(DUNGEDIT));
-                    
-                    if(hc)
-                    {
-                        DUNGEDIT * ed = (DUNGEDIT*) GetWindowLong(hc, GWL_USERDATA);
-                        HWND map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
-                    
-                        Dungselectchg(ed, map_win, 1);
-                    }
-                    
-                    break;
-                case 4:
-                    if(doc->mbanks[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->mbanks[j]),0);break;}
-                    if(j==3) doc->mbanks[3]=Editwin(doc,"MUSBANK","Wave editor",3,sizeof(SAMPEDIT)); else {
-                        wsprintf(buf,"Song bank %d",j+1);
-                        doc->mbanks[j]=Editwin(doc,"MUSBANK",buf,j,sizeof(MUSEDIT));
-                    }
-                    break;
-                case 6:
-                    if(doc->wmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->wmaps[j]),0);break;}
-                    wsprintf(buf,"World map %d",j+1);
-                    doc->wmaps[j]=Editwin(doc,"WORLDMAP",buf,j,sizeof(WMAPEDIT));
-                    break;
-                case 5:
-                    
-                    if(doc->t_wnd)
-                    {
-                        SendMessage(clientwnd, WM_MDIACTIVATE, (int)(doc->t_wnd), 0);
-                        
-                        break;
-                    }
-                    
-                    doc->t_wnd = Editwin(doc,"ZTXTEDIT","Text editor",0,sizeof(TEXTEDIT));
-                    
-                    break;
-                
-                case 7:
-                    if(doc->pals[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->pals[j]),0);break;}
-                    
-                    k = 0;
-                    
-                    for(i=0;i<16;i++)
-                    {
-                        if(k + pal_num[i] > j)
-                            break;
-                        
-                        k += pal_num[i];
-                    }
-                    
-                    wsprintf(buf,"%s palette %d",pal_text[i],j-k);
-                    
-                    doc->pals[j] = Editwin(doc,
-                                           "PALEDIT",
-                                           buf,
-                                           j | (i << 10) | ( (j - k) << 16),
-                                           sizeof(PALEDIT));
-                    
-                    break;
-                
-                case 8:
-                    if(doc->dmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->dmaps[j]),0);break;}
-                    doc->dmaps[j]=Editwin(doc,"LEVELMAP",level_str[j+1],j,sizeof(LMAPEDIT));
-                    break;
-                case 9:
-                    activedoc=doc;
-                    ShowDialog(hinstance,MAKEINTRESOURCE(IDD_DIALOG17),framewnd,editbosslocs,j);
-                    break;
-                case 10:
-                    if(doc->tmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->tmaps[j]),0);break;}
-                    doc->tmaps[j]=Editwin(doc,"TILEMAP",screen_text[j],j,sizeof(TMAPEDIT));
-                    break;
-                case 11:
-                    if(doc->perspwnd) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->perspwnd),0);break;}
-                    doc->perspwnd=Editwin(doc,"PERSPEDIT","3D object editor",0,sizeof(PERSPEDIT));
-                    break;
-                case 12:
-                    
-                    oed = (OVEREDIT*) malloc(sizeof(OVEREDIT));
-                    
-                    oed->bmih=zbmih;
-                    oed->hpal=0;
-                    oed->ew.doc=doc;
-                    oed->gfxnum=0;
-                    oed->paltype=3;
-                    if(palmode) Setpalmode((DUNGEDIT*)oed);
-                    rom=doc->rom;
-                    Getblocks(doc,225);
-                    Loadpal(oed,rom,0x1bd308,0xf1,15,1);
-                    Loadpal(oed,rom,0x1bd648,0xdc,4,1);
-                    Loadpal(oed,rom,0x1bd630,0xd9,3,1);
-                    Editblocks(oed,0xf0104,framewnd);
-                    Releaseblks(doc,225);
-                    
-                    if(oed->hpal)
-                        DeleteObject(oed->hpal);
-                    
-                    free(oed);
-                    
-                    break;
-                
-                case 13:
-                    
-                    if(doc->hackwnd)
-                    {
-                        SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->hackwnd),0);
-                        
-                        break;
-                    }
-                    
-                    doc->hackwnd = Editwin(doc, "PATCHLOAD", "Patch modules", 0, sizeof(PATCHLOAD));
-                    
-                    break;
-                
-                case 14:
-                    
-                    // Graphic Themes
-                    ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_GRAPHIC_THEMES),
-                               framewnd,
-                               editvarious,
-                               (int) doc);
-                    
-                    break;
-                }
-            }
-        }
-        break;
-    case 4000:
-        lp=wparam;
-        goto open_edt;
-    }
-    return FALSE;
-}
+// =============================================================================
 
 int
 Savesecrets(FDOC          * const doc,
@@ -13558,7 +11611,7 @@ draw:
                         {
                             if(msg==WM_RBUTTONDOWN)
                             {
-                                k = get_16_le
+                                k = ldle16b
                                 (
                                     ed->buf + ed->sel + 4
                                   + ( ( ( p - ed->selrect.top ) >> 2) & -2 )
@@ -13567,7 +11620,7 @@ draw:
                                 goto getblk;
                             }
                             
-                            put_16_le
+                            stle16b
                             (
                                 ed->buf + ed->sel + 4
                               + ( ( (p - ed->selrect.top) >> 2) & -2 ),
@@ -15095,7 +13148,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
                 Drawblock(p_ed->ed,
                           blkx[p],
                           blky[p],
-                          get_16_le_i(o, k),
+                          ldle16b_i(o, k),
                           0);
                 
                 p++;
@@ -15625,9 +13678,10 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-//aboutfunc#*******************************
+// =============================================================================
 
-BOOL CALLBACK aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     (void) lparam;
     
@@ -15637,7 +13691,7 @@ BOOL CALLBACK aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return FALSE;
 }
 
-//aboutfunc*******************************
+// =============================================================================
 
 BOOL CALLBACK wavesetting(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -15780,18 +13834,9 @@ BOOL CALLBACK seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return FALSE;
 }
 
-typedef struct {
-    int sprsetedit;
-    int namechg;
-    char savespr[0x11c][16];
-    int flag;
-    int soundvol;
-    unsigned short inst[25];
-    unsigned short trans[25];
-    char saveasmp[MAX_PATH];
-} CONFIG;
 
-void Updatesprites(void)
+void
+Updatesprites(void)
 {
     FDOC *doc;
     HWND win;
@@ -15883,156 +13928,6 @@ void Updatesprites(void)
 
 // =============================================================================
 
-BOOL CALLBACK
-editsprname(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j;
-    static CONFIG*config=0;
-    SCROLLINFO si;
-    if(msg==WM_HSCROLL) {
-        i=soundvol;
-        switch(wparam&65535) {
-        case SB_LEFT:
-            i=0;
-            break;
-        case SB_RIGHT:
-            i=256;
-            break;
-        case SB_LINELEFT:
-            i--;
-            break;
-        case SB_LINERIGHT:
-            i++;
-            break;
-        case SB_THUMBPOSITION:
-        case SB_THUMBTRACK:
-            i=wparam>>16;
-            break;
-        case SB_PAGELEFT:
-            i-=16;
-            break;
-        case SB_PAGERIGHT:
-            i+=16;
-        }
-        if(i<0) i=0;
-        if(i>256) i=256;
-        soundvol=i;
-        config->flag|=4;
-        volflag|=255;
-        si.cbSize=sizeof(si);
-        si.nPos=i;
-        si.fMask=SIF_POS;
-        SetScrollInfo((HWND)lparam,SB_CTL,&si,1);
-soundvolchg:
-        wsprintf(buffer,"%d%%",soundvol*100/256);
-        SetDlgItemText(win,IDC_STATIC2,buffer);
-    } else if(msg==WM_COMMAND) switch(wparam) {
-    case IDC_EDIT1|(EN_CHANGE<<16):
-updname:
-        i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        if(config->sprsetedit) j=0x1b; else j=255;
-        if(i>j || i<0) { SetDlgItemInt(win,IDC_EDIT1,j,0); break; }
-        config->namechg=1;
-        SetDlgItemText(win,IDC_EDIT2,sprname[i+config->sprsetedit]);
-        config->namechg=0;
-        break;
-    case IDC_EDIT2|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        config->flag|=1;
-        Updatesprites();
-        GetDlgItemText(win,IDC_EDIT2,sprname[i+config->sprsetedit],16);
-        Updatesprites();
-        break;
-    case IDC_EDIT3|(EN_CHANGE<<16):
-        i=GetDlgItemInt(win,IDC_EDIT3,0,0);
-        if(i>24 || i<0) { SetDlgItemInt(win,IDC_EDIT3,24,0); break; }
-        config->namechg=1;
-        SetDlgItemInt(win,IDC_EDIT4,midi_inst[i]&255,0);
-        SetDlgItemInt(win,IDC_EDIT5,midi_inst[i]>>8,0);
-        SetDlgItemInt(win,IDC_EDIT6,(char)(midi_trans[i]),1);
-        SetDlgItemInt(win,IDC_EDIT8,(char)(midi_trans[i]>>8),1);
-        config->namechg=0;
-        break;
-    case IDC_EDIT4|(EN_CHANGE<<16):
-    case IDC_EDIT5|(EN_CHANGE<<16):
-    case IDC_EDIT6|(EN_CHANGE<<16):
-    case IDC_EDIT8|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        i=GetDlgItemInt(win,IDC_EDIT3,0,0);
-        midi_inst[i]=GetDlgItemInt(win,IDC_EDIT4,0,0)+(GetDlgItemInt(win,IDC_EDIT5,0,0)<<8);
-        midi_trans[i]=(GetDlgItemInt(win,IDC_EDIT6,0,1)&255)+(GetDlgItemInt(win,IDC_EDIT8,0,1)<<8);
-        config->flag|=8;
-        break;
-    case IDC_EDIT9|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        GetDlgItemText(win,IDC_EDIT9,asmpath,MAX_PATH);
-        config->flag|=16;
-        break;
-    case IDC_RADIO1:
-        config->sprsetedit=0;
-        goto updname;
-    case IDC_RADIO3:
-        config->sprsetedit=256;
-        goto updname;
-    case IDCANCEL:
-        if(config->flag&1) {
-            Updatesprites();
-            memcpy(sprname,config->savespr,0x11c0);
-            Updatesprites();
-        }
-        
-        strcpy(asmpath,config->saveasmp);
-        
-        memcpy(midi_inst, config->inst, MIDI_ARR_BYTES);
-        memcpy(midi_trans, config->trans, MIDI_ARR_BYTES);
-        
-        soundvol=config->soundvol;
-        free(config);
-        EndDialog(win,0);
-        
-        break;
-    
-    case IDOK:
-        
-        cfg_flag |= config->flag;
-        
-        if(config->flag)
-            cfg_modf = 1;
-        
-        free(config);
-        
-        EndDialog(win,0);
-        
-        break;
-    }
-    else if(msg == WM_INITDIALOG)
-    {
-        config=malloc(sizeof(CONFIG));
-        config->sprsetedit=0;
-        config->namechg=1;
-        config->soundvol=soundvol;
-        config->flag=0;
-        memcpy(config->savespr,sprname,0x11c0);
-        memcpy(config->inst,midi_inst,100);
-        CheckDlgButton(win,IDC_RADIO1,BST_CHECKED);
-        SetDlgItemInt(win,IDC_EDIT1,0,0);
-        SetDlgItemInt(win,IDC_EDIT3,0,0);
-        SetDlgItemText(win,IDC_EDIT9,asmpath);
-        strcpy(config->saveasmp,asmpath);
-        config->namechg=0;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_POS|SIF_RANGE|SIF_PAGE;
-        si.nPos=soundvol;
-        si.nMin=0;
-        si.nMax=256;
-        si.nPage=16;
-        SetScrollInfo(GetDlgItem(win,IDC_SCROLLBAR1),SB_CTL,&si,0);
-        goto soundvolchg;
-    }
-    
-    return FALSE;
-}
 
 // =============================================================================
 
@@ -17117,39 +15012,6 @@ deflt:
     return 0;
 }
 
-long CALLBACK texteditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    TEXTEDIT*ed;
-    switch(msg) {
-    case WM_MDIACTIVATE:
-        activedoc=((TEXTEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->t_wnd=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(TEXTEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog(&textdlg,win,0,0,0,0,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
 long CALLBACK musbankproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     MUSEDIT *ed;
@@ -17278,7 +15140,8 @@ void Unloadsongs(FDOC*param)
 // for copying rooms.
 // Duproom (duplicate room)*************************************
 
-BOOL CALLBACK duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i, // source room/map
         j, // destination room/map
@@ -17350,20 +15213,7 @@ BOOL CALLBACK duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-//Duproom*************************************************************
-
 // =============================================================================
-
-void Updatepals(void)
-{
-    DUNGEDIT*ed = (DUNGEDIT*) firstgraph;
-    
-    while(ed)
-    {
-        SendMessage(ed->dlg,4002,0,0);
-        ed = (DUNGEDIT*)(ed->nextgraph);
-    }
-}
 
 long CALLBACK trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -17396,1682 +15246,6 @@ deflt:
     default:
         return DefMDIChildProc(win,msg,wparam,lparam);
     }
-    return 0;
-}
-
-// =============================================================================
-
-void AddMRU(char *f)
-{
-    int i;
-    
-    for(i=0;i<4;i++)
-    {
-        if(mrulist[i] && !_stricmp(mrulist[i],f))
-        {
-            f = mrulist[i];
-            
-            for( ; i; i--)
-                mrulist[i] = mrulist[i-1];
-            
-            mrulist[0] = f;
-            
-            goto foundmru;
-        }
-    }
-    
-    free(mrulist[3]);
-    
-    for(i = 3; i; i--)
-        mrulist[i] = mrulist[i-1];
-    
-    mrulist[0]=_strdup(f);
-    
-foundmru:
-    
-    cfg_flag |= CFG_MRU_LOADED;
-    
-    cfg_modf = 1;
-}
-
-void UpdMRU(void)
-{
-    int i;
-    
-    for(i=0;i<4;i++)
-    {
-        DeleteMenu(filemenu, ID_MRU1 + i, 0);
-        
-        if(mrulist[i])
-        {
-            if(!mruload)
-                AppendMenu(filemenu,MF_SEPARATOR,0,0);
-            
-            mruload=1;
-            
-            wsprintf(buffer,"%s\tCtrl+Alt+%d",mrulist[i],i+1);
-            
-            AppendMenu(filemenu, MF_STRING, ID_MRU1 + i, buffer);
-        }
-    }
-}
-
-// =============================================================================
-
-// window procedure for the main frame window
-LRESULT CALLBACK
-frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    CLIENTCREATESTRUCT ccs;
-    
-    OPENFILENAME ofn;
-    
-    HWND hc;
-    
-    FDOC *doc, *doc2;
-    
-    DUNGEDIT *ed;
-    
-    unsigned char *rom;
-    char *m;
-    
-    HANDLE h,h2;
-    MDICREATESTRUCT mdic;
-    
-    SAMPEDIT *sed;
-    ASMHACK *mod;
-    FILETIME tim;
-    
-    int i = 0,
-        j = 0,
-        k = 0,
-        l = 0;
-    
-    DWORD read_size  = 0;
-    DWORD write_size = 0;
-    
-    unsigned char *buf;
-    
-    switch(msg)
-    {
-    
-#if 0
-    case WM_NCCALCSIZE:
-        
-        if(wparam)
-        {
-            NCCALCSIZE_PARAMS * const params = (NCCALCSIZE_PARAMS*) lparam;
-            
-            LRESULT d_r = DefWindowProc(win, msg, wparam, lparam);
-            
-            params->rgrc[0].right  -= 32;
-            params->rgrc[0].bottom -= 32;
-            
-            return WVR_VALIDRECTS;
-        }
-        else
-        {
-            RECT * const r = (RECT*) lparam;
-            
-            r->right  -= 32;
-            r->bottom -= 32;
-            
-            return 0;
-        }
-        
-        break;
-    
-    case WM_NCPAINT:
-         
-        if(always)
-        {
-            return 1;
-        }
-        if(wparam == 1)
-        {
-            RECT const whole_rect = HM_GetWindowRect(win);
-            
-            HRGN const region = CreateRectRgnIndirect(&whole_rect);
-            
-            LRESULT result = DefWindowProc(win, msg, (HRGN) region, lparam);
-            
-            DeleteObject(region);
-            
-            return result;
-        }
-        
-        if( always)
-        {
-            RECT const whole_rect = HM_GetWindowRect(win);
-            
-            HRGN const region = (wparam == 1)
-                              ? CreateRectRgnIndirect(&whole_rect)
-                              : (HRGN) wparam;
-            
-            HDC const dc = GetDCEx(win,
-                                   region,
-                                   DCX_WINDOW  | DCX_INTERSECTRGN);
-            
-            DWORD region_size = GetRegionData(region, 1, NULL);
-            
-            RGNDATA * region_data = region_size
-                                  ? (RGNDATA*) calloc(1, region_size)
-                                  : NULL;
-            
-            if(region_data)
-            {
-                int i = 0;
-                
-                DWORD dummy = GetRegionData(region, region_size, region_data);
-
-                RECT * const rect_arr = (RECT*) region_data->Buffer;
-                
-                DWORD const rect_count = region_data->rdh.nCount;
-                
-                HDC const win_dc = GetWindowDC(win);
-                
-                // -----------------------------
-                
-                (void) dummy;
-                
-#if 1
-                DefWindowProc(win, msg, (HRGN) region, lparam);
-#else
-                for(i = 0; i < rect_count; i += 1)
-                {
-                    FillRect(win_dc, &rect_arr[i],
-                             blue_brush);
-                }
-#endif
-                
-                free(region_data);
-                
-                ReleaseDC(win, win_dc);
-                
-                region_data = 0;
-            }
-            
-            // Windows will deallocate it it was a specific set of rectangles
-            // rather than the whole window as a region.
-            if(wparam == 1)
-            {
-                DeleteObject(region);
-            }
-            
-            ReleaseDC(win, dc);
-        }
-        
-        return 0;
-#endif
-
-#if 1
-
-    case WM_VSCROLL:
-
-        if(always)
-        {
-            return DefFrameProc(win, clientwnd, msg, wparam, lparam);
-        }
-        
-        break;
-
-#endif
-
-#if 1
-    case WM_MOUSEWHEEL:
-
-        // A hacky load of shit, but it works... seemingly.
-        if(always)
-        {
-            HM_MouseWheelData CONST d = HM_GetMouseWheelData(wparam, lparam);
-            
-            unsigned const is_horiz = (d.m_control_key);
-            
-            int const  scroll_amount = d.m_distance > 0
-                                     ? SB_LINEUP : SB_LINEDOWN;
-            
-            SCROLLINFO const si = (is_horiz)
-                                ? HM_GetHorizScrollInfo(clientwnd)
-                                : HM_GetVertScrollInfo(clientwnd);
-            
-            unsigned scroll_msg = (is_horiz) ? WM_HSCROLL : WM_VSCROLL;
-            
-            WPARAM fake_wp = MAKEWPARAM(scroll_amount, 0);
-            
-            WPARAM const active_child =
-            (WPARAM) SendMessage(clientwnd,
-                                 WM_MDIGETACTIVE,
-                                 (WPARAM) NULL,
-                                 (LPARAM) NULL);
-            
-            // -----------------------------
-            
-            if( (si.nMax - si.nMin) == 0)
-            {
-                // Clearly no scrollbar would be visible in such cases.
-                // Could probably be handled more gracefully, but works.
-                return 0;
-            }
-            
-            if(active_child)
-            {
-                SendMessage(clientwnd, scroll_msg, fake_wp, HM_NullLP() );
-            
-                SendMessage(clientwnd, WM_MDIACTIVATE, active_child,
-                            HM_NullLP() );
-            
-                SendMessage((HWND) active_child,
-                            WM_NCACTIVATE,
-                            TRUE,
-                            0);
-            }
-            
-            return 0;
-        }
-        
-        break;
-#endif
-
-
-#if 1
-    case WM_SIZE:
-        
-        if(always)
-        {
-            LRESULT result = DefFrameProc(win, clientwnd, msg, wparam, lparam);
-            
-            if(debug_box)
-            {
-                RECT const r = HM_GetWindowRect(win);
-                
-                SetWindowPos(debug_box,
-                             NULL,
-                             r.right - 220, r.bottom - 60,
-                             0, 0,
-                             SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-            }
-            
-            return result;
-        }
-        
-        break;
-        
-#endif
-    
-#if 1
-    case WM_MOVE:
-
-        DefFrameProc(win, clientwnd, msg, wparam, lparam);
-        
-        if(debug_box)
-        {
-            RECT const r = HM_GetWindowRect(win);
-            
-            SetWindowPos(debug_box,
-                         NULL,
-                         r.right - 220, r.bottom - 60,
-                         0, 0,
-                         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-            
-        }
-        
-        break;
-#endif
-    
-    case WM_DISPLAYCHANGE:
-        
-        if(always)
-        {
-            HDC const dc = GetDC(framewnd);
-            
-            i = palmode;
-            
-            palmode = 0;
-            
-            if( GetDeviceCaps(dc, RASTERCAPS) & RC_PALETTE )
-                palmode = 1;
-            
-            ReleaseDC(framewnd, dc);
-        }
-        
-        if(palmode > i)
-        {
-            ed = firstgraph;
-            
-            while(ed)
-            {
-                Setpalmode(ed);
-                ed = ed->nextgraph;
-            }
-        }
-        else if(palmode < i)
-        {
-            ed = firstgraph;
-            
-            while(ed)
-            {
-                Setfullmode(ed);
-                ed = ed->nextgraph;
-            }
-        }
-        
-        break;
-    
-    case WM_QUERYNEWPALETTE:
-        if(!dispwnd)
-            break;
-        
-        Setpalette(win,dispwnd->hpal);
-        
-        return 1;
-    
-    case WM_PALETTECHANGED:
-        Updatepals();
-        
-        break;
-    
-/*  case WM_ACTIVATE:
-        if(disppal && (wparam&65535)) {
-            InvalidateRect(dispwnd,0,0);
-//          hc=GetDC(dispwnd);
-//          SelectPalette(hc,disppal,1);
-//          RealizePalette(hc);
-//          ReleaseDC(dispwnd,hc);
-        }
-        break;*/
-    
-    case WM_CREATE:
-        ccs.hWindowMenu=GetSubMenu(GetMenu(win),2);
-        ccs.idFirstChild=3600;
-        clientwnd=CreateWindowEx(0,"MDICLIENT",0,MDIS_ALLCHILDSTYLES|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN|WS_CHILD|WS_VISIBLE,0,0,0,0,win,(HMENU)3599,hinstance,(LPSTR)&ccs);
-        
-        break;
-    
-    case WM_CLOSE:
-        goto fileexit;
-    
-    case WM_COMMAND:
-        switch(wparam&65535)
-        {
-        
-        case ID_MRU1:
-        case ID_MRU2:
-        case ID_MRU3:
-        case ID_MRU4:
-            wparam = (wparam & 0xffff) - ID_MRU1;
-            
-            if(!mrulist[wparam])
-                break;
-            
-            doc = (FDOC*) malloc(sizeof(FDOC));
-            strcpy(doc->filename,mrulist[wparam]);
-            
-            goto openrom;
-        
-        case ID_Z3_ABOUT:
-            ShowDialog(hinstance,MAKEINTRESOURCE(IDD_DIALOG1),framewnd,aboutfunc,0);
-            
-            break;
-        
-        case ID_Z3_HELP:
-            SetCurrentDirectory(currdir);
-            WinHelp(framewnd,"Z3ED.HLP",HELP_CONTENTS,0);
-            
-            break;
-        
-fileexit:
-        case ID_Z3_EXIT:
-            doc=firstdoc;
-            
-            while(doc)
-            {
-                hc=doc->mdiwin;
-                doc2=doc->next;
-                
-                if(SendMessage(hc,WM_CLOSE,0,0))
-                    return 0;
-                
-                doc=doc2;
-            }
-            
-            PostQuitMessage(0);
-            
-            break;
-        
-        case ID_Z3_SAVEAS:
-            if(!activedoc)
-                break;
-            
-saveas:
-            ofn.lStructSize = sizeof(ofn);
-            ofn.hwndOwner=win;
-            ofn.hInstance=hinstance;
-            ofn.lpstrFilter="SNES roms\0*.SMC;*.SFC\0All files\0*.*\0";
-            ofn.lpstrCustomFilter=0;
-            ofn.nFilterIndex=1;
-            ofn.lpstrFile=activedoc->filename;
-            ofn.nMaxFile=MAX_PATH;
-            ofn.lpstrFileTitle=0;
-            ofn.lpstrInitialDir=0;
-            ofn.lpstrTitle="Save game";
-            ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_HIDEREADONLY;
-            ofn.lpstrDefExt="smc";
-            ofn.lpfnHook=0;
-            
-            if(!GetSaveFileName(&ofn))
-                return 1;
-        
-        case ID_Z3_SAVE:
-            
-            if(!activedoc)
-                break;
-            
-            if(!*activedoc->filename)
-                goto saveas;
-            
-            for(i=0;i<226;i++)
-            {
-                j = activedoc->blks[i].count;
-                
-                if(j != 0)
-                {
-                    activedoc->blks[i].count=1;
-                    Releaseblks(activedoc,i);
-                    Getblocks(activedoc,i);
-                    activedoc->blks[i].count=j;
-                }
-            }
-            
-            for(i=0;i<160;i++)
-            {
-                if(activedoc->overworld[i].win)
-                    Savemap((OVEREDIT*)GetWindowLong(activedoc->overworld[i].win,GWL_USERDATA));
-            }
-            
-            for(i=0;i<168;i++)
-            {
-                if(activedoc->ents[i])
-                    Saveroom((DUNGEDIT*)GetWindowLong(activedoc->ents[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<128;i++)
-            {
-                if(activedoc->pals[i])
-                    Savepal((PALEDIT*)GetWindowLong(activedoc->pals[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<2;i++)
-            {
-                if(activedoc->wmaps[i])
-                    Saveworldmap((WMAPEDIT*)GetWindowLong(activedoc->wmaps[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<14;i++)
-            {
-                if(activedoc->dmaps[i])
-                    Savedungmap((LMAPEDIT*)GetWindowLong(activedoc->dmaps[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<11;i++)
-            {
-                if(activedoc->tmaps[i])
-                    Savetmap((TMAPEDIT*)GetWindowLong(activedoc->tmaps[i],GWL_USERDATA));
-            }
-            
-            if(activedoc->perspwnd)
-                Savepersp((PERSPEDIT*) GetWindowLong(activedoc->perspwnd,GWL_USERDATA));
-            
-            Savesongs(activedoc);
-            Savetext(activedoc);
-            SaveOverlays(activedoc);
-            
-            if(activedoc->m_modf || activedoc->t_modf || activedoc->o_modf)
-                return 1;
-            
-            rom = activedoc->rom;
-            
-            *(int*)(rom + 0x64118) = activedoc->mapend2;
-            *(int*)(rom + 0x6411c) = activedoc->mapend;
-            *(int*)(rom + 0x17f80) = activedoc->roomend;
-            *(int*)(rom + 0x17f84) = activedoc->roomend2;
-            *(int*)(rom + 0x17f88) = activedoc->roomend3;
-            
-            // \note This is tagging the rom "Z3ED" in what the editor assumes
-            // is unused space. In a vanilla rom that is the case.
-            *(int*)(rom + 0x17f8c) = 0x4445335A;
-            
-            // \note Tagging it with the version number of Hyrule Magic,
-            // presumably.
-            *(int*)(rom + 0x17f90) = 962;
-            *(int*)(rom + 0x17f94) = 3;
-            *(int*)(rom + 0x17f98) = activedoc->gfxend;
-            *(short*)(rom + 0x4c298) = *(int*)(rom + 0x17f9c)=activedoc->dungspr;
-            *(int*)(rom + 0x17fa0) = activedoc->sprend;
-            
-            if(activedoc->nummod)
-            {
-                if(activedoc->p_modf)
-                {
-updatemods:
-                    if(Buildpatches(activedoc))
-                        return 1;
-                }
-                else
-                {
-                    mod = activedoc->modules;
-                    j = activedoc->nummod;
-                    
-                    for(i=0;i<j;i++,mod++)
-                    {
-                        h = CreateFile(mod->filename,GENERIC_READ,0,0,OPEN_EXISTING,0,0);
-                        GetFileTime(h,0,0,&tim);
-                        CloseHandle(h);
-                        
-                        __asm
-                        {
-                            mov eax,tim.dwLowDateTime
-                            mov edx,tim.dwHighDateTime
-                            mov ebx,activedoc
-                            sub eax,[ebx+FDOC.lastbuild]
-                            sbb edx,[ebx+FDOC.lastbuild+4]
-                            jnc updatemods
-                        }
-                        
-                        // if(tim.dwLowDateTime>activedoc->lastbuild.dwLowDateTime || tim.dwHighDateTime>activedoc->lastbuild.dwHighDateTime) goto updatemods;
-                    }
-                }
-            }
-            else
-                Removepatches(activedoc);
-            
-            put_32_le(rom + 0x17fa8, activedoc->sctend);
-            
-            put_16_le(rom + 0x17fac,
-                      (short) (activedoc->dmend - 0x8000) );
-            
-            put_32_le(rom + 0x17fae, activedoc->ovlend);
-            put_32_le(rom + 0x17fb2, activedoc->tmend1);
-            put_32_le(rom + 0x17fb6, activedoc->tmend2);
-            put_32_le(rom + 0x17fba, activedoc->tmend3);
-            put_32_le(rom + 0x17fbe, activedoc->oolend);
-            
-            if(activedoc->mapexp)
-                put_32_le(rom + 0x100000, activedoc->mapexp);
-            
-            h = CreateFile(activedoc->filename,
-                           GENERIC_WRITE,
-                           0,
-                           0,
-                           OPEN_ALWAYS,
-                           FILE_FLAG_SEQUENTIAL_SCAN,
-                           0);
-            
-            if(h == INVALID_HANDLE_VALUE)
-            {
-saveerror:
-                MessageBox(framewnd,"Unable to save","Bad error happened",MB_OK);
-                
-                return 1;
-            }
-            
-            m = strrchr(activedoc->filename,'.');
-            
-            if
-            (
-                ( ! m )
-             || strrchr(activedoc->filename, '\\') > m
-            )
-            {
-                m = activedoc->filename + strlen(activedoc->filename);
-            }
-            
-            l = *(int*)m;
-            
-            // Appears to attempt to append ".HMD" to the file path.
-            strcpy(m, ".HMD");
-            
-            if(activedoc->nummod)
-            {
-                h2=CreateFile("HMTEMP.DAT",GENERIC_WRITE,0,0,CREATE_ALWAYS,FILE_FLAG_SEQUENTIAL_SCAN,0);
-                
-                if(h2==(HANDLE)-1)
-                {
-                    *(int*)m=l;
-                    CloseHandle(h);
-                    
-                    goto saveerror;
-                }
-                
-                i='HMD0';
-                WriteFile(h2,&i,4,&write_size,0);
-                WriteFile(h2,&(activedoc->nummod),14,&write_size,0);
-                
-                for(i = 0; i < activedoc->numpatch; i++)
-                {
-                    WriteFile(h2,activedoc->patches+i,8,&write_size,0);
-                    
-                    WriteFile(h2,
-                              activedoc->patches[i].pv,
-                              activedoc->patches[i].len,
-                              &write_size,
-                              0);
-                }
-                
-                WriteFile(h2,activedoc->segs,activedoc->numseg<<2,&write_size,0);
-                mod = activedoc->modules;
-                
-                for(i=0;i<activedoc->nummod;i++,mod++)
-                {
-                    j = strlen(mod->filename);
-                    ((int*)buffer)[0] = j;
-                    ((int*)buffer)[1] = activedoc->modules[i].flag;
-                    
-                    WriteFile(h2,buffer,8,&write_size,0);
-                    WriteFile(h2,mod->filename,j,&write_size,0);
-                }
-                
-                CloseHandle(h2);
-                
-                if(!(rom[0x17fa4]&1))
-                {
-                    if(!MoveFile("HMTEMP.DAT",activedoc->filename))
-                    {
-                        if(GetLastError() == ERROR_ALREADY_EXISTS)
-                        {
-                            wsprintf(buffer,"%s exists already. Do you want to overwrite it?",activedoc->filename);
-                            
-                            if(MessageBox(framewnd,buffer,"Gigasoft Hyrule Magic",MB_YESNO)==IDYES)
-                                goto okay;
-                            else
-                            {
-othersaveerror:
-                                *(int*)m=l;
-                                DeleteFile("HMTEMP.DAT");
-                                CloseHandle(h);
-                                
-                                return 1;
-                            }
-                        }
-                        else
-                            goto othersaveerror;
-                    }
-                    
-                    goto okay2;
-                }
-                else
-                {
-okay:
-                    DeleteFile(activedoc->filename);
-                    
-                    if(!MoveFile("HMTEMP.DAT",activedoc->filename))
-                    {
-                        MessageBox(framewnd,"Unable to save hack database","Bad error happened",MB_OK);
-                        
-                        goto othersaveerror;
-                    }
-                }
-okay2:
-                rom[0x17fa4]|=1;
-            }
-            else
-            {
-                if(rom[0x17fa4]&1)
-                    DeleteFile(activedoc->filename);
-                
-                rom[0x17fa4]&=-2;
-            }
-            
-            *(int*)m=l;
-            
-            if(activedoc->withhead)
-            {
-                ZeroMemory(buffer,512);
-                
-                buffer[0] = -128;
-                buffer[8] = -86;
-                buffer[9] = -69;
-                buffer[10] = 4;
-                
-                WriteFile(h,buffer,512,&write_size,0);
-            }
-            
-            WriteFile(h, activedoc->rom, activedoc->fsize, &write_size, 0);
-            
-            SetEndOfFile(h);
-            CloseHandle(h);
-            activedoc->modf=0;
-            SetWindowText(activedoc->mdiwin,activedoc->filename);
-            AddMRU(activedoc->filename);
-            UpdMRU();
-            DrawMenuBar(framewnd);
-            
-            return 0;
-        
-        case ID_Z3_OPEN:
-            
-            // check if the shift key is down for some reason.
-            if(GetKeyState(VK_SHIFT) & 128)
-            {
-                // if there is no active document, stop.
-                if(!activedoc)
-                    break;
-                
-                // If the music data is loaded...
-                if(activedoc->m_loaded)
-                {
-                    // save the songs in the current document.
-                    Savesongs(activedoc);
-                    
-                    // if the music has been modified, get out...
-                    if(activedoc->m_modf)
-                        break;
-                    
-                    Unloadsongs(activedoc);
-                    Loadsongs(activedoc);
-                    
-                    // if the HWND handle for the third music bank is valid.
-                    if(activedoc->mbanks[3])
-                    {
-                        sed = ((SAMPEDIT*)GetWindowLong(activedoc->mbanks[3],GWL_USERDATA));
-                        sed->zw = activedoc->waves + sed->editsamp;
-                    }
-                }
-                
-                // if overlays are loaded
-                if(activedoc->o_loaded)
-                {
-                    // save the overlays of the active rom.
-                    SaveOverlays(activedoc);
-                    
-                    // if the overlays have been modified, exit.
-                    if(activedoc->o_modf)
-                    {
-                        // what this generally means is that the overlays didn't save
-                        // properly
-                        break;
-                    }
-                    
-                    Unloadovl(activedoc);
-                    LoadOverlays(activedoc);
-                }
-                
-                break;
-            }
-            
-            // allocate enough memory for the object.
-            doc = (FDOC*) malloc(sizeof(FDOC));
-            
-            if(!doc) // not enough memory.
-            {
-                MessageBox(framewnd,"No memory at all","Bad error happened",MB_OK);
-                
-                break;
-            }
-            
-            // ofn = open file name
-            ofn.lStructSize = sizeof(ofn);
-            ofn.hwndOwner = win;
-            ofn.hInstance = hinstance;
-            ofn.lpstrFilter = "SNES roms\0*.SMC;*.SFC\0All files\0*.*\0";
-            ofn.lpstrCustomFilter = 0;
-            ofn.nFilterIndex = 1;
-            ofn.lpstrFile = doc->filename;
-            doc->filename[0] = 0;
-            ofn.nMaxFile = MAX_PATH;
-            ofn.lpstrFileTitle = 0;
-            ofn.lpstrInitialDir = 0;
-            ofn.lpstrTitle = "Open game";
-            ofn.Flags = OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
-            ofn.lpstrDefExt = "smc";
-            ofn.lpfnHook = 0;
-            
-            if(!GetOpenFileName(&ofn))
-            {
-//              i=CommDlgExtendedError();
-//              if(i) {
-//                  wsprintf(buffer,"GUI error. Error: %08X",i);
-//                  MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-//              }
-                free(doc); break;
-            }
-openrom:
-            
-            // handles duplicate files already being open, by checking pointer values.
-            for(doc2 = firstdoc; doc2; doc2 = doc2->next)
-            {
-                if(!_stricmp(doc2->filename,doc->filename))
-                {
-                    free(doc);
-                    SendMessage(clientwnd,WM_MDIACTIVATE,(long)(doc2->mdiwin),0);
-                    
-                    return 0;
-                }
-            }
-            
-            // load the rom file
-            h = CreateFile(doc->filename,GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,0);
-            
-            if(h == INVALID_HANDLE_VALUE)
-            {
-                MessageBox(framewnd,"Unable to open file","Bad error happened",MB_OK);
-                free(doc);
-                
-                break;
-            }
-            
-            // j is the size of the file, passing the handle of the file, 
-            j = GetFileSize(h,0);
-            
-            //read the first four bytes of the file.
-            ReadFile(h,&i,4,&read_size,0);
-            
-            //these first four bytes have to match, apparently. 
-            //kind of primitive error checking...eh?
-            //for the curious, that is SEI, STZ $4200 in hex, backwards.
-            if(i != 0x42009c78)
-            {
-                //move the file's base offset up by 512 bytes if we detect a header.
-                SetFilePointer(h,512,0,0);
-                
-                // the filesize is now regarded as (size - header).
-                j -= 512;
-                
-                // as above, we note there is a header.
-                doc->withhead = 1;
-            }
-            else
-            {
-                // else leave it as is.
-                SetFilePointer(h,0,0,0);
-                
-                // and the file has no header.
-                doc->withhead = 0;
-            }
-            
-            // allocate a rom (buffer) the same size as the file.
-            rom = doc->rom = malloc(j);
-            
-            if(!rom)
-            {
-                MessageBox(framewnd,"Not enough memory.","Bad error happened",MB_OK);
-                CloseHandle(h);
-                free(doc);
-                
-                break;
-            }
-            
-            // set the internal file size variable (in an FDOC)
-            doc->fsize = j;
-            
-            // dump the file into the variable "rom".
-            ReadFile(h, rom, j, &read_size, 0);
-            CloseHandle(h);
-            
-            //this is LDA $2801, BEQ... another primitive file check (as though romhackers 
-            //would never change such things... >_> <_<
-            if( get_32_le(rom + 0x200) != 0xf00128ad)
-            {
-                MessageBox(framewnd,
-                           "Hey! This is not Zelda 3.",
-                           "Bad error happened",
-                           MB_OK);
-error:
-                free(rom);
-                free(doc);
-                
-                break;
-            }
-            
-            // these tell us where certain data structures end.
-            doc->mapend = 0x6410c;
-            doc->mapend2 = 0x5fe5e;
-            doc->roomend = 0xfff4e;
-            doc->roomend2 = 0x5372a;
-            doc->roomend3 = 0x1fff5;
-            doc->dungspr = 0x4d62e;
-            doc->sprend = 0x4ec9f;
-            doc->sctend = 0xdc894;
-            doc->ovlend = 0x271de;
-            doc->dmend = 0x57ce0;
-            doc->tmend1 = 0x66d7a;
-            doc->tmend2 = 0x75d31;
-            doc->oolend = 0x77b64;
-            
-            i = *(int*) (rom + 0x17f8c);
-            
-            if(i == 0x4445335A)
-            {
-                i = *(int*) (rom + 0x17f94);
-                k = *(int*) (rom + 0x17f90);
-            }
-            else
-            {
-                i = 0;
-                k = 0;
-            }
-            
-            if(k == 92)
-            {
-                rom[0x9bad] = 0x7e;
-                *(short*) (rom + 0x9bb2) = 0x229f;
-            }
-            
-            if(i > 3)
-            {
-                vererror_str[90] = ((k & 0xe000) >> 13) + 48;
-                wsprintf(buffer, vererror_str, k >> 16, k & 8191);
-                MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-                
-                goto error;
-            }
-            
-            if( i >= 3 ) if( rom[0x17fa4] & 1 )
-            {
-                // truncate to the last '.' (period) in the filename.
-                m = strrchr(doc->filename, '.');
-                
-                // comment later.
-                if( (!m) || strrchr(doc->filename, '\\') > m)
-                    //go to the end of the filenamme.
-                    m = doc->filename + strlen(doc->filename);
-                
-                l = *(int*)m; // what is the int value there?
-                // change the path extensions .HMD.
-                strcpy(m, ".HMD");
-                
-                h = CreateFile(doc->filename,
-                               GENERIC_READ,
-                               FILE_SHARE_READ,
-                               0,
-                               OPEN_EXISTING,
-                               FILE_FLAG_SEQUENTIAL_SCAN,
-                               0);
-                
-                if(h == (HANDLE) -1)
-                {
-                    wsprintf(buffer,"A required file, %s, is missing",doc->filename);
-errormsg:
-                    MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-                    
-                    goto error;
-                }
-                
-                ReadFile(h,&i,4,&read_size,0);
-                
-                if(i != 'HMD0')
-                {
-                    wsprintf(buffer,"%s has an invalid format.",doc->filename);
-                    
-                    goto errormsg;
-                }
-                
-                ReadFile(h,&(doc->nummod),14,&read_size,0);
-                
-                doc->patches = malloc(doc->numpatch*sizeof(PATCH));
-                
-                for(i = 0; i < doc->numpatch; i++)
-                {
-                    // read in the patches
-                    ReadFile(h,doc->patches+i,8,&read_size,0);
-                    doc->patches[i].pv=malloc(doc->patches[i].len);
-                    ReadFile(h,doc->patches[i].pv,doc->patches[i].len,&read_size,0);
-                }
-                
-                ReadFile(h,doc->segs,doc->numseg<<2,&read_size,0);
-                
-                mod = doc->modules = malloc(doc->nummod * sizeof(ASMHACK));
-                
-                for(i = 0; i < doc->nummod; i++, mod++)
-                {
-                    ReadFile(h,doc->modules+i,sizeof(ASMHACK),&read_size,0);
-                    
-                    k = (int) mod->filename;
-                    mod->filename = malloc(k + 1);
-                    
-                    ReadFile(h,mod->filename,k,&read_size,0);
-                    mod->filename[k]=0;
-                }
-                
-                CloseHandle(h);
-                
-                *(int*)m = l;
-            }
-            else
-            {
-nomod:
-                doc->lastbuild.dwLowDateTime=0;
-                doc->lastbuild.dwHighDateTime=0;
-                doc->numseg=doc->numpatch=doc->nummod=0;
-                doc->patches = 0;
-                doc->modules = 0;
-            }
-            else
-            {
-                *(int*) (rom + 0x17fa4) = 0;
-                
-                goto nomod;
-            }
-            
-            // if the file size is larger or equal to...
-            if(j >= 0x100004)
-                // the map expansion value is...
-                doc->mapexp = get_32_le(rom + 0x100000);
-            else
-                // otherwise, there is no expansion.
-                doc->mapexp = 0;
-            
-            i = *(int*) (rom + 0x6411c);
-            
-            // if this has been modified...
-            if(i > 0)
-                // assign the map ending bound.
-                doc->mapend = i;
-            
-            i = *(int*) (rom + 0x64118);
-            
-            if(i > 0)
-                doc->mapend2 = i; // similarly...
-            
-            i = *(int*) (rom + 0x17f80);
-            
-            if(i > 0)
-                doc->roomend = i;
-            
-            i = *(int*) (rom + 0x17f84);
-            
-            if(i > 0)
-                doc->roomend2 = i;
-            
-            i = *(int*) (rom + 0x17f88);
-            
-            if(i > 0)
-                doc->roomend3 = i;
-            
-            i = *(int*) (rom + 0x17f9c);
-            
-            if(i > 0)
-            {
-                doc->dungspr = *(int*) (rom + 0x17f9c);
-                doc->sprend = *(int*) (rom + 0x17fa0);
-            }
-            
-            // bank + HByte + LByte for something...
-            i = romaddr((rom[0x505e] << 16) + (rom[0x513d] << 8) + rom[0x521c]);
-            
-            for(;;)
-            {
-                j = rom[i++];
-                
-                if(j == 0xff)
-                    break;
-                
-                if(j >= 0xe0)
-                {
-                    k = ((j & 3) << 8) + rom[i++];
-                    l = (j & 28) >> 2;
-                }
-                else
-                {
-                    k = j & 31;
-                    l = j >> 5;
-                }
-                
-                switch(l)
-                {
-                case 0:
-                    i += k + 1;
-                    
-                    break;
-                
-                case 1: case 3:
-                    i++;
-                    
-                    break;
-                
-                default:
-                    i += 2;
-                }
-            }
-            
-            doc->gfxend = i;
-            
-            i = *(int*)(rom + 0x17fa8);
-            
-            if(i > 0)
-                doc->sctend = i;
-            
-            i = *(short*)(rom + 0x17fac);
-            
-            if(i != -1)
-                doc->dmend = i + 0x58000;
-            
-            i = *(int*) (rom + 0x17fae);
-            
-            if(i > 0)
-                doc->ovlend = i;
-            
-            i = *(int*) (rom + 0x17fb2);
-            
-            if(i > 0)
-            {
-                doc->tmend1 = i;
-                doc->tmend2 = *(int*) (rom + 0x17fb6);
-                doc->tmend3 = *(short*) (rom + 0x17fba) + 0x60000;
-            }
-            else
-            {
-                buf = malloc(0x100d);
-                
-                memcpy(buf, rom + 0x66359,0xfd);
-                memcpy(buf + 0xfd, rom + 0x661c8,0xe0);
-                memcpy(buf + 0x1dd, rom + 0x6653f,0xfd);
-                memcpy(buf + 0x2da, rom + 0x6668d,0x132);
-                memcpy(buf + 0x40c, rom + 0x65d6d,0x45b);
-                memcpy(buf + 0x867, rom + 0x662a8,0xb1);
-                memcpy(buf + 0x918, rom + 0x66456,0xe9);
-                memcpy(buf + 0xa01, rom + 0x6663c,0x51);
-                memcpy(buf + 0xa52, rom + 0x667bf,0x5bb);
-                memcpy(rom + 0x65d6d, buf, 0x40c);
-                memcpy(rom + 0x66179, buf + 0x40c, 0xc01);
-                
-                *(USHORT*)(rom + 0x64ed0) = 0xdd6c;
-                *(USHORT*)(rom + 0x64e5f) = 0xde6a;
-                *(USHORT*)(rom + 0x654c0) = 0xdf49;
-                *(USHORT*)(rom + 0x65148) = 0xe047;
-                *(USHORT*)(rom + 0x65292) = 0xe0f4;
-                
-                // \task look into these 32-bit constants.
-                *(int*)(rom + 0x137d) = 0xd4bf1b79;
-                *(USHORT*)(rom + 0x1381) = 0x856e;
-                *(int*)(rom + 0x1386) = 0xe5e702e1;
-                *(USHORT*)(rom + 0x138a)=0xe6e7;
-                
-                free(buf);
-                
-                doc->tmend3 = 0x66179;
-            }
-            
-            i = *(int*)(rom + 0x17fbe);
-            
-            if(i > 0)
-                doc->oolend = i;
-            
-            if(doc->mapexp == 0x100004)
-                if(!Changesize(doc,4097,0))
-                    goto error;
-            
-            if(doc->mapexp && doc->mapexp != 0x100080)
-            {
-                MessageBox(framewnd,"This ROM is corrupt.","Bad error happened",MB_OK);
-                goto error;
-            }
-            
-            for(j=0;j<5;j++)
-            {
-                for(i=0;i<64;i++)
-                {
-                    if(rom[0x125ec + i]!=i) Savesprites(doc,sprs[j]+i + 0x10000,0,0);
-                }
-            }
-            
-            mdic.szClass = "ZEDOC";
-            mdic.szTitle = doc->filename;
-            mdic.hOwner = hinstance;
-            mdic.x = mdic.y = mdic.cx=mdic.cy=CW_USEDEFAULT;
-            mdic.style = WS_OVERLAPPEDWINDOW|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
-            mdic.lParam = (long)doc;
-            hc = (HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
-            
-            if(!firstdoc)
-                firstdoc = doc;
-            
-            if(lastdoc)
-                lastdoc->next = doc;
-            
-            doc->prev = lastdoc;
-            doc->next = 0;
-            
-            lastdoc = doc;
-            
-            doc->modf = 0;
-            
-            SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
-            SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
-            
-            doc->mdiwin=hc;
-            
-            for(i=0;i<226;i++)
-                doc->blks[i].count = 0,doc->blks[i].buf = 0;
-            
-            for(i=0;i<160;i++)
-                doc->overworld[i].win = 0, doc->overworld[i].modf = 0;
-            
-            for(i=0;i<168;i++)
-                doc->ents[i] = 0;
-            
-            for(i=0;i<0x128;i++)
-                doc->dungs[i] = 0;
-            
-            for(i=0;i<PALNUM;i++)
-                doc->pals[i] = 0;
-            
-            for(i=0;i<14;i++)
-                doc->dmaps[i] = 0;
-            
-            for(i=0;i<11;i++)
-                doc->tmaps[i] = 0;
-            
-            for(i=0;i<4;i++)
-                doc->mbanks[i] = 0;
-            
-            doc->m_loaded = 0;
-            doc->t_loaded = 0;
-            doc->o_loaded = 0;
-            doc->t_wnd = 0;
-            doc->m_modf = 0;
-            doc->t_modf = 0;
-            doc->o_modf = 0;
-            doc->wmaps[0] = doc->wmaps[1] = 0;
-            doc->perspwnd = 0;
-            doc->hackwnd = 0;
-            doc->p_modf = 0;
-            
-            if(always)
-            {
-                HMENU const menu = GetMenu(framewnd);
-                
-                HMENU const submenu =
-                GetSubMenu(menu,
-                           GetMenuItemCount(menu) == 5 ? 0 : 1);
-                
-                EnableMenuItem(submenu, ID_Z3_SAVE, MF_ENABLED);
-                EnableMenuItem(submenu, ID_Z3_SAVEAS, MF_ENABLED);
-                EnableMenuItem(menu, GetMenuItemCount(menu) == 5 ? 1 : 2,
-                               MF_ENABLED | MF_BYPOSITION);
-            }
-            
-            AddMRU(doc->filename);
-            UpdMRU();
-            
-            DrawMenuBar(framewnd);
-            
-            break;
-        
-        case ID_FILE_SPRNAME:
-            
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG5,framewnd,editsprname,0);
-            
-            break;
-        
-        case ID_WINDOW_MDITILE:
-            SendMessage(clientwnd,WM_MDITILE,0,0);
-            break;
-        
-        case ID_WINDOW_MDICASCADE:
-            SendMessage(clientwnd,WM_MDICASCADE,0,0);
-            
-            break;
-        
-        case ID_WINDOW_MDIARRANGEICONS:
-            SendMessage(clientwnd,WM_MDIICONARRANGE,0,0);
-            
-            break;
-        
-        case ID_OPTION_DEVICE:
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG2,framewnd,seldevproc,0);
-            
-            break;
-        
-        case ID_OPTION_CLOSESOUND:
-            Exitsound();
-            
-            break;
-        
-        case ID_OPTION_CHANNEL1:
-        case ID_OPTION_CHANNEL2:
-        case ID_OPTION_CHANNEL3:
-        case ID_OPTION_CHANNEL4:
-        case ID_OPTION_CHANNEL5:
-        case ID_OPTION_CHANNEL6:
-        case ID_OPTION_CHANNEL7:
-        case ID_OPTION_CHANNEL8:
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                i = 1 << (wparam - ID_OPTION_CHANNEL1);
-                
-                activeflag ^= i;
-                
-                CheckMenuItem
-                (
-                    GetSubMenu
-                    (
-                        GetSubMenu
-                        (
-                            menu,
-                            GetMenuItemCount(menu) == 5 ? 3 : 4
-                        ),
-                        2
-                    ),
-                    wparam,
-                    (activeflag & i) ? MF_CHECKED : MF_UNCHECKED
-                );
-                
-                if((!(activeflag & i)) && sounddev >= 0x20000)
-                    midinoteoff(zchans + ((wparam & 65535) - ID_OPTION_CHANNEL1));
-            }
-            
-            break;
-        
-        case ID_OPTION_SNDINTERP:
-            
-            sndinterp = !sndinterp;
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                CheckMenuItem(GetSubMenu(menu,
-                                         GetMenuItemCount(menu) == 5 ? 3 : 4),
-                                         ID_OPTION_SNDINTERP,
-                                         sndinterp ? MF_CHECKED : MF_UNCHECKED);
-            }
-            
-            break;
-        
-        // \note Unused ID not currently referenced in menus or elsewhere.
-        case ID_OPTION_GBTNT:
-            
-            gbtnt = !gbtnt;
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                CheckMenuItem(GetSubMenu(menu,
-                                         GetMenuItemCount(menu) == 5 ? 3 : 4),
-                                         ID_OPTION_GBTNT,
-                                         gbtnt ? MF_CHECKED : MF_UNCHECKED);
-            }
-            
-            break;
-            
-        case ID_Z3_CUT:
-            SendMessage(GetFocus(),WM_CUT,0,0);
-            
-            break;
-            
-        case ID_Z3_COPY:
-            SendMessage(GetFocus(),WM_COPY,0,0);
-            
-            break;
-            
-        case ID_Z3_PASTE:
-            SendMessage(GetFocus(),WM_PASTE,0,0);
-            
-            break;
-            
-        case ID_EDITING_DELOVERITEM:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 128; i++)
-                ((unsigned short*) (rom + 0xdc2f9))[i] = 0xc3f9;
-            
-            *(short*) (rom + 0xdc3f9) = -1;
-            activedoc->sctend=0xdc3fb;
-            
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELDUNGITEM:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x140;i++)
-                ((unsigned short*) (rom + 0xdb69))[i] = 0xdde9;
-            
-            *(short*)(rom + 0xdde9)=-1;
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_DELOVERSPR:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x160;i++)
-                ((unsigned short*) (rom + 0x4c881))[i] = 0xcb41;
-            
-            rom[0x4cb41] = 0xff;
-            
-            memcpy(rom + 0x4cb42,
-                   rom + activedoc->dungspr,
-                   activedoc->sprend - activedoc->dungspr);
-            
-            for(i = 0; i < 0x128; i++)
-            {
-                addle16b_i(rom + 0x4cb42,
-                           i,
-                           (short) (0x4cb42 - activedoc->dungspr) );
-            }
-            
-            activedoc->sprend += 0x4cb42 - activedoc->dungspr;
-            activedoc->dungspr = 0x4cb42;
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELDUNGSPR:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            j = activedoc->dungspr;
-            
-            for(i = 0; i < 0x128; i++)
-            {
-                put_16_le_i(rom + j,
-                            i,
-                            (short) (j + 0x300));
-            }
-            
-            put_16_le(rom + j + 0x300, 0xff00);
-            
-            activedoc->sprend = j + 0x302;
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_DELBLOCKS:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x18c;i+=4)
-                *((short*) (rom + 0x271de + i)) = -1;
-            
-            activedoc->modf=1;
-            
-            for(i = 0; i < 0x128; i++)
-            {
-                if(activedoc->dungs[i])
-                {
-                    hc = GetDlgItem(activedoc->dungs[i], ID_DungEditWindow);
-                    Updatemap((DUNGEDIT*)GetWindowLong(hc,GWL_USERDATA));
-                    InvalidateRect(hc,0,0);
-                }
-            }
-            
-            break;
-        
-        case ID_EDITING_DELTORCH:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            if(always)
-            {
-                rom_ty const torches = rom + offsets.dungeon.torches;
-                
-                rom_ty const torch_count = (rom + offsets.dungeon.torch_count);
-                
-                stle16b(torches,     u16_neg1);
-                stle16b(torches + 2, u16_neg1);
-                
-                stle16b(torch_count, 4);
-            }
-            
-            
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELENT:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 129; i++)
-            {
-                stle16b_i(rom + 0xdb96f, i, u16_neg1);
-            }
-            
-        upddisp:
-            
-            activedoc->modf=1;
-            
-            for(i = 0; i < 160; i++)
-            {
-                if(activedoc->overworld[i].win)
-                {
-                    InvalidateRect(GetDlgItem(GetDlgItem(activedoc->overworld[i].win,2000),3001),0,0);
-                }
-            }
-            
-            break;
-        
-        case ID_EDITING_DELEXIT:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<79;i++)
-            {
-                rom[0x15e28 + i] = 255;
-                
-                put_16_le_i(rom + 0x15d8a, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELFLY:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 9; i++)
-            {
-                put_16_le_i(rom + 0x16ae5, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELWHIRL:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=9;i<17;i++)
-            {
-                put_16_le_i(rom + 0x16ae5, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELHOLES:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            memset(rom + 0xdb826,255,19);
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELPITS:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            memset(rom + 0x190c,255,114);
-            
-            break;
-        
-        case ID_EDIT_ROMPROPERTIES:
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG18,framewnd,rompropdlg,(long)activedoc);
-            
-            break;
-        
-        case ID_EDITING_CLEARDUNGS:
-            
-            for(i=0;i<320;i++)
-            {
-                door_ofs = 6;
-                buf = activedoc->rom+Changesize(activedoc,i+320,8);
-                
-                if(buf)
-                {
-                    *(int*)buf=-65535;
-                    *(int*)(buf+4)=-1;
-                }
-            }
-            
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_REPLACE:
-            
-            // we pass it this program, a pointer to the duplicator dialog, pass framewnd as the 
-            // owner window. duproom is the dialogue handling procedure, and active doc is
-            // a pointer to the currently active rom file.
-            ShowDialog(hinstance, (LPSTR) IDD_DIALOG20, framewnd, duproom, (long) activedoc);
-            
-            break;
-        }
-        
-    default:
-        
-        return DefFrameProc(win,clientwnd,msg,wparam,lparam);
-    }
-    
     return 0;
 }
 
@@ -19309,7 +15483,7 @@ LoadStdSpriteNamesFile(HM_FileStat const * const p_s)
     }
     else
     {
-        DWORD const size_alleged = get_32_le((uint8_t *) p_s->m_contents + 1);
+        DWORD const size_alleged = ldle32b((uint8_t *) p_s->m_contents + 1);
         
         // Claims to have more data than we read out.
         if( size_alleged > (p_s->m_file_size - 5) )
@@ -19530,7 +15704,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             // Number of bytes that are supposed to be in this configuration
             // section.
-            section_size = get_32_le(cfg_desc + 1);
+            section_size = ldle32b(cfg_desc + 1);
             
             if(section_size == 0)
             {
@@ -19646,7 +15820,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     if(section_size >= 2)
                     {
-                        soundvol = get_16_le(section_data);
+                        soundvol = ldle16b(section_data);
                         
                         l |= CFG_SNDVOL_LOADED;
                     }
@@ -19809,7 +15983,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             b2 = b = (unsigned char*) malloc(j + 5);
             *b2=0;
             
-            put_32_le(b2 + 1, j);
+            stle32b(b2 + 1, j);
             
             b2 += 5;
             
@@ -19854,7 +16028,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             b2[0] = 1;
             
-            put_32_le(b2 + 1, j + 1);
+            stle32b(b2 + 1, j + 1);
             
             // Write how many MRU entries follow. Note that this could be
             // zero, in which case the overall written out section is only
@@ -19892,9 +16066,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             desc[0] = 2;
             
-            put_32_le(desc + 1, 2);
+            stle32b(desc + 1, 2);
             
-            put_16_le(section, soundvol);
+            stle16b(section, soundvol);
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             WriteFile(h, section, 2, &write_bytes, 0);
@@ -19910,20 +16084,20 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             desc[0] = 3;
             
-            put_32_le(desc + 1, 100);
+            stle32b(desc + 1, 100);
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             
             for(i = 0; i < MIDI_ARR_WORDS; i += 1)
             {
-                put_16_le(entry, midi_inst[i]);
+                stle16b(entry, midi_inst[i]);
                 
                 WriteFile(h, entry, 2, &write_bytes, 0);
             }
             
             for(i = 0; i < MIDI_ARR_WORDS; i += 1)
             {
-                put_16_le(entry, midi_trans[i]);
+                stle16b(entry, midi_trans[i]);
                 
                 WriteFile(h, entry, 2, &write_bytes, 0);
             }
@@ -19933,7 +16107,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
         {
             desc[0] = 4;
             
-            put_32_le(desc + 1, strlen(asmpath) );
+            stle32b(desc + 1, strlen(asmpath) );
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);

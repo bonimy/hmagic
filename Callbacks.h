@@ -26,7 +26,12 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     // Root document window procedure.
     HM_DeclareWndProc(docproc);
-    
+
+// =============================================================================
+
+    // ... Super Dialog with the main tree control for the whole game.
+    HM_DeclareDlgProc(z3dlgproc);
+
 // =============================================================================
 
     // Dungeon-related procedures.
@@ -76,6 +81,10 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
     HM_DeclareWndProc(overproc);
 
 // =============================================================================
+
+
+    // Super Dialog procedure.
+    HM_DeclareDlgProc(textdlgproc);
 
     // Text-related window procedures.
     HM_DeclareWndProc(texteditproc);
@@ -149,6 +158,16 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
     HM_DeclareDlgProc(editsprname);
 
+    HM_DeclareDlgProc(editbosslocs);
+
+    HM_DeclareDlgProc(editvarious);
+
+    HM_DeclareDlgProc(aboutfunc);
+    
+    HM_DeclareDlgProc(seldevproc);
+
+    HM_DeclareDlgProc(duproom);
+   
     HM_DeclareDlgProc(rompropdlg);
 
 

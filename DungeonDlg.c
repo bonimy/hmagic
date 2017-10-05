@@ -1,15 +1,15 @@
 
-#include "DungeonEnum.h"
-
-// For ease of compiling.
 #include "structs.h"
+#include "prototypes.h"
+
+#include "HMagicUtility.h"
 
 #include "GdiObjects.h"
 
-#include "prototypes.h"
-
 #include "Wrappers.h"
 #include "Callbacks.h"
+
+#include "DungeonEnum.h"
 
 // =============================================================================
 
@@ -713,7 +713,7 @@ Saveroom(DUNGEDIT * const ed)
         
         Savedungsecret(ed->ew.doc, ed->mapnum, ed->sbuf, ed->ssize);
         
-        k = get_16_le(torch_count);
+        k = ldle16b(torch_count);
         
         if( is16b_neg1(torches) )
             k = 0;
@@ -733,7 +733,7 @@ Saveroom(DUNGEDIT * const ed)
                     break;
             }
             
-            if( get_16_le(torches + i) == ed->mapnum )
+            if( ldle16b(torches + i) == ed->mapnum )
             {
                 if(!ed->tsize)
                     j += 2;
@@ -798,10 +798,10 @@ Saveroom(DUNGEDIT * const ed)
         if(m != 0)
         {
             // some sort of upper bound.
-            int k = 0x28000 + get_16_le(rom + 0x27780);
+            int k = 0x28000 + ldle16b(rom + 0x27780);
             
             // some sort of lower bound.
-            int i = 0x28000 + get_16_le_i(rom + 0x27502, ed->mapnum);
+            int i = 0x28000 + ldle16b_i(rom + 0x27502, ed->mapnum);
             
             for(j = 0; j < 0x140; j++)
             {
@@ -809,7 +809,7 @@ Saveroom(DUNGEDIT * const ed)
                 if(j == ed->mapnum)
                     continue;
                 
-                if( 0x28000 + get_16_le_i(rom + 0x27502, j) == i )
+                if( 0x28000 + ldle16b_i(rom + 0x27502, j) == i )
                 {
                     char text_buf[0x100];
                     
@@ -853,7 +853,7 @@ changeroom:
             }
             
             // \task Should this actually be a signed load?
-            if( get_16_le(rom + 0x27780) + (i + n - k) > 0 )
+            if( ldle16b(rom + 0x27780) + (i + n - k) > 0 )
             {
                 MessageBox(framewnd,
                            "Not enough room for room header",
@@ -875,7 +875,7 @@ changeroom:
                     if
                     (
                         j != ed->mapnum
-                     && get_16_le_i(rom + 0x27502, j) + 0x28000 >= k
+                     && ldle16b_i(rom + 0x27502, j) + 0x28000 >= k
                     )
                     {
                         addle16b_i(rom + 0x27502, j, delta);

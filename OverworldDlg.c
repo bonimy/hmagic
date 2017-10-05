@@ -1,11 +1,12 @@
 
 #include "structs.h"
-
 #include "prototypes.h"
 
 #include "Wrappers.h"
 #include "GdiObjects.h"
 #include "Callbacks.h"
+
+#include "HMagicUtility.h"
 
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"

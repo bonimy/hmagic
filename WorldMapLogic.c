@@ -2,6 +2,8 @@
 #include "structs.h"
 #include "prototypes.h"
 
+#include "HMagicUtility.h"
+
 #include "WorldMapLogic.h"
 
 

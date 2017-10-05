@@ -1,13 +1,14 @@
 
 #include "structs.h"
+#include "prototypes.h"
 
 #include "GdiObjects.h"
+
+#include "HMagicUtility.h"
 
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"
 
-// For Paintblocks()
-#include "prototypes.h"
 
 #include "Wrappers.h"
 

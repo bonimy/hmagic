@@ -119,6 +119,11 @@
     <ClCompile Include="DungeonLogic.c" />
     <ClCompile Include="DungeonMap.c" />
     <ClCompile Include="DungonHeader.c" />
+    <ClCompile Include="HMagicConfigDlg.c" />
+    <ClCompile Include="HMagicFrame.c" />
+    <ClCompile Include="HMagicLogic.c" />
+    <ClCompile Include="HMagicUtility.c" />
+    <ClCompile Include="Map16_SearchDlg.c" />
     <ClCompile Include="OverworldDlg.c" />
     <ClCompile Include="OverworldEdit.c" />
     <ClCompile Include="OverworldFrame.c" />
@@ -127,6 +132,10 @@
     <ClCompile Include="PaletteFrame.c" />
     <ClCompile Include="PaletteSelector.c" />
     <ClCompile Include="RomProperties.c" />
+    <ClCompile Include="ScreenEditorLogic.c" />
+    <ClCompile Include="TextDlg.c" />
+    <ClCompile Include="TextFrame.c" />
+    <ClCompile Include="TextLogic.c" />
     <ClCompile Include="WindowClasses.c" />
     <ClCompile Include="WorldMapDisplay.c" />
     <ClCompile Include="WorldMapDlg.c" />
@@ -136,18 +145,25 @@
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>
     </ClCompile>
+    <ClCompile Include="Zelda3_Dialog.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Callbacks.h" />
     <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="DungeonLogic.h" />
     <ClInclude Include="GdiObjects.h" />
+    <ClInclude Include="HMagicEnum.h" />
+    <ClInclude Include="HMagicLogic.h" />
+    <ClInclude Include="HMagicUtility.h" />
     <ClInclude Include="OverworldEdit.h" />
     <ClInclude Include="OverworldEnum.h" />
     <ClInclude Include="PaletteEdit.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="ScreenEditorLogic.h" />
     <ClInclude Include="structs.h" />
+    <ClInclude Include="TextEnum.h" />
+    <ClInclude Include="TextLogic.h" />
     <ClInclude Include="WorldMapLogic.h" />
     <ClInclude Include="Wrappers.h" />
   </ItemGroup>

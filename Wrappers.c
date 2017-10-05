@@ -1,7 +1,9 @@
 
-#include "prototypes.h"
+    #include "prototypes.h"
 
-#include "Wrappers.h"
+    #include "Wrappers.h"
+
+    #include "HMagicUtility.h"
 
 // =============================================================================
 

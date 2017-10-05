@@ -3,6 +3,13 @@
 #include "prototypes.h"
 
 #include "GdiObjects.h"
+#include "Wrappers.h"
+
+#include "HMagicUtility.h"
+
+// =============================================================================
+
+HM_TextResource entrance_names;
 
 // =============================================================================
 
@@ -894,7 +901,7 @@ Drawmap(unsigned char  const * const rom,
                             dm_rd = (uint16_t*)
                             (
                                 rom + 0x1b52
-                              + get_16_le_i(rom + 0x4d9e, dm_l)
+                              + ldle16b_i(rom + 0x4d9e, dm_l)
                             );
                             
                             dm_wr=nbuf+dm_x;
@@ -918,7 +925,7 @@ Drawmap(unsigned char  const * const rom,
                             dm_rd = (uint16_t*)
                             (
                                 rom + 0x1b52
-                              + get_16_le_i(rom + 0x4d9e, dm_l)
+                              + ldle16b_i(rom + 0x4d9e, dm_l)
                             );
                             
                             m=4;
@@ -975,7 +982,7 @@ Drawmap(unsigned char  const * const rom,
                     default:
                         
                         dm_rd = (uint16_t*)
-                        ( rom + 0x1b52 + get_16_le_i(rom + 0x4e06, dm_l) );
+                        ( rom + 0x1b52 + ldle16b_i(rom + 0x4e06, dm_l) );
                         
                         if(dm_l<0x20) {
                             m=4;
@@ -1028,7 +1035,7 @@ Drawmap(unsigned char  const * const rom,
                             n=0;
                             
                             dm_rd = (uint16_t*)
-                            ( rom + 0x1b52 + get_16_le_i(rom + 0x4e66, dm_l) );
+                            ( rom + 0x1b52 + ldle16b_i(rom + 0x4e66, dm_l) );
                             
                             dm_wr=nbuf+dm_x;
                             m=3;
