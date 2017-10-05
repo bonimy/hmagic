@@ -1,10 +1,9 @@
 
+#include "structs.h"
+
 #include "GdiObjects.h"
 #include "Callbacks.h"
 #include "resource.h"
-
-extern int wver;
-extern int always;
 
 // =============================================================================
 

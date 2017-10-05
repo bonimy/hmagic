@@ -93,10 +93,6 @@ Getsecretstring(uint8_t const * const rom,
                 int             const i);
 
 void
-LoadHeader(DUNGEDIT * const ed,
-           int        const map);
-
-void
 InitBlksel8(HWND        hc,
             BLOCKSEL8 * bs,
             HPALETTE    hpal,
@@ -167,9 +163,6 @@ CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,
 
 void
 Unloadovl(FDOC *doc);
-
-void
-Unloadsongs(FDOC*param);
 
 void
 Stopsong(void);
@@ -261,8 +254,6 @@ Savetmap(TMAPEDIT*ed);
 void
 Savepersp(PERSPEDIT*ed);
 void
-Loadsongs(FDOC * const doc);
-void
 Savesongs(FDOC *doc);
 void
 SaveOverlays(FDOC * const doc);
@@ -271,10 +262,15 @@ Buildpatches(FDOC * const doc);
 void
 Removepatches(FDOC * const doc);
 void
+Initsound(void);
+void
 Exitsound(void);
 void
 midinoteoff(ZCHANNEL * const zch);
 void
 Updatesprites(void);
+
+void
+HM_RegisterClasses(HINSTANCE p_inst);
 
 #endif

@@ -21,6 +21,10 @@
             unsigned char  const *       map,
             DUNGEDIT             * const ed);
 
+    void
+    LoadHeader(DUNGEDIT * const ed,
+               int        const map);
+
 // =============================================================================
 
 #endif

@@ -542,7 +542,7 @@ OverworldMap_OnPaint(OVEREDIT * const ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     SCROLLINFO si;

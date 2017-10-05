@@ -2465,3 +2465,60 @@ end:
     ed->chestnum = ch;
     return map+2;
 }
+
+// =============================================================================
+
+void
+LoadHeader(DUNGEDIT * const ed,
+           int        const map)
+{
+    // we are passed in a dungeon editing window, and a map number (room number)
+    
+    uint8_t const * const rom = ed->ew.doc->rom;
+    
+    /// address of the header of the room indicated by parameter 'map'.
+    uint16_t i = 0;
+    
+    // upper limit for the header offset.
+    uint16_t m = 0;
+    
+    /// counter variable for looping through all dungeon rooms.
+    int j = 0;
+    
+    // size of the header
+    int l = 0;
+    
+    // -----------------------------
+    
+    i = ldle16b_i(rom + 0x27502, map);
+    
+    l = 14;
+    
+    // sort through all the other header offsets
+    for(j = 0; j < 0x140; j++)
+    {
+        // m gives the upper limit for the header.
+        // if is less than 14 bytes from i.
+        m = ldle16b_i(rom + 0x27502, j);
+        
+        // \task When merging with other branches, note that
+        // m and i are compared. If one is 16-bit, for example,
+        // and the other is 32-bit, that is a big potential
+        // problem.
+        if( (m > i) && (m < (i + 14) ) )
+        {
+            l = (m - i);
+            
+            break;
+        }
+    }
+    
+    // determine the size of the header
+    ed->hsize = l;
+    
+    // copy 14 bytes from the i offset.
+    memcpy(ed->hbuf, rom + rom_addr_split(0x04, i), 14);
+}
+
+// =============================================================================
+

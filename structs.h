@@ -864,6 +864,8 @@ extern char const * cur_sec;
 
 extern HWND debug_window;
 
+extern int wver;
+
 extern int const always;
 
 extern const short bg3blkofs[4];

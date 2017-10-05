@@ -112,6 +112,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AsmPatchFrame.c" />
+    <ClCompile Include="AudioFrame.c" />
+    <ClCompile Include="AudioLogic.c" />
     <ClCompile Include="ChooseObject.c" />
     <ClCompile Include="DocumentFrame.c" />
     <ClCompile Include="DungeonDlg.c" />
@@ -119,6 +122,9 @@
     <ClCompile Include="DungeonLogic.c" />
     <ClCompile Include="DungeonMap.c" />
     <ClCompile Include="DungonHeader.c" />
+    <ClCompile Include="DuplicateRoomDlg.c" />
+    <ClCompile Include="EditExitDlg.c" />
+    <ClCompile Include="EditWhirlpoolDlg.c" />
     <ClCompile Include="HMagicConfigDlg.c" />
     <ClCompile Include="HMagicFrame.c" />
     <ClCompile Include="HMagicLogic.c" />
@@ -132,7 +138,10 @@
     <ClCompile Include="PaletteFrame.c" />
     <ClCompile Include="PaletteSelector.c" />
     <ClCompile Include="RomProperties.c" />
+    <ClCompile Include="SampleEditDlg.c" />
     <ClCompile Include="ScreenEditorLogic.c" />
+    <ClCompile Include="SoundDevSelectDlg.c" />
+    <ClCompile Include="SuperDlg.c" />
     <ClCompile Include="TextDlg.c" />
     <ClCompile Include="TextFrame.c" />
     <ClCompile Include="TextLogic.c" />
@@ -148,6 +157,7 @@
     <ClCompile Include="Zelda3_Dialog.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AudioLogic.h" />
     <ClInclude Include="Callbacks.h" />
     <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="DungeonLogic.h" />

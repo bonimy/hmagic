@@ -49,6 +49,12 @@
     <Filter Include="Header Files\ScreenEditors">
       <UniqueIdentifier>{04c462b1-f565-4fdc-97a1-74049127cb14}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Audio">
+      <UniqueIdentifier>{f5b74ea8-f24d-4a6c-aeaf-78bf54d4fe35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Audio">
+      <UniqueIdentifier>{7430f52d-ff48-462a-97b2-29ad77e7c39d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -147,6 +153,33 @@
     <ClCompile Include="HMagicUtility.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AsmPatchFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DuplicateRoomDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SoundDevSelectDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioLogic.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="SuperDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SampleEditDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="EditExitDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="EditWhirlpoolDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioFrame.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -202,6 +235,9 @@
     </ClInclude>
     <ClInclude Include="HMagicUtility.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioLogic.h">
+      <Filter>Header Files\Audio</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

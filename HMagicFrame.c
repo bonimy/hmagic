@@ -14,9 +14,11 @@
 #include "DungeonEnum.h"
 #include "DungeonLogic.h"
 
+#include "PaletteEdit.h"
+
 #include "TextLogic.h"
 
-#include "PaletteEdit.h"
+#include "AudioLogic.h"
 
 #include "WorldMapLogic.h"
 

@@ -57,8 +57,6 @@ struct
     
     extern int gbtnt;
 
-    extern int sounddev;
-
     extern ZCHANNEL zchans[8];
 
     extern HMENU filemenu;

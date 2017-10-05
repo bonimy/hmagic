@@ -5,8 +5,10 @@
 
 #include "prototypes.h"
 
+// =============================================================================
+
 // This is a child frame window, but the "view" is the 'ed' window.
-long CALLBACK
+LRESULT CALLBACK
 dungproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     DUNGEDIT *ed;
@@ -114,3 +116,5 @@ deflt:
     
     return 0;
 }
+
+// =============================================================================

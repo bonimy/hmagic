@@ -19,6 +19,17 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 // =============================================================================
 
+#define HM_DeclareAudioProc(name) \
+void CALLBACK name(UINT p_timer_id, UINT p_msg, DWORD p_inst, \
+                   DWORD p_p1, DWORD p_p2)
+
+// =============================================================================
+
+#define HM_DeclareTimerProc(name) \
+void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
+
+// =============================================================================
+
     HM_DeclareWndProc(frameproc);
 
     // Root document window procedure.
@@ -82,7 +93,6 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 // =============================================================================
 
-
     // Super Dialog procedure.
     HM_DeclareDlgProc(textdlgproc);
 
@@ -91,8 +101,11 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 
 // =============================================================================
 
-    // Music-related window procedures.
+    // Audio-related window procedures.
     HM_DeclareWndProc(sampdispproc);
+
+    HM_DeclareDlgProc(sampdlgproc);
+
     HM_DeclareWndProc(trackeditproc);
     HM_DeclareWndProc(trackerproc);
 
@@ -170,7 +183,11 @@ BOOL CALLBACK name(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
    
     HM_DeclareDlgProc(rompropdlg);
 
+// =============================================================================
 
+    HM_DeclareAudioProc(midifunc);
+
+    HM_DeclareTimerProc(midifunc2);
 
 // =============================================================================
 

@@ -69,19 +69,18 @@
 #include "HMagicUtility.h"
 
 #include "OverworldEnum.h"
+#include "OverworldEdit.h"
 
 #include "DungeonEnum.h"
 #include "DungeonLogic.h"
 
-// For SavePal() mainly.
 #include "PaletteEdit.h"
-
-// For DrawBlock32() mainly.
-#include "OverworldEdit.h"
 
 // For text enumerations and Load / Save text functions.
 #include "TextEnum.h"
 #include "TextLogic.h"
+
+#include "AudioLogic.h"
 
 // \task Probably will move this once the worldmap super dialog procedure gets
 // its own file.
@@ -1439,164 +1438,6 @@ Updatesize(HWND win)
 
 // =============================================================================
 
-long CALLBACK superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j,k,l,m,w,h;
-    
-    SDCREATE *sdc;
-    SD_ENTRY *sde;
-    
-    HWND hc;
-    
-    switch(msg)
-    {
-    
-    case WM_NCCREATE:
-        goto deflt;
-    
-    case WM_GETMINMAXINFO:
-        sdc=(SDCREATE*)GetWindowLong(win,GWL_USERDATA);
-        
-        if(sdc)
-        {
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.x=sdc->dlgtemp->minw;
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.y=sdc->dlgtemp->minh;
-        }
-        
-        return 0;
-    
-    case WM_CREATE:
-        
-        SetWindowLong(win,
-                      GWL_USERDATA,
-                      (long)(sdc=((CREATESTRUCT*)lparam)->lpCreateParams));
-        
-        sde = sdc->dlgtemp->sde;
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = sdc->w-sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = sdc->w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = sdc->h-sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = sdc->h-sde[i].h-k;
-            else
-                m = sde[i].h;
-            
-            hc = CreateWindowEx(sde[i].exstyle,sde[i].cname,sde[i].caption,sde[i].style,j,k,l,m,win,(HMENU)(sde[i].id),hinstance,0);
-            
-            SendMessage(hc,
-                        WM_SETFONT,
-                        (WPARAM) GetStockObject(ANSI_VAR_FONT),
-                        0);
-        }
-        
-        sdc->win = win;
-        sdc->prev = lastdlg;
-        sdc->next = 0;
-        
-        if(lastdlg)
-            lastdlg->next = sdc;
-        else
-            firstdlg = sdc;
-        
-        lastdlg = sdc;
-        
-        sdc->dlgtemp->proc(win,WM_INITDIALOG,0,sdc->lparam);
-        
-        return 0;
-    
-    case WM_SIZE:
-        
-        sdc = (SDCREATE*) GetWindowLong(win,GWL_USERDATA);
-        sde = sdc->dlgtemp->sde;
-        
-        w = LOWORD(lparam);
-        h = HIWORD(lparam);
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = w - sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = h - sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = h - sde[i].h - k;
-            else
-                m = sde[i].h;
-            
-            SetWindowPos(GetDlgItem(win,sde[i].id),
-                         0,
-                         j,
-                         k,
-                         l,
-                         m,
-                         SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        }
-        
-        break;
-    
-    case WM_DESTROY:
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
-        sdc->dlgtemp->proc(win, msg, wparam, lparam);
-        
-        if(sdc->next)
-            sdc->next->prev = sdc->prev;
-        else
-            lastdlg = sdc->prev;
-        
-        if(sdc->prev)
-            sdc->prev->next = sdc->next;
-        else
-            firstdlg = sdc->next;
-        
-        free((SDCREATE*)sdc);
-        SetWindowLong(win,GWL_USERDATA,0);
-        
-        break;
-        
-    default:
-        
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!sdc)
-            goto deflt;
-        
-        SetWindowLong(win, DWL_MSGRESULT, 0);
-        
-        if( !sdc->dlgtemp->proc(win,msg,wparam,lparam) )
-deflt:
-            return DefWindowProc(win,msg,wparam,lparam);
-        else
-            return GetWindowLong(win,DWL_MSGRESULT);
-    }
-    
-    return 0;
-}
-
 /*void Dlgtopoint(int bw,int bh,RECT*rc)
 {
     rc->left=rc->left*bw>>2;
@@ -1910,20 +1751,6 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
 }
 
 //#define ShowDialog DialogBoxParam
-
-HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h, LPARAM lparam)
-{
-    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
-    
-    HWND hc;
-    sdc->dlgtemp = dlgtemp;
-    sdc->owner = owner;
-    sdc->lparam = lparam;
-    sdc->w = w;
-    sdc->h = h;
-    hc=CreateWindowEx(0,"SUPERDLG",dlgtemp->title,dlgtemp->style,x,y,w,h,owner,(HMENU)2000,hinstance,(void*)sdc);
-    return hc;
-}
 
 HWND
 Editwin(FDOC       * const doc,
@@ -3470,62 +3297,6 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
 
 // =============================================================================
 
-//LoadHeader
-
-void
-LoadHeader(DUNGEDIT * const ed,
-           int        const map)
-{
-    // we are passed in a dungeon editing window, and a map number (room number)
-    
-    uint8_t const * const rom = ed->ew.doc->rom;
-    
-    /// address of the header of the room indicated by parameter 'map'.
-    uint16_t i = 0;
-    
-    // upper limit for the header offset.
-    uint16_t m = 0;
-    
-    /// counter variable for looping through all dungeon rooms.
-    int j = 0;
-    
-    // size of the header
-    int l = 0;
-    
-    // -----------------------------
-    
-    i = ldle16b_i(rom + 0x27502, map);
-    
-    l = 14;
-    
-    // sort through all the other header offsets
-    for(j = 0; j < 0x140; j++)
-    {
-        // m gives the upper limit for the header.
-        // if is less than 14 bytes from i.
-        m = ldle16b_i(rom + 0x27502, j);
-        
-        // \task When merging with other branches, note that
-        // m and i are compared. If one is 16-bit, for example,
-        // and the other is 32-bit, that is a big potential
-        // problem.
-        if( (m > i) && (m < (i + 14) ) )
-        {
-            l = (m - i);
-            
-            break;
-        }
-    }
-    
-    // determine the size of the header
-    ed->hsize = l;
-    
-    // copy 14 bytes from the i offset.
-    memcpy(ed->hbuf, rom + rom_addr_split(0x04, i), 14);
-}
-
-// =============================================================================
-
 int
 Savesprites(FDOC          * const doc,
             int                   num,
@@ -4058,7 +3829,12 @@ error:
     memcpy(rom+addr+4,buf,len);
     return addr+len+4;
 }
-void Modifywaves(FDOC*doc,int es)
+
+// =============================================================================
+
+void
+Modifywaves(FDOC * const doc,
+            int    const es)
 {
     int i,j;
     ZWAVE*zw=doc->waves,*zw2=zw+es;
@@ -4696,39 +4472,18 @@ error:
     if(sr->editor) SendMessage(clientwnd,WM_MDIACTIVATE,(int)(sr->editor),0);
     else Editwin(doc,"TRACKEDIT","Song editor",l+(i<<16),sizeof(TRACKEDIT));
 }
-HWAVEOUT hwo;
 int sndinit=0;
 
-WAVEHDR *wbufs;
+FDOC * sounddoc=0;
 
-int wcurbuf;
-int wnumbufs;
-int wbuflen;
-FDOC*sounddoc=0;
-SONG*playedsong;
-int playedpatt;
-int envdat[]={
-    0,0x3ff00,0x54900,0x64d31,0x83216,0xaec33,0xc9a63,0x10624d,0x154725,
-    0x199999,0x202020,0x2B1DA4,0x333333,0x3F03F0,0x563B48,
-    0x667000,0x7E07E0,0xAAAAAA,0xCCCCCC,0x1000000,0x1555555,0x1999999,
-    0x2000000,0x2AAAAAA,0x3333333,0x4000000,0x5555555,0x6670000,
-    0x8000000,0xAAAAAAA,0x10000000,0x20000000
-};
-
-char midinst[16],midivol[16],midipan[16],midibank[16],midipbr[16];
-short midipb[16];
-ZMIXWAVE zwaves[8];
-short *wdata;
-int*mixbuf;
 int exitsound=0;
-int songtim,songspd=100;
-int songspdt=0,songspdd=0;
-unsigned short globvol,globvolt,globvold;
-short globtrans;
 
 //CRITICAL_SECTION cs_song;
 
-void Playpatt(void)
+// =============================================================================
+
+void
+Playpatt(void)
 {
     int i;
     ZCHANNEL*zch=zchans;
@@ -4736,18 +4491,8 @@ void Playpatt(void)
     sp=playedsong->tbl[playedpatt];
     for(i=0;i<8;i++) zch->playing=1,zch->tim=1,zch->loop=0,(zch++)->pos=sp->tbl[i];
 }
-const int freqvals[13]={0x157,0x16c,0x181,0x198,0x1b0,0x1ca,0x1e5,0x202,0x221,
-   0x241,0x263,0x288,0x2ae};
-const unsigned char nlength[8]={
-    0x32,0x65,0x7f,0x98,0xb2,0xcb,0xe5,0xfc
-};
-const unsigned char nvol[16]={
-    0x19,0x32,0x4c,0x65,0x72,0x7f,0x8c,0x98,0xa5,0xb2,0xbf,0xcb,0xd8,0xe5,0xf2,0xfc
-};
 
-unsigned char pbwayflag;
-
-unsigned char pbstatflag,pbflag,fqflag,noteflag;
+// =============================================================================
 
 void
 midinoteoff(ZCHANNEL * const zch)
@@ -4767,7 +4512,10 @@ midinoteoff(ZCHANNEL * const zch)
     zch->midnote = 0xff;
 }
 
-void Stopsong(void)
+// =============================================================================
+
+void
+Stopsong(void)
 {
     int i;
     ZMIXWAVE*zw=zwaves;
@@ -4776,752 +4524,11 @@ void Stopsong(void)
     for(i=0;i<8;i++) (zw++)->pflag=0;
     else for(i=0;i<8;i++) midinoteoff(zchans+i);
 }
-int mix_freq,mix_flags;
 
-int midi_timer;
-int ws_freq=22050,ws_bufs=24,ws_len=256,ws_flags=3;
-int miditimeres=5;
-int ms_tim1=5,ms_tim2=20,ms_tim3=5;
+// =============================================================================
 
-void Updatesong(void)
-{
-    ZCHANNEL*zch;
-    ZMIXWAVE*zw;
-    SCMD*sc;
-    ZINST*zi;
-    
-    HMIDIOUT const hmo = (HMIDIOUT) hwo;
-    
-    int i,j,k,l,m;
-    
-    unsigned char chf;
-    
-    if(!(sounddoc&&playedsong)) return;
-    
-    if(sounddev < 0x20000)
-    {
-        songtim += ( (songspd * wbuflen) << ( 3 - (mix_flags & 1) ) )
-                 / mix_freq;
-    }
-    else songtim+=songspd*ms_tim2/20;
-    for(;songtim>0;) {
-        k=0;
-        zch=zchans;
-        zw=zwaves;
-        chf=1;
-        for(i=0;i<8;i++,zch++,zw++,chf<<=1) {
-            if(!zch->playing) continue;
-            zch->tim--;
-            k=1;
-            if(zch->ntim) {
-                zch->ntim--;
-                if(!zch->ntim) {
-                    l=zch->pos;
-                    j=zch->loop;
-nexttime:
-                    if(l==-1) {
-                        j--;
-                        if(j<=0) goto endnote;
-                        l=zch->lopst;
-                        goto nexttime;
-                    }
-                    sc=sounddoc->scmd+l;
-                    if(sc->cmd!=0xc8) {
-                        if(sc->cmd==0xef) {
-                            l=*(short*)&(sc->p1);
-                            goto nexttime;
-                        }
-                        if(sc->cmd>=0xe0) {
-                            l=sc->next;
-                            goto nexttime;
-                        }
-endnote:
-                        if(sounddev<0x20000) zw->envs=3;
-                        else midinoteoff(zch);
-                    }
-                }
-            }
-            if(zch->volt) {
-                zch->volt--;
-                zch->vol+=zch->vold;
-                volflag|=chf;
-            }
-            if(zch->pant) {
-                zch->pant--;
-                zch->pan+=zch->pand;
-                volflag|=chf;
-            }
-            
-            if(pbflag&chf)
-            {
-                if(!zch->pbt) {
-                    if(!zch->pbtim) zch->pbtim++;
-                    if(pbstatflag&chf) pbflag&=~chf; else {
-                        zch->pbt=zch->pbtim+1;
-                        
-                        // What is the significance of this constant?
-                        // Midi vs. non-midi?
-                        if(sounddev < 0x20000)
-                        {
-                            zch->note = j = zch->pbdst;
-                            
-                            l = j % 12;
-                            
-                            j =
-                            (
-                                freqvals[l]
-                              + ( (freqvals[l + 1] - freqvals[l]) * zch->ft )
-                            ) << (j / 12 + 4);
-                            
-                            zch->fdlt = (j - zch->freq) / zch->pbtim;
-                        }
-                        else
-                        {
-                            j = zch->pbdst - zch->note;
-                            zch->midpbdlt = ((j << 13) / midipbr[zch->midch] + 0x2000 - zch->midpb) / zch->pbtim;
-                        }
-                        pbstatflag|=chf;
-                    }
-                } else if(pbstatflag&chf) {
-                    if(sounddev<0x20000)
-                        zch->freq+=zch->fdlt;
-                    else zch->midpb+=zch->midpbdlt;
-                    fqflag|=chf;
-                }
-                zch->pbt--;
-            }
-            if(zch->vibt) {
-                zch->vibt--;
-                zch->vibdep+=zch->vibdlt;
-            }
-            zch->vibcnt+=zch->vibspd;
-            if(zch->vibdlt) fqflag|=chf;
-            if(!zch->tim) {
-again:
-                if(zch->pos==-1) {zch->playing=0;continue;}
-                sc=sounddoc->scmd+zch->pos;
-                j=sc->next;
-                if(j==-1 && zch->loop) {
-                    zch->loop--;
-                    if(!zch->loop) zch->pos=zch->callpos;
-                    else zch->pos=zch->lopst;
-                } else {
-                    if(j>=sounddoc->m_size) zch->playing=0,zch->pos=-1;
-                    else zch->pos=j;
-                }
-                if(sc->flag&1) zch->t1=sc->b1;
-                if(!zch->t1) zch->t1=255;
-                if(sc->flag&2) {
-                    j=sc->b2;
-                    zch->nvol=nvol[j&15];
-                    zch->nlength=nlength[(j>>4)&7];
-                }
-                if(sc->cmd<0xc8) {
-                    zch->ftcopy=zch->ft;
-                    j=sc->cmd - 0x80 + zch->trans+globtrans;
-                    
-                    if(pbwayflag & chf)
-                        j -= zch->pbdlt;
-                    
-                    if(sounddev < 0x20000)
-                    {
-                        zi = sounddoc->insts+zch->wnum;
-                        l = j % 12;
-                        
-                        zch->freq =
-                        (
-                            freqvals[l]
-                          + ( (freqvals[l + 1] - freqvals[l]) * zch->ft >> 8 )
-                        ) << (j / 12 + 4);
-                        
-                        zw->pos=0;
-                        zw->wnum=zi->samp;
-                        zw->envclk=0;
-                        if(zi->ad&128) {
-                            zw->atk=((zi->ad<<1)&31)+1;
-                            zw->dec=((zi->ad>>3)&14)+16;
-                            zw->sus=zi->sr>>5;
-                            zw->rel=zi->sr&31;
-                            zw->envs=0;
-                            zw->envx=0;
-                        } else {
-                            zw->sus=7;
-                            zw->rel=0;
-                            zw->atk=31;
-                            zw->dec=0;
-                            zw->envs=0;
-                        }
-                        zw->envclklo=0;
-                        zw->pflag=1;
-                    } else {
-                        midinoteoff(zch);
-                        if(activeflag&chf) {
-                            if(zch->wnum>=25) goto nonote;
-                            zch->midch=(midi_inst[zch->wnum]&0x80)?9:i;
-                            
-                            zch->midnum = (unsigned char) zch->wnum;
-                            
-                            if(zch->midch<8)
-                            {
-                                if(midibank[zch->midch]!=midi_inst[zch->wnum]>>8) {
-                                    midibank[zch->midch]=midi_inst[zch->wnum]>>8;
-                                    midiOutShortMsg(hmo, 0xb0 + zch->midch|(midibank[zch->midch]<<16));
-                                }
-                                if(midinst[zch->midch]!=midi_inst[zch->wnum]) {
-                                    midinst[zch->midch] = (char) midi_inst[zch->wnum];
-                                    midiOutShortMsg(hmo, 0xc0 + zch->midch|(midinst[zch->midch]<<8));
-                                }
-                                l=j+(char)(midi_trans[zch->wnum])+24;
-                                if(l>=0 && l<0x80) zch->midnote=l;
-                                if(midi_trans[zch->wnum]&0xff00) {
-                                    l=j+(char)(midi_trans[zch->wnum]>>8)+24;
-                                    if(l>=0 && l<0x80) zch->midnote|=l<<8;
-                                }
-                            } else {
-                                l=midi_inst[zch->wnum]&0x7f;
-                                if(midinst[zch->midch]!=midi_inst[zch->wnum]>>8) {
-                                    midinst[zch->midch]=midi_inst[zch->wnum]>>8;
-                                    midiOutShortMsg(hmo, 0xc0 + zch->midch|(midinst[zch->midch]<<8));
-                                }
-                                zch->midnote=l;
-                                zch->pbdst=(j<<1)-midi_trans[zch->wnum];
-                                zch->pbtim=0;
-                                pbflag|=chf;
-                            }
-                            zch->midpb = 0x2000 + (zch->ftcopy<<5)/midipbr[zch->midch];
-                            noteflag|=chf;
-                        }
-                    }
-                    fqflag|=chf;
-                    zch->pbt=zch->pbdly;
-                    zch->note=j;
-                    zch->vibt=zch->vibtim;
-                    zch->vibcnt=0;
-                    zch->vibdep=0;
-                    pbstatflag&=~chf;
-                    if(zch->pbdlt) pbflag|=chf,zch->pbdst=zch->pbdlt+zch->note;
-                    volflag|=chf;
-nonote:;
-                }
-                if(sc->cmd == 0xc9)
-                {
-                    if(sounddev < 0x20000)
-                        zw->envs = 3;
-                    else
-                        midinoteoff(zch);
-                    
-                    pbflag&=~chf;
-                }
-                if(sc->cmd < 0xe0)
-                {
-                    zch->tim = zch->t1;
-                    zch->ntim = (zch->nlength*zch->tim)>>8;
-                    j = zch->pos;
-                    
-                    if(j != -1)
-                    {
-                        sc = sounddoc->scmd + j;
-                        
-                        if(sc->cmd == 249)
-                        {
-                            zch->pbt = sc->p1;
-                            zch->pbtim = sc->p2;
-                            zch->pbdst = sc->p3-128+zch->trans+globtrans;
-                            pbstatflag &= ~chf;
-                            pbflag |= chf;
-                        }
-                        
-                        j = sc->next;
-                    }
-                    
-                    if(sounddev >= 0x20000)
-                    {
-                        if(zch->midpb == 0x2000 && (pbflag & chf))
-                        {
-                            l = zch->pbdst-zch->note;
-                            
-                            if(l < 0)
-                                l = -l;
-                            
-                            while(j != -1)
-                            {
-                                sc = sounddoc->scmd + j;
-                                
-                                if(sc->cmd < 0xe0 && sc->cmd == 0xc8)
-                                    break;
-                                
-                                if(sc->cmd == 0xe9)
-                                {
-                                    m = sc->p3 - 128 + zch->trans + globtrans - zch->note;
-                                    
-                                    if(m < 0)
-                                        m = -m;
-                                    
-                                    if(m > l)
-                                        l = m;
-                                }
-                                
-                                j = sc->next;
-                            }
-                            
-                            l += 2;
-                            
-                            if(midipbr[zch->midch] != l)
-                            {
-                                midiOutShortMsg(hmo, 0x6b0 + zch->midch + (l << 16));
-                                midipbr[zch->midch] = l;
-                            }
-                        }
-                        
-                        if((pbflag & chf) && (!zch->pbtim))
-                        {
-                            pbflag &= ~chf;
-                            j = zch->pbdst - zch->note;
-                            zch->midpb = ((j << 13) + (zch->ftcopy << 5)) / midipbr[zch->midch] + 0x2000;
-                        }
-                    }
-                }
-                else
-                {
-                    switch(sc->cmd)
-                    {
-                    case 224:
-                        
-                        zch->wnum=sc->p1;
-                        
-                        break;
-                    
-                    case 225:
-                        
-                        zch->pan=sc->p1<<8;
-                        volflag|=chf;
-                        
-                        break;
-                    
-                    case 226:
-                        
-                        j=sc->p1+1;
-                        zch->pant=j;
-                        zch->pand=(((sc->p2<<8)-zch->pan)/j);
-                        
-                        break;
-                    case 227:
-                        zch->vibtim=sc->p1+1;
-                        zch->vibspd=sc->p2;
-                        zch->vibdlt=(sc->p3<<8)/zch->vibtim;
-                        break;
-                    case 229:
-                        globvol=sc->p1<<8;
-                        break;
-                    case 230:
-                        j=sc->p1+1;
-                        globvolt=j;
-                        globvold=((sc->p2<<8)-globvol)/j;
-                        volflag|=chf;
-                        break;
-                    case 231:
-                        songspd=sc->p1<<8;
-                        break;
-                    case 232:
-                        j=sc->p1+1;
-                        songspdt=j;
-                        songspdd=((sc->p2<<8)-songspd)/j;
-                        break;
-                    case 233:
-                        globtrans=(char)sc->p1;
-                        break;
-                    case 234:
-                        zch->trans=sc->p1;
-                        break;
-                    case 237:
-                        zch->vol=sc->p1<<8;
-                        volflag|=chf;
-                        break;
-                    case 238:
-                        j=sc->p1+1;
-                        zch->volt=j;
-                        zch->vold=((sc->p2<<8)-zch->vol)/j;
-                        volflag|=chf;
-                        break;
-                    case 239:
-                        if(*(unsigned short*)&(sc->p1)>=sounddoc->m_size) break;
-                        zch->callpos=zch->pos;
-                        zch->lopst=zch->pos=*(unsigned short*)&(sc->p1);
-                        if(zch->pos>=sounddoc->m_size) zch->playing=0,zch->pos=zch->lopst=0;
-                        zch->loop=sc->p3;
-                        break;
-                    case 241:
-                        zch->pbdly=sc->p1;
-                        zch->pbtim=sc->p2;
-                        zch->pbdlt=sc->p3;
-                        pbwayflag&=~chf;
-                        break;
-                    case 242:
-                        zch->pbdly=sc->p1;
-                        zch->pbtim=sc->p2;
-                        zch->pbdlt=sc->p3;
-                        pbwayflag|=chf;
-                        break;
-                    case 244:
-                        zch->ft=sc->p1;
-                        break;
-                    }
-                    goto again;
-                }
-            }
-            if(volflag&chf)
-            {
-                volflag&=~chf;
-                if(sounddev<0x20000) {
-                    zw->vol1 = 0x19999 * (zch->nvol*zch->vol*((zch->pan>>8))>>22)>>16;
-                    zw->vol2=(0x19999 * ((zch->nvol*zch->vol*(20-((zch->pan>>8)))>>22))>>16);
-                } else {
-                    l=((zch->vol>>9)*globvol>>16)*soundvol>>8;
-                    if(l!=midivol[zch->midch]) {
-                        midivol[zch->midch]=l;
-                        midiOutShortMsg(hmo,(0x7b0 + zch->midch)|(l<<16));
-                    }
-                    l=((0x1400 - zch->pan) * 0x666)>>16;
-                    if(l!=midipan[zch->midch]) {
-                        midipan[zch->midch]=l;
-                        midiOutShortMsg(hmo,(0xab0 + zch->midch)|(l<<16));
-                    }
-                }
-            }
-            if(fqflag&chf) {
-                fqflag&=~chf;
-                if(sounddev<0x20000) {
-                    zi=sounddoc->insts+zch->wnum;
-                    l=zch->freq*((zi->multhi<<8)+zi->multlo)>>14;
-                    if(zch->vibdep) if(zch->vibcnt<128)
-                        l=l*(65536+(zch->vibdep*(zch->vibcnt-64)>>11))>>16;
-                    else l=l*(65536+(zch->vibdep*(191-zch->vibcnt)>>11))>>16;
-                    zw->freq=l;
-                } else {
-                    l=zch->midpb;
-                    if(zch->vibdep) if(zch->vibcnt<128)
-                    l+=(zch->vibdep*(zch->vibcnt-64)>>10)/midipbr[zch->midch];
-                    else l+=(zch->vibdep*(191-zch->vibcnt)>>10)/midipbr[zch->midch];
-                    if(l!=midipb[zch->midch]) {
-                        midipb[zch->midch]=l;
-                        midiOutShortMsg(hmo, 0xe0 + zch->midch+((l&0x7f)<<8)+((l&0x3f80)<<9));
-                    }
-                }
-            }
-            if(noteflag&chf) {
-                noteflag&=~chf;
-                if(zch->midnote!=0xff) {
-                    midiOutShortMsg(hmo, 0x90 + zch->midch|(zch->midnote<<8)|((zch->nvol<<15)&0x7f0000));
-                    if(zch->midnote&0xff00)
-                    midiOutShortMsg(hmo, 0x90 + zch->midch|(zch->midnote&0xff00)|((zch->nvol<<15)&0x7f0000));
-                }
-            }
-        }
-        
-        if(songspdt)
-        {
-            songspdt--;
-            songspd += songspdd;
-        }
-        
-        if(globvolt)
-        {
-            globvolt--;
-            globvol += globvold;
-        }
-        
-        if(!k)
-        {
-            playedpatt++;
-            if(playedpatt>=playedsong->numparts) if(playedsong->flag&2) playedpatt=playedsong->lopst; else {Stopsong();break;}
-            if(playedpatt>=playedsong->numparts) {Stopsong();break;}
-            Playpatt();
-        } else songtim-=6100;
-    }
-}
-void Playsong(FDOC*doc,int num)
-{
-    ZCHANNEL*zch=zchans;
-    int i;
-//  EnterCriticalSection(&cs_song);
-    Stopsong();
-    playedsong=doc->songs[num];
-    for(i=0;i<8;i++) {
-        zch->pand=zch->pant=zch->volt=zch->vold=zch->vibtim=0;
-        zch->vibdep=zch->vibdlt=zch->pbdlt=0;
-        zch->vol=65535;
-        zch->pan=2048;
-        zch->midpb=0x2000;
-        zch->midch=i;
-        zch->trans=0;
-        zch->ft=0;
-        zch->t1=255;
-        zch++;
-    }
-    songspd=5500;
-    songtim=0;
-    songspdt=0;
-    globvol=65535;
-    globvolt=0;
-    globtrans=0;
-    playedpatt=0;
-    volflag=pbflag=0;
-    sounddoc=doc;
-    Playpatt();
-//  LeaveCriticalSection(&cs_song);
-}
-
-int soundthr=0;
-
-void Mixbuffer(void)
-{
-    static int i,j,k,l,m,n,o;
-    ZMIXWAVE*zmw=zwaves;
-    ZWAVE*zw;
-    short chf=1;
-    int*b;
-    short*c;
-    unsigned char*d;
-    static char v1,v2;
-    
-    // \task Nitpicky, but why are all these static. Just makes things even
-    // less re-entrant for no apparent reason.
-    static unsigned short f;
-    static unsigned envx,
-                    envclk,
-                    envclklo,
-                    envclkadd,
-                    envmul;
-    
-    // if(soundthr) EnterCriticalSection(&cs_song);
-    
-    Updatesong();
-    ZeroMemory(mixbuf,wbuflen<<2);
-    envmul = ( wbuflen << ( 16 - (mix_flags & 1) ) ) / mix_freq << 16;
-    for(i=0;i<8;i++,zmw++,chf<<=1) {
-        if(!(activeflag&chf)) continue;
-        if(!zmw->pflag) continue;
-        n=zmw->wnum;
-        if(n<0 || n>=sounddoc->numwave) continue;
-        zw=sounddoc->waves+n;
-        b=mixbuf;
-        j=zmw->pos;
-        c=zw->buf;
-        envx=zmw->envx;
-        envclk=zmw->envclk;
-        envclklo=zmw->envclklo;
-        switch(zmw->envs)
-        {
-        
-        case 0:
-            envclkadd=envdat[zmw->atk];
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm adc edx,edx
-            __asm add envx,edx
-            
-            if(envx > 0xfe0000)
-            {
-                envx = 0xfe0000;
-                envclklo = 0;
-                
-                if(zmw->sus == 7)
-                    zmw->envs = 2;
-                else
-                    zmw->envs = 1;
-            }
-            
-            break;
-        
-        case 1:
-            
-            envclkadd=envdat[zmw->dec];
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm adc envclk,edx
-            
-            while(envclk > 0x20000)
-            {
-                envclk -= 0x20000;
-                envx -= envx >> 8;
-            }
-            
-            if(envx < (unsigned int) (zmw->sus << 21))
-            {
-                envx = zmw->sus << 21;
-                envclklo = 0;
-                zmw->envs = 2;
-            }
-            
-            break;
-        
-        case 2:
-            envclkadd=envdat[zmw->rel];
-            
-#if 1
-            __asm mov eax, envclkadd
-            __asm mov edx, envmul
-            __asm imul edx
-            __asm add envclklo, eax
-            __asm adc envclk, edx
-#else
-            // \task Not exactly equivalent. does carry really matter here?
-            // Do regression test.
-            {
-                uint64_t w = envclkadd;
-                uint64_t x = envmul;
-                uint64_t y = envclklo;
-                uint64_t z = ( (uint64_t) envclk ) << 32;
-                
-                uint64_t a = (w * x);
-                uint64_t b = (y | z) + a;
-                
-                envclklo = ( 0xffffffff &        b  );
-                envclk   = ( 0xffffffff & (b >> 32) );
-            }
-#endif
-            
-            while(envclk > 0x20000)
-            {
-                envclk -= 0x20000,
-                envx -= envx >> 8;
-            }
-            
-            break;
-        
-        case 3:
-            envclkadd=envdat[0x1f]>>1;
-            
-#if 1
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm sbb envx,edx
-            
-#else
-            // \task not exactly equivalent? (sbb vs. sub) Do regression test.
-            {
-                signed borrow = 0;
-                
-                int32_t a = (envclkadd * envmul);
-                
-                envclklo += a;
-                
-                envx -= (envmul - borrow);
-            }
-#endif
-            
-            if(envx>=0x80000000) {
-                zmw->pflag=0;
-                envx=0;
-            }
-            break;
-        }
-        zmw->envx=envx;
-        zmw->envclk=envclk;
-        zmw->envclklo=envclklo;
-        v1=((zmw->vol1*(envx>>16)>>8)*globvol>>16)*soundvol>>8;
-        v2=((zmw->vol2*(envx>>16)>>8)*globvol>>16)*soundvol>>8;
-        f=(zmw->freq<<12)/mix_freq;
-        k=wbuflen;
-        if(zw->lopst<zw->end) l=zw->lopst<<12; else l=0;
-        m=zw->end<<12;
-        if(!m) continue;
-        if(mix_flags&1) {
-            k>>=1;
-            if(sndinterp) {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    *(b++)+=o*v2;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    *(b++)+=o*v2;
-                    j+=f;
-                }
-            } else {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    *(b++)+=c[j>>12]*v1;
-                    *(b++)+=c[j>>12]*v2;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    *(b++)+=c[j>>12]*v1;
-                    *(b++)+=c[j>>12]*v2;
-                    j+=f;
-                }
-            }
-        } else {
-            v1 = (v1 + v2) >> 1;
-            if(sndinterp) {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    j+=f;
-                }
-            } else {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    *(b++)+=c[j>>12]*v1;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    *(b++)+=c[j>>12]*v1;
-                    j+=f;
-                }
-            }
-        }
-        zmw->pos=j;
-    }
-    
-    // if(soundthr) LeaveCriticalSection(&cs_song);
-    
-    k = wbuflen;
-    b = mixbuf;
-    
-    if(mix_flags & 2)
-    {
-        c = wdata + (wcurbuf * wbuflen);
-        
-        while(k--)
-        {
-            *(c++) = ( *(b++) ) >> 7;
-        }
-    }
-    else
-    {
-        d = (uint8_t*) ( (wdata) + (wcurbuf * wbuflen) );
-        
-        while(k--)
-        {
-            *(d++) = ( (*(b++) ) >> 15 ) ^ 0x80;
-        }
-    }
-}
-
-HANDLE wave_end;
-
-void CALLBACK midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+void CALLBACK
+midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 {
     (void) timerid, msg, inst, p1, p2;
     
@@ -5535,7 +4542,9 @@ void CALLBACK midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
     }
     Updatesong();
 }
-void CALLBACK midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
+
+void CALLBACK
+midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
 {
     (void) win, msg, timerid, systime;
     
@@ -5545,7 +4554,8 @@ void CALLBACK midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
     Updatesong();
 }
 
-int CALLBACK soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+int CALLBACK
+soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 {
     int r;
     
@@ -5653,163 +4663,6 @@ void CALLBACK testfunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 }
 #pragma code_seg()
 #pragma data_seg()*/
-
-void Initsound(void)
-{
-    int n,sh;
-    
-    WAVEFORMATEX wfx;
-    WAVEHDR *wh;
-    
-    char *err;
-    const unsigned char blkal[4]={1,2,2,4};
-    
-    if(sndinit)
-        Exitsound();
-    
-    if((sounddev >> 16) == 2)
-    {
-        HMIDIOUT hmo;
-        
-        n = midiOutOpen(&hmo, sounddev - 0x20001, 0, 0, 0);
-        
-        if(n)
-            goto openerror;
-        
-        hwo = (HWAVEOUT) hmo;
-        
-        for(n = 0; n < 16; n++)
-        {
-            midinst[n] = midivol[n]=midipan[n]=midibank[n]=255;
-            midipbr[n] = 2;
-            midipb[n] = 65535;
-            midiOutShortMsg(hmo, 0x64b0 + n);
-            midiOutShortMsg(hmo, 0x65b0 + n);
-            midiOutShortMsg(hmo, 0x206b0 + n);
-        }
-        
-        noteflag = 0;
-        
-        for(n = 0; n < 8; n++)
-            zchans[n].midnote = 0xff;
-        
-        if(wver)
-        {
-//          miditimeres=ms_tim1;
-//          timeBeginPeriod(miditimeres);
-//          midi_timer=timeSetEvent(ms_tim2,ms_tim3,testfunc,0,TIME_PERIODIC);
-            
-            midi_timer=SetTimer(framewnd,1,ms_tim2,(TIMERPROC)midifunc2);
-        }
-        else
-        {
-            miditimeres = ms_tim1;
-            timeBeginPeriod(miditimeres);
-            midi_timer=timeSetEvent(ms_tim2,ms_tim3,midifunc,0,TIME_PERIODIC);
-            soundthr = 1;
-        }
-        
-        if(!midi_timer)
-        {
-            wsprintf(buffer,"Can't initialize timer: %08X",GetLastError());
-            MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-            
-            if(!wver)
-                timeEndPeriod(miditimeres);
-            
-            midiOutClose(hmo);
-            
-            return;
-        }
-        
-//      InitializeCriticalSection(&cs_song);
-        
-        sndinit = 1;
-        
-        goto endinit;
-    }
-
-    soundthr=0;
-//  ht=CreateThread(0,0,soundfunc,0,0,&sndthread);
-//  if(ht) CloseHandle(ht);
-    wbuflen=ws_len<<(ws_flags&1);
-    sh=(ws_flags>>1);
-    wfx.wFormatTag=1;
-    wfx.nChannels=(ws_flags&1)+1;
-    wfx.nSamplesPerSec=ws_freq;
-    wfx.nAvgBytesPerSec = ws_freq << ( sh + ( (ws_flags & 2) >> 1 ) );
-    wfx.nBlockAlign=blkal[ws_flags];
-    wfx.wBitsPerSample=(ws_flags&2)?16:8;
-    wfx.cbSize=0;
-    wnumbufs=ws_bufs;
-//  if(ht) n=waveOutOpen(&hwo,sounddev - 0x10002,&wfx,sndthread,0,CALLBACK_THREAD),soundthr=1;
-/*  else*/
-    
-    n = waveOutOpen(&hwo,
-                    sounddev - 0x10002,
-                    &wfx,
-                    (int) soundproc,
-                    0,
-                    CALLBACK_FUNCTION);
-    
-    if(n)
-    {
-openerror:
-        switch(n) {
-        case MIDIERR_NODEVICE:
-            err="No MIDI port was found.";
-            break;
-        case MMSYSERR_ALLOCATED:
-            err="Already in use";
-            break;
-        case MMSYSERR_BADDEVICEID:
-            err="The device was removed";
-            break;
-        case MMSYSERR_NODRIVER:
-            err="No driver found";
-            break;
-        case MMSYSERR_NOMEM:
-            err="Not enough memory";
-            break;
-        case WAVERR_BADFORMAT:
-            err="Unsupported playback quality";
-            break;
-        case WAVERR_SYNC:
-            err="It is synchronous";
-            break;
-        default:
-            wsprintf(buffer,"Unknown error %08X",n);
-            err=buffer+256;
-            break;
-        }
-        wsprintf(buffer,"Cannot initialize sound (%s)",err);
-        MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-        return;
-    }
-//  InitializeCriticalSection(&cs_song);
-    wh=wbufs=malloc(sizeof(WAVEHDR)*ws_bufs);
-    wdata=malloc(wbuflen*ws_bufs<<sh);
-    for(n=0;n<8;n++) zwaves[n].pflag=0;
-    for(n=0;n<wnumbufs;n++) {
-        wh->lpData=(LPSTR)(wdata)+(n*wbuflen<<sh);
-        wh->dwBufferLength=wbuflen<<sh;
-        wh->dwFlags=0;
-        wh->dwUser=n;
-        waveOutPrepareHeader(hwo,wh,sizeof(WAVEHDR));
-        wh++;
-    }
-    sndinit=1;
-    mixbuf=malloc(wbuflen*ws_bufs<<2);
-    mix_freq=ws_freq/6;
-    mix_flags=ws_flags;
-    for(wcurbuf=0;wcurbuf<wnumbufs;wcurbuf++)
-        Mixbuffer();
-    wcurbuf=0;
-    for(n=0;n<wnumbufs;n++)
-        waveOutWrite(hwo,wbufs+n,sizeof(WAVEHDR));
-endinit:
-    wave_end=CreateEvent(0,0,0,0);
-}
 
 // =============================================================================
 
@@ -6339,17 +5192,6 @@ int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size
     ScrollWindowEx(win, dx, dy, 0, 0, 0, 0, SW_INVALIDATE | SW_ERASE);
     
     return i;
-}
-void Loadeditinst(HWND win,SAMPEDIT*ed)
-{
-    ZINST*zi;
-    zi=ed->ew.doc->insts+ed->editinst;
-    SetDlgItemInt(win,3014,(zi->multhi<<8)+zi->multlo,0);
-    wsprintf(buffer,"%04X",(zi->ad<<8)+zi->sr);
-    SetDlgItemText(win,3016,buffer);
-    wsprintf(buffer,"%02X",zi->gain);
-    SetDlgItemText(win,3018,buffer);
-    SetDlgItemInt(win,3020,zi->samp,0);
 }
 
 char mus_min[3]={0,15,31};
@@ -7541,225 +6383,8 @@ BOOL CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-BOOL CALLBACK editexit(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    unsigned char*rom;
-    int i,j,k,l,m,n,o;
-    HWND hc;
-    const static int radio_ids[6]={IDC_RADIO2,IDC_RADIO4,IDC_RADIO5,IDC_RADIO6,IDC_RADIO7,IDC_RADIO8};
-    const static int door_ofs[2]={0x16367,0x16405};
-    const static int edit_ids[6]={IDC_EDIT8,IDC_EDIT9,IDC_EDIT10,IDC_EDIT11};
-    const static int hide_ids[20]={IDC_STATIC2,IDC_STATIC3,IDC_STATIC4,IDC_STATIC5,IDC_STATIC6,
-        IDC_EDIT15,IDC_EDIT22,IDC_EDIT23,IDC_EDIT24,IDC_EDIT25,
-        IDC_STATIC7,IDC_STATIC8,IDC_STATIC9,IDC_STATIC10,IDC_STATIC11,
-        IDC_EDIT26,IDC_EDIT27,IDC_EDIT28,IDC_EDIT29,IDC_EDIT30};
-    
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        rom=oved->ew.doc->rom;
-        i=oved->selobj;
-        j=(oved->ew.param&7)<<9;
-        k=(oved->ew.param&56)<<6;
-        SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x15d8a))[i],0);
-        SetDlgItemInt(win,IDC_EDIT2,((short*)(rom + 0x15f15))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT3,((short*)(rom + 0x15fb3))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT4,((short*)(rom + 0x1618d))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT5,((short*)(rom + 0x1622b))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT6,((short*)(rom + 0x16051))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT7,((short*)(rom + 0x160ef))[i]-j,1);
-        for(j=0;j<2;j++) {
-            l=((unsigned short*)(rom+door_ofs[j]))[i];
-            if(l && l!=65535) {
-                m=(l>>15)+1;
-                SetDlgItemInt(win,edit_ids[j*2],(l&0x7e)>>1,0);
-                SetDlgItemInt(win,edit_ids[j*2+1],(l&0x3f80)>>7,0);
-            } else {
-                m=0;
-                EnableWindow(GetDlgItem(win,edit_ids[j*2]),0);
-                EnableWindow(GetDlgItem(win,edit_ids[j*2+1]),0);
-            }
-            m+=3*j;
-            CheckDlgButton(win,radio_ids[m],BST_CHECKED);
-        }
-        SetDlgItemInt(win,IDC_EDIT12,rom[0x15e28 + i], 0);
-        SetDlgItemInt(win,IDC_EDIT13,(char)rom[0x162c9 + i], 1);
-        SetDlgItemInt(win,IDC_EDIT14,(char)rom[0x16318 + i], 1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_EDIT1|(EN_CHANGE<<16):
-            i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            rom=oved->ew.doc->rom;
-            if(i>=0x180 && i<0x190) {
-                j=SW_SHOW;
-                SetDlgItemInt(win,IDC_EDIT15,rom[0x16681 + i] >> 1, 0);
-                SetDlgItemInt(win,IDC_EDIT22,rom[0x16691 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT23,rom[0x166a1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT24,rom[0x166b1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT25,rom[0x166c1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT26,((short*)(rom + 0x163e1))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT27,((short*)(rom + 0x16401))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT28,((short*)(rom + 0x16421))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT29,((short*)(rom + 0x16441))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT30,((short*)(rom + 0x164e1))[i], 0);
-            } else j=SW_HIDE;
-            for(k=0;k<20;k++)
-                ShowWindow(GetDlgItem(win,hide_ids[k]),j);
-            break;
-        case IDC_RADIO2:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),0);
-            break;
-        case IDC_RADIO4: case IDC_RADIO5:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),1);
-            break;
-        case IDC_RADIO6:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),0);
-            break;
-        case IDC_RADIO7: case IDC_RADIO8:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
-            break;
-        case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
-            Overselchg(oved,hc);
-            rom=oved->ew.doc->rom;
-            i=oved->selobj;
-            l = rom[0x15e28 + i] = GetDlgItemInt(win,IDC_EDIT12,0,0);
-            if(l!=oved->ew.param) oved->selobj=-1;
-            n=oved->mapsize?1023:511;
-            j=(l&7)<<9;
-            k=(l&56)<<6;
-            ((short*)(rom + 0x15d8a))[i]=o=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ((short*)(rom + 0x15f15))[i]=(l=(GetDlgItemInt(win,IDC_EDIT2,0,0)&n))+k;
-            ((short*)(rom + 0x15fb3))[i]=(m=(GetDlgItemInt(win,IDC_EDIT3,0,0)&n))+j;
-            ((short*)(rom + 0x15e77))[i]=((l&0xfff0)<<3)|((m&0xfff0)>>3);
-            ((short*)(rom + 0x1618d))[i]=(GetDlgItemInt(win,IDC_EDIT4,0,0)&n)+k;
-            ((short*)(rom + 0x1622b))[i]=(GetDlgItemInt(win,IDC_EDIT5,0,0)&n)+j;
-            ((short*)(rom + 0x16051))[i]=(oved->objy=GetDlgItemInt(win,IDC_EDIT6,0,0)&n)+k;
-            ((short*)(rom + 0x160ef))[i]=(oved->objx=GetDlgItemInt(win,IDC_EDIT7,0,0)&n)+j;
-            m=0;
-            for(j=0;j<2;j++) {
-                if(IsDlgButtonChecked(win,radio_ids[m])) l=0;
-                else {
-                    l=(GetDlgItemInt(win,edit_ids[j*2],0,0)<<1)+(GetDlgItemInt(win,edit_ids[j*2+1],0,0)<<7);
-                    if(IsDlgButtonChecked(win,radio_ids[m+2])) l|=0x8000;
-                }
-                ((short*)(rom+door_ofs[j]))[i]=l;
-                m+=3;
-            }
-            rom[0x162c9 + i] = GetDlgItemInt(win,IDC_EDIT13,0,1);
-            rom[0x16318 + i] = GetDlgItemInt(win,IDC_EDIT14,0,1);
-            if(o>=0x180 && o<0x190)
-            {
-                rom[0x16681 + o] = GetDlgItemInt(win,IDC_EDIT15,0,0)<<1;
-                rom[0x16691 + o] = GetDlgItemInt(win,IDC_EDIT22,0,0);
-                rom[0x166a1 + o] = GetDlgItemInt(win,IDC_EDIT23,0,0);
-                rom[0x166b1 + o] = GetDlgItemInt(win,IDC_EDIT24,0,0);
-                rom[0x166c1 + o] = GetDlgItemInt(win,IDC_EDIT25,0,0);
-                
-                ((short*)(rom + 0x163e1))[o]=GetDlgItemInt(win,IDC_EDIT26,0,0);
-                ((short*)(rom + 0x16401))[o]=GetDlgItemInt(win,IDC_EDIT27,0,0);
-                ((short*)(rom + 0x16421))[o]=GetDlgItemInt(win,IDC_EDIT28,0,0);
-                ((short*)(rom + 0x16441))[o]=GetDlgItemInt(win,IDC_EDIT29,0,0);
-                ((short*)(rom + 0x164e1))[o]=GetDlgItemInt(win,IDC_EDIT30,0,0);
-            }
-            Overselchg(oved,hc);
-            oved->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-BOOL CALLBACK editwhirl(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    unsigned char*rom;
-    int i,j,k,l,m,n;
-    HWND hc;
-    
-    (void) lparam;
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        rom = oved->ew.doc->rom;
-        
-        i=oved->selobj;
-        j=(oved->ew.param&7)<<9;
-        k=(oved->ew.param&56)<<6;
-        
-        if(i > 8)
-            SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x16ce6))[i],0);
-        else
-        {
-            ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_EDIT1),SW_HIDE);
-        }
-        SetDlgItemInt(win,IDC_EDIT2,((short*)(rom + 0x16b29))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT3,((short*)(rom + 0x16b4b))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT4,((short*)(rom + 0x16bb1))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT5,((short*)(rom + 0x16bd3))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT6,((short*)(rom + 0x16b6d))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT7,((short*)(rom + 0x16b8f))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT12,((short*)(rom + 0x16ae5))[i],0);
-        SetDlgItemInt(win,IDC_EDIT13,(char)rom[0x16bf5 + i],1);
-        SetDlgItemInt(win,IDC_EDIT14,(char)rom[0x16c17 + i],1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_RADIO2:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),0);
-            break;
-        case IDC_RADIO4: case IDC_RADIO5:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),1);
-            break;
-        case IDC_RADIO6:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),0);
-            break;
-        case IDC_RADIO7: case IDC_RADIO8:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
-            break;
-        case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
-            Overselchg(oved,hc);
-            rom=oved->ew.doc->rom;
-            i=oved->selobj;
-            l=((short*)(rom + 0x16ae5))[i]=GetDlgItemInt(win,IDC_EDIT12,0,0);
-            n=(rom[0x12884 + l]<<8)|0xff;
-            j=(l&7)<<9;
-            k=(l&56)<<6;
-            if(l!=oved->ew.param) oved->selobj=-1;
-            if(i>8) ((short*)(rom + 0x16ce6))[i]=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ((short*)(rom + 0x16b29))[i]=(l=GetDlgItemInt(win,IDC_EDIT2,0,0)&n)+k;
-            ((short*)(rom + 0x16b4b))[i]=(m=GetDlgItemInt(win,IDC_EDIT3,0,0)&n)+j;
-            ((short*)(rom + 0x16b07))[i]=((l&0xfff0)<<3)|((m&0xfff0)>>3);
-            ((short*)(rom + 0x16bb1))[i]=(GetDlgItemInt(win,IDC_EDIT4,0,0)&n)+k;
-            ((short*)(rom + 0x16bd3))[i]=(GetDlgItemInt(win,IDC_EDIT5,0,0)&n)+j;
-            ((short*)(rom + 0x16b6d))[i]=(oved->objy=GetDlgItemInt(win,IDC_EDIT6,0,0)&n)+k;
-            ((short*)(rom + 0x16b8f))[i]=(oved->objx=GetDlgItemInt(win,IDC_EDIT7,0,0)&n)+j;
-            rom[0x16bf5 + i] = GetDlgItemInt(win,IDC_EDIT13,0,1);
-            rom[0x16c17 + i] = GetDlgItemInt(win,IDC_EDIT14,0,1);
-            Overselchg(oved,hc);
-            oved->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
+// =============================================================================
+
 BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     HWND hc;
@@ -10101,7 +8726,8 @@ void Getsampsel(SAMPEDIT*ed,RECT*rc)
     rc->right=(ed->selr<<16)/ed->zoom+1-ed->scroll;
 }
 
-long CALLBACK perspdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+perspdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PERSPEDIT*ed;
     HDC hdc;
@@ -10712,7 +9338,8 @@ void Savetmap(TMAPEDIT*ed)
     ed->ew.doc->modf=1;
 }
 
-long CALLBACK tmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+tmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TMAPEDIT *ed;
     switch(msg) {
@@ -10766,7 +9393,8 @@ void Trackchgsel(HWND win,RECT*rc,TRACKEDIT*ed)
     InvalidateRect(win,rc,1);
 }
 
-long CALLBACK trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT *ed, *ed2;
     HDC hdc;
@@ -11905,6 +10533,7 @@ int Fixscrollpos(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int d
     }
     return n;
 }
+
 void lmapblkchg(HWND win,LMAPEDIT*ed)
 {
     RECT rc;
@@ -11914,7 +10543,9 @@ void lmapblkchg(HWND win,LMAPEDIT*ed)
     rc.bottom=rc.top+16;
     InvalidateRect(win,&rc,0);
 }
-long CALLBACK lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+
+LRESULT CALLBACK
+lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j,k,l,n,o,p,q;
     
@@ -12241,7 +10872,7 @@ LevelMapDisplay_OnPaint(LMAPEDIT const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 lmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j,k = 0,l = 0,p,q,s;
@@ -12462,7 +11093,7 @@ void Updateblk16disp(BLOCKEDIT16 *ed, int num)
     StretchBlt(ed->bufdc,(num&1)*ed->w>>1,(num&2)*ed->h>>2,ed->w>>1,ed->h>>1,objdc,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SRCCOPY);
 }
 
-long CALLBACK
+LRESULT CALLBACK
 blkedit16proc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     BLOCKEDIT16*ed;
@@ -12775,7 +11406,8 @@ updflag:
     return FALSE;
 }
 
-long CALLBACK blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKEDIT32*ed;
     PAINTSTRUCT ps;
@@ -12918,7 +11550,8 @@ blkedit8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-long CALLBACK blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKSEL8*ed;
     SCROLLINFO si;
@@ -13196,7 +11829,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKSEL16* ed;
@@ -13500,7 +12133,9 @@ BOOL CALLBACK editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     }
     return FALSE;
 }
-long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+
+LRESULT CALLBACK
+blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
@@ -13692,148 +12327,6 @@ aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 }
 
 // =============================================================================
-
-BOOL CALLBACK wavesetting(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetDlgItemInt(win,IDC_EDIT1,ws_freq,0);
-        SetDlgItemInt(win,IDC_EDIT2,ws_bufs,0);
-        SetDlgItemInt(win,IDC_EDIT3,ws_len,0);
-        CheckDlgButton(win,IDC_CHECK1,ws_flags&1);
-        CheckDlgButton(win,IDC_CHECK2,(ws_flags>>1)&1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            ws_freq=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ws_bufs=GetDlgItemInt(win,IDC_EDIT2,0,0);
-            ws_len=GetDlgItemInt(win,IDC_EDIT3,0,0);
-            ws_flags=IsDlgButtonChecked(win,IDC_CHECK1)
-                |(IsDlgButtonChecked(win,IDC_CHECK2)<<1);
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-BOOL CALLBACK midisetting(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetDlgItemInt(win,IDC_EDIT1,ms_tim1,0);
-        SetDlgItemInt(win,IDC_EDIT2,ms_tim2,0);
-        SetDlgItemInt(win,IDC_EDIT3,ms_tim3,0);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            ms_tim1=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ms_tim2=GetDlgItemInt(win,IDC_EDIT2,0,0);
-            ms_tim3=GetDlgItemInt(win,IDC_EDIT3,0,0);
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-int Soundsetting(HWND win,int dev)
-{
-    if((dev>>16)==1) {
-        return ShowDialog(hinstance,(LPSTR)IDD_DIALOG3,win,wavesetting,0);
-    } else return ShowDialog(hinstance,(LPSTR)IDD_DIALOG13,win,midisetting,0);
-}
-BOOL CALLBACK seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j,lp;
-    TVINSERTSTRUCT tvi;
-    TVITEM*itemstr;
-    WAVEOUTCAPS woc;
-    MIDIOUTCAPS moc;
-    HWND hc;
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,0);
-        hc=GetDlgItem(win,IDC_TREE1);
-        tvi.hParent=0;
-        tvi.hInsertAfter=TVI_LAST;
-        tvi.item.mask=TVIF_CHILDREN|TVIF_PARAM|TVIF_TEXT|TVIF_STATE;
-        tvi.item.stateMask=TVIS_BOLD;
-        tvi.item.state=0;
-        tvi.item.lParam=0;
-        tvi.item.pszText="Wave devices";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Wave mapper";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x10001;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        j=waveOutGetNumDevs();
-        if(j>256) j=256;
-        tvi.item.pszText=woc.szPname;
-        for(i=0;i<j;i++) {
-            if(waveOutGetDevCaps(i,&woc,sizeof(woc))) continue;
-            tvi.item.lParam=0x10002 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.hParent=0;
-        tvi.item.pszText="Midi devices";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Midi mapper";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x20000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        j=midiOutGetNumDevs();
-        if(j>256) j=256;
-        tvi.item.pszText=moc.szPname;
-        for(i=0;i<j;i++) {
-            if(midiOutGetDevCaps(i,&moc,sizeof(moc))) continue;
-            tvi.item.lParam=0x20001 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            lp=GetWindowLong(win,DWL_USER);
-            if(!lp) break;
-            if(!Soundsetting(win,lp)) break;
-            Exitsound();
-            sounddev=lp;
-            Initsound();
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-        break;
-    case WM_NOTIFY:
-        switch(wparam) {
-        case IDC_TREE1:
-            switch(((NMHDR*)lparam)->code) {
-            case TVN_SELCHANGED:
-                itemstr=&(((NMTREEVIEW*)lparam)->itemNew);
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
-                SetWindowLong(win,DWL_USER,itemstr->lParam);
-                break;
-            }
-        }
-    }
-    return FALSE;
-}
-
 
 void
 Updatesprites(void)
@@ -14238,446 +12731,7 @@ SD_ENTRY patch_sd[]={
     {"BUTTON","Build",80,68,0,20,3004,WS_VISIBLE|WS_CHILD,0,3}
 };
 
-BOOL CALLBACK sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    SAMPEDIT*ed;
-    HWND hc;
-    HGLOBAL hgl;
-    char*b,*dat;
-    int i = 0, j = 0, k = 0;
-    
-    ZWAVE*zw,*zw2;
-    ZINST*zi;
-    WAVEFORMATEX*wfx;
-    
-    const static int wavehdr[] =
-    {
-        0x46464952,0,0x45564157,0x20746d66,16,0x10001,
-        11025,22050,0x100002,0x61746164
-    };
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        ed=(SAMPEDIT*)lparam;
-        ed->dlg=win;
-        if(!ed->ew.doc->m_loaded) Loadsongs(ed->ew.doc);
-        ed->init=1;
-        ed->editsamp=0;
-        ed->editinst=0;
-        ed->zoom=65536;
-        ed->scroll=0;
-        ed->flag=0;
-        SetDlgItemInt(win,3001,0,0);
-        SetWindowLong(GetDlgItem(win,3002),GWL_USERDATA,(int)ed);
-        SetDlgItemInt(win,3012,0,0);
-        Loadeditinst(win,ed);
-chgsamp:
-        i=ed->editsamp;
-        zw=ed->ew.doc->waves+i;
-        ed->zw=zw;
-updcopy:
-        if(zw->copy!=-1) {
-            CheckDlgButton(win,3003,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_SHOW);
-            SetDlgItemInt(win,3004,zw->copy,0);
-            EnableWindow(GetDlgItem(win,3006),0);
-            EnableWindow(GetDlgItem(win,3008),0);
-        } else {
-            CheckDlgButton(win,3003,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_HIDE);
-            EnableWindow(GetDlgItem(win,3006),1);
-            EnableWindow(GetDlgItem(win,3008),1);
-        }
-        SetDlgItemInt(win,3008,zw->end,0);
-        SetDlgItemInt(win,3010,zw->lopst,0);
-        if(zw->lflag)
-        {
-            CheckDlgButton(win,3009,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-        }
-        else
-        {
-            CheckDlgButton(win,3009,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-        }
-        ed->sell=0;
-        ed->selr=0;
-upddisp:
-        ed->init=0;
-        if(ed->sell>=zw->end) ed->sell=ed->selr=0;
-        if(ed->selr>=zw->end) ed->selr=zw->end;
-        hc=GetDlgItem(win,3002);
-        Updatesize(hc);
-        InvalidateRect(hc,0,1);
-        break;
-    case WM_COMMAND:
-        
-        ed=(SAMPEDIT*)GetWindowLong(win,DWL_USER);
-        
-        if(ed->init)
-            break;
-        
-        switch(wparam)
-        {
-        
-        case 3003:
-            zw=ed->zw;
-            if(zw->copy!=-1) {
-                zw->copy=-1;
-                zw->end=zw->lflag=0;
-                
-                zw->buf = (short*) calloc(1, sizeof(short));
-                
-                ShowWindow(GetDlgItem(win,3004),SW_HIDE);
-            }
-            else
-            {
-                j=ed->ew.doc->numwave;
-                zw2=ed->ew.doc->waves;
-                for(i=0;i<j;i++) {
-                    if(zw2->copy==-1 && i!=ed->editsamp) goto chgcopy;
-                    zw2++;
-                }
-                CheckDlgButton(win,3003,BST_UNCHECKED);
-chgcopy:
-                zw->copy=i;
-                free(zw->buf);
-                zw->end=zw2->end;
-                zw->lopst=zw2->lopst;
-                
-                zw->buf = (int16_t*) calloc(zw->end + 1, sizeof(int16_t));
-                
-                i = (zw->end + 1) * sizeof(int16_t);
-                
-                memcpy(zw->buf, zw2->buf, i);
-            }
-            
-            goto updcopy;
-        
-        case 3005:
-            
-            zw = ed->zw;
-            
-            i = (ed->selr - ed->sell) << 1;
-            j = ed->sell;
-            
-            if(i == 0)
-                i = zw->end << 1, j = 0;
-            
-            hgl=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,44+i);
-            b=GlobalLock(hgl);
-            memcpy(b,wavehdr,40);
-            *(int*)(b+4)=36+i;
-            *(int*)(b+40)=i;
-            memcpy(b+44,zw->buf+j,i);
-            GlobalUnlock(hgl);
-            OpenClipboard(0);
-            EmptyClipboard();
-            SetClipboardData(CF_WAVE,hgl);
-            CloseClipboard();
-            break;
-        case 3006:
-            OpenClipboard(0);
-            hgl=GetClipboardData(CF_WAVE);
-            if(!hgl) {
-                MessageBox(framewnd,"Nothing is on the clipboard.","Bad error happened",MB_OK);
-                CloseClipboard();
-                break;
-            }
-            b=GlobalLock(hgl);
-            if((*(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157) {
-error:
-                MessageBox(framewnd,"This is not a wave.","Bad error happened",MB_OK);
-noclip:
-                GlobalUnlock(hgl);
-                CloseClipboard();
-                break;
-            }
-            
-            j = *(int*) (b + 4);
-            b += 8;
-            dat = 0;
-            wfx = 0;
-            
-            for(i = 4; i < j;)
-            {
-                switch(*(int*)(b+i))
-                {
-                
-                case 0x20746d66:
-                    wfx = (WAVEFORMATEX*) (b + i + 8);
-                    
-                    break;
-                
-                case 0x61746164:
-                    dat = b + i + 8;
-                    
-                    k = *(int*)(b + i + 4);
-                    
-                    if(wfx)
-                        goto foundall;
-                    
-                    break;
-                }
-                
-                i += 8 + *(int*) ( b + i + 4);
-            }
-            if((!wfx)||!dat) goto error;
-foundall:
-            if(wfx->wFormatTag!=1) {
-                MessageBox(framewnd,"The wave is not PCM","Bad error happened",MB_OK);
-                goto noclip;
-            }
-            if(wfx->nChannels!=1) {
-                MessageBox(framewnd,"Only mono is allowed.","Bad error happened",MB_OK);
-                goto noclip;
-            }
-            
-            if(wfx->wBitsPerSample == 16)
-                k >>= 1;
-            
-            // \task Fixing a bug around here when you paste beyond the range
-            // of the current sample.
-            zw = ed->zw;
-            
-            zw->end += k - (ed->selr - ed->sell);
-            
-            if(k > (ed->selr - ed->sell) )
-            {
-                // Resize the sample buffer if the size of the data being
-                // pasted in exceeds the size of the currently selected
-                // region.
-                zw->buf = (short*) realloc(zw->buf, (zw->end + 1) << 1);
-            }
-            
-            // Move the part of the sample that is to the right of the selection
-            // region in such a way that there is just enough room to copy
-            // the new data in.
-            memmove(zw->buf + ed->sell + k,
-                    zw->buf + ed->selr,
-                    (zw->end - k - ed->sell) << 1);
-            
-            if(k < (ed->selr - ed->sell) )
-            {
-                // Shrink the sample buffer if the pasted in data is smaller
-                // than the selection region.
-                zw->buf = (short*) realloc(zw->buf, ( (zw->end + 1) << 1 ) );
-            }
-            
-            if(zw->lopst >= ed->selr)
-                zw->lopst += ed->sell + k - ed->selr;
-            
-            if(zw->lopst >= zw->end)
-                zw->lflag = 0, zw->lopst = 0;
-            
-            if(zw->lflag)
-                zw->buf[zw->end] = zw->buf[zw->lopst];
-            
-            ed->selr = ed->sell + k;
-            
-            if(wfx->wBitsPerSample == 16)
-                memcpy(zw->buf+ed->sell,dat,k<<1);
-            else
-            {
-                j = ed->sell;
-                
-                for(i = 0; i < k; i++)
-                    zw->buf[j++] = ( (dat[i] - 128) << 8 );
-            }
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            GlobalUnlock(hgl);
-            CloseClipboard();
-            Modifywaves(ed->ew.doc,ed->editsamp);
-            ed->init=1;
-            if(!zw->lflag) {
-                CheckDlgButton(win,3009,BST_UNCHECKED);
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-            }
-            SetDlgItemInt(win,3008,zw->end,0);
-            SetDlgItemInt(win,3010,zw->lopst,0);
-            goto upddisp;
-        case 3009:
-            zw=ed->zw;
-            if(!zw->lflag) {
-                zw->lflag=1;
-                ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            } else {
-                zw->lflag=0;
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-            }
-            Modifywaves(ed->ew.doc,ed->editsamp);
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            break;
-        case 3021:
-            if(sounddev>=0x20000) {
-                MessageBox(framewnd,"A wave device must be selected","Bad error happened",MB_OK);
-                break;
-            }
-            if(sndinit) Stopsong();
-            else Initsound();
-            playedsong=0;
-            sounddoc=ed->ew.doc;
-            globvol=65535;
-            zwaves->wnum=ed->editsamp;
-            zwaves->vol1=zwaves->vol2=127;
-            zwaves->sus=7;
-            zwaves->rel=0;
-            zwaves->atk=31;
-            zwaves->dec=0;
-            zwaves->envs=zwaves->envclk=zwaves->envclklo=zwaves->pos=0;
-            zwaves->freq=1781;
-            zwaves->pflag=1;
-            break;
-        case 3022:
-            if(sndinit) Stopsong();
-            break;
-        case 0x02000bb9:
-            if(ed->flag&1) {
-                i=GetDlgItemInt(win,3001,0,0);
-                if(i<0) i=0;
-                if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
-                ed->flag&=-2;
-                ed->init=1;
-                SetDlgItemInt(win,3001,i,0);
-                ed->editsamp=i;
-                goto chgsamp;
-            }
-            break;
-        case 0x02000bbc:
-            if(ed->flag&2) {
-                ed->flag&=-3;
-                zw=ed->zw;
-                j=zw->copy;
-                i=GetDlgItemInt(win,3004,0,0);
-                k=zw->end;
-                if(i<0) i=0;
-                if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
-                zw2=ed->ew.doc->waves+i;
-                if(zw2->copy!=-1) i=j;
-                ed->init=1;
-                SetDlgItemInt(win,3004,i,0);
-                ed->init=0;
-                if(i==j) break;
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                goto chgcopy;
-            }
-            break;
-        case 0x02000bc0:
-            if(ed->flag&16) {
-                ed->flag&=-17;
-                zw=ed->zw;
-                i=GetDlgItemInt(win,3008,0,0);
-                k=zw->end;
-                if(i<0) {
-                    i=0;
-chglen:
-                    SetDlgItemInt(win,3008,i,0);
-                    ed->init=0;
-                    break;
-                }
-                if(i>65536) { i=65536; goto chglen; }
-                b = realloc(zw->buf, (i + 1) << 1);
-                if(!b) {
-                    MessageBox(framewnd,"Not enough memory","Bad error happened",MB_OK);
-                    i=k;
-                    ed->init=1;
-                    goto chglen;
-                } else zw->buf=(short*)b;
-                zw->end=i;
-                for(j=k;j<i;j++) zw->buf[j]=0;
-                if(zw->lopst!=-1) zw->buf[zw->end]=zw->buf[zw->lopst];
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                goto upddisp;
-            }
-            break;
-        case 0x02000bc2:
-            if(ed->flag&32) {
-                ed->flag&=-33;
-                zw=ed->zw;
-                j=i=GetDlgItemInt(win,3010,0,0);
-                if(i<0) i=0;
-                else if(i>=zw->end) i=zw->end-1;
-                if(i!=j) {
-                    ed->init=1;
-                    SetDlgItemInt(win,3010,i,0);
-                    ed->init=0;
-                }
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                zw->lopst=i;
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            }
-            break;
-        case 0x02000bc4:
-            if(ed->flag&64) {
-                ed->flag&=-65;
-                i=GetDlgItemInt(win,3012,0,0);
-                if(i<0) i=0;
-                else if(i>=ed->ew.doc->numinst) i=ed->ew.doc->numinst-1;
-                else goto nochginst;
-                ed->init=1;
-                SetDlgItemInt(win,3012,i,0);
-                ed->init=0;
-nochginst:
-                ed->editinst=i;
-                Loadeditinst(win,ed);
-            }
-            break;
-        case 0x02000bc6:
-        case 0x02000bc8:
-        case 0x02000bca:
-        case 0x02000bcc:
-            if(ed->flag&128) {
-                ed->flag&=-129;
-                zi=ed->ew.doc->insts+ed->editinst;
-                i=GetDlgItemInt(win,3014,0,0);
-                zi->multlo=i;
-                zi->multhi=i>>8;
-                GetDlgItemText(win,3016,buffer,5);
-                i=strtol(buffer,0,16);
-                zi->sr=i;
-                zi->ad=i>>8;
-                
-                GetDlgItemText(win,3018,buffer,3);
-                
-                zi->gain = (uint8_t) strtol(buffer, 0, 16);
-                
-                zi->samp=GetDlgItemInt(win,3020,0,0);
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-            }
-            break;
-        case 0x03000bb9:
-            ed->flag|=1;
-            break;
-        case 0x03000bbc:
-            ed->flag|=2;
-            break;
-        case 0x03000bc0:
-            ed->flag|=16;
-            break;
-        case 0x03000bc2:
-            ed->flag|=32;
-            break;
-        case 0x03000bc4:
-            ed->flag|=64;
-            break;
-        case 0x03000bc6:
-        case 0x03000bc8:
-        case 0x03000bca:
-        case 0x03000bcc:
-            ed->flag|=128;
-            break;
-        }
-    }
-    return FALSE;
-}
+// =============================================================================
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
@@ -14918,7 +12972,8 @@ selectmore:
 
 // =============================================================================
 
-long CALLBACK lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     LMAPEDIT *ed;
     switch(msg) {
@@ -14966,7 +13021,8 @@ deflt:
 
 // =============================================================================
 
-long CALLBACK perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PERSPEDIT*ed;
     switch(msg) {
@@ -15012,210 +13068,10 @@ deflt:
     return 0;
 }
 
-long CALLBACK musbankproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    MUSEDIT *ed;
-    
-    switch(msg)
-    {
-    
-    case WM_MDIACTIVATE:
-        
-        activedoc=((DUNGEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        
-        goto deflt;
-    
-    case WM_GETMINMAXINFO:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        
-        if(!ed)
-            goto deflt;
-        
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    
-    case WM_SIZE:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        
-        goto deflt;
-    
-    case WM_DESTROY:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->mbanks[ed->ew.param]=0;
-        
-        if(sndinit && ed->ew.doc == sounddoc && !playedsong)
-            zwaves->pflag=0;
-        
-        free(ed);
-        
-        break;
-    case WM_CREATE:
-        
-        ed = (MUSEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog((ed->ew.param==3)?&sampdlg:&musdlg,win,0,0,0,0,(long)ed);
-        
-deflt:
-    default:
-        
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
 // =============================================================================
 
 LRESULT CALLBACK
-patchproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    PATCHLOAD*ed;
-    switch(msg) {
-    case WM_MDIACTIVATE:
-        activedoc=((PATCHLOAD*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->hackwnd=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(PATCHLOAD*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog(&patchdlg,win,0,0,0,0,(long)ed);
-    default:
-deflt:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-void Unloadsongs(FDOC*param)
-{
-    int i,j,k;
-    SONG*s;
-    SONGPART*sp;
-    if(param->m_loaded) {
-        if(sndinit) Stopsong();
-        k=param->numsong[0]+param->numsong[1]+param->numsong[2];
-        for(i=0;i<k;i++) {
-            s=param->songs[i];
-            if(!s) continue;
-            if(!--s->inst) {
-                for(j=0;j<s->numparts;j++) {
-                    sp=s->tbl[j];
-                    if(!--sp->inst) free(sp);
-                }
-                free(s->tbl);
-                free(s);
-            }
-        }
-        free(param->scmd);
-        param->m_loaded=0;
-        free(param->waves);
-        free(param->insts);
-        free(param->sndinsts);
-        free(param->snddat1);
-        free(param->snddat2);
-    }
-}
-
-// =============================================================================
-
-// for copying rooms.
-// Duproom (duplicate room)*************************************
-
-BOOL CALLBACK
-duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i, // source room/map
-        j, // destination room/map
-        k, // switch for map type (dungeon or overworld)
-        l; // max index for each respective type. e.g. we have at most 296 overworld maps.
-    
-    FDOC *doc;
-    
-    switch(msg)
-    {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        
-        // the function apparently
-        // passes in the associated rom file's pointer.
-        doc = (FDOC*) lparam;
-        
-        // Fill in the default button.
-        // otherwise it comes up blank.
-        CheckDlgButton(win,IDC_RADIO1,BST_CHECKED);
-        
-        break;
-    
-    case WM_COMMAND:
-        switch(wparam)
-        {
-        
-        case IDOK: // they picked the OK button
-            
-            doc = (FDOC*) GetWindowLong(win,DWL_USER);
-            
-            i = GetDlgItemInt(win,IDC_EDIT1,0,0); // get the source room/map number
-            
-            j = GetDlgItemInt(win,IDC_EDIT2,0,0); // get the destination room/map number
-            
-            k = IsDlgButtonChecked(win, IDC_RADIO1) == BST_CHECKED; //1 = overworld, 0 = dungeon.
-            
-            // if k = 1 (overworld), l = 160, else l = 296 (dungeon)
-            l = k ? 160 : 296;
-            
-            // "l" looks a lot like the number 1, doesn't it?
-            if(i < 0 || j < 0 || i >= l || j >= l || i == j)
-            {
-                MessageBox(framewnd,
-                           "Please enter two different room numbers in the appropriate range.",
-                           "Bad error happened",
-                           MB_OK);
-                
-                break;
-            }
-            
-            if(k)
-            {
-                //overworld
-                Changesize(doc, 0x50000 + j, i);
-                Changesize(doc, 0x500a0 + j, 160 + i);
-            }
-            else
-                //dungeon
-                Changesize(doc,0x50140 + j,320+i);
-        
-        case IDCANCEL:
-            
-            // kill the dialog, and do nothing.
-            EndDialog(win,0);
-        }
-    }
-    
-    return 0;
-}
-
-// =============================================================================
-
-long CALLBACK trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT*ed;
     switch(msg) {
@@ -15527,8 +13383,6 @@ LoadSpriteNamesFile(void)
 }
 
 // =============================================================================
-
-void HM_RegisterClasses(HINSTANCE p_inst);
 
 int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 {

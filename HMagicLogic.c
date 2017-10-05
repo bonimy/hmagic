@@ -54,9 +54,6 @@ int gbtnt = 0;
 
 int mruload = 0;
 
-// Sound device?
-int sounddev = 0x10001;
-
 ZCHANNEL zchans[8];
 
 HMENU filemenu = 0;
