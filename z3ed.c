@@ -61,6 +61,8 @@
 
 #include "structs.h"
 
+// =============================================================================
+
 short dm_x;
 short dm_k;
 
@@ -100,8 +102,9 @@ int cfg_modf = 0;
 
 int cfg_flag = CFG_NOFLAGS;
 
-// IDs for controls used in the dungeon superdialog.
-// \task Get rid of manual assignments once we have all the IDs put in properly.
+// =============================================================================
+
+/// IDs for controls used in the dungeon superdialog.
 enum
 {
     ID_DungDlgFirst   = 3000,
@@ -250,6 +253,14 @@ enum
         ID_DungOverlayHideCount = sizeof(overlay_hide) / sizeof(unsigned),
     };
 
+    enum
+    {
+        SD_DungShowBG1 = 1 << 0,
+        SD_DungShowBG2 = 1 << 1,
+        
+        SD_DungShowMarkers = 1 << 2,
+    };
+
 enum
 {
     ID_TextFirst = 3000,
@@ -264,6 +275,15 @@ enum
     ID_TextNumControls = (ID_TextAfterLast - ID_TextFirst)
 
 };
+
+// =============================================================================
+
+    enum
+    {
+        SD_OverShowMarkers = 1 << 2
+    };
+
+// =============================================================================
 
 // Sound volume level.
 uint16_t soundvol = 180;
@@ -310,7 +330,7 @@ char *cur_sec;
 static unsigned char masktab[16] = {255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 const static int sprset_loc[3] = {0x4c881,0x4c901,0x4ca21};
-static int palhalf[8] = {1,0,0,1,1,1,0,0};
+int palhalf[8] = {1,0,0,1,1,1,0,0};
 
 const static int map_ofs[5] = {0,16,512,528};
 const static int map_ind[4] = {0,1,8,9};
@@ -379,15 +399,15 @@ HBRUSH black_brush,
 
 HGDIOBJ trk_font;
 
-
 HCURSOR normal_cursor,
         forbid_cursor,
         wait_cursor;
 
+HCURSOR sizecsor[5];
+
 HBITMAP arrows_imgs[4];
 
 HANDLE shade_brush[8];
-HANDLE sizecsor[5];
 
 // The handle to the program
 HINSTANCE hinstance;
@@ -397,7 +417,8 @@ HWND framewnd, clientwnd;
 RGBQUAD greencolor={72,152,72,0};
 RGBQUAD darkcolor={80,136,144,0};
 RGBQUAD deathcolor={96,96,48,0};
-RGBQUAD blackcolor={0,0,0,0};
+
+RGBQUAD const blackcolor={0,0,0,0};
 
 HMENU filemenu;
 
@@ -496,6 +517,89 @@ recalloc(void   const * const p_old_buf,
 
 // =============================================================================
 
+// "load little endian value at the given byte offset and shift to get its
+// value relative to the base offset (powers of 256, essentially)"
+unsigned
+ldle(uint8_t const * const p_arr,
+     unsigned        const p_index)
+{
+    uint32_t v = p_arr[p_index];
+    
+    v <<= (8 * p_index);
+    
+    return v;
+}
+
+// Helper function to get the first byte in a little endian number
+uint32_t
+ldle0(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 0);
+}
+
+// Helper function to get the second byte in a little endian number
+uint32_t
+ldle1(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 1);
+}
+
+// Helper function to get the third byte in a little endian number
+uint32_t
+ldle2(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 2);
+}
+
+// Helper function to get the third byte in a little endian number
+uint32_t
+ldle3(uint8_t const * const p_arr)
+{
+    return ldle(p_arr, 3);
+}
+
+// =============================================================================
+
+void
+stle(uint8_t  * const p_arr,
+     size_t     const p_index,
+     unsigned   const p_val)
+{
+    uint8_t v = (p_val >> (8 * p_index) ) & 0xff;
+    
+    p_arr[p_index] = v;
+}
+
+void
+stle0(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 0, p_val);
+}
+
+void
+stle1(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 1, p_val);
+}
+
+void
+stle2(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 2, p_val);
+}
+
+void
+stle3(uint8_t * const p_arr,
+      unsigned  const p_val)
+{
+    stle(p_arr, 3, p_val);
+}
+
+// =============================================================================
+
 unsigned long
 get_32_le(unsigned char const * const p_arr)
 {
@@ -579,7 +683,7 @@ add_16_le_i(uint8_t  * const p_arr,
 {
     size_t const offset = (p_index * 2);
     
-    put_16_le(p_arr + offset, p_val);
+    add_16_le(p_arr + offset, p_val);
 }
 
 // =============================================================================
@@ -628,8 +732,7 @@ ldle16b(uint8_t const * const p_arr)
 {
     uint16_t v = 0;
     
-    v |= (p_arr[0] << 0);
-    v |= (p_arr[1] << 8);
+    v |= ( ldle0(p_arr) | ldle1(p_arr) );
     
     return v;
 }
@@ -657,14 +760,106 @@ ldle16h(uint16_t const * const p_arr)
 
 // =============================================================================
 
+// Load little endian halfword (16-bit) dereferenced from a pointer to a
+// halfword.
+uint16_t
+ldle16h_i(uint16_t const * const p_arr,
+          size_t           const p_index)
+{
+    return ldle16b_i((uint8_t *) p_arr, p_index);
+}
+
+// =============================================================================
+
+// "load little endian 24-bit value using a byte pointer"
+uint32_t
+ldle24b(uint8_t const * const p_arr)
+{
+    uint32_t v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr);
+    
+    return v;
+}
+
+// =============================================================================
+
+uint32_t
+ldle24b_i(uint8_t const * const p_arr,
+          unsigned        const p_index)
+{
+    uint32_t v = ldle24b( p_arr + (p_index * 3) );
+    
+    return v;
+}
+
+// =============================================================================
+
+uint32_t
+ldle32b(uint8_t const * const p_arr)
+{
+    uint32_t v = 0;
+    
+    v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr) | ldle3(p_arr);
+    
+    return v;
+}        
+
+// =============================================================================
+
+void
+stle16b(uint8_t * const p_arr,
+        uint16_t  const p_val)
+{
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+stle16b_i(uint8_t * const p_arr,
+          size_t    const p_index,
+          uint16_t  const p_val)
+{
+    stle16b(p_arr + (p_index * 2), p_val);
+}
+
+// =============================================================================
+
 // "store little endian 24-bit value using a byte pointer"
 void
 stle24b(uint8_t  *const p_arr,
         uint32_t  const p_val)
 {
-    p_arr[0] = ( (p_val >>  0) & 0xff );
-    p_arr[1] = ( (p_val >>  8) & 0xff );
-    p_arr[2] = ( (p_val >> 16) & 0xff );
+    stle0(p_arr, p_val);
+    stle1(p_arr, p_val);
+    stle2(p_arr, p_val);
+}
+
+// =============================================================================
+
+void
+addle16b(uint8_t * const p_arr,
+         uint16_t  const p_addend)
+{
+    uint16_t v = ldle16b(p_arr);
+    
+    v += p_addend;
+    
+    stle16b(p_arr, v);
+}
+
+// =============================================================================
+
+void
+addle16b_i(uint8_t * const p_arr,
+           size_t    const p_index,
+           uint16_t  const p_addend)
+{
+    uint16_t v = ldle16b_i(p_arr, p_index);
+    
+    v += p_addend;
+    
+    stle16b_i(p_arr, p_index, v);
 }
 
 // =============================================================================
@@ -680,21 +875,13 @@ is16b_neg1(uint8_t const * const p_arr)
     return (v == 0xffff);
 }
 
+// =============================================================================
+
 int
 is16b_neg1_i(uint8_t const * const p_arr,
              size_t          const p_index)
 {
     return is16b_neg1(p_arr + (2 * p_index) );
-}
-
-// Load little endian halfword (16-bit) dereferenced from a pointer to a
-// halfword.
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index)
-{
-    return get_16_le_i((uint8_t *) p_arr,
-                       p_index);
 }
 
 // =============================================================================
@@ -1929,7 +2116,7 @@ deflt:
 // existed long before MFC, so this code probably predates it.
 // On the other hand, most of this code doesn't run unless the program
 // is executing on the win32s platform.
-int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
+int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param)
 {
     HGLOBAL hgl;
     
@@ -2231,12 +2418,10 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
 
 //#define ShowDialog DialogBoxParam
 
-// \task the type for lparam in this function and the sdc struct should perhaps
-// be changed to void *. int is not necessarily large enough for a pointer on
-// 64-bit or in general!
-HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,int lparam)
+HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h, LPARAM lparam)
 {
-    SDCREATE* sdc = malloc(sizeof(SDCREATE));
+    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
+    
     HWND hc;
     sdc->dlgtemp = dlgtemp;
     sdc->owner = owner;
@@ -2247,12 +2432,14 @@ HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,int 
     return hc;
 }
 
-HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
+HWND Editwin(FDOC * doc,char * wclass, char const * title,int param,int size)
 {
     char buf[1024];
     HWND hc;
     MDICREATESTRUCT mdic;
-    EDITWIN*a=malloc(size);
+    
+    EDITWIN * const a = (EDITWIN*) calloc(1, size);
+    
     wsprintf(buf,"%s - %s",doc->filename,title);
     a->doc=doc;
     a->param=param;
@@ -2263,8 +2450,10 @@ HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
     mdic.style=WS_SYSMENU|WS_CAPTION|WS_THICKFRAME|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
     mdic.lParam=(long)a;
     hc=(HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
+    
     SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
     SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
+    
     return hc;
 }
 
@@ -2534,10 +2723,6 @@ Uncompress(uint8_t const *       src,
             d = get_16_le(src);
             
             src += 2;
-            // give us a 16-bit value composed of
-            // two char values. (the second is the high byte, the first the low byte.)
-            // Edited -MONapkins
-            // \task This also assumes the target machine is little endian.
             
             while(c > 1)
             {
@@ -2819,9 +3004,10 @@ unsigned char * Unsnes(unsigned char * const buf, int size)
 
 //Changesize#*****************************************
 
-int Changesize(FDOC * const doc,
-               int          num,
-               int          size)
+int
+Changesize(FDOC * const doc,
+           int          num,
+           int          size)
 {
     unsigned char *rom = doc->rom; // the calling rom matches the one we're using.
     int *blah;
@@ -5605,16 +5791,16 @@ Drawmap(unsigned char  const * const rom,
                             dm_rd = (uint16_t*)
                             ( rom + 0x1b52 + ldle16b_i(rom + 0x4e66, dm_l) );
                             
-                            dm_buf[dm_x]=dm_rd[0];
-                            dm_buf[dm_x+64]=dm_rd[1];
-                            dm_buf[dm_x+128]=dm_rd[2];
-                            dm_buf[dm_x+192]=dm_rd[3];
+                            dm_buf[dm_x      ] = dm_rd[0];
+                            dm_buf[dm_x +  64] = dm_rd[1];
+                            dm_buf[dm_x + 128] = dm_rd[2];
+                            dm_buf[dm_x + 192] = dm_rd[3];
                             
                             while(m--) {
-                                dm_buf[dm_x+0x1001]=dm_rd[4];
-                                dm_buf[dm_x+0x1041]=dm_rd[5];
-                                dm_buf[dm_x+0x1081]=dm_rd[6];
-                                dm_buf[dm_x+0x10c1]=dm_rd[7];
+                                dm_buf[dm_x + 0x1001]=dm_rd[4];
+                                dm_buf[dm_x + 0x1041]=dm_rd[5];
+                                dm_buf[dm_x + 0x1081]=dm_rd[6];
+                                dm_buf[dm_x + 0x10c1]=dm_rd[7];
                                 dm_rd+=4;
                                 dm_x++;
                             }
@@ -5676,18 +5862,18 @@ Drawmap(unsigned char  const * const rom,
             dm_src = dm_rd = (uint16_t*)
             ( rom + 0x1b52 + ldle16b_i(rom + 0x81f0, dm_k) );
             
-            switch(dm_k-0x100) {
+            switch(dm_k - 0x100) {
             case 59:
-//              dm_rd=(short*)(rom+0x2ce2);
+//              dm_rd=(short*)(rom + 0x2ce2);
                 goto d43;
             case 58:
-//              dm_rd=(short*)(rom+0x2cca);
+//              dm_rd=(short*)(rom + 0x2cca);
                 goto d43;
             case 57:
-//              dm_rd=(short*)(rom+0x2cb2);
+//              dm_rd=(short*)(rom + 0x2cb2);
                 goto d43;
             case 56:
-//              dm_rd=(short*)(rom+0x2c9a);
+//              dm_rd=(short*)(rom + 0x2c9a);
 d43:
                 drawXx3(4);
                 break;
@@ -5774,12 +5960,12 @@ d43:
                 dm_l=8;
                 while(dm_l--) {
                     dm_buf[dm_x]=dm_rd[0];
-                    dm_buf[dm_x+0x40]=dm_rd[1];
-                    dm_buf[dm_x+0x80]=dm_rd[2];
-                    dm_buf[dm_x+0xc0]=dm_rd[3];
-                    dm_buf[dm_x+0x100]=dm_rd[4];
-                    dm_buf[dm_x+0x140]=dm_rd[5];
-                    dm_buf[dm_x+0x180]=dm_rd[6];
+                    dm_buf[dm_x + 0x40]=dm_rd[1];
+                    dm_buf[dm_x + 0x80]=dm_rd[2];
+                    dm_buf[dm_x + 0xc0]=dm_rd[3];
+                    dm_buf[dm_x + 0x100]=dm_rd[4];
+                    dm_buf[dm_x + 0x140]=dm_rd[5];
+                    dm_buf[dm_x + 0x180]=dm_rd[6];
                     dm_rd+=7;
                 }
                 break;
@@ -5880,10 +6066,10 @@ rows4:
                 case 33:
                     m=4;
                     while(m--) {
-                        dm_buf[dm_x+0x1000]=dm_buf[dm_x]=dm_rd[0];
-                        dm_buf[dm_x+0x1040]=dm_buf[dm_x+0x40]=dm_rd[1];
-                        dm_buf[dm_x+0x1080]=dm_buf[dm_x+0x80]=dm_rd[2];
-                        dm_buf[dm_x+0x10c0]=dm_buf[dm_x+0xc0]=dm_rd[3];
+                        dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
+                        dm_buf[dm_x + 0x1040]=dm_buf[dm_x + 0x40]=dm_rd[1];
+                        dm_buf[dm_x + 0x1080]=dm_buf[dm_x + 0x80]=dm_rd[2];
+                        dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
                         dm_x++;
                         dm_rd+=4;
                     }
@@ -5915,10 +6101,10 @@ rows4:
                 case 38: case 39:
                     m=4;
                     while(m--) {
-                        dm_buf[dm_x+0x1000]=dm_buf[dm_x]=dm_rd[0];
-                        dm_buf[dm_x+0x1040]=dm_rd[1];
-                        dm_buf[dm_x+0x1080]=dm_rd[2];
-                        dm_buf[dm_x+0x10c0]=dm_rd[3];
+                        dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
+                        dm_buf[dm_x + 0x1040]=dm_rd[1];
+                        dm_buf[dm_x + 0x1080]=dm_rd[2];
+                        dm_buf[dm_x + 0x10c0]=dm_rd[3];
                         dm_x++;
                         dm_rd+=4;
                     }
@@ -5926,10 +6112,10 @@ rows4:
                 case 40: case 41:
                     m=4;
                     while(m--) {
-                        dm_buf[dm_x+0x1000]=dm_rd[0];
-                        dm_buf[dm_x+0x1040]=dm_rd[1];
-                        dm_buf[dm_x+0x1080]=dm_rd[2];
-                        dm_buf[dm_x+0x10c0]=dm_buf[dm_x+0xc0]=dm_rd[3];
+                        dm_buf[dm_x + 0x1000]=dm_rd[0];
+                        dm_buf[dm_x + 0x1040]=dm_rd[1];
+                        dm_buf[dm_x + 0x1080]=dm_rd[2];
+                        dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
                         dm_x++;
                         dm_rd+=4;
                     }
@@ -5979,42 +6165,43 @@ rows4:
                     m=6;
                     dm_rd+=0xdf9;
                     while(m--) {
-                        dm_buf[dm_x+0x107]=dm_buf[dm_x+0x10d]=dm_buf[dm_x+0x113]=dm_rd[0];
-                        dm_buf[dm_x+0x147]=dm_buf[dm_x+0x14d]=dm_buf[dm_x+0x153]=dm_rd[1];
-                        dm_buf[dm_x+0x187]=dm_buf[dm_x+0x18d]=dm_buf[dm_x+0x193]=dm_rd[2];
-                        dm_buf[dm_x+0x1c7]=dm_buf[dm_x+0x1cd]=dm_buf[dm_x+0x1d3]=dm_rd[3];
+                        dm_buf[dm_x + 0x107]=dm_buf[dm_x + 0x10d]=dm_buf[dm_x + 0x113]=dm_rd[0];
+                        dm_buf[dm_x + 0x147]=dm_buf[dm_x + 0x14d]=dm_buf[dm_x + 0x153]=dm_rd[1];
+                        dm_buf[dm_x + 0x187]=dm_buf[dm_x + 0x18d]=dm_buf[dm_x + 0x193]=dm_rd[2];
+                        dm_buf[dm_x + 0x1c7]=dm_buf[dm_x + 0x1cd]=dm_buf[dm_x + 0x1d3]=dm_rd[3];
                         dm_rd+=4;
                         dm_x++;
                     }
                     m=5;
                     dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x+0x117]=dm_buf[dm_x+0x158]=dm_buf[dm_x+0x199]=
-                        dm_buf[dm_x+0x1da]=dm_buf[dm_x+0x21b]=dm_buf[dm_x+0x25c]=dm_buf[dm_x+0x29d]=
-                        (dm_buf[dm_x+0x282]=dm_buf[dm_x+0x243]=dm_buf[dm_x+0x204]=
-                        dm_buf[dm_x+0x1c5]=dm_buf[dm_x+0x186]=dm_buf[dm_x+0x147]=dm_buf[dm_x+0x108]=dm_rd[0])|0x4000;
+                    while(m--)
+                    {
+                        dm_buf[dm_x + 0x117]=dm_buf[dm_x+0x158]=dm_buf[dm_x+0x199]=
+                        dm_buf[dm_x + 0x1da]=dm_buf[dm_x+0x21b]=dm_buf[dm_x+0x25c]=dm_buf[dm_x+0x29d]=
+                        (dm_buf[dm_x + 0x282]=dm_buf[dm_x+0x243]=dm_buf[dm_x+0x204]=
+                        dm_buf[dm_x + 0x1c5]=dm_buf[dm_x+0x186]=dm_buf[dm_x+0x147]=dm_buf[dm_x+0x108]=dm_rd[0])|0x4000;
                         dm_rd++;
                         dm_x+=64;
                     }
                     m=6;
                     dm_x=n;
                     while(m--) {
-                        dm_buf[dm_x+0x2dd]=dm_buf[dm_x+0x45d]=dm_buf[dm_x+0x5dd]=
-                        (dm_buf[dm_x+0x2c2]=dm_buf[dm_x+0x442]=dm_buf[dm_x+0x5c2]=dm_rd[0])|0x4000;
-                        dm_buf[dm_x+0x2dc]=dm_buf[dm_x+0x45c]=dm_buf[dm_x+0x5dc]=
-                        (dm_buf[dm_x+0x2c3]=dm_buf[dm_x+0x443]=dm_buf[dm_x+0x5c3]=dm_rd[1])|0x4000;
-                        dm_buf[dm_x+0x2db]=dm_buf[dm_x+0x45b]=dm_buf[dm_x+0x5db]=
-                        (dm_buf[dm_x+0x2c4]=dm_buf[dm_x+0x444]=dm_buf[dm_x+0x5c4]=dm_rd[2])|0x4000;
-                        dm_buf[dm_x+0x2da]=dm_buf[dm_x+0x45a]=dm_buf[dm_x+0x5da]=
-                        (dm_buf[dm_x+0x2c5]=dm_buf[dm_x+0x445]=dm_buf[dm_x+0x5c5]=dm_rd[3])|0x4000;
+                         dm_buf[dm_x + 0x2dd] = dm_buf[dm_x + 0x45d]=dm_buf[dm_x + 0x5dd]=
+                        (dm_buf[dm_x + 0x2c2] = dm_buf[dm_x + 0x442]=dm_buf[dm_x + 0x5c2]=dm_rd[0])|0x4000;
+                         dm_buf[dm_x + 0x2dc] = dm_buf[dm_x + 0x45c]=dm_buf[dm_x + 0x5dc]=
+                        (dm_buf[dm_x + 0x2c3] = dm_buf[dm_x + 0x443]=dm_buf[dm_x + 0x5c3]=dm_rd[1])|0x4000;
+                         dm_buf[dm_x + 0x2db] = dm_buf[dm_x + 0x45b]=dm_buf[dm_x + 0x5db]=
+                        (dm_buf[dm_x + 0x2c4] = dm_buf[dm_x + 0x444]=dm_buf[dm_x + 0x5c4]=dm_rd[2])|0x4000;
+                         dm_buf[dm_x + 0x2da] = dm_buf[dm_x + 0x45a]=dm_buf[dm_x + 0x5da]=
+                        (dm_buf[dm_x + 0x2c5] = dm_buf[dm_x + 0x445]=dm_buf[dm_x + 0x5c5]=dm_rd[3])|0x4000;
                         dm_rd+=4;
                         dm_x+=64;
                     }
                     m=6;
                     dm_x=n;
                     while(m--) {
-                        dm_buf[dm_x+0x24c]=dm_buf[dm_x+0x252]=dm_rd[0];
-                        dm_buf[dm_x+0x28c]=dm_buf[dm_x+0x292]=dm_rd[6];
+                        dm_buf[dm_x + 0x24c]=dm_buf[dm_x + 0x252]=dm_rd[0];
+                        dm_buf[dm_x + 0x28c]=dm_buf[dm_x + 0x292]=dm_rd[6];
                         dm_rd++;
                         dm_x++;
                     }
@@ -6022,27 +6209,27 @@ rows4:
                     m=6;
                     dm_x=n;
                     while(m--) {
-                        dm_buf[dm_x+0x387]=dm_buf[dm_x+0x507]=dm_rd[0];
-                        dm_buf[dm_x+0x388]=dm_buf[dm_x+0x508]=dm_rd[1];
+                        dm_buf[dm_x + 0x387]=dm_buf[dm_x + 0x507]=dm_rd[0];
+                        dm_buf[dm_x + 0x388]=dm_buf[dm_x + 0x508]=dm_rd[1];
                         dm_rd+=2;
                         dm_x+=64;
                     }
                     m=5;
                     dm_x=n;
                     while(m--) {
-                        dm_buf[dm_x+0x247]=dm_rd[0];
-                        dm_buf[dm_x+0x287]=dm_rd[1];
-                        dm_buf[dm_x+0x2c7]=dm_rd[2];
-                        dm_buf[dm_x+0x307]=dm_rd[3];
-                        dm_buf[dm_x+0x347]=dm_rd[4];
+                        dm_buf[dm_x + 0x247]=dm_rd[0];
+                        dm_buf[dm_x + 0x287]=dm_rd[1];
+                        dm_buf[dm_x + 0x2c7]=dm_rd[2];
+                        dm_buf[dm_x + 0x307]=dm_rd[3];
+                        dm_buf[dm_x + 0x347]=dm_rd[4];
                         dm_rd+=5;
                         dm_x++;
                     }
                     m=4;
                     dm_x=n;
                     while(m--) {
-                        dm_buf[dm_x+0x70e]|=0x2000;
-                        dm_buf[dm_x+0x74e]|=0x2000;
+                        dm_buf[dm_x + 0x70e]|=0x2000;
+                        dm_buf[dm_x + 0x74e]|=0x2000;
                         dm_x++;
                     }
                     break;
@@ -6163,17 +6350,17 @@ rows4:
                 case 98:
                     m=22;
                     while(m--) {
-                        dm_buf[dm_x+0x1000]=dm_rd[0];
-                        dm_buf[dm_x+0x1040]=dm_rd[1];
-                        dm_buf[dm_x+0x1080]=dm_rd[2];
-                        dm_buf[dm_x+0x10c0]=dm_rd[3];
-                        dm_buf[dm_x+0x1100]=dm_rd[4];
-                        dm_buf[dm_x+0x1140]=dm_rd[5];
-                        dm_buf[dm_x+0x1180]=dm_rd[6];
-                        dm_buf[dm_x+0x11c0]=dm_rd[7];
-                        dm_buf[dm_x+0x1200]=dm_rd[8];
-                        dm_buf[dm_x+0x1240]=dm_rd[9];
-                        dm_buf[dm_x+0x1280]=dm_rd[10];
+                        dm_buf[dm_x + 0x1000]=dm_rd[0];
+                        dm_buf[dm_x + 0x1040]=dm_rd[1];
+                        dm_buf[dm_x + 0x1080]=dm_rd[2];
+                        dm_buf[dm_x + 0x10c0]=dm_rd[3];
+                        dm_buf[dm_x + 0x1100]=dm_rd[4];
+                        dm_buf[dm_x + 0x1140]=dm_rd[5];
+                        dm_buf[dm_x + 0x1180]=dm_rd[6];
+                        dm_buf[dm_x + 0x11c0]=dm_rd[7];
+                        dm_buf[dm_x + 0x1200]=dm_rd[8];
+                        dm_buf[dm_x + 0x1240]=dm_rd[9];
+                        dm_buf[dm_x + 0x1280]=dm_rd[10];
                         dm_rd+=11;
                         dm_x++;
                     }
@@ -6193,7 +6380,7 @@ rows4:
                     drawXx3(4);
                     break;
                 case 115:
-                    fill4x2(rom,nbuf,dm_rd+0x70);
+                    fill4x2(rom,nbuf,dm_rd + 0x70);
                     break;
                 case 123:
                     tmp=dm_wr;
@@ -6261,11 +6448,11 @@ rows4:
 case25:
                 dm_l+=6;
                 while(dm_l--) {
-                    dm_buf[dm_x+0x1000]=dm_buf[dm_x]=dm_rd[0];
-                    dm_buf[dm_x+0x1040]=dm_buf[dm_x+0x40]=dm_rd[1];
-                    dm_buf[dm_x+0x1080]=dm_buf[dm_x+0x80]=dm_rd[2];
-                    dm_buf[dm_x+0x10c0]=dm_buf[dm_x+0xc0]=dm_rd[3];
-                    dm_buf[dm_x+0x1100]=dm_buf[dm_x+0x100]=dm_rd[4];
+                    dm_buf[dm_x + 0x1000] = dm_buf[dm_x]=dm_rd[0];
+                    dm_buf[dm_x + 0x1040] = dm_buf[dm_x + 0x40]=dm_rd[1];
+                    dm_buf[dm_x + 0x1080] = dm_buf[dm_x + 0x80]=dm_rd[2];
+                    dm_buf[dm_x + 0x10c0] = dm_buf[dm_x + 0xc0]=dm_rd[3];
+                    dm_buf[dm_x + 0x1100] = dm_buf[dm_x + 0x100]=dm_rd[4];
                     dm_x+=n;
                 }
                 break;
@@ -6837,7 +7024,7 @@ c182:
                         dm_wr[128]=dm_wr[129]=dm_wr[130]=*dm_rd;
                         dm_wr+=3;
                     }
-                    dm_wr=tmp+0xc0;
+                    dm_wr = tmp + 0xc0;
                 }
                 break;
             case 196:
@@ -6851,8 +7038,8 @@ c182:
             case 205:
                 l=dm_l&3;
                 dm_l>>=2;
-                m=(unsigned char)(((short*)(rom+0x1b0a))[dm_l]);
-                n=((short*)(rom+0x1b12))[l];
+                m=(unsigned char)(((short*)(rom + 0x1b0a))[dm_l]);
+                n=((short*)(rom + 0x1b12))[l];
                 dm_src=dm_wr;
                 dm_wr-=n;
                 
@@ -6896,9 +7083,9 @@ c182:
                 drawXx3(3);
                 l=dm_l&3;
                 dm_l>>=2;
-                o=m=(unsigned char)(((short*)(rom+0x1b0a))[dm_l]);
-                n=((short*)(rom+0x1b12))[l];
-                dm_wr=tmp+0xc0;
+                o=m=(unsigned char)(((short*)(rom + 0x1b0a))[dm_l]);
+                n=((short*)(rom + 0x1b12))[l];
+                dm_wr=tmp + 0xc0;
                 while(o--) draw3x2(),dm_wr+=128;
                 dm_rd+=6;
                 drawXx3(3);
@@ -6937,15 +7124,15 @@ grid4x4:
                 while(l--) {
                     tmp=dm_wr;
                     draw4x4X(dm_l);
-                    dm_wr=tmp+0x100;
+                    dm_wr = tmp + 0x100;
                 }
                 break;
             case 216: case 218:
                 l=dm_l&3;
                 dm_l>>=2;
-                dm_l=(unsigned char)(((unsigned short*)(rom+0x1b3a))[dm_l]);
-                l=(unsigned char)(((unsigned short*)(rom+0x1b3a))[l]);
-                dm_rd=(unsigned short*)(rom+0x1c62);
+                dm_l=(unsigned char)(((unsigned short*)(rom + 0x1b3a))[dm_l]);
+                l=(unsigned char)(((unsigned short*)(rom + 0x1b3a))[l]);
+                dm_rd=(unsigned short*)(rom + 0x1c62);
                 goto grid4x4;
                 break;
             case 219:
@@ -7074,7 +7261,7 @@ void Updatemap(DUNGEDIT *ed)
 
 // =============================================================================
 
-const static char *mus_str[]={
+const char *mus_str[]={
     "Same",
     "None",
     "Title",
@@ -9365,6 +9552,7 @@ void NewSR(FDOC*doc,int bank)
 
 // =============================================================================
 
+
 void
 LoadText(FDOC * const doc)
 {
@@ -9377,15 +9565,15 @@ LoadText(FDOC * const doc)
     };
     
     int data_pos = 0xe0000;
-    int l;
     
-    int msg_count = 0;
+    int msg_count     = 0;
     int max_msg_count = 0x200;
     
     unsigned char a;
+    
     unsigned char *rom = doc->rom;
     
-    // text buffer?
+    // list of pointers for the game's text messages
     doc->tbuf = (uint8_t**) calloc(max_msg_count, sizeof(uint8_t*) );
     
     for( ; ; )
@@ -9432,13 +9620,13 @@ LoadText(FDOC * const doc)
                 uint8_t const adj_code = (a - 0x88);
                 
                 // use the dictionary to load the characters up
-                uint16_t const l = get_16_le(rom + 0x74703 + (adj_code << 1));
-                uint16_t const k = get_16_le(rom + 0x74705 + (adj_code << 1));
+                uint16_t const l = ldle16b(rom + 0x74703 + (adj_code << 1) );
+                uint16_t const k = ldle16b(rom + 0x74705 + (adj_code << 1) );
                 
                 uint32_t src_addr = romaddr(0xe0000 + k);
                 
                 size_t len = (k - l);
-                size_t i  = 0;
+                size_t i   = 0;
                 
                 for( ; i < len; i += 1)
                 {
@@ -9457,7 +9645,7 @@ LoadText(FDOC * const doc)
             else
             {
                 // 0x7536B is a length indicator for each byte code
-                l = rom[0x7536b + a];
+                int l = rom[0x7536b + a];
                 
                 while(l--)
                     msg[msg_size++] = rom[data_pos++];
@@ -9475,7 +9663,7 @@ LoadText(FDOC * const doc)
             }
         }
         
-        put_16_le(msg, msg_size);
+        stle16b(msg, msg_size);
         
         msg = (uint8_t*) recalloc(msg,
                                   msg_size,
@@ -9484,16 +9672,19 @@ LoadText(FDOC * const doc)
         
         if(msg_count == max_msg_count)
         {
-            doc->tbuf = (uint8_t**) recalloc(doc->tbuf,
-                                             max_msg_count + 64,
-                                             max_msg_count,
-                                             sizeof(uint8_t*) );
-            max_msg_count += 64;
+            doc->tbuf = (uint8_t**)
+            recalloc(doc->tbuf,
+                     max_msg_count + COUNT_GROW_SIZE,
+                     max_msg_count,
+                     sizeof(uint8_t*) );
+            
+            max_msg_count += COUNT_GROW_SIZE;
         }
         
         doc->tbuf[msg_count++] = msg;
     }
 }
+
 
 // =============================================================================
 
@@ -10847,17 +11038,35 @@ songchg:
             }
             break;
         case 3027:
+            
             ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            
             i=ed->sel_song;
-            if(i==-1) break;
+            
+            if(i == -1)
+                break;
+            
             doc=ed->ew.doc;
-            if(doc->songs[i]) { MessageBox(framewnd,"Please delete the existing song first.","Bad error happened",MB_OK); break; }
-            s=doc->songs[i]=malloc(sizeof(SONG));
+            
+            if(doc->songs[i])
+            {
+                MessageBox(framewnd,
+                           "Please delete the existing song first.",
+                           "Bad error happened",
+                           MB_OK);
+                
+                break;
+            }
+            
+            s = doc->songs[i] = malloc(sizeof(SONG));
+            
             s->flag=0;
             s->inst=1;
             s->numparts=0;
             s->tbl=0;
+            
             goto updsongs;
+        
         case 3028:
             ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
             i=ed->sel_song;
@@ -10984,7 +11193,9 @@ char* sec_str[]={
     "8E"
 };
 
-char* Getsecretstring(unsigned char * rom, int i)
+char *
+Getsecretstring(unsigned char * const rom,
+                int             const i)
 {
     int a;
     
@@ -11117,6 +11328,7 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
     
     k = ed->mapscrollh;
     l = ed->mapscrollv;
+    
     i = ( (dm_x & 0x3f) << 3) - (k << 5);
     j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l << 5);
     
@@ -11134,19 +11346,33 @@ void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
         if( ( (j + 32) >> 5) >= ed->mappagev )
             l += ( (j + 32) >> 5) - ed->mappagev;
         
-        if(k!=ed->mapscrollh) SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION+(k<<16),0);
-        if(l!=ed->mapscrollv) SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION+(l<<16),0);
+        if(k!=ed->mapscrollh)
+        {
+            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION+(k<<16),0);
+        }
+        
+        if(l!=ed->mapscrollv)
+        {
+            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION+(l<<16),0);
+        }
     }
+    
     rc.left=((dm_x&0x3f)<<3);
     rc.top=(((dm_x>>6)&0x3f)<<3);
+    
     Getdungobjsize(ed->selchk,&rc,0,0,0);
+    
     ed->selrect=rc;
-    rc.left-=k<<5;
-    rc.top-=l<<5;
-    rc.right-=k<<5;
-    rc.bottom-=l<<5;
+    
+    rc.left -= k << 5;
+    rc.top  -= l << 5;
+    
+    rc.right  -= k << 5;
+    rc.bottom -= l << 5;
+    
     ed->objt=dm_k;
     ed->objl=dm_l;
+    
     InvalidateRect(hc,&rc,0);
 }
 
@@ -11167,8 +11393,10 @@ Drawblock(OVEREDIT const * const ed,
     
     int a,
         b,
-        c,
-        d;
+        c;
+    
+    // which chr (character / tile) to use.
+    int d = (n & 0x03ff);
     
     unsigned e;
     
@@ -11179,12 +11407,13 @@ Drawblock(OVEREDIT const * const ed,
     
     b2 = (drawbuf + 992 + x - (y << 5));
     
-    d = n & 0x3ff;
-    
     *(char*) &col = *(((char*)&col) + 1) = *(((char*)&col) + 2) = *(((char*)&col) + 3) = ((n & 0x1c00) >> 6);
     
     if((t & 24) == 24)
     {
+        // \task Used with only with Link's graphics dialog,
+        // seemingly. Need a name(s) for these bits.
+        
         b3 = ed->ew.doc->blks[225].buf;
         
         if(!b3)
@@ -11197,6 +11426,10 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 16)
     {
+        // \task 2bpp graphics? Not sure.
+        // Used with the dungeon map screen (not the maps themselves)
+        // Need a name for this bit.
+        
         if(d >= 0x180)
             goto noblock;
         
@@ -11216,6 +11449,9 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 8)
     {
+        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // Need a name for this bit.
+        
         if(d >= 0x100)
             goto noblock;
         
@@ -11574,12 +11810,167 @@ void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
     }
     else
     {
-        SetDIBitsToDevice(hdc,x,y,32,32,0,0,0,32,drawbuf,(BITMAPINFO*)&(ed->bmih),ed->hpal?DIB_PAL_COLORS:DIB_RGB_COLORS);
+        SetDIBitsToDevice(hdc,
+                          x, y,
+                          32, 32,
+                          0, 0, 0, 32,
+                          drawbuf,
+                          (BITMAPINFO*)&(ed->bmih),
+                          ed->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
     }
 }
 
+// =============================================================================
+
 void
-Paintdungeon(DUNGEDIT *ed,
+DrawDungeonMap8(DUNGEDIT const * const p_ed,
+                int              const p_x,
+                int              const p_y,
+                int              const p_offset,
+                uint16_t const * const p_buf)
+{
+    int const r = p_x << 3;
+    int const s = p_y >> 3;
+    int const t = p_offset + p_x + p_y;
+    
+    int u = 0;
+    
+    // Fake overworld editor. Type punning going on here.
+    OVEREDIT const * const fake_oed = (OVEREDIT*) p_ed;
+    
+    // -----------------------------
+    
+    if(p_ed->layering & 2)
+    {
+        // only used by special tilemap modes (title screen)
+        
+        Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 8);
+        
+        u = 1;
+    }
+    
+    switch(p_ed->layering >> 5)
+    {
+    
+    case 0:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+        }
+            
+        break;
+    
+    case 1:
+    case 5:
+    case 6:
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed,r,s, p_buf[t],u);
+        }
+        
+        break;
+    
+    case 2:
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+        }
+        
+        break;
+    
+    case 3:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+        }
+        
+        break;
+    
+    case 4:
+    case 7:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+        }
+        
+        break;
+    }
+    
+    if(p_ed->layering & 4)
+    {
+        Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 17);
+    }
+}
+
+// =============================================================================
+
+
+void
+DrawDungeon32x32(DUNGEDIT const * const p_ed,
+                 int const i,
+                 int const j,
+                 int const n,
+                 int const o,
+                 uint16_t const * const p_buf)
+{
+    // 
+    int const m = ( (i + n) >> 3)
+                + ( (j + o) << 3);
+    
+    int p = 0;
+    
+    for(p = 0; p < 4; p++)
+    {
+        int q = 0;
+        
+        for(q = 0; q < 256; q += 64)
+        {
+            DrawDungeonMap8(p_ed,
+                            p,
+                            q,
+                            m,
+                            p_buf);
+        }
+    }
+}
+
+// =============================================================================
+
+void
+Paintdungeon(DUNGEDIT * const ed,
              HDC hdc,
              RECT *rc,
              int x,int y,
@@ -11600,25 +11991,39 @@ Paintdungeon(DUNGEDIT *ed,
     
     HGDIOBJ oldobj = 0;
     
-    if((!(ed->disp & 3)) || ((!(ed->disp & 1)) && !(ed->layering >> 5))) {
+    // -----------------------------
+    
+    if
+    (
+        ( ! (ed->disp & 3) )
+     || ( ( ! (ed->disp & 1) ) && ! (ed->layering >> 5) )
+    )
+    {
         oldobj = SelectObject(hdc, black_brush);
+        
         v=1;
     }
     else
+    {
         v=0;
+    }
     
     for(j = y; j < l; j += 32)
     {
         i = x;
         
+        // -----------------------------
+        
         for( ; i < k; i += 32)
         {
             if(v)
-                Rectangle(hdc,i,j,i+32,j+32);
+            {
+                Rectangle(hdc, i, j, i + 32, j + 32);
+            }
             else
             {
                 m = ( (i + n) >> 3) + ( (j + o) << 3);
-            
+                
                 for(p = 0; p < 4; p++)
                 {
                     for(q = 0; q < 256; q += 64)
@@ -11787,6 +12192,8 @@ void Getdungselrect(int i,RECT*rc,CHOOSEDUNG*ed)
     rc->right=rc->left+(ed->w>>2);
     rc->bottom=rc->top+(ed->h>>2);
 }
+
+// =============================================================================
 
 void
 Setpalette(HWND const win, HPALETTE const pal)
@@ -22243,6 +22650,7 @@ long CALLBACK wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_MOUSEMOVE:
         ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
 mousemove:
+        
         n=ed->mapscrollh<<5;
         o=ed->mapscrollv<<5;
         j=((short)lparam)+n;
@@ -23247,7 +23655,13 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     HBRUSH const oldob2 = newobj;
                     
                     if(oed->hpal)
+                    {
+                        // \task Perhaps test this in 256 color mode if possible.
+                        // MSDN seems to indicate that this is wrong, but ......
+                        // there is some evidence that this is how you generate
+                        // a COLORREF from the currently realized palette maybe?
                         newobj = CreateSolidBrush(0x1000000+((short*)(oed->pal))[i+(j<<4)]);
+                    }
                     else
                     {
                         // \task Useless? No, but confusing (next line consumes
@@ -23264,7 +23678,11 @@ long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     if(oldob2)
                         DeleteObject(oldob2);
                     
-                    Rectangle(hdc,i*ed->pwidth>>4,j*ed->pheight>>4,(i+1)*ed->pwidth>>4,(j+1)*ed->pheight>>4);
+                    Rectangle(hdc,
+                              i * ed->pwidth >> 4,
+                              j * ed->pheight >> 4,
+                              (i + 1) * ed->pwidth >> 4,
+                              (j + 1) * ed->pheight >> 4);
                 }
             }
             
@@ -24220,7 +24638,10 @@ void Updatesprites(void)
             if(win) {
                 win=GetDlgItem(GetDlgItem(win,2000),3001);
                 oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(oe->disp&4)) continue;
+                
+                if( ! (oe->disp & SD_OverShowMarkers) )
+                    continue;
+                
                 k=oe->esize[oe->sprset];
                 l=oe->ebuf[oe->sprset];
                 for(j=0;j<k;j++) {
@@ -24247,9 +24668,13 @@ void Updatesprites(void)
             if(win) {
                 win=GetDlgItem(GetDlgItem(win,2000), ID_DungEditWindow);
                 ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(ed->disp&4)) break;
+                
+                if( ! (ed->disp & SD_OverShowMarkers) )
+                    break;
+                
                 k=ed->esize;
                 l=ed->ebuf;
+                
                 for(j=1;j<k;j++) {
                     rc.left=((l[j+1]&31)<<4)-(ed->mapscrollh<<5);
                     rc.top=((l[j]&31)<<4)-(ed->mapscrollv<<5);
@@ -24624,9 +25049,13 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         // \task SePH asked about this part where the backdrop is handled.
         // See if it can be fixed.
         if(j & 0x40)
+        {
             ed->pal[0] = darkcolor;
+        }
         else
+        {
             ed->pal[0] = greencolor;
+        }
         
         if(j == 0x5b || j == 0x88)
             ed->pal[0] = blackcolor;
@@ -26901,7 +27330,7 @@ long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
         si.nMin=0;
-        si.nMax=ed->mapsize?32:16;
+        si.nMax = ( ed->mapsize ? 32 : 16 ) - 1;
         si.nPage=lparam>>21;
         ed->mappagev=si.nPage;
         SetScrollInfo(win,SB_VERT,&si,1);
@@ -27435,7 +27864,9 @@ updent:
         if(l>q) l=q-1;
         if(k<0) k=0;
         if(l<0) l=0;
-        switch(ed->dtool) {
+        switch(ed->dtool)
+        {
+        
         case 1:
             if(ed->disp&8) {
                 k>>=4;
@@ -27484,6 +27915,7 @@ updent:
             }
             ed->ov->modf=1;
             break;
+        
         case 2:
         case 3:
             k>>=5;
@@ -27523,8 +27955,10 @@ updent:
             break;
         case 4: case 6: case 8: case 9: case 10: case 11:
             rom=ed->ew.doc->rom;
-            if(ed->disp&4) {
-                if(msg==WM_LBUTTONDOWN) {
+            if(ed->disp&4)
+            {
+                if(msg == WM_LBUTTONDOWN)
+                {
                     Overselchg(ed,win);
                     switch(ed->tool) {
                     case 3:
@@ -29558,9 +29992,9 @@ nomod:
             
             for(i = 0; i < 0x128; i++)
             {
-                // \task Probably want something like add_le_16
-                // and add_le16_i().
-                ((short*)(rom + 0x4cb42))[i] += 0x4cb42 - activedoc->dungspr;
+                addle16b_i(rom + 0x4cb42,
+                           i,
+                           (short) (0x4cb42 - activedoc->dungspr));
             }
             
             activedoc->sprend += 0x4cb42 - activedoc->dungspr;
@@ -29777,6 +30211,7 @@ nomod:
     return 0;
 }
 
+// Window procedure for the document window with the large tree control.
 long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
 {
     FDOC *param;
@@ -29787,6 +30222,7 @@ long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
     
     switch(msg)
     {
+    
     case WM_MDIACTIVATE:
         activedoc=(FDOC*)GetWindowLong(win,GWL_USERDATA);
         
@@ -29919,8 +30355,11 @@ dontsave:
         SetWindowPos(param->editwin,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
         goto deflt;
     case WM_CREATE:
+        
         param=(FDOC*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)param);
+        
+        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) param);
+        
         ShowWindow(win,SW_SHOW);
         param->editwin=CreateSuperDialog(&z3_dlg,win,0,0,0,0,(long)param);
     default:
@@ -30258,6 +30697,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     sizecsor[4] = normal_cursor;
     
     wait_cursor = LoadCursor(0, IDC_WAIT);
+    
     trk_font=GetStockObject(ANSI_FIXED_FONT);
     hdc=GetDC(framewnd);
     
