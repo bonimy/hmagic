@@ -1,16 +1,19 @@
 
+// For ease of compiling.
 #include "structs.h"
-#include "prototypes.h"
-
-#include "HMagicUtility.h"
 
 #include "GdiObjects.h"
+
+#include "prototypes.h"
 
 #include "Wrappers.h"
 #include "Callbacks.h"
 
+#include "HMagicUtility.h"
+
 #include "DungeonEnum.h"
 #include "DungeonLogic.h"
+
 
 // =============================================================================
 
@@ -788,7 +791,7 @@ Saveroom(DUNGEDIT * const ed)
         {
             k = 4;
             
-            stle32b(torches, u32_neg1);
+            stle16b(torches, u32_neg1);
         }
         
         stle16b(torch_count, k);
@@ -1223,7 +1226,8 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             // not an overlay
             
-            k = ( (short*) ( rom + ( j >= 0x85 ? 0x15a64 : 0x14813 ) ) )[j];
+            k = ldle16b_i(rom + (j >= 0x85 ? 0x15b6e : 0x14813),
+                          j >= 0x85 ? (j - 0x85) : j );
             
             // read in the room number, put it to screen.
             SetDlgItemInt(win, ID_DungEntrRoomNumber, k, 0);
@@ -1471,8 +1475,6 @@ no_obj:
             
             Dungselectchg(ed,hc,1);
             
-            InvalidateRect(hc, 0, 0);
-            
             break;
         
         case ID_DungObjLayer2:
@@ -1497,8 +1499,6 @@ no_obj:
             ed->selobj = ed->esize > 2;
             
             Dungselectchg(ed,hc,1);
-            
-            InvalidateRect(hc, 0, 0);
             
             break;
         
@@ -1894,8 +1894,6 @@ updpal2:
             ed->selobj=(ed->ssize>2)?2:0;
             Dungselectchg(ed,hc,1);
             
-            InvalidateRect(hc, 0, 0);
-            
             break;
         
         case ID_DungBlockLayer:
@@ -1906,8 +1904,6 @@ updpal2:
             ed->selobj=0;
             Dungselectchg(ed,hc,1);
             
-            InvalidateRect(hc, 0, 0);
-            
             break;
         
         case ID_DungTorchLayer:
@@ -1917,8 +1913,6 @@ updpal2:
             ed->selchk=9;
             ed->selobj=(ed->tsize>2)?2:0;
             Dungselectchg(ed,hc,1);
-            
-            InvalidateRect(hc, 0, 0);
             
             break;
         

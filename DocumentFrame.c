@@ -1,7 +1,8 @@
 
 #include "structs.h"
-
 #include "prototypes.h"
+
+#include "AudioLogic.h"
 
 // =============================================================================
 
