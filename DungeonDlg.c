@@ -1,10 +1,8 @@
 
-// For ease of compiling.
 #include "structs.h"
+#include "prototypes.h"
 
 #include "GdiObjects.h"
-
-#include "prototypes.h"
 
 #include "Wrappers.h"
 #include "Callbacks.h"
@@ -13,7 +11,6 @@
 
 #include "DungeonEnum.h"
 #include "DungeonLogic.h"
-
 
 // =============================================================================
 
@@ -778,20 +775,16 @@ Saveroom(DUNGEDIT * const ed)
             }
         }
         
-        // \task Is this a bug? The second expression just tests for
-        // equality but doesn't change any part of memory.
-        // \note Update: This appears to maybe be checking whether
-        // the user has cleared all the torches. This has the effect
-        // of changing the immediate operand of a CPX command (number of bytes
-        // worth of torch data) and checking whether there is valid torch
-        // data in the first two entries. Effectively if there are two
-        // 0xffff words in the torch data and the operand of the instruction
+        // \note This has the effect of changing the immediate operand of a
+        // CPX command (number of bytes worth of torch data) and checking whether
+        // there is valid torch data in the first two entries. Effectively if there
+        // are two 0xffff words in the torch data and the operand of the instruction
         // is 4, it means no room can load torch data.
         if(!k)
         {
             k = 4;
             
-            stle16b(torches, u32_neg1);
+            stle32b(torches, u32_neg1);
         }
         
         stle16b(torch_count, k);
