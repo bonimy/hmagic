@@ -5,10 +5,6 @@
 
     #define OEMRESOURCE
 
-    // This is legacy code, and I don't want to bother using the MS-specific
-    // extensions to the standard library at this time.
-    #define _CRT_SECURE_NO_WARNINGS
-
     // 'nonstandard extension used : non-constant aggregate initializer'
     // This warning is not really relevant since major vendors support this
     // extension and C99 eliminates it completely whenever MS gets around to
@@ -27,7 +23,6 @@
     #pragma warning(push, 0)
 
     #include <windows.h>
-    #include <stdio.h>
     #include <stdint.h>
     #include <commctrl.h>
     #include <mmsystem.h>

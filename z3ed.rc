@@ -199,6 +199,7 @@ END
 // RCDATA
 //
 
+IDR_SPRNAMES            RCDATA                  "sprname.dat"
 IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
 IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
 #endif    // English (United States) resources
@@ -738,14 +739,6 @@ BEGIN
     EDITTEXT        IDC_EDIT1,8,28,172,87,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
 END
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// RCDATA
-//
-
-IDR_SPRNAMES            RCDATA                  "sprname.dat"
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Accelerator
@@ -866,7 +859,6 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
-
 
 /////////////////////////////////////////////////////////////////////////////
 //

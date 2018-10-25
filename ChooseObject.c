@@ -361,13 +361,14 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                         {
                             Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+i],0);
                         }
+                        
                         l+=j;
                     }
                     
-                    l-=j*p-o;
+                    l -= (j * p - o);
                     
-                    o<<=3;
-                    p<<=3;
+                    o <<= 3;
+                    p <<= 3;
                     
                     SetDIBitsToDevice(hdc,
                                       rc.left + (m << 3),
@@ -401,8 +402,10 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 {
                     o=4;
                     p=4;
+                    
                     if(m>j-4) o=j&3;
                     if(n>k-4) p=k&3;
+                    
                     for(i=0;i<o;i++)
                     {
                         for(q=0;q<p;q++)
@@ -414,6 +417,7 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     }
                     
                     l -= k * o - p;
+                    
                     o <<= 3;
                     p <<= 3;
                     
@@ -430,7 +434,8 @@ dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                                       (BITMAPINFO*) &(dunged->bmih),
                                       dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
                 }
-                l+=3*k;
+                
+                l += (3 * k);
             }
             
             dunged->bmih = backup;
@@ -658,73 +663,73 @@ updflag:
 
 // =============================================================================
 
-void
-DungeonObjSelector_OnPaint(CHOOSEDUNG const * const ed,
-                           HWND               const win)
-{
-    int j = 0;
-    int k = (ed->scroll & 3) * ed->h >> 2;
-    int i = ed->h - k;
-    
-    PAINTSTRUCT ps;
-    
-    HDC const hdc = BeginPaint(win, &ps);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, ed->ed->hpal, 1);
-    
-    // -----------------------------
-    
-    RealizePalette(hdc);
-    
-    if(i > ps.rcPaint.bottom)
-        j = ps.rcPaint.bottom;
-    else
-        j = i;
-    
-    if(j > ps.rcPaint.top)
+    void
+    DungeonObjSelector_OnPaint(CHOOSEDUNG const * const ed,
+                               HWND               const win)
     {
-        BitBlt(hdc,
-               ps.rcPaint.left,
-               ps.rcPaint.top,
-               ps.rcPaint.right - ps.rcPaint.left,
-               j - ps.rcPaint.top,
-               ed->bufdc,
-               ps.rcPaint.left,
-               ps.rcPaint.top + k,
-               SRCCOPY);
-    }
-    
-    if(i < ps.rcPaint.top)
-        j = ps.rcPaint.top;
-    else
-        j = i;
-    
-    if(j < ps.rcPaint.bottom)
-    {
-        BitBlt(hdc,
-               ps.rcPaint.left,j,
-               ps.rcPaint.right - ps.rcPaint.left,
-               ps.rcPaint.bottom - j,
-               ed->bufdc,
-               ps.rcPaint.left,
-               j + k - ed->h,
-               SRCCOPY);
-    }
-    
-    i = ed->sel - (ed->scroll << 2);
-    
-    if(i >= 0 && i < 16)
-    {
-        RECT rc;
+        int j = 0;
+        int k = (ed->scroll & 3) * ed->h >> 2;
+        int i = ed->h - k;
         
-        Getdungselrect(i, &rc, ed);
-        FrameRect(hdc, &rc, green_brush);
+        PAINTSTRUCT ps;
+        
+        HDC const hdc = BeginPaint(win, &ps);
+        
+        HPALETTE const oldpal = SelectPalette(hdc, ed->ed->hpal, 1);
+        
+        // -----------------------------
+        
+        RealizePalette(hdc);
+        
+        if(i > ps.rcPaint.bottom)
+            j = ps.rcPaint.bottom;
+        else
+            j = i;
+        
+        if(j > ps.rcPaint.top)
+        {
+            BitBlt(hdc,
+                   ps.rcPaint.left,
+                   ps.rcPaint.top,
+                   ps.rcPaint.right - ps.rcPaint.left,
+                   j - ps.rcPaint.top,
+                   ed->bufdc,
+                   ps.rcPaint.left,
+                   ps.rcPaint.top + k,
+                   SRCCOPY);
+        }
+        
+        if(i < ps.rcPaint.top)
+            j = ps.rcPaint.top;
+        else
+            j = i;
+        
+        if(j < ps.rcPaint.bottom)
+        {
+            BitBlt(hdc,
+                   ps.rcPaint.left,j,
+                   ps.rcPaint.right - ps.rcPaint.left,
+                   ps.rcPaint.bottom - j,
+                   ed->bufdc,
+                   ps.rcPaint.left,
+                   j + k - ed->h,
+                   SRCCOPY);
+        }
+        
+        i = ed->sel - (ed->scroll << 2);
+        
+        if(i >= 0 && i < 16)
+        {
+            RECT rc;
+            
+            Getdungselrect(i, &rc, ed);
+            FrameRect(hdc, &rc, green_brush);
+        }
+        
+        SelectPalette(hdc, oldpal, 0);
+        
+        EndPaint(win, &ps);
     }
-    
-    SelectPalette(hdc, oldpal, 0);
-    
-    EndPaint(win, &ps);
-}
 
 // =============================================================================
 
@@ -933,7 +938,7 @@ BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->scroll=i;
         hdc = GetDC(win);
         
-        hc = GetDlgItem(win,IDC_CUSTOM1);
+        hc = GetDlgItem(win, IDC_CUSTOM1);
         
         rc = HM_GetClientRect(hc);
         

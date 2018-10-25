@@ -1,4 +1,7 @@
 
+    // For printf()
+    #include <stdio.h>
+
 #include "structs.h"
 #include "prototypes.h"
 

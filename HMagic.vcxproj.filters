@@ -180,6 +180,9 @@
     <ClCompile Include="AudioFrame.c">
       <Filter>Source Files\Audio</Filter>
     </ClCompile>
+    <ClCompile Include="SampleDisplay.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">

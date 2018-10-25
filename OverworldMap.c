@@ -69,7 +69,8 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     text_buf_ty text_buf = { 0 };
     
     int i,j,k,m;
-    short *b2,*b3;
+    uint16_t const * b2;
+    uint16_t const * b3;
     unsigned char*b6;
     
     HGDIOBJ oldobj = 0;
@@ -82,22 +83,25 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 0:
         
+        // Sprites
         oldobj = SelectObject(hdc, purple_brush);
         
         if(ed->ew.param < 0x90)
         {
-            m=ed->sprset;
-            b6=ed->ebuf[m];
+            m  = ed->sprset;
+            b6 = ed->ebuf[m];
             
             for(i = ed->esize[m] - 3; i >= 0; i -= 3)
             {
-                if(ed->tool==5 && i==ed->selobj)
+                if( (ed->tool == 5) && (i == ed->selobj) )
+                {
                     continue;
+                }
                 
-                rc.left=((b6[i+1])<<4)-n;
-                rc.top=((b6[i])<<4)-o;
+                rc.left = ( (b6[i + 1]) << 4 ) - n;
+                rc.top  = ( (b6[i])     << 4 ) - o;
                 
-                Drawdot(hdc,&rc,q,n,o);
+                Drawdot(hdc, &rc, q, n, o);
                 GetOverString(ed, 5, i, text_buf);
                 
                 text_r = rc;
@@ -115,9 +119,10 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 1:
         
-        b2=(short*)(ed->ew.doc->rom + 0xdb96f);
-        b3=(short*)(ed->ew.doc->rom + 0xdba71);
+        b2=(ed->ew.doc->rom + 0xdb96f);
+        b3=(ed->ew.doc->rom + 0xdba71);
         
+        // Entrances
         oldobj = SelectObject(hdc, yellow_brush);
         
         for(i=0;i<129;i++)
@@ -141,11 +146,17 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
                              text_buf);
             }
         }
+        
         break;
+    
     case 2:
-        b2=(short*)(rom + 0x160ef);
-        b3=(short*)(rom + 0x16051);
+        
+        b2=(rom + 0x160ef);
+        b3=(rom + 0x16051);
+        
+        // Exits
         oldobj = SelectObject(hdc, white_brush);
+        
         for(i=0;i<79;i++) {
             if(ed->tool==7 && i==ed->selobj) continue;
             if(rom[0x15e28 + i]==ed->ew.param) {
@@ -161,20 +172,34 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
                          "%04X",
                          ((unsigned short*)(rom + 0x15d8a))[i]);
                 
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
                 PaintSprName(hdc,
                              rc.left, rc.top,
-                             &rc,
+                             &text_r,
                              text_buf);
             }
         }
+        
         break;
+    
     case 3:
-        b2=(short*)(ed->ew.doc->rom + 0xdb826);
-        b3=(short*)(ed->ew.doc->rom + 0xdb800);
+        
+        b2 = (ed->ew.doc->rom + 0xdb826);
+        b3 = (ed->ew.doc->rom + 0xdb800);
+        
+        // Holes
         oldobj = SelectObject(hdc, black_brush);
-        for(i=0;i<19;i++) {
-            if(ed->tool==8 && i==ed->selobj) continue;
-            if(b2[i]==ed->ew.param) {
+        
+        for(i = 0; i < 19; i++)
+        {
+            if( (ed->tool == 8) && (i == ed->selobj) )
+                continue;
+            
+            if(b2[i] == ed->ew.param)
+            {
                 j=b3[i];
                 j+=0x400;
                 rc.left=((j&0x7e)<<3)-n;
@@ -185,18 +210,29 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
                          "%02X",
                          rom[0xdb84c + i]);
                 
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
                 PaintSprName(hdc,
                              rc.left,
                              rc.top,
-                             &rc,
+                             &text_r,
                              text_buf);
             }
         }
+        
         break;
+    
     case 4:
+        
+        // Items
         oldobj = SelectObject(hdc, red_brush);
-        if(ed->ew.param<0x80) {
-            for(i=0;i<ed->ssize;i+=3) {
+        
+        if(ed->ew.param < 0x80)
+        {
+            for(i=0;i<ed->ssize;i+=3)
+            {
                 if(ed->tool==10 && i==ed->selobj) continue;
                 j=ed->sbuf[i];
                 k=ed->sbuf[i+1];
@@ -207,10 +243,14 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
                 
                 GetOverString(ed, 10, i, text_buf);
                 
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
                 PaintSprName(hdc,
                              rc.left,
                              rc.top,
-                             &rc,
+                             &text_r,
                              text_buf);
             }
         }
@@ -218,28 +258,41 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
         break;
     
     case 5:
-        b2=(short*)(rom + 0x16b8f);
-        b3=(short*)(rom + 0x16b6d);
+        
+        b2 = (rom + 0x16b8f);
+        b3 = (rom + 0x16b6d);
+        
+        // Bird ("Fly-{N}") locations.
         oldobj = SelectObject(hdc, blue_brush);
-        for(i=0;i<17;i++) {
-            if(ed->tool==9 && i==ed->selobj) continue;
-            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
+        
+        for(i = 0; i < 17; i++)
+        {
+            if(ed->tool == 9 && i == ed->selobj)
+                continue;
+            
+            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param)
+            {
+                j = ldle16h_i(b2, i);
+                k = ldle16h_i(b3, i);
                 
-                rc.left=j-n;
-                rc.top=k-o;
+                j -= ( (ed->ew.param & 0x07) << 9);
+                k -= ( (ed->ew.param & 0x38) << 6);
                 
-                Drawdot(hdc,&rc,q,n,o);
+                rc.left = (j - n);
+                rc.top  = (k - o);
+                
+                Drawdot(hdc, &rc, q, n, o);
                 
                 GetOverString(ed, 9, i, text_buf);
+                
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
                 
                 PaintSprName(hdc,
                              rc.left,
                              rc.top,
-                             &rc,
+                             &text_r,
                              text_buf);
             }
         }

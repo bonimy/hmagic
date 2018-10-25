@@ -14,7 +14,15 @@
         
         // \task Fill in others.
         
-        SD_OverWindowFocus = 3039,
+        SD_OverUpArrow = 3031,
+        SD_OverDownArrow,
+        SD_OverSprTileSetStatic,
+        SD_OverSprTileSetEditCtl,
+        SD_OverMapSearchBtn,
+        SD_OverAdjustSearchBtn,
+        SD_OverOverlayChkBox,
+        SD_OverMap16_Selector,
+        SD_OverWindowFocus,
         SD_OverAfterLast,
         
         SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),

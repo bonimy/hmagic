@@ -11,6 +11,10 @@
 // for Epoch 2 into the repo.
 
 /**
+
+    \task Would like to have the text of markers on the overworld map not be clipped
+    by the background region (the grey area outside of which we paint)
+
     \task Remaining things Puzzledude claims are borked:
 
     -overworld items are bugged if you edit them and save, same for whirlpools
@@ -18,8 +22,11 @@
     simply repoint all pointers to an empty room rather than actually make
     empty space
 
-    -choosing "remove all overworld exits" also removes special white dots which tells the game what screen to load in the ending sequence
-    -choosing "remove all overworld exits" also removes the "entrance" from Ganon room to the Triforce shrine
+    -choosing "remove all overworld exits" also removes special white dots which
+    tells the game what screen to load in the ending sequence
+
+    -choosing "remove all overworld exits" also removes the "entrance" from Ganon
+    room to the Triforce shrine
 
     -global grid editing in the overworld makes crashes or forcefully puts in
     all entrances (yellow dots) for some reason
@@ -51,12 +58,15 @@
 
     - Fixed bug in Dungeon item handling (red markers) that made it very
     difficult to select one on BG2 by clicking. Furthermore, even if one
-    managed to select one by some other means, such as left and rigth arrow
+    managed to select one by some other means, such as left and right arrow
     keys, the data would be mishandled and revert the BG setting of the item
     to BG1. The object details static text control paid attention to BG1 / BG2
     settings but the code involved in moving them did not.
  
 */
+
+// For standard C file i/o
+#include <stdio.h>
 
 #include "structs.h"
 #include "prototypes.h"
@@ -106,11 +116,11 @@ short dm_k;
 
 uint8_t const u8_neg1 = (uint8_t) (~0);
 
-int const always = 1;
-
 uint16_t const u16_neg1 = (uint16_t) (~0);
 
 uint32_t const u32_neg1 = (uint32_t) (~0);
+
+int const always = 1;
 
 int mouse_x;
 int mouse_y;
@@ -123,7 +133,6 @@ int wver;
 int palmode=0;
 int mark_sr;
 int mark_start,mark_end,mark_first,mark_last;
-
 
 int door_ofs = 0;
 int issplit = 0;
@@ -471,7 +480,7 @@ CreateNotificationWindow(HWND const p_parent)
         SetActiveWindow(p_parent);
     }
     
-    return win;    
+    return win;
 }
 
 // =============================================================================
@@ -501,9 +510,9 @@ HM_NotifyBoxProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
             
             return 0;
         }
-        
+    
     case WM_MOUSEACTIVATE:
-
+        
         return MA_NOACTIVATE;
     }
     
@@ -3356,10 +3365,6 @@ nochg:
 
 // =============================================================================
 
-
-
-// =============================================================================
-
 const char *mus_str[]={
     "Same",
     "None",
@@ -4543,6 +4548,8 @@ midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
     Updatesong();
 }
 
+// =============================================================================
+
 void CALLBACK
 midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
 {
@@ -4553,6 +4560,8 @@ midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
     
     Updatesong();
 }
+
+// =============================================================================
 
 int CALLBACK
 soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
@@ -6081,10 +6090,10 @@ DrawDungeonMap8(DUNGEDIT const * const p_ed,
 
 void
 DrawDungeon32x32(DUNGEDIT const * const p_ed,
-                 int const i,
-                 int const j,
-                 int const n,
-                 int const o,
+                 int              const i,
+                 int              const j,
+                 int              const n,
+                 int              const o,
                  uint16_t const * const p_buf)
 {
     // 
@@ -6092,6 +6101,8 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
                 + ( (j + o) << 3);
     
     int p = 0;
+    
+    // -----------------------------
     
     for(p = 0; p < 4; p++)
     {
@@ -6251,6 +6262,7 @@ void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
     Updatesize(hc);
 }
 
+// =============================================================================
 
 void Changeblk8sel(HWND win,BLOCKSEL8*ed)
 {
@@ -6440,7 +6452,7 @@ int __stdcall askinteger(int max,char*caption,char*text)
     return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
 }
 
-static char*screen_text[]={
+static char const * screen_text[] = {
     "Title screen",
     "Naming screen",
     "Player select",
@@ -7560,32 +7572,6 @@ okovl:
 
 // =============================================================================
 
-int
-loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
-{
-    unsigned short*b;
-    int i,k,l;
-    LoadOverlays(doc);
-    if(doc->o_loaded!=1) return 0;
-    b=doc->ovlbuf;
-    memset(buf,-1,0x2800);
-    if(!(doc->o_enb[mapnum>>3]&(1<<(mapnum&7)))) return 0;
-    i=b[mapnum];
-    for(;;) {
-        k=b[i++];
-        if(k>=0xfffe) break;
-        for(;;) {
-            l=b[i++];
-            if(l>=0xfffe) break;
-            buf[l]=k;
-        }
-        if(l==0xfffe) break;
-    }
-    return 1;
-}
-
-// =============================================================================
-
 void
 SaveOverlays(FDOC * const doc)
 {
@@ -7774,6 +7760,32 @@ void Unloadovl(FDOC *doc)
     
     // the overlays are regarded as not being loaded. 
     doc->o_loaded = 0;
+}
+
+// =============================================================================
+
+int
+loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
+{
+    unsigned short*b;
+    int i,k,l;
+    LoadOverlays(doc);
+    if(doc->o_loaded!=1) return 0;
+    b=doc->ovlbuf;
+    memset(buf,-1,0x2800);
+    if(!(doc->o_enb[mapnum>>3]&(1<<(mapnum&7)))) return 0;
+    i=b[mapnum];
+    for(;;) {
+        k=b[i++];
+        if(k>=0xfffe) break;
+        for(;;) {
+            l=b[i++];
+            if(l>=0xfffe) break;
+            buf[l]=k;
+        }
+        if(l==0xfffe) break;
+    }
+    return 1;
 }
 
 // =============================================================================
@@ -8480,7 +8492,7 @@ int Editblocks(OVEREDIT *ed, int num, HWND win)
     LPARAM x[2];
     
     // -----------------------------
-
+    
     // \task Pointer problem on 64-bit (and just generally)
     x[0] = (LPARAM) ed;
     
@@ -8716,14 +8728,6 @@ Paintspr(HDC const p_dc,
 #endif
     
     TextOut(p_dc, p_x, p_y, buffer, final_len);
-}
-
-// =============================================================================
-
-void Getsampsel(SAMPEDIT*ed,RECT*rc)
-{
-    rc->left=(ed->sell<<16)/ed->zoom-ed->scroll;
-    rc->right=(ed->selr<<16)/ed->zoom+1-ed->scroll;
 }
 
 LRESULT CALLBACK
@@ -9075,7 +9079,8 @@ updsize:
             p[k]=128;
             Get3dpt(ed,p[0],p[1],p[2],&pt3);
             SelectObject(hdc,white_pen);
-            if( (j<3) ^ fronttest(&pt,&pt2,&pt3) )
+            
+            if( (j < 3) ^ fronttest(&pt,&pt2,&pt3) )
             {
                 m=0;
                 for(;;) {
@@ -9385,6 +9390,8 @@ deflt:
     return 0;
 }
 
+// =============================================================================
+
 void Trackchgsel(HWND win,RECT*rc,TRACKEDIT*ed)
 {
     rc->top=(mark_start-ed->scroll)*textmetric.tmHeight;
@@ -9566,6 +9573,7 @@ modfrow:
             if(!mark_doc) break;
             goto unmark;
         case 'L':
+            
             if(mark_doc!=ed->ew.doc || mark_sr!=ed->ew.param)
             {
                 
@@ -9959,7 +9967,7 @@ digkey:
         
         k = (ed->sel - ed->scroll) * textmetric.tmHeight;
         
-        SetROP2(hdc,R2_NOTXORPEN);
+        SetROP2(hdc, R2_NOTXORPEN);
         
         oldobj3=SelectObject(hdc,null_pen);
         if(mark_doc==ed->ew.doc && mark_sr==ed->ew.param) {
@@ -9984,7 +9992,7 @@ digkey:
         SelectObject(hdc,oldobj2);
         EndPaint(win,&ps);
         break;
-    
+        
     default:
         
         return DefWindowProc(win,msg,wparam,lparam);
@@ -10534,6 +10542,8 @@ int Fixscrollpos(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int d
     return n;
 }
 
+// =============================================================================
+
 void lmapblkchg(HWND win,LMAPEDIT*ed)
 {
     RECT rc;
@@ -10543,6 +10553,8 @@ void lmapblkchg(HWND win,LMAPEDIT*ed)
     rc.bottom=rc.top+16;
     InvalidateRect(win,&rc,0);
 }
+
+// =============================================================================
 
 LRESULT CALLBACK
 lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -12421,10 +12433,8 @@ Updatesprites(void)
 
 // =============================================================================
 
-
-// =============================================================================
-
-BOOL CALLBACK trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT*ed;
     FDOC*doc;
@@ -12498,7 +12508,7 @@ SD_ENTRY over_sd[] =
     {"BUTTON","Background",128,48,80,20,3011,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Grid",208,48,50,20, SD_OverGrid32CheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Markers",258,48,70,20,3019,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
-    {"BUTTON","Overlay",328,48,70,20,3037,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Overlay",328,48,70,20, SD_OverOverlayChkBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Exit",0,72,60,20,3023,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
     {"BUTTON","Properties",256,0,60,20,3024,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","Hole",128,72,60,20,3025,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
@@ -12506,8 +12516,8 @@ SD_ENTRY over_sd[] =
     {"BUTTON","Item",256,72,60,20,3027,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
     {"BUTTON","",400,0,20,20,3029,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","",425,0,20,20,3030,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","",450,0,20,20,3031,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","",475,0,20,20,3032,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",450,0,20,20, SD_OverUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",475,0,20,20, SD_OverDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",329,24,70,80,3020,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"EDIT","0",56,0,0,20,3005,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,3},
     {"STATIC","GFX#:",0,24,40,20,3006,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
@@ -12516,11 +12526,11 @@ SD_ENTRY over_sd[] =
     {"EDIT","",130,24,30,20,3010,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Spr GFX#:",165,24,55,20,3017,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",220,24,30,20,3018,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Spr pal:",255,24,45,20,3033,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",300,24,25,20,3034,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Search",56,20,0,20,3035,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
-    {"BUTTON","Search2",56,42,0,20,3036,WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
-    {"BLKSEL16","",152,70,0,0,3038,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    {"STATIC","Spr pal:",255,24,45,20, SD_OverSprTileSetStatic, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",300,24,25,20, SD_OverSprTileSetEditCtl, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"BUTTON","Search",56,20,0,20, SD_OverMapSearchBtn, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BUTTON","Search2",56,42,0,20, SD_OverAdjustSearchBtn, WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BLKSEL16","",152,70,0,0, SD_OverMap16_Selector, WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
     
     // For testing window focus
     {"STATIC", "Window Focus: ",
@@ -12788,191 +12798,6 @@ SUPERDLG z3_dlg={
 // =============================================================================
 
 LRESULT CALLBACK
-sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    SAMPEDIT*ed;
-    ZWAVE*zw;
-    PAINTSTRUCT ps;
-    HDC hdc,oldobj;
-    SCROLLINFO si;
-    int i,j,k,l;
-    RECT rc,rc2;
-    switch(msg) {
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS;
-    case WM_SIZE:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        i=ed->height;
-        ed->width=(short)lparam;
-        ed->height=lparam>>16;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nMin=0;
-        si.nMax=ed->zw->end;
-        ed->page=si.nPage=(ed->width<<16)/ed->zoom;
-        SetScrollInfo(win,SB_HORZ,&si,1);
-        if(i!=ed->height) InvalidateRect(win,0,1);
-        break;
-    case WM_HSCROLL:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->scroll=Handlescroll(win,wparam,ed->scroll,ed->page,SB_HORZ,ed->zw->end*ed->zoom>>16,1);
-        break;
-    
-    case WM_KEYDOWN:
-        
-        ed = (SAMPEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        switch(wparam)
-        {
-        
-        case VK_DELETE:
-            
-            zw = ed->zw;
-            
-            if(zw->copy != -1)
-                break;
-            
-            if(ed->sell == ed->selr)
-            {
-                // \task This logic deletes the whole sample if there is
-                // is not a selected region of width greater than zero.
-                // Is this really intuitive? Seems like a great way to lose
-                // work.
-                
-                zw->end = 0;
-                
-                zw->buf = (short*) realloc(zw->buf, 2);
-                
-                zw->buf[0]=0;
-                zw->lopst=0;
-                ed->sell=0;
-            }
-            else
-            {
-                memcpy(zw->buf+ed->sell,zw->buf+ed->selr,zw->end-ed->selr);
-                
-                zw->end += ed->sell-ed->selr;
-                
-                zw->buf = realloc(zw->buf, (zw->end + 1) << 1);
-                
-                if(zw->lopst >= ed->selr)
-                    zw->lopst += ed->sell - ed->selr;
-                
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            }
-            ed->selr=ed->sell;
-            ed->init=1;
-            SetDlgItemInt(ed->dlg,3008,zw->end,0);
-            SetDlgItemInt(ed->dlg,3010,zw->lopst,0);
-            InvalidateRect(win,0,1);
-            ed->init=0;
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            break;
-        }
-        break;
-    case WM_CHAR:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        switch(wparam) {
-        case 1:
-            ed->sell=0;
-            ed->selr=ed->zw->end;
-            InvalidateRect(win,0,1);
-            break;
-        case 3:
-            sampdlgproc(ed->dlg,WM_COMMAND,3005,0);
-            break;
-        case 22:
-            sampdlgproc(ed->dlg,WM_COMMAND,3006,0);
-            break;
-        }
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetFocus(win);
-        SetCapture(win);
-        ed->flag|=4;
-        ed->flag&=-9;
-        i=((short)lparam+ed->scroll)*ed->zoom>>16;
-        rc = HM_GetClientRect(win);
-        if(wparam&MK_SHIFT) {
-            if(i<ed->sell) ed->flag|=8;
-            goto selectmore;
-        }
-        Getsampsel(ed,&rc);
-        InvalidateRect(win,&rc,1);
-        ed->selr=ed->sell=i;
-        Getsampsel(ed,&rc);
-        InvalidateRect(win,&rc,1);
-        break;
-    case WM_LBUTTONUP:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->flag&=-5;
-        ReleaseCapture();
-        break;
-    case WM_MOUSEMOVE:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->flag&4) {
-            rc = HM_GetClientRect(win);
-selectmore:
-            rc2=rc;
-            Getsampsel(ed,&rc);
-            InvalidateRect(win,&rc,1);
-            i=((short)lparam+ed->scroll)*ed->zoom>>16;
-            if(i>ed->selr && (ed->flag&8)) {
-                ed->flag&=-9;
-                ed->sell=ed->selr;
-            }
-            if(i<ed->sell && !(ed->flag&8)) {
-                ed->flag|=8;
-                ed->selr=ed->sell;
-            }
-            if(ed->flag&8) ed->sell=i;
-            else ed->selr=i;
-            if(ed->sell<0) ed->sell=0;
-            if(ed->selr>ed->zw->end) ed->selr=ed->zw->end;
-            Getsampsel(ed,&rc);
-            InvalidateRect(win,&rc,1);
-            if((short)lparam>=rc2.right) ed->scroll=Handlescroll(win,SB_THUMBPOSITION|(((short)lparam+ed->scroll-ed->page)<<16),ed->scroll,ed->page,SB_HORZ,ed->zw->end*ed->zoom>>16,1);
-            if((short)lparam<rc2.left) ed->scroll=Handlescroll(win,SB_THUMBPOSITION|(((short)lparam+ed->scroll)<<16),ed->scroll,ed->page,SB_HORZ,ed->zw->end*ed->zoom>>16,1);
-        }
-        break;
-    case WM_PAINT:
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        hdc=BeginPaint(win,&ps);
-        zw=ed->ew.doc->waves+ed->editsamp;
-        oldobj=SelectObject(hdc,green_pen);
-        l=0;
-        for(i=ps.rcPaint.left-1;i<=ps.rcPaint.right;i++) {
-            j=((i+ed->scroll)*ed->zoom>>16);
-            if(j<0) continue;
-            if(j>=zw->end) break;
-            k=((int)(zw->buf[j])+32768)*ed->height>>16;
-            if(!l) MoveToEx(hdc,i,k,0),l=1; else LineTo(hdc,i,k);
-        }
-        SelectObject(hdc,oldobj);
-        Getsampsel(ed,&rc);
-        if(rc.left<ps.rcPaint.left) rc.left=ps.rcPaint.left;
-        if(rc.right>ps.rcPaint.right) rc.right=ps.rcPaint.right;
-        if(rc.left<rc.right) {
-            rc.top=ps.rcPaint.top;
-            rc.bottom=ps.rcPaint.bottom;
-            InvertRect(hdc,&rc);
-        }
-        EndPaint(win,&ps);
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-// =============================================================================
-
-LRESULT CALLBACK
 lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     LMAPEDIT *ed;
@@ -13074,7 +12899,10 @@ LRESULT CALLBACK
 trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT*ed;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_MDIACTIVATE:
         activedoc=((TRACKEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
         goto deflt;
@@ -13605,7 +13433,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     // Use an array of sprite names that has been directly
                     // inlined in the config file.
                     spr_loaded = Loadsprnames((char const *) section_data,
-                                                  section_size);
+                                              section_size);
                     
                     if(spr_loaded)
                     {

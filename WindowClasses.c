@@ -7,7 +7,9 @@
 
 // =============================================================================
 
-WNDPROC DefaultEditProc;
+static WNDPROC DefaultEditProc;
+
+// =============================================================================
 
 HM_DeclareWndProc(NumEditProc)
 {
@@ -27,7 +29,7 @@ HM_DeclareWndProc(NumEditProc)
             unsigned short c = (unsigned short) p_wp;
             
             // Only pass numeric and backspace characters on to the
-            // stnadard edit window proc
+            // standard edit window proc.
             if('0' <= c && c <= '9')
             {
                 break;
@@ -205,6 +207,8 @@ HM_RegisterClasses(HINSTANCE p_inst)
     wc.cbWndExtra=12;
     RegisterClass(&wc);
     
+    // Subclass the standard edit control with a different window procedure
+    // that only accepts numerical characters.
     if( GetClassInfo(p_inst, "Edit", &wc) )
     {
         DefaultEditProc = wc.lpfnWndProc;
