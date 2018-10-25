@@ -102,7 +102,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 // =============================================================================
 
     // Audio-related window procedures.
-    HM_DeclareWndProc(sampdispproc);
+    HM_DeclareWndProc(SampleDisplayProc);
 
     HM_DeclareDlgProc(sampdlgproc);
 

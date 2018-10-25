@@ -193,7 +193,7 @@ HM_RegisterClasses(HINSTANCE p_inst)
     RegisterClass(&wc);
     
     wc.hbrBackground=black_brush;
-    wc.lpfnWndProc=sampdispproc;
+    wc.lpfnWndProc=SampleDisplayProc;
     wc.lpszClassName="SAMPEDIT";
     RegisterClass(&wc);
     
