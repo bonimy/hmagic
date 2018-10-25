@@ -10,6 +10,26 @@
 // \task A note to merge the changes in the standalone project file
 // for Epoch 2 into the repo.
 
+/**
+    \task Remaining things Puzzledude claims are borked:
+
+    -overworld items are bugged if you edit them and save, same for whirlpools
+    -pretty much all options: empty all... (dungeons rooms, exits, entrances)
+    simply repoint all pointers to an empty room rather than actually make
+    empty space
+
+    -choosing "remove all overworld exits" also removes special white dots which tells the game what screen to load in the ending sequence
+    -choosing "remove all overworld exits" also removes the "entrance" from Ganon room to the Triforce shrine
+
+    -global grid editing in the overworld makes crashes or forcefully puts in
+    all entrances (yellow dots) for some reason
+    (despite the fact the entrances are not inserted yet)
+
+    -false dungeon room pointer calculation if too much data, thus can not
+    handle space problems if more data (main problem of the program)
+*/
+
+
 /** 
     \task Epoch3 change list
     
@@ -28,59 +48,63 @@
 
     - Improved error handling in writing and reading of
     *.cfg files (checking for incorrect sizes or I/O errors)
+
+    - Fixed bug in Dungeon item handling (red markers) that made it very
+    difficult to select one on BG2 by clicking. Furthermore, even if one
+    managed to select one by some other means, such as left and right arrow
+    keys, the data would be mishandled and revert the BG setting of the item
+    to BG1. The object details static text control paid attention to BG1 / BG2
+    settings but the code involved in moving them did not.
+ 
 */
 
-#define OEMRESOURCE
-
-// This is legacy code, and I don't want to bother using the MS-specific
-// extensions to the standard library at this time.
-#define _CRT_SECURE_NO_WARNINGS
-
-// 'nonstandard extension used : non-constant aggregate initializer'
-// This warning is not really relevant since major vendors support this
-// extension and C99 eliminates it completely whenever MS gets around to
-// supporting it.
-#pragma warning(disable:4204)
-
-// There are just too many of these warnings to address at the moment
-// having to deal with truncation from int to short or char. They should
-// Get tackled eventually (and carefully).
-// \task Do this at some point.
-#if 0
-#pragma warning(disable:4242)
-#pragma warning(disable:4244)
-#endif
-
-#pragma warning(push, 0)
-
-#include <windows.h>
-
-#include <commctrl.h>
-#include <mmsystem.h>
-#include <math.h>
-
-// For integer types of specific widths.
-#include <stdint.h>
-
-#pragma warning(pop)
-
-#include "resource.h"
-
-// Done so that our structures are not allowed to add padding.
-// (which would be harmful for type punning / casting that some of the
-// code does. I wouldn't call that best practice either, but it's what
-// we have to work with at the moment (e.g. casting one type of edit
-// structure to a DUNGEDIT pointer because it has members in common).
-#pragma pack(1)
+#include <stdio.h>
 
 #include "structs.h"
+#include "prototypes.h"
+
+#include "Callbacks.h"
+#include "Wrappers.h"
+
+#include "HMagicEnum.h"
+#include "HMagicLogic.h"
+#include "HMagicUtility.h"
+
+#include "OverworldEnum.h"
+#include "OverworldEdit.h"
+
+#include "DungeonEnum.h"
+#include "DungeonLogic.h"
+
+#include "PaletteEdit.h"
+
+// For text enumerations and Load / Save text functions.
+#include "TextEnum.h"
+#include "TextLogic.h"
+
+#include "AudioLogic.h"
+
+// \task Probably will move this once the worldmap super dialog procedure gets
+// its own file.
+#include "WorldMapLogic.h"
+
+// =============================================================================
+
+offsets_ty offsets =
+{
+    {
+        0x2736a,
+        0x88c1
+    },
+    {
+        0x33333
+    }
+};
+
+// =============================================================================
 
 short dm_x;
 short dm_k;
-
-unsigned short copy_w,copy_h;
-
-unsigned short * copybuf = 0;
 
 uint8_t const u8_neg1 = (uint8_t) (~0);
 
@@ -90,360 +114,31 @@ uint32_t const u32_neg1 = (uint32_t) (~0);
 
 int const always = 1;
 
-int mouse_x, mouse_y;
-
-#if 1
-
-
-#include "stdio.h"
-
-    void
-    quick_u16_signedness_test(void)
-    {
-        uint16_t i = 0;
-        
-        // unsigned
-        uint16_t a_u = 0xffff;
-        uint16_t a_n = ~a_u;
-        
-        // indeterminate? standard probably indicates signed though
-        short a_std = 0xffff;
-        
-        // signed
-        int16_t a_s = 0xffff;
-
-        unsigned int b_u = a_std;
-        
-        int b_s = a_std;
-
-        (void) a_s;
-        if( ~a_u == 0 )
-        {
-            printf("unexpected");
-        }
-
-        if( ~a_u == -1 )
-        {
-            printf("unexpected");
-        }
-        
-        if( a_n == 0 )
-        {
-            printf("unexpected");
-        }
-
-
-        if(a_u == ~0)
-        {
-            printf("unexpected");
-        }
-
-        if(a_u == -1)
-        {
-            printf("unexpected");
-        }
-        
-        if(a_u == ~0)
-        {
-            printf("unexpected");
-        }
-        
-        if( (a_u + 1) != 0 )
-        {
-            uint16_t c_u = (a_u + 1);
-            
-            if(c_u != 0)
-            {
-                printf("unexpected");
-            }
-            
-        }
-
-        if( (a_u + 1) != 0 )
-        {
-            printf("unexpected");
-        }
-
-        if(b_s != -1)
-        {
-            printf("probably happening");
-        }
-        
-        if(b_s != ~0)
-        {
-            printf("probably happening");
-        }
-
-        if(b_u == -1)
-        {
-            printf("probably happening");
-        }
-        
-        if(b_u == ~0)
-        {
-            printf("probably happening");
-        }
-        
-        for(i = 0;  ; i += 1)
-        {
-            uint16_t j = ~i;
-            
-            if( (i + j) == i )
-            {
-                printf("hrm... %d", i);
-            }
-            
-            if(i == 0xffff)
-            {
-                break;
-            }
-        }
-    }
-
-#endif
-
-
-enum
-{
-    CFG_NOFLAGS         = 0,
-    CFG_SPRNAMES_LOADED = 1 << 0,
-    CFG_MRU_LOADED      = 1 << 1,
-    CFG_SNDVOL_LOADED   = 1 << 2,
-    CFG_MIDI_LOADED     = 1 << 3,
-    CFG_ASM_LOADED      = 1 << 4
-};
-
-enum
-{
-    ID_MRU1 = 5000,
-    ID_MRU2,
-    ID_MRU3,
-    ID_MRU4
-};
-
-int cfg_modf = 0;
-
-int cfg_flag = CFG_NOFLAGS;
-
-// IDs for controls used in the dungeon superdialog.
-// \task Get rid of manual assignments once we have all the IDs put in properly.
-enum
-{
-    ID_DungDlgFirst   = 3000,
-    
-    ID_DungRoomNumber = ID_DungDlgFirst,
-    ID_DungStatic1,
-    ID_DungEntrRoomNumber,
-    ID_DungStatic2,
-    ID_DungEntrYCoord,
-    ID_DungStatic3,
-    ID_DungEntrXCoord,
-    ID_DungStatic4,
-    ID_DungEntrYScroll,
-    ID_DungStatic5,
-    ID_DungEntrXScroll,
-    ID_DungEditWindow,
-    ID_DungStartLocGroupBox,
-    
-    /// Provides details on the currently selected entity of whatever sort.
-    ID_DungDetailText,
-    
-    ID_DungLeftArrow,
-    ID_DungRightArrow,
-    ID_DungUpArrow,
-    ID_DungDownArrow,
-    ID_DungStatic6,
-    ID_DungFloor1,
-    ID_DungStatic7,
-    ID_DungFloor2,
-    ID_DungStatic8,
-    ID_DungEntrTileSet,
-    ID_DungStatic9,
-    ID_DungEntrSong,
-    ID_DungStatic10,
-    ID_DungEntrPalaceID,
-    ID_DungStatic11,
-    ID_DungLayout,
-    ID_DungShowBG1,
-    ID_DungShowBG2,
-    ID_DungDispGroupBox,
-    ID_DungAnimateButton,
-    ID_DungObjLayer1,
-    ID_DungObjLayer2,
-    ID_DungObjLayer3,
-    ID_DungEditGroupBox,
-    ID_DungStatic12,
-    ID_DungBG2Settings,
-    ID_DungStatic13,
-    ID_DungTileSet,
-    ID_DungStatic14,
-    ID_DungPalette,
-    ID_DungStatic15,
-    ID_DungSprTileSet,
-    
-    /// Collision settings
-    ID_DungCollSettings,
-    
-    ID_DungSprLayer,
-    
-    /// Button that brings up dialog box asking if you'd like to switch to a
-    /// different room.
-    ID_DungChangeRoom,
-    
-    ID_DungShowSprites,
-    ID_DungStatic16,
-    ID_DungStatic17,
-    ID_DungEntrCameraX,
-    ID_DungStatic18,
-    ID_DungEntrCameraY,
-    ID_DungEntrProps,
-    ID_DungEditHeader,
-    ID_DungItemLayer,
-    ID_DungBlockLayer,
-    ID_DungTorchLayer,
-    ID_DungSortSprites,
-    ID_DungExit,
-    
-    // Should be considered an invalid entry.
-    ID_DungDlgAfterLast,
-    
-    ID_DungNumControls = (ID_DungDlgAfterLast - ID_DungDlgFirst)
-};
-
-    // Looking to call out IDs by name to hide when editing overlays
-    // rather than by their offset from 3000 <__<
-    unsigned const overlay_hide[] =
-    {
-        ID_DungRoomNumber,
-        ID_DungStatic1,
-        ID_DungEntrRoomNumber,
-        ID_DungStatic2,
-        ID_DungEntrYCoord,
-        ID_DungStatic3,
-        ID_DungEntrXCoord,
-        ID_DungStatic4,
-        ID_DungEntrYScroll,
-        ID_DungStatic5,
-        
-        ID_DungEntrXScroll,
-        ID_DungStartLocGroupBox,
-        ID_DungLeftArrow,
-        ID_DungRightArrow,
-        ID_DungUpArrow,
-        ID_DungDownArrow,
-        ID_DungStatic7,
-        ID_DungFloor2,
-        ID_DungStatic8,
-        ID_DungEntrTileSet,
-        
-        ID_DungStatic9,
-        ID_DungEntrSong,
-        ID_DungStatic10,
-        ID_DungEntrPalaceID,
-        ID_DungStatic11,
-        ID_DungLayout,
-        ID_DungObjLayer1,
-        ID_DungObjLayer2,
-        ID_DungObjLayer3,
-        ID_DungEditGroupBox,
-        
-        ID_DungStatic12,
-        ID_DungBG2Settings,
-        ID_DungStatic15,
-        ID_DungSprTileSet,
-        ID_DungCollSettings,
-        ID_DungSprLayer,
-        ID_DungChangeRoom,
-        ID_DungShowSprites,
-        ID_DungStatic16,
-        ID_DungStatic17,
-        
-        ID_DungEntrCameraX,
-        ID_DungStatic18,
-        ID_DungEntrCameraY,
-        ID_DungEntrProps,
-        ID_DungEditHeader,
-        ID_DungItemLayer,
-        ID_DungBlockLayer,
-        ID_DungTorchLayer,
-        ID_DungSortSprites,
-        ID_DungExit
-    };
-
-    enum
-    {
-        ID_DungOverlayHideCount = sizeof(overlay_hide) / sizeof(unsigned),
-    };
+int mouse_x;
+int mouse_y;
 
 // =============================================================================
-
-    enum
-    {
-        ID_TextFirst = 3000,
-        
-        ID_TextEntriesListControl = ID_TextFirst,
-        ID_TextEditWindow,
-        ID_TextSetTextButton,
-        ID_TextEditTextRadio,
-        ID_TextEditDictionaryRadio,
-        
-        ID_TextAfterLast,
-        ID_TextNumControls = (ID_TextAfterLast - ID_TextFirst)
-    
-    };
-
-// =============================================================================
-
-    enum
-    {
-        SD_GenericFirst = 3000,
-        SD_OverFirst = 3000,
-        
-        SD_OverGrid32CheckBox = 3012,
-        
-        // \task Fill in others.
-        
-        SD_OverWindowFocus = 3039,
-        SD_OverAfterLast,
-        
-        SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),
-    };
-
-// =============================================================================
-
-// Sound volume level.
-uint16_t soundvol = 180;
 
 // windows version number
 int wver;
 
 int palmode=0;
-int mruload=0;
 int mark_sr;
 int mark_start,mark_end,mark_first,mark_last;
 
-int szcofs[16]={
-    4,3,3,3,1,2,0,1,1,0,2,1,1,3,3,3
-};
-
-int door_ofs, issplit;
+int door_ofs = 0;
+int issplit = 0;
 
 char namebuf[MAX_PATH] = "";
-
-char vererror_str[] = "This file was edited with a newer version of Gigasoft Hyrule Magic. You need version %d.%00d or higher to open it.";
-char *mrulist[4] = { 0, 0, 0, 0 };
-char currdir[MAX_PATH];
 
 char buffer[0x400];
 
 unsigned char drawbuf[0x400];
 
-unsigned char map16ofs[] = {0, 1, 64, 65, 0, 1, 32, 33};
-
-uint16_t *dm_rd;
-uint16_t *dm_wr;
-uint16_t *dm_buf;
-uint16_t *dm_tmp;
+uint16_t *dm_rd  = 0;
+uint16_t *dm_wr  = 0;
+uint16_t *dm_buf = 0;
+uint16_t *dm_tmp = 0;
 
 unsigned char dm_l, dm_dl;
 
@@ -454,11 +149,7 @@ char const * cur_sec;
 
 static unsigned char masktab[16] = {255,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
-const static int sprset_loc[3] = {0x4c881,0x4c901,0x4ca21};
 int palhalf[8] = {1,0,0,1,1,1,0,0};
-
-const static int map_ofs[5] = {0,16,512,528};
-const static int map_ind[4] = {0,1,8,9};
 
 void *firstgraph, *lastgraph;
 
@@ -506,12 +197,13 @@ char cmd_str[32][9]={
     "Cmd FF  "
 };
 
-unsigned short ovlblk[4];
-
 HPEN green_pen,
      null_pen,
      white_pen,
-     blue_pen;
+     blue_pen,
+     black_pen,
+     gray_pen = 0,
+     tint_pen = 0;
 
 HBRUSH black_brush,
        white_brush,
@@ -520,7 +212,8 @@ HBRUSH black_brush,
        purple_brush,
        red_brush,
        blue_brush,
-       gray_brush;
+       gray_brush,
+       tint_br = 0;
 
 HGDIOBJ trk_font;
 
@@ -539,12 +232,9 @@ HINSTANCE hinstance;
 
 HWND framewnd, clientwnd;
 
-RGBQUAD greencolor={72,152,72,0};
 RGBQUAD darkcolor={80,136,144,0};
-RGBQUAD deathcolor={96,96,48,0};
-RGBQUAD blackcolor={0,0,0,0};
 
-HMENU filemenu;
+RGBQUAD const blackcolor={0,0,0,0};
 
 BITMAPINFOHEADER zbmih={sizeof(BITMAPINFOHEADER),32,32,1,8,BI_RGB,0,0,0,256,0};
 
@@ -561,683 +251,13 @@ OVEREDIT * oved = 0;
 
 SSBLOCK **ssblt = 0;
 
-// =============================================================================
+char sprname[0x11c][16];
 
-// this calculates rom addresses from (lo-rom) cpu addresses
-int romaddr(int const addr)
-{
-    int ret = 0;
-    
-    if( !(addr & 0x8000) )
-    {
-        // e.g. 0x44444 -> 0x00000 -> return 0;
-        ret = 0;
-    }
-    else
-    {
-        // e.g. 0x289AB -> 0x109AB
-        ret = ( (addr & 0x3f0000) >> 1) | (addr & 0x7fff );
-    }
-    
-    return ret;
-}
+HM_TextResource area_names;
 
-// =============================================================================
+HDC objdc;
 
-/// Converts a cpu address to a rom address by combining a bank byte and
-/// a 16-bit address within that bank.
-uint32_t
-rom_addr_split(uint8_t  const p_bank,
-               uint16_t const p_addr)
-{
-    BOOL const even_bank = ( (p_bank % 2) == 0 );
-    
-    uint32_t const upper = (p_bank >> 1) << 16;
-    
-    uint32_t const lower = (even_bank) ? p_addr - 0x8000
-                                       : p_addr;
-    
-    // -----------------------------
-    
-    if(p_addr < 0x8000)
-    {
-        return 0;
-    }
-    
-    return (upper | lower); 
-}
-
-// =============================================================================
-
-// this calculates (lo-rom) cpu addresses from rom addreses.
-int
-cpuaddr(int addr)
-{
-    return ((addr&0x1f8000)<<1) | (addr&0x7fff) | 0x8000;
-}
-
-// =============================================================================
-
-void*
-recalloc(void   const * const p_old_buf,
-         size_t         const p_new_count,
-         size_t         const p_old_count,
-         size_t         const p_element_size)
-{
-    void * const new_buf = calloc(p_new_count, p_element_size);
-    
-    if(new_buf)
-    {
-        // Copy using the smaller of the two count values.
-        size_t const limit_count = p_old_count > p_new_count ? p_new_count
-                                                             : p_old_count;
-        
-        memcpy(new_buf, p_old_buf, (limit_count * p_element_size) );
-    }
-    
-    return new_buf;
-}
-
-// =============================================================================
-
-// "load little endian value at the given byte offset and shift to get its
-// value relative to the base offset (powers of 256, essentially)"
-unsigned
-ldle(uint8_t const * const p_arr,
-     unsigned        const p_index)
-{
-    uint32_t v = p_arr[p_index];
-    
-    v <<= (8 * p_index);
-    
-    return v;
-}
-
-// Helper function to get the first byte in a little endian number
-uint32_t
-ldle0(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 0);
-}
-
-// Helper function to get the second byte in a little endian number
-uint32_t
-ldle1(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 1);
-}
-
-// Helper function to get the third byte in a little endian number
-uint32_t
-ldle2(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 2);
-}
-
-// Helper function to get the third byte in a little endian number
-uint32_t
-ldle3(uint8_t const * const p_arr)
-{
-    return ldle(p_arr, 3);
-}
-
-// =============================================================================
-
-void
-stle(uint8_t  * const p_arr,
-     size_t     const p_index,
-     unsigned   const p_val)
-{
-    uint8_t v = (p_val >> (8 * p_index) ) & 0xff;
-    
-    p_arr[p_index] = v;
-}
-
-void
-stle0(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 0, p_val);
-}
-
-void
-stle1(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 1, p_val);
-}
-
-void
-stle2(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 2, p_val);
-}
-
-void
-stle3(uint8_t * const p_arr,
-      unsigned  const p_val)
-{
-    stle(p_arr, 3, p_val);
-}
-
-// =============================================================================
-
-unsigned long
-get_32_le(unsigned char const * const p_arr)
-{
-    unsigned v = 0;
-    
-    v |= (p_arr[0] <<  0);
-    v |= (p_arr[1] <<  8);
-    v |= (p_arr[2] << 16);
-    v |= (p_arr[3] << 24);
-    
-    return v;
-}
-
-/// Convenience function so we can work with char* in addition to
-/// unsigned char*
-unsigned long
-get_32_le_str(char const * const p_arr)
-{
-    return get_32_le( (unsigned char const * ) p_arr );
-}
-
-// =============================================================================
-
-uint16_t
-get_16_le(unsigned char const * const p_arr)
-{
-    uint16_t v = 0;
-    
-    v |= (p_arr[0] << 0);
-    v |= (p_arr[1] << 8);
-    
-    return v;
-}
-
-/// Convenience function so we can work with char* in addition to
-/// unsigned char*
-uint16_t
-get_16_le_str(char const * const p_arr)
-{
-    return get_16_le( (unsigned char const * ) p_arr );
-}
-
-/// Get little endian 16-bit value from an offset plus an index
-/// This saves you from having to multiply an index by two.
-uint16_t
-get_16_le_i(unsigned char const * const p_arr,
-            size_t                const p_index)
-{
-    return get_16_le(p_arr + (p_index * 2));
-}
-
-// =============================================================================
-
-void
-put_16_le(unsigned char * const p_arr,
-          uint16_t        const p_val)
-{
-    p_arr[0] = ( (p_val >> 0) & 0xff );
-    p_arr[1] = ( (p_val >> 8) & 0xff );
-}
-
-// =============================================================================
-
-void
-add_16_le(uint8_t  * const p_arr,
-          uint16_t   const p_val)
-{
-    uint16_t v = get_16_le(p_arr);
-    
-    v += p_val;
-    
-    put_16_le(p_arr, v);
-}
-
-// =============================================================================
-
-void
-add_16_le_i(uint8_t  * const p_arr,
-            uint16_t   const p_val,
-            size_t     const p_index)
-{
-    size_t const offset = (p_index * 2);
-    
-    add_16_le(p_arr + offset, p_val);
-}
-
-// =============================================================================
-
-void
-put_16_le_str(char     * const p_arr,
-              uint16_t   const p_val)
-{
-    put_16_le( (unsigned char *) p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-put_16_le_i(unsigned char * const p_arr,
-            size_t          const p_index,
-            short           const p_val)
-{
-    put_16_le(p_arr + (p_index * 2), p_val);
-}
-
-// =============================================================================
-
-void
-put_32_le(uint8_t  * const p_arr,
-          uint32_t   const p_val)
-{
-    p_arr[0] = ( (p_val >>  0) & 0xff );
-    p_arr[1] = ( (p_val >>  8) & 0xff );
-    p_arr[2] = ( (p_val >> 16) & 0xff );
-    p_arr[3] = ( (p_val >> 24) & 0xff );
-}
-
-void
-put_32_le_str(char     * const p_arr,
-              uint32_t   const p_val)
-{
-    put_32_le( (unsigned char *) p_arr, p_val);
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from 
-uint16_t
-ldle16b(uint8_t const * const p_arr)
-{
-    uint16_t v = 0;
-    
-    v |= ( ldle0(p_arr) | ldle1(p_arr) );
-    
-    return v;
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from an arrays of bytes.
-// This version provides an index that will be multiplied by 2 and added to the
-// base address.
-uint16_t
-ldle16b_i(uint8_t const * const p_arr,
-          size_t          const p_index)
-{
-    return ldle16b(p_arr + (2 * p_index) );
-}
-
-// =============================================================================
-
-uint16_t
-ldle16h(uint16_t const * const p_arr)
-{
-    return ldle16b( (uint8_t *) p_arr);
-}
-
-// =============================================================================
-
-// Load little endian halfword (16-bit) dereferenced from a pointer to a
-// halfword.
-uint16_t
-ldle16h_i(uint16_t const * const p_arr,
-          size_t           const p_index)
-{
-    return ldle16b_i((uint8_t *) p_arr, p_index);
-}
-
-// =============================================================================
-
-// "load little endian 24-bit value using a byte pointer"
-uint32_t
-ldle24b(uint8_t const * const p_arr)
-{
-    uint32_t v = ldle0(p_arr) | ldle1(p_arr) | ldle2(p_arr);
-    
-    return v;
-}
-
-// =============================================================================
-
-// "indexed load little endian 24-bit value using a byte pointer"
-uint32_t
-ldle24b_i(uint8_t const * const p_arr,
-          unsigned        const p_index)
-{
-    uint32_t v = ldle24b( p_arr + (p_index * 3) );
-    
-    return v;
-}
-
-// =============================================================================
-
-void
-stle16b(uint8_t * const p_arr,
-        uint16_t  const p_val)
-{
-    stle0(p_arr, p_val);
-    stle1(p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-stle16b_i(uint8_t * const p_arr,
-          size_t    const p_index,
-          uint16_t  const p_val)
-{
-    stle16b(p_arr + (p_index * 2), p_val);
-}
-
-// =============================================================================
-
-// "store little endian 24-bit value using a byte pointer"
-void
-stle24b(uint8_t  *const p_arr,
-        uint32_t  const p_val)
-{
-    stle0(p_arr, p_val);
-    stle1(p_arr, p_val);
-    stle2(p_arr, p_val);
-}
-
-// =============================================================================
-
-void
-addle16b_i(uint8_t * const p_arr,
-           size_t    const p_index,
-           uint16_t  const p_addend)
-{
-    uint16_t v = ldle16b_i(p_arr, p_index);
-    
-    v += p_addend;
-    
-    stle16b_i(p_arr, p_index, v);
-}
-
-// =============================================================================
-
-// Read a half word at the given octec-pointer and if its bit pattern is
-// 0xffff, return one. Else, zero. Note that endianness is irrelevant for
-// this check.
-int
-is16b_neg1(uint8_t const * const p_arr)
-{
-    uint16_t v = ((uint16_t*) p_arr)[0];
-    
-    return (v == 0xffff);
-}
-
-// =============================================================================
-
-int
-is16b_neg1_i(uint8_t const * const p_arr,
-             size_t          const p_index)
-{
-    return is16b_neg1(p_arr + (2 * p_index) );
-}
-
-// =============================================================================
-
-// Read a half word at the given halfword-pointer and if its bit patter is
-// 0xffff, return one. Else, zero.
-int
-is16h_neg1(uint16_t const * const p_arr)
-{
-    return (p_arr[0] == 0xffff);
-}
-
-int
-is16h_neg1_i(uint16_t const * const p_arr,
-             size_t           const p_index)
-{
-    return is16h_neg1(p_arr + p_index);
-}
-
-// =============================================================================
-
-RECT
-HM_GetWindowRect(HWND const p_win)
-{
-    RECT r;
-    
-    GetWindowRect(p_win, &r);
-    
-    return r;
-}
-
-RECT
-HM_GetClientRect(HWND const p_win)
-{
-    RECT r;
-    
-    GetClientRect(p_win, &r);
-    
-    return r;
-}
-
-POINT
-HM_ClientToScreen(HWND const p_win)
-{
-    POINT pt;
-    
-    ClientToScreen(p_win, &pt);
-    
-    return pt;
-}
-
-// =============================================================================
-
-POINT
-HM_GetWindowPos(HWND const p_win)
-{
-    RECT const r = HM_GetWindowRect(p_win);
-    
-    POINT const pt = { r.left, r.top };
-     
-    return pt;
-}
-
-
-POINT
-HM_GetClientPos(HWND const p_win)
-{
-    RECT const r = HM_GetClientRect(p_win);
-    
-    POINT const pt = { r.left, r.top };
-    
-    return pt;
-}
-
-POINT
-HM_PointClientToScreen(HWND  const p_win,
-                       POINT const p_rel_pos)
-{
-    POINT screen_pos = HM_GetWindowPos(p_win);
-    
-    screen_pos.x += p_rel_pos.x;
-    screen_pos.y += p_rel_pos.y;
-    
-    return screen_pos;
-}
-
-// =============================================================================
-
-signed int
-HM_GetSignedLoword(LPARAM p_ptr)
-{
-    return ( (int)(short) LOWORD(p_ptr) );
-}
-
-// =============================================================================
-
-signed int
-HM_GetSignedHiword(LPARAM p_ptr)
-{
-    return ( (int)(short) HIWORD(p_ptr) );
-}
-
-// =============================================================================
-
-HM_MouseMoveData
-HM_GetMouseMoveData(HWND   const p_win,
-                    WPARAM const wparam,
-                    LPARAM const lparam)
-{
-    unsigned const flags = wparam;
-    
-    HM_MouseMoveData d = { FALSE, 0, 0, {0, 0} };
-    
-    POINT const rel_pos =
-    {
-        HM_GetSignedLoword(lparam),
-        HM_GetSignedHiword(lparam)
-    };
-    
-    // The absolute screen coordinates of the Window itself.
-    POINT const win_screen_pos = HM_GetWindowPos(p_win);
-    
-    // The absolute screen coordinates of the location indicated by the event
-    // (obviously this will be inside of the window, so further to the right,
-    // further down.)
-    POINT const screen_pos =
-    {
-        rel_pos.x + win_screen_pos.x,
-        rel_pos.y + win_screen_pos.y
-    };
-    
-    d.m_rel_pos = rel_pos;
-    
-    d.m_screen_pos = screen_pos;
-    
-    d.m_control_down = (flags & MK_CONTROL);
-    
-    return d;
-}
-
-// =============================================================================
-
-int
-truth(int value)
-{
-    return (value != 0);
-}
-
-// =============================================================================
-
-HM_MouseWheelData
-HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MouseWheelData d;
-    
-    d.m_distance = HM_GetSignedHiword(p_wp);
-    
-    d.m_flags = LOWORD(p_wp);
-    
-    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
-    d.m_control_key = truth(d.m_flags & MK_CONTROL);
-
-    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
-    
-    d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
-    d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
-    
-    return d;
-}
-
-// =============================================================================
-
-HM_MouseData
-HM_GetMouseData(MSG const p_packed_msg)
-{
-    WPARAM const wp = p_packed_msg.wParam;
-    LPARAM const lp = p_packed_msg.lParam;
-    
-    // Get client coordinates of the click.
-    POINT const rel_pos =
-    {
-        HM_GetSignedLoword(lp),
-        HM_GetSignedHiword(lp)
-    };
-    
-    // The absolute screen coordinates of the Window itself.
-    POINT const win_screen_pos = HM_GetWindowPos(p_packed_msg.hwnd);
-    
-    // The absolute screen coordinates of the location indicated by the event
-    // (obviously this will be inside of the window, so further to the right,
-    // further down.)
-    POINT const screen_pos =
-    {
-        rel_pos.x + win_screen_pos.x,
-        rel_pos.y + win_screen_pos.y
-    };
-    
-    HM_MouseData d;
-    
-    // -----------------------------
-    
-    d.m_flags = (unsigned) wp;
-    
-    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
-    d.m_control_key = truth(d.m_flags & MK_CONTROL);
-
-    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
-    
-    d.m_rel_pos = rel_pos;
-    
-    d.m_screen_pos = screen_pos;
-    
-    return d;
-}
-
-// =============================================================================
-
-HM_MdiActivateData
-HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MdiActivateData d;
-    
-    // -----------------------------
-    
-    d.m_deactivating = (HWND) p_wp;
-    d.m_activating   = (HWND) p_lp;
-    
-    return d;
-}
-
-// =============================================================================
-
-BOOL
-HM_DrawRectangle(HDC  const p_device_context,
-                 RECT const p_rect)
-{
-    return Rectangle(p_device_context,
-                     p_rect.left,
-                     p_rect.top,
-                     p_rect.right,
-                     p_rect.bottom);
-}
-
-// =============================================================================
-
-void*
-hm_memdup(void const * const p_arr,
-          size_t             p_len)
-{
-    void * const new_arr = calloc(1, p_len);
-    
-    if(new_arr)
-    {
-        memcpy(new_arr, p_arr, p_len);
-    }
-    
-    return new_arr;
-}
+HBITMAP objbmp;
 
 // =============================================================================
 
@@ -1291,7 +311,137 @@ status_proc(HWND   p_win,
 
 // =============================================================================
 
+typedef void (*ParseAction)(HM_TextResource  * const p_tr,
+                            size_t             const p_line,
+                            char       const * const p_text,
+                            size_t             const p_len);
+
+// =============================================================================
+
+void
+CountLine(HM_TextResource  * const p_tr,
+          size_t             const p_line,
+          char       const * const p_text,
+          size_t             const p_len)
+{
+    (void) p_text, p_line, p_len;
+    
+    p_tr->m_num_lines += 1;
+}
+
+// =============================================================================
+
+void
+CopyLine(HM_TextResource  * const p_tr,
+         size_t             const p_line,
+         char       const * const p_text,
+         size_t             const p_len)
+{
+    p_tr->m_lines[p_line] = hm_strndup(p_text, p_len);
+}
+
+// =============================================================================
+
+void
+ParseTextData(char const      * const p_text,
+              size_t            const p_text_len,
+              HM_TextResource * const p_tr,
+              ParseAction             p_action)
+{
+    size_t i         = 0;
+    size_t num_lines = 0;
+    
+    for(i = 0 ; i < p_text_len; num_lines += 1)
+    {
+        //
+        size_t j = strcspn(p_text + i, "\r\n");
+        
+        size_t const j_orig = j;
+        
+        // Reached the end of the data?
+        if( (i + j) == p_text_len )
+        {
+            p_action(p_tr, num_lines, p_text + i, 0);
+            
+            break;
+        }
+        
+        if( p_text[i + j] == '\r')
+        {
+            j += 1;
+            
+            if( (i + j) == p_text_len )
+            {
+                break;
+            }
+        }
+        
+        if( p_text[i + j] == '\n')
+        {
+            j += 1;
+        }
+        
+        p_action(p_tr, num_lines, p_text + i, j_orig);
+        
+        i += j;
+    }
+}
+
+// =============================================================================
+
+HM_TextResource
+LoadTextFileResource(unsigned p_res_id)
+{
+    HM_TextResource data = { 0 };
+    
+    HRSRC const res = FindResource(hinstance,
+                                   MAKEINTRESOURCE(p_res_id),
+                                   RT_RCDATA);
+    
+    // -----------------------------
+    
+    if(res)
+    {
+        DWORD res_size = SizeofResource(hinstance, res);
+        
+        HGLOBAL const res_handle = LoadResource(hinstance,
+                                                res);
+        
+        // -----------------------------
+        
+        if(res_handle && res_size)
+        {
+            char const * const
+            text_res = (char const *) LockResource(res_handle);
+
+            ParseTextData(text_res,
+                          res_size,
+                          &data,
+                          CountLine);
+            
+            data.m_lines = (char **)
+            calloc(data.m_num_lines,
+                   sizeof(char*));
+            
+            ParseTextData(text_res,
+                          res_size,
+                          &data,
+                          CopyLine);
+
+            
+            UnlockResource(res_handle);
+            
+            FreeResource(res_handle);
+        }
+    }
+    
+    return data;
+}
+
+// =============================================================================
+
 HWND debug_window = 0;
+HWND debug_box = 0;
 
 HWND
 CreateNotificationWindow(HWND const p_parent)
@@ -1307,7 +457,7 @@ CreateNotificationWindow(HWND const p_parent)
     
     if(win)
     {
-        unsigned const screen_width  = GetSystemMetrics(SM_CXSCREEN);
+        unsigned const screen_width = GetSystemMetrics(SM_CXSCREEN);
         
         RECT const r = HM_GetWindowRect(win);
         
@@ -1318,120 +468,133 @@ CreateNotificationWindow(HWND const p_parent)
                      0, 0, SWP_NOSIZE);
         
         ShowWindow(win, SW_SHOW);
+        
+        SetActiveWindow(p_parent);
     }
     
-    return win;    
+    return win;
 }
 
 // =============================================================================
 
-SCROLLINFO
-HM_GetVertScrollInfo(HWND const p_win)
+LRESULT CALLBACK
+HM_NotifyBoxProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
 {
-    SCROLLINFO si;
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_VERT, &si);
-    
-    return si;
-}
-
-// =============================================================================
-
-SCROLLINFO
-HM_GetHorizScrollInfo(HWND const p_win)
-{
-    SCROLLINFO si;
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_HORZ, &si);
-    
-    return si;
-}
-
-// =============================================================================
-
-BOOL
-HM_IsEmptyRect(RECT const p_rect)
-{
-    if
-    (
-        (p_rect.right == p_rect.left)
-     && (p_rect.top   == p_rect.bottom)
-    )
+    switch(p_msg)
     {
-        return TRUE;
+    
+    default:
+
+        break;
+        
+    case WM_PAINT:
+        
+        {
+            RECT rc = HM_GetClientRect(p_win);
+            
+            PAINTSTRUCT ps;
+            
+            HDC const dc = BeginPaint(p_win, &ps);
+            
+            FrameRect(dc, &rc, blue_brush);
+            
+            EndPaint(p_win, &ps);
+            
+            return 0;
+        }
+    
+    case WM_MOUSEACTIVATE:
+        
+        return MA_NOACTIVATE;
     }
-
-    return FALSE;
+    
+    return DefWindowProc(p_win, p_msg, p_wp, p_lp);
 }
 
 // =============================================================================
 
-MSG
-HM_PackMessage(HWND const p_win,
-               UINT       p_msg_id,
-               WPARAM     p_wp,
-               LPARAM     p_lp)
+HWND
+CreateNotificationBox(HWND const p_parent)
 {
-    MSG msg;
+    WNDCLASSEX wc;
     
-    POINT CONST dummy = { 0, 0 };
+    RECT const parent_rect = HM_GetWindowRect(p_parent);
     
-    // -----------------------------
+    {
+        wc.cbSize = sizeof(WNDCLASSEX);
+        
+        wc.style = 0;
+        
+        wc.lpfnWndProc = HM_NotifyBoxProc;
+        
+        wc.cbClsExtra = 0;
     
-    msg.hwnd = p_win;
-    msg.lParam = p_lp;
-    msg.message = p_msg_id;
-    msg.pt = dummy;
-    msg.time = 0;
-    msg.wParam = p_wp;
+        wc.cbWndExtra = 0;
+        
+        wc.hInstance = hinstance;
+        
+        wc.hIcon = NULL;
+        
+        wc.hCursor = normal_cursor;
+        
+        wc.hbrBackground = (HBRUSH) (COLOR_HIGHLIGHTTEXT);
+        
+        wc.lpszMenuName = NULL;
+        
+        wc.lpszClassName = "HMAGIC_NOTIFY_BOX";
+        
+        wc.hIconSm = NULL;
+    }
     
-    return msg;
+    if( RegisterClassEx(&wc) )
+    {
+        HWND const w = CreateWindowEx
+        (
+            WS_EX_LAYERED | WS_EX_TRANSPARENT,
+            "HMAGIC_NOTIFY_BOX",
+            NULL,
+            WS_POPUP,
+            parent_rect.right - 220,
+            parent_rect.bottom - 60,
+            200,
+            40,
+            p_parent,
+            NULL,
+            hinstance,
+            NULL
+        );
+        
+        if(w)
+        {
+            SetLayeredWindowAttributes(w,
+                                       0,
+                                       0x20,
+                                       LWA_ALPHA);
+            
+            ShowWindow(w, SW_SHOW);
+            
+            SetActiveWindow(p_parent);
+        }
+        
+        return w;
+    }
+    else
+    {
+        char text_buf[0x100];
+        
+        DWORD i = GetLastError();
+        
+        sprintf(text_buf, "Error code: %u", i);
+        
+        MessageBox(p_parent, text_buf, NULL, MB_OK);
+    }
+    
+    return NULL;
 }
 
 // =============================================================================
 
-RGBQUAD
-HM_MakeRgb(uint8_t const p_red,
-           uint8_t const p_green,
-           uint8_t const p_blue)
-{
-    RGBQUAD q;
-    
-    q.rgbRed      = p_red;
-    q.rgbGreen    = p_green;
-    q.rgbBlue     = p_blue;
-    q.rgbReserved = 0;
-    
-    return q;
-}
-
-// =============================================================================
-
-/// From "5 bits per channel"
-RGBQUAD
-HM_RgbFrom5bpc(uint16_t const p_color)
-{
-    RGBQUAD q;
-
-    q.rgbRed      = ( (p_color << 3) & 0xf8 );
-    q.rgbGreen    = ( (p_color >> 2) & 0xf8 );
-    q.rgbBlue     = ( (p_color >> 7) & 0xf8 );
-    q.rgbReserved = 0;
-    
-    return q;
-}
-
-// =============================================================================
-
-// \task Dummied out on the HMagic2 side for now.
+// \task Dummied out except for staging1 for now.
 
 #if 0
 
@@ -1736,8 +899,8 @@ loopstart3:
 samesound:
 
     //begin fourth transfer
-    buf1 = src_rom + 0x2736a;
-    buf2 = port_rom + 0x2736a;
+    buf1 = src_rom + offsets.dungeon.torches;
+    buf2 = port_rom + offsets.dungeon.torches;
 
     if(buf1 == buf2)
     {
@@ -1746,7 +909,7 @@ samesound:
     }
 
     // find the data for the first rom.
-    l = *(short*)(src_rom + 0x88c11);
+    l = ldle16b(src_rom + offsets.dungeon.torch_count);
     
     for(i = 0; ; i += 2)
     {
@@ -1782,7 +945,7 @@ samesound:
 
     //do it for the port rom now.
 
-    l = *(short*)(port_rom + 0x88c11);
+    l = ldle16b(port_rom + offsets.dungeon.torch_count);
     
     for(i = 0; ; i += 2)
     {
@@ -1970,7 +1133,7 @@ void RelocateHeaders(HWND win, FDOC *doc, int dest)
         
         memcpy(headerBuffer, rom + absolute, 0x0E);
         
-        put_16_le(rom + romHeaderDest + j, pointerEntry);
+        stle16b(rom + romHeaderDest + j, pointerEntry);
         
         absolute = ((int) pointerEntry) & 0xFFFF;
         absolute += (cpuHeaderDest & 0xFF0000);
@@ -2265,172 +1428,16 @@ BOOL CALLBACK port(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 
 // =============================================================================
 
-void Updatesize(HWND win)
+void
+Updatesize(HWND win)
 {
-    RECT rc;
-    
-    GetClientRect(win,&rc);
+    RECT rc = HM_GetClientRect(win);
     
     // the '0' is SIZE_RESTORED.
-    SendMessage(win,WM_SIZE,0,(rc.bottom<<16)+rc.right);
+    SendMessage(win, WM_SIZE, 0, (rc.bottom << 16) + rc.right);
 }
 
-long CALLBACK superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j,k,l,m,w,h;
-    
-    SDCREATE *sdc;
-    SD_ENTRY *sde;
-    
-    HWND hc;
-    
-    switch(msg)
-    {
-    
-    case WM_NCCREATE:
-        goto deflt;
-    
-    case WM_GETMINMAXINFO:
-        sdc=(SDCREATE*)GetWindowLong(win,GWL_USERDATA);
-        
-        if(sdc)
-        {
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.x=sdc->dlgtemp->minw;
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.y=sdc->dlgtemp->minh;
-        }
-        
-        return 0;
-    
-    case WM_CREATE:
-        
-        SetWindowLong(win,
-                      GWL_USERDATA,
-                      (long)(sdc=((CREATESTRUCT*)lparam)->lpCreateParams));
-        
-        sde = sdc->dlgtemp->sde;
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = sdc->w-sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = sdc->w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = sdc->h-sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = sdc->h-sde[i].h-k;
-            else
-                m = sde[i].h;
-            
-            hc = CreateWindowEx(sde[i].exstyle,sde[i].cname,sde[i].caption,sde[i].style,j,k,l,m,win,(HMENU)(sde[i].id),hinstance,0);
-            
-            SendMessage(hc,
-                        WM_SETFONT,
-                        (WPARAM) GetStockObject(ANSI_VAR_FONT),
-                        0);
-        }
-        
-        sdc->dlgtemp->proc(win,WM_INITDIALOG,0,sdc->lparam);
-        sdc->win = win;
-        sdc->prev = lastdlg;
-        sdc->next = 0;
-        
-        if(lastdlg)
-            lastdlg->next = sdc;
-        else
-            firstdlg = sdc;
-        
-        lastdlg = sdc;
-        
-        return 0;
-    
-    case WM_SIZE:
-        
-        sdc = (SDCREATE*) GetWindowLong(win,GWL_USERDATA);
-        sde = sdc->dlgtemp->sde;
-        
-        w = LOWORD(lparam);
-        h = HIWORD(lparam);
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = w - sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = h - sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = h - sde[i].h - k;
-            else
-                m = sde[i].h;
-            
-            SetWindowPos(GetDlgItem(win,sde[i].id),
-                         0,
-                         j,
-                         k,
-                         l,
-                         m,
-                         SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        }
-        
-        break;
-    
-    case WM_DESTROY:
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
-        sdc->dlgtemp->proc(win, msg, wparam, lparam);
-        
-        if(sdc->next)
-            sdc->next->prev = sdc->prev;
-        else
-            lastdlg = sdc->prev;
-        
-        if(sdc->prev)
-            sdc->prev->next = sdc->next;
-        else
-            firstdlg = sdc->next;
-        
-        free((SDCREATE*)sdc);
-        SetWindowLong(win,GWL_USERDATA,0);
-        
-        break;
-        
-    default:
-        
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!sdc)
-            goto deflt;
-        
-        SetWindowLong(win, DWL_MSGRESULT, 0);
-        
-        if( !sdc->dlgtemp->proc(win,msg,wparam,lparam) )
-deflt:
-            return DefWindowProc(win,msg,wparam,lparam);
-        else
-            return GetWindowLong(win,DWL_MSGRESULT);
-    }
-    
-    return 0;
-}
+// =============================================================================
 
 /*void Dlgtopoint(int bw,int bh,RECT*rc)
 {
@@ -2444,7 +1451,7 @@ deflt:
 // existed long before MFC, so this code probably predates it.
 // On the other hand, most of this code doesn't run unless the program
 // is executing on the win32s platform.
-int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
+int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param)
 {
     HGLOBAL hgl;
     
@@ -2746,21 +1753,12 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc,int param)
 
 //#define ShowDialog DialogBoxParam
 
-HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h, LPARAM lparam)
-{
-    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
-    
-    HWND hc;
-    sdc->dlgtemp = dlgtemp;
-    sdc->owner = owner;
-    sdc->lparam = lparam;
-    sdc->w = w;
-    sdc->h = h;
-    hc=CreateWindowEx(0,"SUPERDLG",dlgtemp->title,dlgtemp->style,x,y,w,h,owner,(HMENU)2000,hinstance,(void*)sdc);
-    return hc;
-}
-
-HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
+HWND
+Editwin(FDOC       * const doc,
+        char const * const wclass,
+        char const * const title,
+        LPARAM       const param,
+        int          const size)
 {
     char buf[1024];
     HWND hc;
@@ -2768,7 +1766,7 @@ HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
     
     EDITWIN * const a = (EDITWIN*) calloc(1, size);
     
-    wsprintf(buf,"%s - %s",doc->filename,title);
+    wsprintf(buf, "%s - %s", doc->filename, title);
     a->doc=doc;
     a->param=param;
     mdic.szClass=wclass;
@@ -2779,14 +1777,26 @@ HWND Editwin(FDOC*doc,char*wclass,char*title,int param,int size)
     mdic.lParam=(long)a;
     hc=(HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
     
-    SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
-    SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
+    if(hc)
+    {
+        SendMessage(clientwnd, WM_MDIACTIVATE, (long)hc, 0);
+        SendMessage(clientwnd, WM_MDIREFRESHMENU, 0, 0);
+    }
+    else
+    {
+        MessageBox(framewnd, "Edit window creation failed!", NULL, MB_OK);
+    }
+    
     return hc;
 }
 
-//Compress****************************************
+// =============================================================================
 
-unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
+uint8_t *
+Compress(uint8_t const * const src,
+         int             const oldsize,
+         int           * const size,
+         int             const flag)
 {
     unsigned char *b2 = (unsigned char*) malloc(0x1000); // allocate a 2^12 sized buffer
     
@@ -2960,9 +1970,7 @@ unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
     return b2;
 }
 
-//Compress************************************
-
-//Uncompress**********************************
+// =============================================================================
 
 uint8_t *
 Uncompress(uint8_t const *       src,
@@ -3047,14 +2055,14 @@ Uncompress(uint8_t const *       src,
             
             // rle 16-bit alternating copy
             
-            d = get_16_le(src);
+            d = ldle16b(src);
             
             src += 2;
             
             while(c > 1)
             {
                 // copy that 16-bit number c/2 times into the b2 buffer.
-                put_16_le(b2 + bd, d);
+                stle16b(b2 + bd, d);
                 
                 bd += 2;
                 c -= 2; // hence c/2
@@ -3091,7 +2099,7 @@ Uncompress(uint8_t const *       src,
             }
             else
             {
-                d = get_16_le(src);
+                d = ldle16b(src);
             }
             
             while(c--)
@@ -3327,9 +2335,10 @@ unsigned char * Unsnes(unsigned char * const buf, int size)
 
 //Changesize#*****************************************
 
-int Changesize(FDOC * const doc,
-               int          num,
-               int          size)
+int
+Changesize(FDOC * const doc,
+           int          num,
+           int          size)
 {
     unsigned char *rom = doc->rom; // the calling rom matches the one we're using.
     int *blah;
@@ -3584,7 +2593,7 @@ oknewblk:
         size = 0; // hence, the rom address for the target room will be the same as the source's.
     }
 
-    if(x & 65536)
+    if(x & 0x10000)
     {
         for(i = 0; i < max; i++)
         {
@@ -3934,10 +2943,10 @@ nochange:
     j = cpuaddr(l[668]);
     
     rom[0x9c25] = (uint8_t) (j >> 16);
-    put_16_le(rom + 0x9c2a, (j & 0xffff) );
+    stle16b(rom + 0x9c2a, (j & 0xffff) );
     
     rom[0xcbad] = (uint8_t) (j >> 16);
-    put_16_le(rom + 0xcba2, (j & 0xffff) );
+    stle16b(rom + 0xcba2, (j & 0xffff) );
     
     for(i = 0; i < 19; i++)
     {
@@ -4120,7 +3129,9 @@ void Getblocks(FDOC *doc, int b)
 
 //Releaseblks#***************************************
 
-void Releaseblks(FDOC*doc,int b)
+void
+Releaseblks(FDOC * const doc,
+            int          b)
 {
     ZBLOCKS *zbl = doc->blks + b;
     
@@ -4275,10 +3286,7 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
             {
                 l = *(a++);
                 
-                pal[k].rgbRed   = (BYTE) ((l & 0x1f) << 3);
-                pal[k].rgbGreen = (BYTE) ((l & 0x3e0) >> 2);
-                pal[k].rgbBlue  = (BYTE) ((l & 0x7c00) >> 7);
-                pal[k].rgbReserved = 0;
+                pal[k] = HM_RgbFrom5bpc(l);
                 
                 ++k;
             }
@@ -4288,438 +3296,13 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
     }
 }
 
-//LoadPal***********************************
-
-void Changeselect(HWND hc,int sel)
-{
-    int sc;
-    int i;
-    RECT rc;
-    OVEREDIT*ed;
-    ed=(OVEREDIT*)GetWindowLong(hc,GWL_USERDATA);
-    GetClientRect(hc,&rc);
-    rc.top=((ed->sel_select>>2)-ed->sel_scroll)<<5;
-    rc.bottom=rc.top+32;
-    ed->selblk=sel;
-    if(ed->schflag) {
-        for(i=0;i<ed->schnum;i++) if(ed->schbuf[i]==sel) {
-            sel=i;
-            goto foundblk;
-        }
-        sel=-1;
-    }
-foundblk:
-    ed->sel_select=sel;
-    InvalidateRect(hc,&rc,0);
-    if(sel==-1) return;
-    sel>>=2;
-    sc=ed->sel_scroll;
-    if(sel>=sc+ed->sel_page) sc=sel+1-ed->sel_page;
-    else if(sel<sc) sc=sel;
-    SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION|(sc<<16),0);
-    rc.top=(sel-ed->sel_scroll)<<5;
-    rc.bottom=rc.top+32;
-    InvalidateRect(hc,&rc,0);
-}
-const static short nxtmap[4]={-1,1,-16,16};
-
-// Specific configurations that are checked involving BG2 settings.
-// Dunno what they signify yet.
-const static unsigned char bg2_ofs[]={
-    0, 0x20, 0x40, 0x60, 0x80, 0xa0, 0xc0, 0xe0, 0x01
-};
-
 // =============================================================================
 
-void
-Initroom(DUNGEDIT * const ed,
-         HWND       const win)
-{
-    unsigned char *buf2;
-    
-    int i;
-    int j;
-    int l;
-    int m;
-    
-    unsigned char *rom = ed->ew.doc->rom;
-    
-    buf2 = rom + (ed->hbuf[1] << 2) + 0x75460;
-    
-    // Loadpal(ed,rom,0x1bd734 + *((unsigned short*)(rom + 0xdec4b + buf2[0])),0x21,15,6);
-    // I didn't comment the above out, to the best of my knowledge, -MON
-    
-    j = 0x6073 + (ed->gfxtmp << 3);
-    
-    ed->palnum = ed->hbuf[1];
-    ed->gfxnum = ed->hbuf[2];
-    ed->sprgfx = ed->hbuf[3];
-    
-    // gives an offset (bunched in 4's)
-    l = 0x5d97 + (ed->hbuf[2] << 2);
-    
-    // determine blocsets 0-7
-    for(i = 0; i < 8; i++)
-        ed->blocksets[i] = rom[j++];
-    
-    // these are uniquely determined
-    ed->blocksets[8] = (rom + 0x1011e)[ed->gfxnum];
-    ed->blocksets[9] = 0x5c;
-    ed->blocksets[10] = 0x7d;
-    
-    // rewrite blocksets 3-6, if necessary
-    for(i = 3; i < 7; i++)
-    {
-        m = rom[l++];
-        
-        if(m)
-            ed->blocksets[i] = m;
-    }
-    
-    l = 0x5c57 + (ed->sprgfx << 2);
-    
-    // determine blocksets 11-14, which covers them all.
-    for(i = 0; i < 4; i++)
-        ed->blocksets[i + 11] = rom[l + i] + 0x73;
-    
-    //get the block graphics for our tilesets?
-    for(i = 0; i < 15; i++)
-        Getblocks(ed->ew.doc, ed->blocksets[i]);
-    
-    ed->layering = (ed->hbuf[0] & 0xe1);
-    
-    // take bits 2-4, shift right 2 to get a 3 bit number.
-    ed->coll = ((ed->hbuf[0] & 0x1c) >> 2);
-    
-    // the header is unmodified, nor is the room, so far.
-    // if something changes, the flag will be set.
-    ed->modf  = 0;
-    ed->hmodf = 0;
-    
-    SetDlgItemInt(win, ID_DungFloor1, ed->buf[0] & 15, 0); // floor 1
-    SetDlgItemInt(win, ID_DungFloor2, ed->buf[0] >> 4, 0); // floor 2
-    SetDlgItemInt(win, ID_DungTileSet, ed->gfxnum, 0); //blockset
-    SetDlgItemInt(win, ID_DungPalette, ed->palnum, 0); //palette
-}
-
-//Initroom******************************
-
-//LoadHeader
-
-void
-LoadHeader(DUNGEDIT * const ed,
-           int        const map)
-{
-    // we are passed in a dungeon editing window, and a map number (room number)
-    
-    uint8_t const * const rom = ed->ew.doc->rom;
-    
-    /// address of the header of the room indicated by parameter 'map'.
-    uint16_t i = 0;
-    
-    // upper limit for the header offset.
-    uint16_t m = 0;
-    
-    /// counter variable for looping through all dungeon rooms.
-    int j = 0;
-    
-    // size of the header
-    int l = 0;
-    
-    // -----------------------------
-    
-    i = get_16_le_i(rom + 0x27502, map);
-    
-    l = 14;
-    
-    // sort through all the other header offsets
-    for(j = 0; j < 0x140; j++)
-    {
-        // m gives the upper limit for the header.
-        // if is less than 14 bytes from i.
-        m = get_16_le_i(rom + 0x27502, j);
-        
-        // \task When merging with other branches, note that
-        // m and i are compared. If one is 16-bit, for example,
-        // and the other is 32-bit, that is a big potential
-        // problem.
-        if( (m > i) && (m < (i + 14) ) )
-        {
-            l = (m - i);
-            
-            break;
-        }
-    }
-    
-    // determine the size of the header
-    ed->hsize = l;
-    
-    // copy 14 bytes from the i offset.
-    memcpy(ed->hbuf, rom + rom_addr_split(0x04, i), 14);
-}
-
-// =============================================================================
-
-BOOL
-HM_BinaryCheckDlgButton(HWND     const p_win,
-                        unsigned const p_dlg_control,
-                        BOOL     const p_is_checked)
-{
-    return CheckDlgButton(p_win,
-                          p_dlg_control,
-                          p_is_checked ? BST_CHECKED : BST_UNCHECKED);
-}
-
-// =============================================================================
-
-void
-Openroom(DUNGEDIT *ed, int map)
-{
-    int i,j,l;
-    unsigned char *buf;
-    unsigned short k;
-    unsigned char *rom;
-    
-    HWND win = ed->dlg;
-    
-    ed->mapnum = map;
-    
-    ed->ew.doc->dungs[map] = win;
-    
-    rom = ed->ew.doc->rom;
-    
-    // get the base address for this room.
-    buf = rom + romaddr( *(int*) (rom + 0xf8000 + map * 3));
-    
-    i = 2; //we'll step in by 2 bytes here.
-    
-    ed->selobj=0;
-    ed->selchk=0;
-    
-    for(j = 0; j < 6; j++)
-    {
-        ed->chkofs[j] = i;
-        
-        for( ; ; )
-        {
-            k = *(unsigned short*)(buf + i);
-            
-            if(k == 0xffff) // code indicating to stop.
-                break;
-            
-            if(k == 0xfff0) // code indicating to do this loop...
-            {
-                j++;
-                
-                ed->chkofs[j] = i + 2;
-                
-                for( ; ; )
-                {
-                    i += 2;
-                    
-                    k = *(unsigned short*)(buf + i);
-                    
-                    if(k == 0xffff)
-                        goto end;
-                    
-                    if( !ed->selobj )
-                    {
-                        ed->selobj = i;
-                        ed->selchk = j;
-                    }
-                }
-            }
-            else
-            {
-                i += 3;
-            }
-            
-            if(!ed->selobj) // if there is no selected object, pick one.
-            {
-                ed->selobj = i - 3;
-                ed->selchk = j;
-            }
-        }
-        
-        j++;
-        
-        ed->chkofs[j] = i + 2;
-end:
-        i += 2;
-    }
-    
-    // now we know where the room data separates into special subsections.
-    
-    // bitwise and by 0xfffffffe. Makes j into an even number.
-    j = ed->selchk & -2;
-    
-    // do some initial settings, determine which radio button to check first 1, 2, 3,...
-    CheckDlgButton(win, ID_DungObjLayer1, j ? BST_UNCHECKED : BST_CHECKED);
-    CheckDlgButton(win, ID_DungObjLayer2, (j == 2) ? BST_CHECKED : BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungObjLayer3, (j == 4) ? BST_CHECKED : BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungSprLayer, (j == 6) ? BST_CHECKED : BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungItemLayer, (j == 7) ? BST_CHECKED : BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungBlockLayer, (j == 8) ? BST_CHECKED : BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungTorchLayer, (j == 9) ? BST_CHECKED : BST_UNCHECKED);
-    
-    ed->len = i; // size of the buffer.
-    ed->buf = malloc(i); // generate the buffer of size i.
-    memcpy(ed->buf, buf, i);// copy the data from buf to ed->buf.
-    
-    // this is the "layout", ranging from 0-7
-    SetDlgItemInt(win, ID_DungLayout, ed->buf[1] >> 2, 0);
-    
-    // load the header information.
-    LoadHeader(ed, map);
-    
-    Initroom(ed,win);
-    
-    // prints the room string in the upper left hander corner.
-    wsprintf(buffer,"Room %d",map);
-    
-    // ditto.
-    SetDlgItemText(win, ID_DungRoomNumber, buffer);
-    
-    if(map > 0xff)
-    {
-        // If we're in the upper range, certain buttons might be grayed out so we can't
-        // get back to the lower range
-        for(i = 0; i < 4; i++)
-        {
-            EnableWindow(GetDlgItem(win, ID_DungLeftArrow + i),
-                         ((map + nxtmap[i]) & 0xff) < 0x28);
-        }
-    }
-    else
-    {
-        EnableWindow( GetDlgItem(win, ID_DungLeftArrow), 1);
-        EnableWindow( GetDlgItem(win, ID_DungRightArrow), 1);
-        EnableWindow( GetDlgItem(win, ID_DungUpArrow), 1);
-        EnableWindow( GetDlgItem(win, ID_DungDownArrow), 1);
-    }
-    
-    CheckDlgButton(win, ID_DungObjLayer1, BST_CHECKED);
-    CheckDlgButton(win, ID_DungObjLayer2, BST_UNCHECKED);
-    CheckDlgButton(win, ID_DungObjLayer3, BST_UNCHECKED);
-    
-    for(i = 0; i < 9; i++)
-    {
-        if(ed->layering == bg2_ofs[i])
-        {
-            // \task Is this buggy? What if the value is not in this list?
-            // Probably not the case in a vanilla rom, but still...
-            SendDlgItemMessage(win, ID_DungBG2Settings, CB_SETCURSEL, i, 0);
-            
-            break;
-        }
-    }
-    
-    SendDlgItemMessage(win, ID_DungCollSettings, CB_SETCURSEL, ed->coll, 0);
-    SetDlgItemInt(win, ID_DungSprTileSet, ed->sprgfx, 0);
-    
-    buf = rom + 0x50000 + ((short*)(rom + ed->ew.doc->dungspr))[map];
-    
-    for(i = 1; ; i += 3)
-    {
-        if(buf[i] == 0xff)
-            break;
-    }
-    
-    ed->esize = i;
-    ed->ebuf = (uint8_t*) malloc(i);
-    
-    memcpy(ed->ebuf,buf,i);
-    
-    CheckDlgButton(win, ID_DungSortSprites, *ed->ebuf ? BST_CHECKED : BST_UNCHECKED);
-    
-    // load the secrets for the dungeon room
-    buf = rom + 0x10000 + ((short*) (rom + 0xdb69))[map];
-    
-    for(i = 0; ; i += 3)
-        if( is16b_neg1(buf + i) )
-            break;
-    
-    ed->ssize = i;
-    ed->sbuf = malloc(i);
-    
-    memcpy(ed->sbuf,buf,i);
-    
-    buf = rom + 0x2736a;
-    
-    l = *(short*)(rom + 0x88c1);
-    
-    for(i = 0; ; i += 2)
-    {
-        if(i >= l)
-        {
-            ed->tsize = 0;
-            ed->tbuf = 0;
-            
-            break;
-        }
-        
-        j = i;
-        
-        for( ; ; )
-        {
-            i += 2;
-            
-            if( is16b_neg1(buf + i) )
-                break;
-        }
-        
-        if(*(short*)(buf + j) == map)
-        {
-            ed->tbuf = (uint8_t*) malloc(ed->tsize = i - j);
-            
-            memcpy(ed->tbuf, buf + j, i - j);
-            
-            break;
-        }
-    }
-}
-
-//OpenRoom*****************************
-
-//SaveDungSecrets**********************
-
-void Savedungsecret(FDOC*doc,int num,unsigned char*buf,int size)
-{
-    int i,j,k;
-    int adr[0x140];
-    unsigned char*rom=doc->rom;
-    for(i=0;i<0x140;i++)
-        adr[i]=0x10000 + ((short*)(rom + 0xdb69))[i];
-    j=adr[num];
-    k=adr[num+1];
-    
-    if( is16b_neg1(rom + j) )
-    {
-        if(!size) return;
-        j+=size+2;
-        adr[num]+=2;
-    } else {
-        if(!size) {
-            if(j>0xdde9) {
-                j-=2;
-                adr[num]-=2;
-            }
-        } else j+=size;
-    }
-    if(*(short*)(rom+k)!=-1) k-=2;
-    if(adr[0x13f]-k+j>0xe6b0) {
-        MessageBox(framewnd,"Not enough space for secret items","Bad error happened",MB_OK);
-        return;
-    }
-    memmove(rom+j,rom+k,adr[0x13f]+2-k);
-    if(size) memcpy(rom+adr[num],buf,size);
-    if(j==k) return;
-    ((short*)(rom + 0xdb69))[num]=adr[num];
-    for(i=num+1;i<0x140;i++) {
-        ((short*)(rom + 0xdb69))[i]=adr[i]+j-k;
-    }
-}
-int Savesprites(FDOC*doc,int num,unsigned char*buf,int size)
+int
+Savesprites(FDOC          * const doc,
+            int                   num,
+            unsigned char *       buf,
+            int                   size)
 {
     int i,k,l,m,n;
     int adr[0x288];
@@ -4772,2803 +3355,9 @@ nochg:
     return 0;
 }
 
-//Saveroom******************************************
-
-void Saveroom(DUNGEDIT *ed)
-{
-    unsigned char *rom = ed->ew.doc->rom; // get our romfile from the Dungedit struct.
-    
-    int l;
-    int m;
-    int n;
-    
-    if( !ed->modf ) // if the dungeon map hasn't been modified, do nothing.
-        return;
-    
-    // if it has... save it.
-    if( ed->ew.param >= 0x8c) // if the map is an overlay... 
-    {
-        int i = Changesize(ed->ew.doc, ed->ew.param + 0x301f5, ed->len - 2);
-        
-        if(!i)
-            return;
-        
-        memcpy(rom + i, ed->buf + 2, ed->len - 2);
-    }
-    else
-    {
-        short i = 0;
-        short j = 0;
-        short k = 0;
-        
-        int ret_size = 0;
-        
-        Savesprites(ed->ew.doc, 0x160 + ed->mapnum, ed->ebuf, ed->esize);
-        
-        for(i = 5; i >= 1; i -= 2)
-        {
-            if(ed->chkofs[i] != ed->chkofs[i + 1])
-                break;
-        }
-        
-        door_ofs = ed->chkofs[i];
-        
-        ret_size = Changesize(ed->ew.doc, ed->mapnum + 0x30140, ed->len);
-        
-        if( !ret_size )
-            return;
-        
-        memcpy(rom + ret_size, ed->buf, ed->len);
-        
-        Savedungsecret(ed->ew.doc, ed->mapnum, ed->sbuf, ed->ssize);
-        
-        k = get_16_le(rom + 0x88c1);
-        
-        if( is16b_neg1(rom + 0x2736a) )
-            k = 0;
-        
-        for(i = 0; i < k; i += 2)
-        {
-            j = i;
-            
-            // test block
-            quick_u16_signedness_test();
-            
-            for( ; ; )
-            {
-                j += 2;
-                
-                if( is16b_neg1(rom + 0x2736a + j) )
-                    break;
-            }
-            
-            if( get_16_le(rom + 0x2736a + i) == ed->mapnum )
-            {
-                if(!ed->tsize)
-                    j += 2;
-                
-                if(k + i + ed->tsize - j > 0x120)
-                    goto noroom;
-                
-                memmove(rom + 0x2736a + i + ed->tsize, rom + 0x2736a + j, k - j);
-                memcpy(rom + 0x2736a + i, ed->tbuf, ed->tsize);
-                
-                k += i + ed->tsize - j;
-                
-                break;
-            }
-            else
-                i = j;
-        }
-        
-        if(ed->tsize && i == k)
-        {
-            j = ed->tsize + 2;
-            
-            if(k + j > 0x120)
-            noroom:
-            {
-                MessageBox(framewnd,
-                           "Not enough room for torches",
-                           "Bad error happened",
-                           MB_OK);
-            }
-            else
-            {
-                memcpy(rom + 0x2736a + k, ed->tbuf, ed->tsize);
-                
-                put_16_le(rom + 0x2736a + k + j - 2, u16_neg1);
-                
-                k += j;
-            }
-        }
-        
-        // \task Is this a bug? The second expression just tests for
-        // equality but doesn't change any part of memory.
-        // \note Update: This appears to maybe be checking whether
-        // the user has cleared all the torches. This has the effect
-        // of changing the immediate operand of a CPX command (number of bytes
-        // worth of torch data) and checking whether there is valid torch
-        // data in the first two entries. Effectively if there are two
-        // 0xffff words in the torch data and the operand of the instruction
-        // is 4, it means no room can load torch data.
-        if(!k)
-        {
-            k = 4;
-            
-            get_32_le(rom + 0x2736a) == u32_neg1;
-        }
-        
-        put_16_le(rom + 0x88c1, k);
-        
-        m = ed->hmodf;
-        
-        // if the headers have been modified, save them.
-        if(m != 0)
-        {
-            // some sort of upper bound.
-            int k = 0x28000 + get_16_le(rom + 0x27780);
-            
-            // some sort of lower bound.
-            int i = 0x28000 + get_16_le_i(rom + 0x27502, ed->mapnum);
-            
-            for(j = 0; j < 0x140; j++)
-            {
-                // if we hit the map number we're currently on, keep moving.
-                if(j == ed->mapnum)
-                    continue;
-                
-                if( 0x28000 + get_16_le_i(rom + 0x27502, j) == i )
-                {
-                    if(m > 1)
-                        goto headerok;
-                    
-                    wsprintf(buffer,"The room header of room %d is reused. Modify this one only?",ed->mapnum);
-                    
-                    if(MessageBox(framewnd,buffer,"Bad error happened",MB_YESNO)==IDYES)
-                    {
-headerok:
-                        k = i;
-                        
-                        goto changeroom;
-                    }
-                    
-                    break;
-                }
-            }
-            
-            for(j = 0; j < 0x140; j++)
-            {
-                l = 0x28000 + ((short*)(rom + 0x27502 ))[j];
-                
-                if(l > i && l < k)
-                    k = l;
-            }
-changeroom:
-            
-            if(m > 1)
-            {
-                ( (short*) ( rom + 0x27502 ) )[ed->mapnum] = ( (short*) ( rom + 0x27502 ) )[m - 2];
-                
-                n = 0;
-            }
-            else
-            {
-                n = ed->hsize;
-            }
-            
-            // \task Should this actually be a signed load?
-            if( get_16_le(rom + 0x27780) + (i + n - k) > 0 )
-            {
-                MessageBox(framewnd,
-                           "Not enough room for room header",
-                           "Bad error happened",
-                           MB_OK);
-            }
-            else
-            {
-                short const delta = (short) (i + n - k);
-                
-                memmove(rom + i + n, rom + k, 0x28000 + *((short*)(rom + 0x27780)) - k);
-                
-                add_16_le(rom + 0x27780, delta);
-                
-                memcpy(rom + i, ed->hbuf, n);
-                
-                for(j = 0; j < 0x140; j++)
-                {
-                    if
-                    (
-                        j != ed->mapnum
-                     && get_16_le_i(rom + 0x27502, j) + 0x28000 >= k
-                    )
-                    {
-                        add_16_le_i(rom + 0x27502, j, delta);
-                    }
-                }
-            }
-            
-            if(n)
-            {
-                rom[i]   = ed->layering | (ed->coll << 2);
-                rom[i+1] = (uint8_t) ed->palnum;
-                rom[i+2] = (uint8_t) ed->gfxnum;
-                rom[i+3] = (uint8_t) ed->sprgfx;
-            }
-        }
-    }
-    
-    ed->modf=0;
-    ed->ew.doc->modf=1;
-}
-
-//SaveRoom***********************************
-
-//Closeroom*********************************
-
-int Closeroom(DUNGEDIT *ed)
-{
-    int i;
-    
-    if(ed->ew.doc->modf != 2 && ed->modf)
-    {
-        if(ed->ew.param < 0x8c)
-            wsprintf(buffer,"Confirm modification of room %d?",ed->mapnum);
-        
-        else
-            wsprintf(buffer,"Confirm modification of overlay map?");
-        
-        switch(MessageBox(framewnd,buffer,"Dungeon editor",MB_YESNOCANCEL))
-        {
-        
-        case IDYES:
-            Saveroom(ed);
-            
-            break;
-        
-        case IDCANCEL:
-            return 1;
-        }
-    }
-    
-    for(i = 0; i < 15; i++)
-        Releaseblks(ed->ew.doc,ed->blocksets[i]);
-    
-    if(ed->ew.param<0x8c)
-        ed->ew.doc->dungs[ed->mapnum] = 0;
-    
-    return 0;
-}
-
-//Closeroom**********************************
-
 // =============================================================================
 
-void
-fill4x2(uint8_t  const * const rom,
-        uint16_t       * const nbuf,
-        uint16_t const * const buf)
-{
-    int i;
-    int j;
-    int k;
-    int l;
-    int m;
-    
-    for(l = 0; l < 4; l++)
-    {
-        i = ((short*) (rom + 0x1b02))[l] >> 1;
-        
-        for(m = 0; m < 8; m++)
-        {
-            for(k = 0; k < 8; k++)
-            {
-                for(j = 0; j < 2; j++)
-                {
-                    nbuf[i] = buf[0];
-                    nbuf[i+1] = buf[1];
-                    nbuf[i+2] = buf[2];
-                    nbuf[i+3] = buf[3];
-                    nbuf[i+64] = buf[4];
-                    nbuf[i+65] = buf[5];
-                    nbuf[i+66] = buf[6];
-                    nbuf[i+67] = buf[7];
-                    i += 128;
-                }
-                
-                i -= 252;
-            }
-            
-            i += 224;
-        }
-    }
-}
-
-void len1(void)
-{
-    if(!dm_l) dm_l=0x20;
-}
-
-void len2(void)
-{
-    if(!dm_l) dm_l=0x1a;
-}
-
-void draw2x2(void)
-{
-    dm_wr[0]  = dm_rd[0];
-    dm_wr[64] = dm_rd[1];
-    dm_wr[1]  = dm_rd[2];
-    dm_wr[65] = dm_rd[3];
-    
-    dm_wr += 2;
-}
-void drawXx4(int x)
-{
-    while(x--)
-    {
-        dm_wr[0]   = dm_rd[0];
-        dm_wr[64]  = dm_rd[1];
-        dm_wr[128] = dm_rd[2];
-        dm_wr[192] = dm_rd[3];
-        
-        dm_rd += 4;
-        
-        dm_wr++;
-    }
-}
-void drawXx4bp(int x)
-{
-    while(x--)
-    {
-        dm_buf[0x1000 + dm_x] = dm_buf[       dm_x] = dm_rd[0];
-        dm_buf[0x1040 + dm_x] = dm_buf[0x40 + dm_x] = dm_rd[1];
-        dm_buf[0x1080 + dm_x] = dm_buf[0x80 + dm_x] = dm_rd[2];
-        dm_buf[0x10c0 + dm_x] = dm_buf[0xc0 + dm_x] = dm_rd[3];
-        
-        dm_x++;
-        
-        dm_rd += 4;
-    }
-}
-void drawXx3bp(int x)
-{
-    while(x--)
-    {
-        dm_buf[0x1000 + dm_x] = dm_buf[       dm_x] = dm_rd[0];
-        dm_buf[0x1040 + dm_x] = dm_buf[0x40 + dm_x] = dm_rd[1];
-        dm_buf[0x1080 + dm_x] = dm_buf[0x80 + dm_x] = dm_rd[2];
-        
-        dm_x++;
-        
-        dm_rd += 3;
-    }
-}
-void drawXx3(int x)
-{
-    while(x--) {
-        dm_wr[0]=dm_rd[0];
-        dm_wr[64]=dm_rd[1];
-        dm_wr[128]=dm_rd[2];
-        dm_rd+=3;
-        dm_wr++;
-    }
-}
-
-void draw3x2(void)
-{
-    int x=2;
-    while(x--) {
-        dm_wr[0]=dm_rd[0];
-        dm_wr[1]=dm_rd[1];
-        dm_wr[2]=dm_rd[2];
-        dm_wr[64]=dm_rd[3];
-        dm_wr[65]=dm_rd[4];
-        dm_wr[66]=dm_rd[5];
-    }
-}
-
-void draw1x5(void)
-{
-    dm_wr[0]=dm_rd[0];
-    dm_wr[64]=dm_rd[1];
-    dm_wr[128]=dm_rd[2];
-    dm_wr[192]=dm_rd[3];
-    dm_wr[256]=dm_rd[4];
-}
-
-void draw8fec(uint16_t n)
-{
-    dm_wr[0]=dm_rd[0];
-    dm_wr[1]=dm_rd[1];
-    
-    dm_wr[65]=dm_wr[64] = n;
-}
-
-void draw9030(uint16_t n)
-{
-    dm_wr[1]=dm_wr[0]=n;
-    dm_wr[64]=dm_rd[0];
-    dm_wr[65]=dm_rd[1];
-}
-
-void draw9078(uint16_t n)
-{
-    dm_wr[0]=dm_rd[0];
-    dm_wr[64]=dm_rd[1];
-    dm_wr[65]=dm_wr[1]=n;
-}
-
-void draw90c2(uint16_t n)
-{
-    dm_wr[64]=dm_wr[0]=n;
-    dm_wr[1]=dm_rd[0];
-    dm_wr[65]=dm_rd[1];
-}
-
-void draw4x2(int x)
-{
-    while(dm_l--) {
-        dm_wr[0]=dm_rd[0];
-        dm_wr[1]=dm_rd[1];
-        dm_wr[2]=dm_rd[2];
-        dm_wr[3]=dm_rd[3];
-        dm_wr[64]=dm_rd[4];
-        dm_wr[65]=dm_rd[5];
-        dm_wr[66]=dm_rd[6];
-        dm_wr[67]=dm_rd[7];
-        dm_wr+=x;
-    }
-}
-void draw2x6(uint16_t * const nbuf)
-{
-    int m = 6;
-    
-    dm_wr = nbuf + dm_x;
-    
-    while(m--)
-    {
-        dm_wr[0]=dm_rd[0];
-        dm_wr[1]=dm_rd[6];
-        dm_wr+=64;
-        dm_rd++;
-    }
-}
-void drawhole(int l, uint16_t * nbuf)
-{
-    draw2x6(nbuf);
-    dm_x+=2;
-    dm_rd+=6;
-    while(l--) {
-        dm_buf[dm_x]=dm_buf[dm_x+64]=dm_buf[dm_x+128]=
-        dm_buf[dm_x+192]=dm_buf[dm_x+256]=dm_buf[dm_x+320]=
-        dm_rd[0];
-        dm_x++;
-    }
-    draw2x6(nbuf);
-}
-void draw4x4X(int n)
-{
-    int x;
-    while(n--) {
-        x=2;
-        while(x--) {
-            dm_wr[0]=dm_rd[0];
-            dm_wr[1]=dm_rd[1];
-            dm_wr[2]=dm_rd[2];
-            dm_wr[3]=dm_rd[3];
-            dm_wr[64]=dm_rd[4];
-            dm_wr[65]=dm_rd[5];
-            dm_wr[66]=dm_rd[6];
-            dm_wr[67]=dm_rd[7];
-            dm_wr+=128;
-        }
-        dm_wr-=252;
-    }
-}
-
-void draw12x12(void)
-{
-    int m,
-        l = 12;
-    
-    while(l--)
-    {
-        m = 12;
-        
-        while(m--)
-        {
-            dm_buf[dm_x + 0x1000] = dm_rd[0];
-            dm_x++;
-            dm_rd++;
-        }
-        
-        dm_x+=52;
-    }
-}
-
-void draw975c(void)
-{
-    unsigned char m;
-    m=dm_l;
-    dm_wr[0]=dm_rd[0];
-    while(m--) dm_wr[1]=dm_rd[3],dm_wr++;
-    dm_wr[1]=dm_rd[6];
-    dm_wr[2]=dm_wr[3]=dm_wr[4]=dm_wr[5]=dm_rd[9];
-    m=dm_l;
-    dm_wr[6]=dm_rd[12];
-    while(m--) dm_wr[7]=dm_rd[15],dm_wr++;
-    dm_wr[7]=dm_rd[18];
-    dm_tmp+=64;
-    dm_wr=dm_tmp;
-}
-
-void draw93ff(void)
-{
-    int m;
-    uint16_t *tmp;
-    m = dm_l;
-    
-    tmp=dm_wr;
-    dm_wr[0] = dm_rd[0];
-    
-    while(m--)
-        dm_wr[1] = dm_rd[1], dm_wr[2] = dm_rd[2], dm_wr += 2;
-    
-    dm_wr[1] = dm_rd[3];
-    tmp += 64;
-    dm_wr = tmp;
-}
-
-void drawtr(void)
-{
-    unsigned char n=dm_l,l;
-    for(l=0;l<n;l++)
-        dm_wr[l] = dm_rd[0];
-}
-
-void tofront4x7(int n)
-{
-    int m=7;
-    while(m--) {
-        dm_buf[n]|=0x2000;
-        dm_buf[n+1]|=0x2000;
-        dm_buf[n+2]|=0x2000;
-        dm_buf[n+3]|=0x2000;
-        n+=64;
-    }
-}
-void tofront5x4(int n)
-{
-    int m=5;
-    while(m--) {
-        dm_buf[n]|=0x2000;
-        dm_buf[n+64]|=0x2000;
-        dm_buf[n+128]|=0x2000;
-        dm_buf[n+192]|=0x2000;
-        n++;
-    }
-}
-void tofrontv(int n)
-{
-    int m=n;
-    n&=0x783f;
-    while(n!=m) {
-        dm_buf[n]|=0x2000;
-        dm_buf[n+1]|=0x2000;
-        dm_buf[n+2]|=0x2000;
-        dm_buf[n+3]|=0x2000;
-        n+=64;
-    }
-}
-void tofronth(int n)
-{
-    int m=n;
-    n&=0x7fe0;
-    while(n!=m) {
-        dm_buf[n]|=0x2000;
-        dm_buf[n+64]|=0x2000;
-        dm_buf[n+128]|=0x2000;
-        dm_buf[n+192]|=0x2000;
-        n++;
-    }
-}
-
-void drawadd4(uint8_t const * const rom,
-              int             const p_x)
-{
-    int m = 4;
-    int x = p_x;
-    
-    dm_rd = (uint16_t*) ( rom + 0x1b52 + ldle16b_i(rom + 0x4e06, dm_l) );
-    
-    while(m--)
-    {
-        dm_buf[x + 0x1040] = dm_rd[0];
-        dm_buf[x + 0x1080] = dm_rd[1];
-        dm_buf[x +   0xc0] = dm_rd[2];
-        
-        dm_rd += 3;
-        
-        x++;
-    }
-    
-    x -= 4;
-    
-    tofrontv(x + 0x100);
-}
-
-void drawaef0(uint8_t const * const rom,
-              int             const p_x)
-{
-    int m = 2;
-    int x = p_x;
-    
-    dm_rd = (uint16_t*) ( rom + 0x1b52 + ldle16b_i(rom + 0x4ec6, dm_l) );
-    
-    while(m--)
-    {
-        dm_buf[x + 0x1001] = dm_rd[0];
-        dm_buf[x + 0x1041] = dm_rd[1];
-        dm_buf[x + 0x1081] = dm_rd[2];
-        dm_buf[x + 0x10c1] = dm_rd[3];
-        
-        dm_rd += 4;
-        
-        x++;
-    }
-    
-    dm_buf[x +   1] = dm_rd[0];
-    dm_buf[x +  65] = dm_rd[1];
-    dm_buf[x + 129] = dm_rd[2];
-    dm_buf[x + 193] = dm_rd[3];
-    
-    x += 2;
-    
-    while(x & 0x3f)
-    {
-        dm_buf[x      ] |= 0x2000;
-        dm_buf[x +  64] |= 0x2000;
-        dm_buf[x + 128] |= 0x2000;
-        dm_buf[x + 192] |= 0x2000;
-        
-        x++;
-    }
-}
-
-const static char obj_w[64]={
-    4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,4,4,4,4,
-    2,2,2,2,4,2,2,2,2,2,4,4,4,4,2,2,4,4,4,2,6,4,4,4,
-    4,4,4,4,2,4,4,10,4,4,4,4,24,3,6,1
-};
-const static char obj_h[64]={
-    4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,
-    2,2,2,2,4,3,2,2,2,3,5,3,4,4,3,2,5,4,2,3,3,4,4,4,
-    4,4,4,4,2,2,2,4,3,3,3,3,6,3,3,7
-};
-const static char obj2_w[128]={
-    4,4,4,1,1,1,1,1,1,1,1,1,1,16,1,1,
-    2,2,5,2,4,10,2,16,2,2,2,4,4,4,4,4,
-    4,4,2,2,2,2,4,4,4,4,44,2,4,14,28,2,
-    2,4,4,4,3,3,6,6,3,3,4,4,6,6,2,2,
-    2,2,2,2,2,2,2,4,4,2,2,8,6,6,4,2,
-    2,2,2,2,14,3,2,2,2,2,4,3,6,6,2,2,
-    3,3,22,2,2,2,4,4,4,3,3,4,4,4,3,3,
-    4,8,10,64,8,2,8,8,8,4,4,20,2,2,2,1
-};
-const static char obj2_h[128]={
-    3,5,7,1,1,1,1,1,1,1,1,1,1,4,1,1,
-    2,2,8,2,3,8,2,4,2,2,2,4,4,4,4,4,
-    4,4,2,2,2,2,4,4,4,4,44,2,4,14,25,2,
-    2,3,3,4,2,2,3,3,2,2,6,6,4,4,2,2,
-    2,2,2,2,2,2,2,4,4,2,2,3,8,3,3,2,
-    2,2,2,2,14,5,2,2,2,2,2,5,4,3,2,2,
-    6,6,13,2,2,2,4,3,3,4,4,4,3,3,4,4,
-    10,8,8,64,8,2,3,3,8,3,4,8,2,2,2,1
-};
-
-const char obj3_w[248]={
-    0,0,0,0,0,-4,-4,0,0,5,5,5,5,5,5,5,
-    5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
-    5,2,3,2,2,2,2,2,2,2,2,2,2,2,2,13,
-    13,1,1,0,3,1,-2,-2,-2,-4,-4,-4,-2,-4,-12,2,
-    2,2,2,2,2,2,2,2,2,0,0,-12,2,2,2,2,
-    1,2,2,0,1,-8,-8,1,1,1,1,2,2,5,-2,22,
-    2,4,4,4,4,4,4,2,2,1,1,1,2,2,1,1,
-    4,1,1,4,4,2,3,3,2,1,1,2,1,2,1,2,
-    2,3,3,3,3,3,3,2,2,2,1,1,1,1,1,2,
-    4,4,2,2,4,2,2,1,1,1,1,1,1,1,1,1,
-    3,3,3,3,3,3,3,3,3,3,3,3,3,1,1,1,
-    7,7,0,2,2,0,0,0,0,0,0,-2,0,0,1,1,
-    0,12,0,0,0,0,0,0,0,0,0,1,1,3,3,1,
-    1,0,0,1,1,1,1,0,4,0,4,0,8,2,0,0,
-    0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1
-};
-
-const char obj3_h[248]={
-    2,4,4,4,4,4,4,2,2,9,9,9,9,9,9,9,
-    9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
-    9,3,1,1,1,1,1,1,1,1,1,1,1,1,1,2,
-    2,1,1,4,1,1,4,4,3,4,3,3,8,4,2,1,
-    1,1,1,1,1,1,1,5,3,2,2,2,3,4,4,4,
-    1,3,3,2,1,2,2,1,1,1,1,3,3,3,2,1,
-    0,0,0,0,0,-4,-4,0,0,3,0,0,13,13,1,1,
-    0,3,1,-2,-2,-2,-4,-4,-12,0,0,-12,1,0,1,-8,
-    -8,-4,-4,-4,-4,2,2,-2,5,-2,22,7,7,0,0,3,
-    0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,
-    3,3,3,3,3,3,3,3,3,3,3,3,3,1,1,1,
-    1,1,4,1,1,4,4,4,2,2,4,2,2,2,1,1,
-    0,6,0,0,0,0,0,0,0,0,0,1,1,0,0,1,
-    1,0,0,1,1,1,1,0,4,0,4,0,5,2,0,0,
-    0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1
-};
-
-const char obj3_m[248]={
-    2,2,2,2,2,6,6,2,2,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,0,0,4,1,0,6,6,4,6,8,8,4,6,14,1,
-    1,1,1,1,1,1,1,2,2,4,4,14,2,2,2,2,
-    1,2,2,2,0,12,12,0,0,0,0,2,2,1,4,1,
-    2,2,2,2,2,6,6,2,2,1,1,1,1,1,0,0,
-    4,1,0,6,6,6,8,8,14,1,1,14,1,2,0,12,
-    12,8,8,8,8,2,2,6,1,4,1,1,1,1,1,2,
-    2,2,2,2,4,2,2,0,0,0,0,0,0,0,0,0,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,
-    1,1,4,1,1,2,2,2,2,2,4,4,2,2,0,0,
-    4,2,4,3,4,4,4,4,4,4,4,0,0,1,1,0,
-    0,4,4,0,0,0,0,3,4,4,4,4,2,2,2,4,
-    4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0
-};
-
-const unsigned char obj3_t[248]={
-    0,2,2,1,1,1,1,1,1,97,65,65,97,97,65,65,
-    97,97,65,65,97,97,65,65,97,97,65,65,97,97,65,65,
-    97,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    128,130,130,129,129,129,129,129,129,129,129,129,129,129,129,129,
-    129,129,129,129,129,129,129,129,129,129,129,129,129,129,129,129,
-    129,129,129,129,129,129,129,129,129,129,129,129,129,129,129,129,
-    130,130,128,128,129,129,129,129,129,129,129,129,129,129,129,129,
-    65,65,65,113,65,65,65,65,113,65,65,65,113,129,129,129,
-    1,1,1,1,1,1,2,2,2,2,1,1,1,1,1,1,
-    3,3,3,3,3,3,3,3,3,3,3,1,1,20,4,1,
-    1,3,3,1,1,1,1,3,3,3,3,3,3,3,3,3,
-    3,3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0
-};
-
-void getobj(unsigned char const * map)
-{
-    unsigned short i;
-    unsigned char j;
-    
-    i = *(unsigned short*) map;
-    
-    j = i & 0xfc;
-    
-    if(j == 0xfc) // subtype 3 object
-    {
-        dm_x = ((i & 3) << 4) | (i >> 12);
-        map++;
-        i = *(unsigned short*) map;
-        dm_x += ((i & 15) << 8) | ((i & 0xc000u) >> 8);
-        dm_k = ((i & 0x3f00) >> 8) + 0x100;
-    }
-    else
-    {
-        dm_x = ((j >> 2) | ((i & 0xfc00u) >> 4));
-        dm_k = map[2];
-        if(dm_k < 0xf8) // subtype 1 object
-            dm_l = ((i & 3) << 2)|((i & 0x300u) >> 8);
-        else
-            dm_l = (i & 3) | ((i & 0x300u) >> 6);
-    }
-}
-
-char sprname[0x11c][16];
-
-HDC objdc;
-
-HBITMAP objbmp;
-
-void Getstringobjsize(char const * str, RECT *rc)
-{
-    GetTextExtentPoint(objdc,str,strlen(str),(LPSIZE)&(rc->right));
-    rc->bottom++;
-    rc->right++;
-    if(rc->bottom<16) rc->bottom=16;
-    if(rc->right<16) rc->right=16;
-    rc->right+=rc->left;
-    rc->bottom+=rc->top;
-}
-const static char obj4_h[4]={5,7,11,15};
-const static char obj4_w[4]={8,16,24,32};
-void Getdungobjsize(int chk,RECT*rc,int n,int o,int p)
-{
-    // Loads object sizes
-    int a = 0,
-        b = 0,
-        c = 0,
-        d = 0,
-        e = 0;
-    
-    char*f;
-    switch(chk) {
-    case 0: case 2: case 4:
-        if(dm_k >= 0x100)
-            rc->right=obj_w[dm_k - 0x100]<<3,rc->bottom=obj_h[dm_k - 0x100]<<3;
-        else if(dm_k >= 0xf8)
-        {
-            rc->right = obj2_w[ ( (dm_k - 0xf8) << 4) + dm_l] << 3;
-            rc->bottom = obj2_h[ ( (dm_k - 0xf8) << 4) + dm_l] << 3;
-        }
-        else {
-            c=0;
-            d=dm_l;
-            e=obj3_t[dm_k];
-            switch(e&15) {
-            case 0:
-                len1();
-                break;
-            case 1:
-                dm_l++;
-                break;
-            case 2:
-                len2();
-                break;
-            case 3:
-                c=((dm_l&3)+1)*obj3_m[dm_k];
-                dm_l>>=2;
-                dm_l++;
-                break;
-            
-            case 4:
-                
-                c = ( obj4_h[dm_l >> 2] + 3 ) << 1;
-                
-                dm_l = obj4_w[dm_l & 3];
-                
-                if(e & 16)
-                    rc->left -= dm_l << 3;
-                
-                break;
-            }
-            
-            dm_l*=obj3_m[dm_k];
-            switch(e&192) {
-            case 0:
-                a=dm_l;
-                b=c;
-                break;
-            case 64:
-                a=dm_l;
-                b=dm_l;
-                break;
-            case 128:
-                a=0;
-                b=dm_l;
-                break;
-            }
-            
-            if(e & 32)
-                rc->top -= ( b + ( (e & 16) ? 2 : 4) ) << 3;
-            
-            a += obj3_w[dm_k];
-            b += obj3_h[dm_k];
-            
-            rc->right = a << 3;
-            rc->bottom = b << 3;
-            
-            dm_l=d;
-        }
-        if(dm_k==0xff) {if(dm_l==8) rc->left-=16; else if(dm_l==3) rc->left=-n,rc->top=-o;}
-        else if(dm_k==0xfa) {
-            if(dm_l==14) rc->left+=16,rc->top+=32;
-            else if(dm_l==10) rc->left=80-n,rc->top=64-o;
-        }
-        break;
-    case 1: case 3: case 5:
-        switch(dm_k) {
-        case 0:
-            if(dm_l==24) {
-                rc->right=176;
-                rc->bottom=96;
-            } else if(dm_l==25) rc->right=rc->bottom=32; else if(dm_dl>8) {
-                rc->top-=120;
-                rc->bottom=144;
-                rc->right=32;
-            } else if(dm_dl>5) {
-                rc->top-=72;
-                rc->bottom=96;
-                rc->right=32;
-            } else rc->right=32,rc->bottom=24;
-            break;
-        case 1:
-            if(dm_l==5 || dm_l==6) {
-                rc->right=96;
-                rc->bottom=64;
-                rc->left-=32;
-                rc->top-=32;
-            } else if(dm_l==2 || dm_l==7 || dm_l==8) {
-                rc->right=rc->bottom=32;
-            } else rc->right=32,rc->bottom=24,rc->top+=8;
-            break;
-        case 2:
-            rc->bottom=32;
-            if(dm_dl>8) {
-                rc->left-=104;
-                rc->right=128;
-            } else if(dm_dl>5) {
-                rc->left-=56;
-                rc->right=80;
-            } else rc->right=24;
-            break;
-        case 3:
-            rc->right=24,rc->bottom=32,rc->left+=8;
-        }
-        break;
-    case 8: case 9:
-        rc->right=16;
-        rc->bottom=16;
-        break;
-    case 7:
-        Getstringobjsize(cur_sec, rc);
-        goto blah2;
-    case 6:
-        if(dm_k>=0x11c) f="Crash"; else f=sprname[dm_k];
-        Getstringobjsize(f,rc);
-blah2:
-        if(rc->right>512-n) rc->right=512-n;
-        if(rc->bottom>512-o) rc->bottom=512-o;
-        goto blah;
-    }
-    rc->right+=rc->left;
-    rc->bottom+=rc->top;
-blah:
-    if(!p)
-    {
-        if(rc->left < -n)
-        {
-            rc->left = -n;
-            rc->top -= (-rc->left - n) >> 9 << 3;
-            rc->right = 512 - n;
-        }
-        
-        if(rc->top<-o)
-        {
-            rc->top = -o;
-            rc->bottom = 512 - o;
-        }
-        
-        if(rc->right > 512 - n)
-        {
-            rc->left = -n;
-            rc->bottom += (rc->right + n) >> 9 << 3;
-            rc->right = 512 - n;
-        }
-        
-        if(rc->bottom > 512 - o)
-        {
-            rc->top    = -o;
-            rc->bottom = 512 - o;
-        }
-    }
-}
-
-void
-setobj(DUNGEDIT*ed, unsigned char *map)
-{
-    unsigned char c=0;
-    short k,l,m,n,o;
-    unsigned char*rom;
-    dm_x&=0xfff;
-    dm_l&=0xf;
-    o=map[2];
-    if(dm_k>0xff) {
-        if((dm_x&0xf3f)==0xf3f) goto invalobj;
-        map[0]=0xfc + ((dm_x>>4)&3);
-        map[1]=(dm_x<<4)+(dm_x>>8);
-        map[2]=(dm_x&0xc0)|dm_k;
-    } else {
-        if((dm_x&0x3f)==0x3f) goto invalobj;
-        if(dm_k<0xf8) {
-            if((dm_l==3||!dm_l) && dm_x==0xffc) {
-invalobj:
-                if(ed->withfocus&10) ed->withfocus|=4;
-                else MessageBox(framewnd,"You cannot place that object there.","No",MB_OK);
-                getobj(map);
-                return;
-            }
-            map[0]=(dm_x<<2)|(dm_l>>2);
-            map[1]=((dm_x>>4)&0xfc)|(dm_l&3);
-        } else {
-            if((dm_l==12||!dm_l) && dm_x==0xffc) goto invalobj;
-            if((dm_k==0xf9 && dm_l==9) || (dm_k==0xfb && dm_l==1)) c=1;
-            map[0]=(dm_x<<2)|(dm_l&3);
-            map[1]=((dm_x>>4)&0xfc)|(dm_l>>2);
-        }
-        map[2]=(unsigned char)dm_k;
-    }
-    if(c && !ed->ischest)
-    {
-        rom = ed->ew.doc->rom;
-        
-        m = 0;
-        
-        for(l=0;l<0x1f8;l+=3)
-            if( is16b_neg1(rom + 0xe96e + l) )
-                break;
-        
-        if(l!=0x1f8) {
-            for(k=0;k<0x1f8;k+=3) {
-                n=*(short*)(rom + 0xe96e + l);
-                if(n==ed->mapnum) {
-                    if(ed->chestloc[m++]>map-ed->buf) {
-                        if(l<k)
-                            MoveMemory(rom + 0xe96e + l, rom + 0xe96e + l + 3,
-                                       k - l - 3);
-                        else
-                            MoveMemory(rom + 0xe96e + k + 3, rom + 0xe96e + k, l - k - 3);
-setchest:
-                        *(short*)(rom + 0xe96e + k) = ed->mapnum | ((dm_k == 0xfb) ? 0x8000 : 0);
-                        rom[0xe970 + k] = 0;
-                        break;
-                    }
-                }
-            }
-            if(k==0x1f8) {k=l; goto setchest; }
-        }
-    } else if(ed->ischest && (map[2]!=o || !c)) {
-        for(k=0;k<ed->chestnum;k++) if(map-ed->buf==ed->chestloc[k]) break;
-        for(l=0;l<0x1f8;l+=3) {
-            if((*(short*)(ed->ew.doc->rom + 0xe96e + l)&0x7fff)==ed->mapnum) {
-                k--;
-                if(k<0) {
-                    *(short*)(ed->ew.doc->rom + 0xe96e + l)=c?(ed->mapnum+((o==0xf9)?32768:0)):-1;
-                    break;
-                }
-            }
-        }
-    }
-    
-    if(ed->withfocus&4) {SetCursor(normal_cursor);ed->withfocus&=-5;}
-    
-    ed->modf=1;
-}
-
-void getdoor(unsigned char const *       map,
-             unsigned char const * const rom)
-{
-    unsigned short i = *(unsigned short*) map;
-    
-    dm_dl = (i & 0xf0) >> 4;
-    dm_l = i >> 9;
-    dm_k = i & 3;
-    
-    if(dm_l == 24 && !dm_k)
-        dm_x = ( ldle16b_i(rom + 0x19de, dm_dl) ) >> 1;
-    else
-        dm_x = ( ldle16b_i(rom + 0x197e, dm_dl + dm_k * 12) ) >> 1;
-}
-
-void
-setdoor(unsigned char *map)
-{
-    dm_k&=3;
-    map[0]=dm_k+(dm_dl<<4);
-    map[1]=dm_l<<1;
-}
-
-unsigned char const *
-Drawmap(unsigned char  const * const rom,
-        unsigned short       * const nbuf,
-        unsigned char  const *       map,
-        DUNGEDIT             * const ed)
-{
-    unsigned short i;
-    unsigned char l,m,o;
-    short n;
-    unsigned char ch = ed->chestnum;
-    
-    uint16_t *dm_src, *tmp;
-    
-    for( ; ; )
-    {
-        i=*(unsigned short*)map;
-        if(i==0xffff) break;
-        if(i==0xfff0) {
-            for(;;) {
-                
-                map+=2;
-                
-                i=*(unsigned short*)(map);
-                
-                if(i == 0xffff)
-                    goto end;
-                
-                getdoor(map, rom);
-                dm_wr=nbuf+dm_x;
-                switch(dm_k) {
-                case 0:
-                    switch(dm_l) {
-                    case 24:
-                        dm_l=42;
-                        dm_rd = (uint16_t*) (rom + 0x1b52 + ((unsigned short*)(rom + 0x4e06))[dm_l]);
-                        drawhole(18,nbuf);
-                        dm_rd = (uint16_t*) (rom + 0x1b52 + ((unsigned short*)(rom + 0x4d9e))[dm_l]);
-                        dm_x+=364;
-                        drawhole(18,nbuf);
-                        break;
-                    case 11: case 10: case 9:
-                        break;
-                    case 25:
-                        dm_rd = (uint16_t*) (rom + 0x22dc);
-                        drawXx4(4);
-                        break;
-                    case 3:
-                        tofrontv(dm_x+64);
-                        break;
-                    case 1:
-                        tofront4x7(dm_x&0x783f);
-                    default:
-                        if(dm_l<0x20) {
-                            if(dm_dl>5) {
-                                dm_wr=nbuf+((((unsigned short*)(rom + 0x198a))[dm_dl])>>1);
-                                
-                                if(dm_l==1)
-                                    tofront4x7(dm_x+256);
-                                
-                                dm_rd = (uint16_t*)
-                                ( rom + 0x1b52 + ldle16b_i(rom + 0x4e06, dm_l) );
-                                
-                                m=4;
-                                while(m--) {
-                                    dm_wr[64]=dm_rd[0];
-                                    dm_wr[128]=dm_rd[1];
-                                    dm_wr[192]=dm_rd[2];
-                                    dm_rd+=3;
-                                    dm_wr++;
-                                }
-                            }
-                            
-                            n = 0;
-                            
-                            dm_rd = (uint16_t*)
-                            (
-                                rom + 0x1b52
-                              + get_16_le_i(rom + 0x4d9e, dm_l)
-                            );
-                            
-                            dm_wr=nbuf+dm_x;
-                            m=4;
-                            while(m--) {
-                                dm_wr[0]=dm_rd[0];
-                                dm_wr[64]=dm_rd[1];
-                                dm_wr[128]=dm_rd[2];
-                                dm_rd+=3;
-                                dm_wr++;
-                            }
-                        } else {
-                            n=dm_x;
-                            if(dm_dl>5 && dm_l!=0x23) {
-                                dm_x=(((unsigned short*)(rom + 0x198a))[dm_dl])>>1;
-                                drawadd4(rom,dm_x);
-                            }
-                            
-                            dm_x = n;
-                            
-                            dm_rd = (uint16_t*)
-                            (
-                                rom + 0x1b52
-                              + get_16_le_i(rom + 0x4d9e, dm_l)
-                            );
-                            
-                            m=4;
-                            while(m--) {
-                                dm_buf[dm_x]=dm_rd[0];
-                                dm_buf[dm_x + 0x1040]=dm_rd[1];
-                                dm_buf[dm_x + 0x1080]=dm_rd[2];
-                                dm_rd+=3;
-                                dm_x++;
-                            }
-                            dm_x-=4;
-                            if(dm_l!=0x23) tofrontv(dm_x);
-                        }
-                    }
-                    break;
-                case 1:
-                    switch(dm_l) {
-                    case 3:
-                        while(dm_x&0x7c0) {
-                            dm_buf[dm_x]|=0x2000;
-                            dm_buf[dm_x+1]|=0x2000;
-                            dm_buf[dm_x+2]|=0x2000;
-                            dm_buf[dm_x+3]|=0x2000;
-                            dm_x+=64;
-                        }
-                        break;
-                    case 11: case 10: case 9:
-                        break;
-                    case 5: case 6:
-                        dm_rd = (uint16_t*)(rom + 0x41a8);
-                        o=10;
-                        l=8;
-                        dm_wr-=0x103;
-                        tmp=dm_wr;
-                        while(l--) {
-                            m=o;
-                            while(m--) *(dm_wr++)=*(dm_rd++);
-                            tmp+=64;
-                            dm_wr=tmp;
-                        }
-                        break;
-                    case 2: case 7: case 8:
-                        tofront4x7(dm_x + 0x100);
-                        dm_rd = (uint16_t*)(rom + 0x4248);
-                        drawXx4(4);
-                        dm_x+=188;
-                        m=4;
-                        while(m--) dm_buf[dm_x++]|=0x2000;
-                        break;
-                    case 1:
-                        tofront4x7(dm_x);
-                    
-                    // \task falls through. Intentional?
-                    default:
-                        
-                        dm_rd = (uint16_t*)
-                        ( rom + 0x1b52 + get_16_le_i(rom + 0x4e06, dm_l) );
-                        
-                        if(dm_l<0x20) {
-                            m=4;
-                            while(m--) {
-                                dm_wr[64]=dm_rd[0];
-                                dm_wr[128]=dm_rd[1];
-                                dm_wr[192]=dm_rd[2];
-                                dm_rd+=3;
-                                dm_wr++;
-                            }
-                        } else drawadd4(rom,dm_x);
-                    }
-                    break;
-                case 2:
-                    switch(dm_l) {
-                    case 10: case 11:
-                        break;
-                    case 3:
-                        tofronth(dm_x+1);
-                        break;
-                    case 1:
-                        tofront5x4(dm_x&0x7fe0);
-                    default:
-                        if(dm_l<0x20) {
-                            if(dm_dl > 5)
-                            {
-                                dm_wr = nbuf
-                                      + ( ( ldle16b_i(rom + 0x19ba, dm_dl) ) >> 1);
-                                
-                                dm_rd = (uint16_t*)
-                                (
-                                    rom + 0x1b52
-                                  + ldle16b_i(rom + 0x4ec6, dm_l)
-                                );
-                                
-                                m = 3;
-                                
-                                dm_wr++;
-                                
-                                while(m--)
-                                {
-                                    dm_wr[0]   = dm_rd[0];
-                                    dm_wr[64]  = dm_rd[1];
-                                    dm_wr[128] = dm_rd[2];
-                                    dm_wr[192] = dm_rd[3];
-                                    dm_rd+=4;
-                                    dm_wr++;
-                                }
-                            }
-                            n=0;
-                            
-                            dm_rd = (uint16_t*)
-                            ( rom + 0x1b52 + get_16_le_i(rom + 0x4e66, dm_l) );
-                            
-                            dm_wr=nbuf+dm_x;
-                            m=3;
-                            while(m--) {
-                                dm_wr[0]=dm_rd[0];
-                                dm_wr[64]=dm_rd[1];
-                                dm_wr[128]=dm_rd[2];
-                                dm_wr[192]=dm_rd[3];
-                                dm_rd+=4;
-                                dm_wr++;
-                            }
-                        }
-                        else
-                        {
-                            if(dm_dl > 5)
-                                drawaef0(rom,(((uint16_t*)(rom + 0x19ba))[dm_dl])>>1);
-                            
-                            m = 2;
-                            
-                            dm_rd = (uint16_t*)
-                            ( rom + 0x1b52 + ldle16b_i(rom + 0x4e66, dm_l) );
-                            
-                            dm_buf[dm_x      ] = dm_rd[0];
-                            dm_buf[dm_x +  64] = dm_rd[1];
-                            dm_buf[dm_x + 128] = dm_rd[2];
-                            dm_buf[dm_x + 192] = dm_rd[3];
-                            
-                            while(m--) {
-                                dm_buf[dm_x + 0x1001]=dm_rd[4];
-                                dm_buf[dm_x + 0x1041]=dm_rd[5];
-                                dm_buf[dm_x + 0x1081]=dm_rd[6];
-                                dm_buf[dm_x + 0x10c1]=dm_rd[7];
-                                dm_rd+=4;
-                                dm_x++;
-                            }
-                        }
-                    }
-                    break;
-                case 3:
-                    switch(dm_l) {
-                    case 10: case 11:
-                        break;
-                    case 3:
-                        dm_x+=2;
-                        while(dm_x&0x3f) {
-                            dm_buf[dm_x]|=0x2000;
-                            dm_buf[dm_x+64]|=0x2000;
-                            dm_buf[dm_x+128]|=0x2000;
-                            dm_buf[dm_x+192]|=0x2000;
-                            dm_x++;
-                        }
-                        break;
-                    case 1:
-                        tofront5x4(dm_x+4);
-                    default:
-                        
-                        if(dm_l < 0x20)
-                        {
-                            dm_rd = (uint16_t*)
-                            ( rom + 0x1b52 + ldle16b_i(rom + 0x4ec6, dm_l) );
-                            
-                            dm_wr++;
-                            
-                            m = 3;
-                            
-                            while(m--)
-                            {
-                                dm_wr[0]=dm_rd[0];
-                                dm_wr[64]=dm_rd[1];
-                                dm_wr[128]=dm_rd[2];
-                                dm_wr[192]=dm_rd[3];
-                                dm_rd+=4;
-                                dm_wr++;
-                            }
-                        }
-                        else
-                            drawaef0(rom, dm_x);
-                    }
-                }
-            }
-        }
-        
-        getobj(map);
-        
-        map += 3;
-        
-        dm_wr=nbuf+dm_x;
-        
-        if(dm_k >= 0x100)
-        {
-            dm_src = dm_rd = (uint16_t*)
-            ( rom + 0x1b52 + ldle16b_i(rom + 0x81f0, dm_k) );
-            
-            switch(dm_k - 0x100) {
-            case 59:
-//              dm_rd=(short*)(rom + 0x2ce2);
-                goto d43;
-            case 58:
-//              dm_rd=(short*)(rom + 0x2cca);
-                goto d43;
-            case 57:
-//              dm_rd=(short*)(rom + 0x2cb2);
-                goto d43;
-            case 56:
-//              dm_rd=(short*)(rom + 0x2c9a);
-d43:
-                drawXx3(4);
-                break;
-            case 45: case 46: case 47:
-            case 50: case 51:
-            case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
-            case 36: case 37: case 41: case 28:
-                drawXx4(4);
-                break;
-            case 48: case 49:
-            case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15:
-                drawXx4bp(4);
-                break;
-            case 16: case 17: case 18: case 19:
-                drawXx4bp(3);
-                break;
-            case 20: case 21: case 22: case 23:
-                drawXx3bp(4);
-                break;
-            case 52:
-            case 24: case 25: case 26: case 27: case 30: case 31: case 32:
-            case 39:
-                draw2x2();
-                break;
-            case 29: case 33: case 38: case 43:
-                drawXx3(2);
-                break;
-            case 34: case 40:
-                dm_l=5;
-                while(dm_l--) {
-                    dm_wr[0]=dm_rd[0];
-                    dm_wr[1]=dm_rd[1];
-                    dm_wr[2]=dm_rd[2];
-                    dm_wr[3]=dm_rd[3];
-                    dm_rd+=4;
-                    dm_wr+=64;
-                }
-                break;
-            case 35:
-                drawXx3(4);
-                break;
-            case 42: case 53:
-                dm_l=1;
-                draw4x2(1);
-                break;
-            case 62:
-            case 44:
-                drawXx3(6);
-                break;
-            case 54:
-                
-                dm_rd = (uint16_t*) (rom + 0x2c5a);
-                
-                dm_l = 1;
-                
-                goto case99;
-            
-            case 55:
-                drawXx4(10);
-                break;
-            case 60:
-                n=*dm_rd;
-                dm_l=6;
-                while(dm_l--) {
-                    dm_buf[dm_x+1]=dm_buf[dm_x+5]=dm_buf[dm_x+9]=
-                    dm_buf[dm_x+15]=dm_buf[dm_x+19]=dm_buf[dm_x+23]=
-                    (dm_buf[dm_x]=dm_buf[dm_x+4]=dm_buf[dm_x+8]=
-                    dm_buf[dm_x+14]=dm_buf[dm_x+18]=dm_buf[dm_x+22]=dm_rd[0])|0x4000;
-                    dm_buf[dm_x+3]=dm_buf[dm_x+7]=dm_buf[dm_x+17]=
-                    dm_buf[dm_x+21]=
-                    (dm_buf[dm_x+2]=dm_buf[dm_x+6]=dm_buf[dm_x+16]=
-                    dm_buf[dm_x+20]=dm_rd[6])|0x4000;
-                    dm_rd++;
-                    dm_x+=64;
-                }
-                dm_rd+=6;
-                dm_wr+=10;
-                drawXx3(4);
-                break;
-            case 61:
-                drawXx3(3);
-                break;
-            case 63:
-                dm_l=8;
-                while(dm_l--) {
-                    dm_buf[dm_x]=dm_rd[0];
-                    dm_buf[dm_x + 0x40]=dm_rd[1];
-                    dm_buf[dm_x + 0x80]=dm_rd[2];
-                    dm_buf[dm_x + 0xc0]=dm_rd[3];
-                    dm_buf[dm_x + 0x100]=dm_rd[4];
-                    dm_buf[dm_x + 0x140]=dm_rd[5];
-                    dm_buf[dm_x + 0x180]=dm_rd[6];
-                    dm_rd+=7;
-                }
-                break;
-            }
-        }
-        else
-        {
-            if(dm_k >= 0xf8)
-            {
-                dm_k &= 7;
-                dm_k <<= 4;
-                dm_k |= dm_l;
-                
-                dm_src = dm_rd = (uint16_t*)
-                (rom + 0x1b52 + ldle16b_i(rom + 0x84f0, dm_k) );
-                
-                switch(dm_k)
-                {
-                case 0:
-                    m=3;
-rows4:
-                    while(m--) {
-                        dm_wr[0]=dm_rd[0];
-                        dm_wr[1]=dm_rd[1];
-                        dm_wr[2]=dm_rd[2];
-                        dm_wr[3]=dm_rd[3];
-                        dm_rd+=4;
-                        dm_wr+=64;
-                    }
-                    break;
-                case 1:
-                    m=5;
-                    goto rows4;
-                case 2:
-                    m=7;
-                    goto rows4;
-                case 3: case 14:
-                case 4: case 5: case 6: case 7: case 8: case 9:
-                case 10: case 11: case 12: case 15:
-                    
-                    dm_wr[0]=dm_rd[0];
-                    
-                    break;
-                case 13:
-                    dm_rd = (uint16_t*) (rom + 0x2fda);
-                case 23:
-                    m=5;
-                    tmp=dm_wr;
-                    while(m--) {
-                        // \task Endianness issues with derived pointers like
-                        // this. These will be tough to track down.
-                        dm_wr[2]=dm_wr[9]=dm_rd[1];
-                        dm_wr[73]=(dm_wr[66]=dm_rd[2])|0x4000;
-                        dm_wr[137]=(dm_wr[130]=dm_rd[4])|0x4000;
-                        dm_wr[201]=(dm_wr[194]=dm_rd[5])|0x4000;
-                        dm_wr++;
-                    }
-                    dm_wr=tmp;
-                    dm_wr[15]=(dm_wr[0]=dm_rd[0])|0x4000;
-                    dm_wr[14]=dm_wr[8]=dm_wr[7]=dm_wr[1]=dm_rd[1];
-                    dm_wr[142]=(dm_wr[129]=dm_rd[3])|0x4000;
-                    break;
-                case 25:
-                    if(ch<16) ed->chestloc[ch++]=map-ed->buf-3;
-                case 16: case 17: case 19: case 34: case 35: case 36:
-                case 37:
-                case 22: case 24: case 26: case 47: case 48: case 62:
-                case 63: case 64: case 65: case 66: case 67: case 68: case 69:
-                case 70: case 73: case 74: case 79: case 80: case 81: case 82:
-                case 83: case 86: case 87: case 88: case 89: case 94:
-                case 95: case 99: case 100: case 101: case 117: case 124:
-                case 125: case 126:
-                    draw2x2();
-                    break;
-                case 18:
-                    m=3;
-                    while(m--) {
-                        dm_wr[384]=dm_wr[192]=dm_wr[0]=dm_rd[0];
-                        dm_wr[448]=dm_wr[256]=dm_wr[64]=dm_rd[1];
-                        dm_wr+=2;
-                    }
-                    break;
-                case 20:
-                    drawXx3(4);
-                    break;
-                case 21: case 114:
-                    o=10;
-                    l=8;
-                    tmp=dm_wr;
-                    while(l--) {
-                        m=o;
-                        while(m--) *(dm_wr++)=*(dm_rd++);
-                        tmp+=64;
-                        dm_wr=tmp;
-                    }
-                    break;
-                case 27: case 28: case 30: case 31: case 32:
-                case 33:
-                    m=4;
-                    while(m--) {
-                        dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
-                        dm_buf[dm_x + 0x1040]=dm_buf[dm_x + 0x40]=dm_rd[1];
-                        dm_buf[dm_x + 0x1080]=dm_buf[dm_x + 0x80]=dm_rd[2];
-                        dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
-                        dm_x++;
-                        dm_rd+=4;
-                    }
-                    break;
-                case 112:
-                    drawXx4(4);
-                    dm_wr+=124;
-                    dm_rd-=16;
-                    drawXx4(4);
-                    dm_wr+=252;
-                    drawXx4(4);
-                    break;
-                case 113:
-                    drawXx4(4);
-                    drawXx4(4);
-                    dm_wr+=248;
-                    drawXx4(4);
-                    drawXx4(4);
-                    break;
-                case 120:
-                    drawXx4(4);
-                    dm_wr+=250;
-                    drawXx4(4);
-                    dm_rd-=16;
-                case 29: case 102: case 107:
-                case 122:
-                    drawXx4(4);
-                    break;
-                case 38: case 39:
-                    m=4;
-                    while(m--) {
-                        dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
-                        dm_buf[dm_x + 0x1040]=dm_rd[1];
-                        dm_buf[dm_x + 0x1080]=dm_rd[2];
-                        dm_buf[dm_x + 0x10c0]=dm_rd[3];
-                        dm_x++;
-                        dm_rd+=4;
-                    }
-                    break;
-                case 40: case 41:
-                    m=4;
-                    while(m--) {
-                        dm_buf[dm_x + 0x1000]=dm_rd[0];
-                        dm_buf[dm_x + 0x1040]=dm_rd[1];
-                        dm_buf[dm_x + 0x1080]=dm_rd[2];
-                        dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
-                        dm_x++;
-                        dm_rd+=4;
-                    }
-                    break;
-                case 42:
-                    dm_rd+=0xb6e;
-                    dm_x=0x20a;
-                    draw12x12();
-                    dm_rd-=3;
-                    dm_x=0x22a;
-                    draw12x12();
-                    dm_rd--;
-                    dm_x=0xa0a;
-                    draw12x12();
-                    dm_rd-=5;
-                    dm_x=0xa2a;
-                    draw12x12();
-                    break;
-                case 44:
-                    draw2x2();
-                    dm_rd+=4;
-                    draw2x2();
-                    dm_wr+=124;
-                    dm_rd+=4;
-                    draw2x2();
-                    dm_rd+=4;
-                case 43:
-                    draw2x2();
-                    break;
-                case 45:
-                    dm_rd+=0xda5;
-                    m=14;
-                    while(m--) {
-                        dm_wr[13]=(dm_wr[0]=dm_rd[0])|0x4000;
-                        dm_wr[12]=dm_wr[11]=
-                        (dm_wr[2]=dm_wr[1]=dm_rd[14])^0x4000;
-                        dm_wr[10]=(dm_wr[3]=dm_rd[28])^0x4000;
-                        dm_wr[9]=(dm_wr[4]=dm_rd[42])^0x4000;
-                        dm_wr[8]=(dm_wr[5]=dm_rd[56])^0x4000;
-                        dm_wr[7]=(dm_wr[6]=dm_rd[70])^0x4000;
-                        dm_wr+=64;
-                        dm_rd++;
-                    }
-                    break;
-                case 46:
-                    n=dm_x;
-                    m=6;
-                    dm_rd+=0xdf9;
-                    while(m--) {
-                        dm_buf[dm_x + 0x107]=dm_buf[dm_x + 0x10d]=dm_buf[dm_x + 0x113]=dm_rd[0];
-                        dm_buf[dm_x + 0x147]=dm_buf[dm_x + 0x14d]=dm_buf[dm_x + 0x153]=dm_rd[1];
-                        dm_buf[dm_x + 0x187]=dm_buf[dm_x + 0x18d]=dm_buf[dm_x + 0x193]=dm_rd[2];
-                        dm_buf[dm_x + 0x1c7]=dm_buf[dm_x + 0x1cd]=dm_buf[dm_x + 0x1d3]=dm_rd[3];
-                        dm_rd+=4;
-                        dm_x++;
-                    }
-                    m=5;
-                    dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x  + 0x117]=dm_buf[dm_x + 0x158]=dm_buf[dm_x + 0x199]=
-                        dm_buf[dm_x  + 0x1da]=dm_buf[dm_x + 0x21b]=dm_buf[dm_x + 0x25c]=dm_buf[dm_x + 0x29d]=
-                        (dm_buf[dm_x + 0x282]=dm_buf[dm_x + 0x243]=dm_buf[dm_x + 0x204]=
-                        dm_buf[dm_x  + 0x1c5]=dm_buf[dm_x + 0x186]=dm_buf[dm_x + 0x147]=dm_buf[dm_x + 0x108]=dm_rd[0])|0x4000;
-                        dm_rd++;
-                        dm_x+=64;
-                    }
-                    m=6;
-                    dm_x=n;
-                    while(m--) {
-                         dm_buf[dm_x + 0x2dd] = dm_buf[dm_x + 0x45d]=dm_buf[dm_x + 0x5dd]=
-                        (dm_buf[dm_x + 0x2c2] = dm_buf[dm_x + 0x442]=dm_buf[dm_x + 0x5c2]=dm_rd[0])|0x4000;
-                         dm_buf[dm_x + 0x2dc] = dm_buf[dm_x + 0x45c]=dm_buf[dm_x + 0x5dc]=
-                        (dm_buf[dm_x + 0x2c3] = dm_buf[dm_x + 0x443]=dm_buf[dm_x + 0x5c3]=dm_rd[1])|0x4000;
-                         dm_buf[dm_x + 0x2db] = dm_buf[dm_x + 0x45b]=dm_buf[dm_x + 0x5db]=
-                        (dm_buf[dm_x + 0x2c4] = dm_buf[dm_x + 0x444]=dm_buf[dm_x + 0x5c4]=dm_rd[2])|0x4000;
-                         dm_buf[dm_x + 0x2da] = dm_buf[dm_x + 0x45a]=dm_buf[dm_x + 0x5da]=
-                        (dm_buf[dm_x + 0x2c5] = dm_buf[dm_x + 0x445]=dm_buf[dm_x + 0x5c5]=dm_rd[3])|0x4000;
-                        dm_rd+=4;
-                        dm_x+=64;
-                    }
-                    m=6;
-                    dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x + 0x24c]=dm_buf[dm_x + 0x252]=dm_rd[0];
-                        dm_buf[dm_x + 0x28c]=dm_buf[dm_x + 0x292]=dm_rd[6];
-                        dm_rd++;
-                        dm_x++;
-                    }
-                    dm_rd+=6;
-                    m=6;
-                    dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x + 0x387]=dm_buf[dm_x + 0x507]=dm_rd[0];
-                        dm_buf[dm_x + 0x388]=dm_buf[dm_x + 0x508]=dm_rd[1];
-                        dm_rd+=2;
-                        dm_x+=64;
-                    }
-                    m=5;
-                    dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x + 0x247]=dm_rd[0];
-                        dm_buf[dm_x + 0x287]=dm_rd[1];
-                        dm_buf[dm_x + 0x2c7]=dm_rd[2];
-                        dm_buf[dm_x + 0x307]=dm_rd[3];
-                        dm_buf[dm_x + 0x347]=dm_rd[4];
-                        dm_rd+=5;
-                        dm_x++;
-                    }
-                    m=4;
-                    dm_x=n;
-                    while(m--) {
-                        dm_buf[dm_x + 0x70e]|=0x2000;
-                        dm_buf[dm_x + 0x74e]|=0x2000;
-                        dm_x++;
-                    }
-                    break;
-                case 49:
-                    if(ch<16) ed->chestloc[ch++]=map-ed->buf-3;
-                case 50: case 103: case 104: case 121:
-                    drawXx3(4);
-                    break;
-                case 51: case 72:
-                    drawXx4(4);
-                    break;
-                case 52: case 53: case 56: case 57:
-                    draw3x2();
-                    break;
-                case 54: case 55: case 77: case 93:
-                    drawXx3(6);
-                    break;
-                case 58: case 59:
-                    drawXx3(4);
-                    dm_wr+=188;
-                    drawXx3(4);
-                    break;
-                case 78:
-                    drawXx3(4);
-                    break;
-                case 60: case 61: case 92:
-                    drawXx4(6);
-                    break;
-                case 71:
-                    draw2x2();
-                    dm_rd+=4;
-                    draw2x2();
-                    dm_rd+=4;
-                    dm_wr+=124;
-                    draw2x2();
-                    dm_rd+=4;
-                    draw2x2();
-                    break;
-                case 75: case 118: case 119:
-                    drawXx3(8);
-                    break;
-                case 76:
-                    l=8;
-                    while(l--) {
-                        m=6;
-                        while(m--) {
-                            dm_wr[0]=dm_rd[0];
-                            dm_wr++;
-                            dm_rd++;
-                        }
-                        dm_wr+=58;
-                    }
-                    break;
-                case 84:
-                    m=6;
-                    tmp=dm_wr;
-                    while(m--) {
-                        dm_wr[1]=dm_wr[2]=dm_wr[65]=dm_wr[66]=dm_rd[0];
-                        dm_wr[130]=(dm_wr[129]=dm_rd[1])|0x4000;
-                        dm_wr+=2;
-                    }
-                    dm_wr=tmp;
-                    m=3;
-                    while(m--) {
-                        dm_wr[0xc1]=dm_wr[0xc3]=dm_wr[0xcb]=dm_wr[0xcd]=
-                        (dm_wr[0xc0]=dm_wr[0xc2]=dm_wr[0xca]=dm_wr[0xcc]=dm_rd[2])|0x4000;
-                        dm_wr[0xc5]=dm_wr[0xc7]=dm_wr[0xc9]=
-                        (dm_wr[0xc4]=dm_wr[0xc6]=dm_wr[0xc8]=dm_rd[5])|0x4000;
-                        dm_rd++;
-                        dm_wr+=64;
-                    }
-                    dm_wr=tmp;
-                    dm_wr[77]=dm_wr[13]=(dm_wr[64]=dm_wr[0]=dm_rd[5])|0x4000;
-                    dm_wr[141]=(dm_wr[128]=dm_rd[6])|0x4000;
-                    m=4;
-                    dm_wr=tmp;
-                    dm_rd=dm_src;
-                    while(m--) {
-                        dm_wr[0x28a]=(dm_wr[0x283]=dm_rd[10])|0x4000;
-                        dm_wr[0x289]=(dm_wr[0x284]=dm_rd[14])|0x4000;
-                        dm_wr[0x288]=(dm_wr[0x285]=dm_rd[18])|0x4000;
-                        dm_wr[0x287]=(dm_wr[0x286]=dm_rd[22])|0x4000;
-                        dm_rd++;
-                        dm_wr+=64;
-                    }
-                    break;
-                case 85: case 91:
-                    m=3;
-                    dm_wr[0]=dm_rd[0];
-                    dm_wr[1]=dm_rd[1];
-                    dm_wr[2]=dm_rd[2];
-                    while(m--) {
-                        dm_wr[64]=dm_rd[3];
-                        dm_wr[65]=dm_rd[4];
-                        dm_wr[66]=dm_rd[5];
-                        dm_wr+=64;
-                    }
-                    dm_wr[64]=dm_rd[6];
-                    dm_wr[65]=dm_rd[7];
-                    dm_wr[66]=dm_rd[8];
-                    break;
-                case 90:
-                    m=2;
-                    while(m--) {
-                        dm_wr[0]=dm_rd[0];
-                        dm_wr[1]=dm_rd[1];
-                        dm_wr[2]=dm_rd[2];
-                        dm_wr[3]=dm_rd[3];
-                        dm_rd+=4;
-                        dm_wr+=64;
-                    }
-                    break;
-                case 96: case 97:
-                    drawXx3(3);
-                    dm_wr+=189;
-                    drawXx3(3);
-                    break;
-                case 98:
-                    m=22;
-                    while(m--) {
-                        dm_buf[dm_x + 0x1000]=dm_rd[0];
-                        dm_buf[dm_x + 0x1040]=dm_rd[1];
-                        dm_buf[dm_x + 0x1080]=dm_rd[2];
-                        dm_buf[dm_x + 0x10c0]=dm_rd[3];
-                        dm_buf[dm_x + 0x1100]=dm_rd[4];
-                        dm_buf[dm_x + 0x1140]=dm_rd[5];
-                        dm_buf[dm_x + 0x1180]=dm_rd[6];
-                        dm_buf[dm_x + 0x11c0]=dm_rd[7];
-                        dm_buf[dm_x + 0x1200]=dm_rd[8];
-                        dm_buf[dm_x + 0x1240]=dm_rd[9];
-                        dm_buf[dm_x + 0x1280]=dm_rd[10];
-                        dm_rd+=11;
-                        dm_x++;
-                    }
-                    dm_x-=22;
-                    m=3;
-                    while(m--) {
-                        dm_buf[0x12c9 + dm_x] = dm_rd[0];
-                        dm_buf[0x1309 + dm_x] = dm_rd[3];
-                        dm_rd++;
-                        dm_x++;
-                    }
-                    break;
-                case 105: case 106: case 110: case 111:
-                    drawXx4(3);
-                    break;
-                case 109: case 108:
-                    drawXx3(4);
-                    break;
-                case 115:
-                    fill4x2(rom,nbuf,dm_rd + 0x70);
-                    break;
-                case 123:
-                    tmp=dm_wr;
-                    draw4x4X(5);
-                    tmp+=256;
-                    dm_wr=tmp;
-                    draw4x4X(5);
-                    break;
-                case 116:
-                    drawXx4(4);
-                    drawXx4(4);
-                    dm_wr+=248;
-                    drawXx4(4);
-                    drawXx4(4);
-                    break;
-                }
-                continue;
-            }
-            
-            dm_src = dm_rd = (uint16_t*)
-            ( rom + 0x1b52 + ldle16b_i(rom + 0x8000, dm_k) );
-            
-            switch(dm_k)
-            {
-            
-            case 0:
-                len1();
-                while(dm_l--) draw2x2();
-                break;
-            
-            case 1: case 2:
-                len2();
-                while(dm_l--) drawXx4(2),dm_rd=dm_src;
-                break;
-            
-            case 3: case 4:
-                dm_l++;
-                while(dm_l--) {
-                    dm_buf[0x1000 + dm_x] = dm_buf[     + dm_x] = dm_rd[0];
-                    dm_buf[0x1040 + dm_x] = dm_buf[0x40 + dm_x] = dm_rd[1];
-                    dm_buf[0x1080 + dm_x] = dm_buf[0x80 + dm_x] = dm_rd[2];
-                    dm_buf[0x10c0 + dm_x] = dm_buf[0xc0 + dm_x] = dm_rd[3];
-                    dm_buf[0x1001 + dm_x] = dm_buf[0x1  + dm_x] = dm_rd[4];
-                    dm_buf[0x1041 + dm_x] = dm_buf[0x41 + dm_x] = dm_rd[5];
-                    dm_buf[0x1081 + dm_x] = dm_buf[0x81 + dm_x] = dm_rd[6];
-                    dm_buf[0x10c1 + dm_x] = dm_buf[0xc1 + dm_x] = dm_rd[7];
-                    
-                    dm_x += 2;
-                }
-                break;
-            case 5: case 6:
-                dm_l++;
-                while(dm_l--) drawXx4(2),dm_rd=dm_src,dm_wr+=4;
-                break;
-            case 7: case 8:
-                dm_l++;
-                while(dm_l--) draw2x2();
-                break;
-            case 9: case 12: case 13: case 16: case 17: case 20:
-                dm_l+=6;
-                while(dm_l--) draw1x5(),dm_wr-=63;
-                break;
-            case 21: case 24: case 25: case 28: case 29: case 32:
-                n=-63;
-case25:
-                dm_l+=6;
-                while(dm_l--) {
-                    dm_buf[dm_x + 0x1000]=dm_buf[dm_x]=dm_rd[0];
-                    dm_buf[dm_x + 0x1040]=dm_buf[dm_x + 0x40]=dm_rd[1];
-                    dm_buf[dm_x + 0x1080]=dm_buf[dm_x + 0x80]=dm_rd[2];
-                    dm_buf[dm_x + 0x10c0]=dm_buf[dm_x + 0xc0]=dm_rd[3];
-                    dm_buf[dm_x + 0x1100]=dm_buf[dm_x + 0x100]=dm_rd[4];
-                    dm_x+=n;
-                }
-                break;
-            case 23: case 26: case 27: case 30: case 31:
-                n=65;
-                goto case25;
-            case 10: case 11: case 14: case 15: case 18: case 19: case 22:
-                dm_l+=6;
-                while(dm_l--) draw1x5(),dm_wr+=65;
-                break;
-            case 33:
-                dm_l=dm_l*2+1;
-                drawXx3(2);
-                while(dm_l--) dm_rd-=3,drawXx3(1);
-                drawXx3(1);
-                break;
-            case 34:
-                dm_l+=2;
-case34b:
-                if(*dm_wr!=0xe2) *dm_wr=*dm_rd;
-case34:
-                dm_wr++;
-                dm_rd++;
-                while(dm_l--) *(dm_wr++)=*dm_rd;
-                dm_rd++;
-                *dm_wr=*dm_rd;
-                break;
-            case 35: case 36: case 37: case 38: case 39: case 40: case 41:
-            case 42: case 43: case 44: case 45: case 46: case 179: case 180:
-                dm_l++;
-                n=(*dm_wr)&0x3ff;
-                if(!(n==0x1db || n==0x1a6 || n==0x1dd || n==0x1fc))
-                    *dm_wr=*dm_rd;
-                goto case34;
-            case 47:
-                dm_l+=10;
-                n=*(dm_rd++);
-                if(((*dm_wr)&0x3ff)!=0xe2) draw8fec(n);
-                dm_wr+=2;
-                dm_rd+=2;
-                while(dm_l--) {
-                    dm_wr[0]=*dm_rd;
-                    dm_wr[64]=n;
-                    dm_wr++;
-                }
-                dm_rd++;
-                draw8fec(n);
-                break;
-            case 48:
-                dm_l+=10;
-                n=*(dm_rd++);
-                if(((dm_wr[64])&0x3ff)!=0xe2) draw9030(n);
-                dm_wr+=2;
-                dm_rd+=2;
-                while(dm_l--) {
-                    dm_wr[0]=n;
-                    dm_wr[64]=*dm_rd;
-                    dm_wr++;
-                }
-                dm_rd++;
-                draw9030(n);
-                break;
-            case 51:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4);
-                break;
-            case 52:
-                dm_l+=4;
-                n=*dm_rd;
-                while(dm_l--) *(dm_wr++)=n;
-                break;
-            case 53:
-                break;
-            case 54: case 55:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4),dm_wr+=2;
-                break;
-            case 56:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx3(2),dm_wr+=2;
-                break;
-            case 61:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(2),dm_wr+=4;
-                break;
-            case 57:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(2),dm_wr+=4;
-                break;
-            case 58: case 59:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx3(4),dm_wr+=4;
-                break;
-            case 60:
-                dm_l++;
-                while(dm_l--) {
-                    dm_rd=dm_src,draw2x2();
-                    dm_wr+=0x17e;
-                    dm_rd+=4;
-                    draw2x2();
-                    dm_wr-=0x17e;
-                }
-                break;
-            case 62: case 75:
-                dm_l++;
-                while(dm_l--) draw2x2(),dm_wr+=12;
-                break;
-            case 63: case 64: case 65: case 66: case 67: case 68: case 69:
-            case 70:
-                dm_l++;
-                n=(*dm_wr)&0x3ff;
-                if(!(n==0x1db || n==0x1a6 || n==0x1dd || n==0x1fc)) *dm_wr=*dm_rd;
-                dm_rd++;
-                dm_wr++;
-                n=*(dm_rd++);
-                while(dm_l--) *(dm_wr++)=n;
-                *dm_wr=*dm_rd;
-                break;
-            case 71:
-                dm_l++;
-                dm_l<<=1;
-                draw1x5();
-                dm_rd+=5;
-                dm_wr++;
-                while(dm_l--) draw1x5(),dm_wr++;
-                dm_rd+=5;
-                draw1x5();
-                break;
-            case 72:
-                dm_l++;
-                dm_l<<=1;
-                drawXx3(1);
-                while(dm_l--) {
-                    dm_wr[0]=dm_rd[0];
-                    dm_wr[64]=dm_rd[1];
-                    dm_wr[128]=dm_rd[2];
-                    dm_wr++;
-                }
-                dm_rd+=3;
-                drawXx3(1);
-                break;
-            case 73: case 74:
-                dm_l++;
-                draw4x2(4);
-                break;
-            case 76:
-                dm_l++;
-                dm_l<<=1;
-                drawXx3(1);
-                while(dm_l--) drawXx3(1),dm_rd-=3;
-                dm_rd+=3;
-                drawXx3(1);
-                break;
-            case 77: case 78: case 79:
-                dm_l++;
-                drawXx4(1);
-                while(dm_l--) drawXx4(2),dm_rd-=8;
-                dm_rd+=8;
-                drawXx4(1);
-                break;
-            case 80:
-                dm_l+=2;
-                n=*dm_rd;
-                while(dm_l--) *(dm_wr++)=n;
-                break;
-            case 81: case 82: case 91: case 92:
-                drawXx3(2);
-                while(dm_l--) drawXx3(2),dm_rd-=6;
-                dm_rd+=6;
-                drawXx3(2);
-                break;
-            case 83:
-                dm_l++;
-                while(dm_l--) draw2x2();
-                break;
-            case 85: case 86:
-                dm_l++;
-                draw4x2(12);
-                break;
-            case 93:
-                dm_l+=2;
-                drawXx3(2);
-                while(dm_l--) {
-                    dm_wr[0]=dm_rd[0];
-                    dm_wr[64]=dm_rd[1];
-                    dm_wr[128]=dm_rd[2];
-                    dm_wr++;
-                }
-                dm_rd+=3;
-                drawXx3(2);
-                break;
-            case 94:
-                dm_l++;
-                while(dm_l--) draw2x2(),dm_wr+=2;
-                break;
-            case 95:
-                dm_l+=21;
-                goto case34b;
-            case 96: case 146: case 147:
-                len1();
-                while(dm_l--) draw2x2(),dm_wr+=126;
-                break;
-            case 97: case 98:
-                len2();
-                draw4x2(0x80);
-                break;
-            case 99: case 100:
-                dm_l++;
-case99:
-                while(dm_l--) {
-                    dm_buf[0x1000 + dm_x] = dm_buf[       dm_x] = dm_rd[0];
-                    dm_buf[0x1001 + dm_x] = dm_buf[1    + dm_x] = dm_rd[1];
-                    dm_buf[0x1002 + dm_x] = dm_buf[2    + dm_x] = dm_rd[2];
-                    dm_buf[0x1003 + dm_x] = dm_buf[3    + dm_x] = dm_rd[3];
-                    dm_buf[0x1040 + dm_x] = dm_buf[0x40 + dm_x] = dm_rd[4];
-                    dm_buf[0x1041 + dm_x] = dm_buf[0x41 + dm_x] = dm_rd[5];
-                    dm_buf[0x1042 + dm_x] = dm_buf[0x42 + dm_x] = dm_rd[6];
-                    dm_buf[0x1043 + dm_x] = dm_buf[0x43 + dm_x] = dm_rd[7];
-                    
-                    dm_x+=128;
-                }
-                break;
-            case 101: case 102:
-                dm_l++;
-                draw4x2(0x180);
-                break;
-            case 103: case 104:
-                dm_l++;
-                while(dm_l--) draw2x2(),dm_wr+=126;
-                break;
-            case 105:
-                dm_l+=2;
-                if((*dm_wr&0x3ff)!=0xe3) *dm_wr=*dm_rd;
-                dm_wr+=64;
-                while(dm_l--) *dm_wr=dm_rd[1],dm_wr+=64;
-                *dm_wr=dm_rd[2];
-                break;
-            case 106: case 107: case 121: case 122:
-                dm_l++;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr+=64;
-                break;
-            case 108:
-                dm_l+=10;
-                n=*(dm_rd++);
-                if((*dm_wr&0x3ff)!=0xe3) draw9078(n);
-                dm_rd+=2;
-                dm_wr+=128;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr[1]=n,dm_wr+=64;
-                dm_rd++;
-                draw9078(n);
-                break;
-            case 109:
-                dm_l+=10;
-                n=*(dm_rd++);
-                if((dm_wr[1]&0x3ff)!=0xe3) draw90c2(n);
-                dm_rd+=2;
-                dm_wr+=128;
-                while(dm_l--) *dm_wr=n,dm_wr[1]=*dm_rd,dm_wr+=64;
-                dm_rd++;
-                draw90c2(n);
-                break;
-            case 112:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4),dm_wr+=252;
-                break;
-            case 113:
-                dm_l+=4;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr+=64;
-                break;
-            case 115: case 116:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4),dm_wr+=0x17c;
-                break;
-            case 117:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(2),dm_wr+=0x17e;
-                break;
-            case 118: case 119:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(3),dm_wr+=0x1fd;
-                break;
-            case 120: case 123:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,draw2x2(),dm_wr+=0x37e;
-                break;
-            case 124:
-                dm_l+=2;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr+=64;
-                break;
-            case 125:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,draw2x2(),dm_wr+=0x7e;
-                break;
-            case 127: case 128:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(2),dm_wr+=0x2fe;
-                break;
-            case 129: case 130: case 131: case 132:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(3),dm_wr+=0x1fd;
-                break;
-            case 133: case 134:
-                draw3x2(),dm_wr+=128,dm_rd+=6;
-                while(dm_l--) draw3x2(),dm_wr+=128;
-                dm_rd+=6;
-                draw3x2();
-                break;
-            case 135:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(2),dm_wr+=0x17e;
-                break;
-            case 136:
-                dm_l++;
-                draw2x2(),dm_wr+=0x7e;
-                dm_rd+=4;
-                while(dm_l--) dm_wr[0]=dm_rd[0],dm_wr[1]=dm_rd[1],dm_wr+=64;
-                dm_rd+=2;
-                drawXx3(2);
-                break;
-            case 137:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,draw2x2(),dm_wr+=0xfe;
-                break;
-            case 138:
-                dm_l+=21;
-                if((*dm_wr&0x3ff)!=0xe3) *dm_wr=*dm_rd;
-                dm_wr+=64;
-                while(dm_l--) *dm_wr=dm_rd[1],dm_wr+=64;
-                *dm_wr=dm_rd[2];
-                break;
-            case 140: case 139:
-                dm_l+=8;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr+=64;
-                break;
-            case 141: case 142:
-                dm_l++;
-                while(dm_l--) *dm_wr=*dm_rd,dm_wr+=64;
-                break;
-            case 143:
-                dm_l+=2;
-                dm_l<<=1;
-                dm_wr[0]=dm_rd[0];
-                dm_wr[1]=dm_rd[1];
-                while(dm_l--) dm_wr[64]=dm_rd[2],dm_wr[65]=dm_rd[3],dm_wr+=64;
-                break;
-            case 144: case 145:
-                len2();
-                draw4x2(0x80);
-                break;
-            case 148:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4),dm_wr+=0xfc;
-                break;
-            case 149: case 150:
-                dm_l++;
-                while(dm_l--) draw2x2(),dm_wr+=0x7e;
-                break;
-            case 160: case 169:
-                dm_l+=4;
-                for(;dm_l;dm_l--) {
-                    n=dm_l;
-                    drawtr();
-                    dm_wr+=64;
-                }
-                break;
-            case 161: case 166: case 170:
-                dm_l+=4;
-                m=0;
-                while(dm_l--) {
-                    m++;
-                    n=m;
-                    for(l=0;l<n;l++) dm_wr[l]=*dm_rd;
-                    dm_wr+=64;
-                }
-                break;
-            case 162: case 167: case 171:
-                dm_l+=4;
-                for(;dm_l;dm_l--) {
-                    drawtr();
-                    dm_wr+=65;
-                }
-                break;
-            case 163: case 168: case 172:
-                dm_l+=4;
-                for(;dm_l;dm_l--) {
-                    drawtr();
-                    dm_wr-=63;
-                }
-                break;
-            case 164:
-                dm_l+=4;
-                l=dm_l;
-                tmp=dm_wr;
-                
-                while(l--)
-                {
-                    drawtr();
-                    dm_src = dm_wr;
-                    dm_wr += 64;
-                }
-                
-                // \task We can track down endianness issues by searching
-                // for like, "dm_rd[" and "dm_wr" perhaps.
-                dm_rd = (uint16_t*) (rom + 0x218e);
-                
-                m = 2;
-                
-                dm_wr = tmp;
-                
-                while(m--) {
-                    l=dm_l-2;
-                    dm_wr[0]=dm_rd[0];
-                    while(l--) dm_wr[1]=dm_rd[1],dm_wr++;
-                    dm_wr[1]=dm_rd[2];
-                    dm_rd+=3;
-                    dm_wr=dm_src;
-                }
-                dm_wr=tmp+64;
-                m=dm_l-1;
-                l=m-1;
-                dm_wr+=m;
-                dm_src=dm_wr;
-                dm_wr=tmp+64;
-                m=2;
-                
-                dm_rd = (uint16_t*) (rom + 0x219a);
-                
-                while(m--) {
-                    n=l;
-                    while(n--)
-                        // \task This look an error in the context of using
-                        // comma delimited statements. What gets assigned to
-                        // dm_wr at the end?
-                        *dm_wr = *dm_rd, dm_wr += 64;
-                    dm_wr=dm_src;
-                    dm_rd++;
-                }
-                break;
-            case 165:
-                dm_l+=4;
-                for(;dm_l;dm_l--) drawtr(),dm_wr+=64;
-                break;
-            case 176: case 177:
-                dm_l+=8;
-                drawtr();
-                break;
-            
-            case 178:
-                
-                dm_l++;
-                
-                while(dm_l--)
-                {
-                    dm_rd = dm_src;
-                    
-                    drawXx4(4);
-                }
-                
-                break;
-            
-            case 181:
-                dm_l++; goto c182;
-            case 182: case 183:
-                len2();
-c182:
-                while(dm_l--) drawXx4(2),dm_rd-=8;
-                break;
-            case 184: // yeah!
-                len2();
-                while(dm_l--) draw2x2();
-                break;
-            case 185:
-                len1();
-                while(dm_l--) draw2x2();
-                break;
-            case 186:
-                dm_l++;
-                while(dm_l--) dm_rd=dm_src,drawXx4(4);
-                break;
-            case 187:
-                dm_l++;
-                while(dm_l--) draw2x2(),dm_wr+=2;
-                break;
-            case 188: case 189:
-                dm_l++;
-                while(dm_l--) draw2x2();
-                break;
-            case 192: case 194:
-                
-                l = (dm_l & 3) + 1;
-                
-                dm_l >>= 2;
-                dm_l++;
-                
-                while(l--)
-                {
-                    m=dm_l;
-                    dm_src=dm_wr;
-                    
-                    while(m--)
-                    {
-                        dm_wr[0]=dm_wr[1]=dm_wr[2]=dm_wr[3]=
-                        dm_wr[64]=dm_wr[65]=dm_wr[66]=dm_wr[67]=
-                        dm_wr[128]=dm_wr[129]=dm_wr[130]=dm_wr[131]=
-                        dm_wr[192]=dm_wr[193]=dm_wr[194]=dm_wr[195] = dm_rd[0];
-                        
-                        dm_wr += 4;
-                    }
-                    
-                    dm_wr = dm_src + 256;
-                }
-                break;
-            case 193:
-                l=(dm_l&3)+1;
-                dm_l>>=2;
-                dm_l+=4;
-                tmp=dm_wr;
-                m=dm_l;
-                drawXx3(3);
-                while(m--) {
-                    drawXx3(2);
-                    dm_rd-=6;
-                }
-                dm_rd+=6;
-                drawXx3(3);
-                dm_src=dm_rd;
-                tmp+=0xc0;
-                o=l;
-                while(o--) {
-                    dm_wr=tmp;
-                    dm_rd=dm_src;
-                    m=dm_l;
-                    draw3x2();
-                    dm_rd+=6;
-                    dm_wr+=3;
-                    while(m--) draw2x2();
-                    dm_rd+=4;
-                    draw3x2();
-                    tmp+=0x80;
-                }
-                dm_rd+=6;
-                dm_wr=tmp;
-                m=dm_l;
-                drawXx3(3);
-                while(m--) {
-                    drawXx3(2);
-                    dm_rd-=6;
-                }
-                dm_rd+=6;
-                drawXx3(3);
-                tmp-=(1+l)<<6;
-                dm_l+=2;
-                dm_wr=tmp+dm_l;
-                
-                dm_rd = (uint16_t*) (rom + 0x20e2);
-                
-                draw2x2();
-                
-                break;
-            case 195: case 215:
-                l=(dm_l&3)+1;
-                dm_l>>=2;
-                dm_l++;
-                while(l--) {
-                    tmp=dm_wr;
-                    m=dm_l;
-                    while(m--) {
-                        dm_wr[0]=dm_wr[1]=dm_wr[2]=dm_wr[64]=dm_wr[65]=dm_wr[66]=
-                        dm_wr[128]=dm_wr[129]=dm_wr[130]=*dm_rd;
-                        dm_wr+=3;
-                    }
-                    dm_wr=tmp + 0xc0;
-                }
-                break;
-            case 196:
-                dm_rd+=(ed->buf[0]&15)<<3;
-            case 200: case 197: case 198: case 199: case 201: case 202:
-                l=(dm_l&3);
-                dm_l>>=2;
-                dm_l++;
-                l++;
-                goto grid4x4;
-            case 205:
-                l=dm_l&3;
-                dm_l>>=2;
-                m=(unsigned char)(((short*)(rom + 0x1b0a))[dm_l]);
-                n=((short*)(rom + 0x1b12))[l];
-                dm_src=dm_wr;
-                dm_wr-=n;
-                
-                tmp = dm_wr;
-                
-                dm_rd = (uint16_t*) (rom + 0x1f2a);
-                
-                while(n--) {
-                    dm_wr[0]=dm_rd[0];
-                    o=(m<<1)+4;
-                    while(o--) {
-                        dm_wr[64]=dm_rd[1];
-                        dm_wr+=64;
-                    }
-                    dm_wr[64]=dm_rd[2];
-                    tmp++;
-                    dm_wr=tmp;
-                }
-                dm_wr=dm_src;
-                dm_x=dm_src-nbuf-1;
-                o=dm_x&31;
-                if(dm_x&32) o|=0x200;
-                o|=0x800;
-                dm_wr = dm_src;
-                dm_rd = (uint16_t*) (rom + 0x227c);
-                
-                drawXx3(3);
-                dm_wr += 0xbd;
-                
-                while(m--)
-                    draw3x2(), dm_wr += 128;
-                
-                dm_rd+=6;
-                drawXx3(3);
-                break;
-            case 206:
-                
-                dm_rd = (uint16_t*) (rom + 0x22ac);
-                
-                tmp=dm_wr;
-                drawXx3(3);
-                l=dm_l&3;
-                dm_l>>=2;
-                o=m=(unsigned char)(((short*)(rom + 0x1b0a))[dm_l]);
-                n=((short*)(rom + 0x1b12))[l];
-                dm_wr=tmp + 0xc0;
-                while(o--) draw3x2(),dm_wr+=128;
-                dm_rd+=6;
-                drawXx3(3);
-                tmp+=3;
-                
-                dm_rd = (uint16_t*) (rom + 0x1f2a);
-                
-                m <<= 1;
-                m+=4;
-                while(n--)
-                {
-                    dm_wr = tmp;
-                    dm_wr[0] = dm_rd[0];
-                    
-                    o = m;
-                    
-                    while(o--)
-                    {
-                        dm_wr[64] = dm_rd[1];
-                        dm_wr += 64;
-                    }
-                    
-                    dm_wr[64] = dm_rd[2];
-                    tmp++;
-                }
-                break;
-            
-            case 209: case 210: case 217: case 223: case 224: case 225:
-            case 226: case 227: case 228: case 229: case 230: case 231:
-            case 232:
-                l=(dm_l&3);
-                dm_l>>=2;
-                dm_l++;
-                l++;
-grid4x4:
-                while(l--) {
-                    tmp=dm_wr;
-                    draw4x4X(dm_l);
-                    dm_wr=tmp + 0x100;
-                }
-                break;
-            case 216: case 218:
-                l=dm_l&3;
-                dm_l>>=2;
-                dm_l=(unsigned char)(((unsigned short*)(rom + 0x1b3a))[dm_l]);
-                l=(unsigned char)(((unsigned short*)(rom + 0x1b3a))[l]);
-                dm_rd=(unsigned short*)(rom + 0x1c62);
-                goto grid4x4;
-                break;
-            case 219:
-                l=(dm_l&3)+1;
-                dm_l>>=2;
-                dm_l++;
-                dm_rd+=(ed->buf[0]&240)>>1;
-                goto grid4x4;
-                break;
-            case 220:
-                l=((dm_l&3)<<1)+5;
-                dm_l=(dm_l>>2)+1;
-                dm_tmp=dm_wr;
-                while(l--) {
-                    draw975c();
-                }
-                dm_rd++;
-                draw975c();
-                dm_rd++;
-                draw975c();
-                break;
-            case 221:
-                
-                l = ((dm_l&3)<<1)+1;
-                dm_l = (dm_l>>2)+1;
-                tmp = dm_wr;
-                
-                draw93ff();
-                
-                dm_rd += 4;
-                
-                while(l--)
-                {
-                    draw93ff();
-                }
-                
-                dm_rd+=4;
-                
-                draw93ff();
-                
-                dm_rd+=4;
-                
-                draw93ff();
-                
-                break;
-            case 222: // Yup. It's 222!
-                
-                l=(dm_l&3)+1;
-                dm_l=(dm_l>>2)+1;
-                while(l--) {
-                    m=dm_l;
-                    tmp=dm_wr;
-                    while(m--) draw2x2();
-                    tmp+=128;
-                    dm_wr=tmp;
-                }
-                
-                break;
-            }
-        }
-    }
-end:
-    ed->chestnum = ch;
-    return map+2;
-}
-
-// Is this the one that draws the dungeon?
-void Updatemap(DUNGEDIT *ed)
-{
-    int i;
-    
-    uint16_t *nbuf = ed->nbuf, *buf2;
-    
-    uint8_t const * buf = ed->buf;
-    
-    uint8_t const * const rom = ed->ew.doc->rom;
-    
-    dm_buf = nbuf;
-    
-    buf2 = (uint16_t*) ( rom + 0x1b52 + ((buf[0] << 4) & 0xf0) );
-    fill4x2(rom, ed->nbuf, buf2);
-    
-    buf2 = (uint16_t*) ( rom + 0x1b52 + (buf[0] & 0xf0) );
-    fill4x2(rom, ed->nbuf + 0x1000, buf2);
-    
-    ed->chestnum = 0;
-    
-    if(ed->ew.param < 0x8c)
-    {
-        Drawmap(rom,
-                ed->nbuf,
-                rom + romaddr(*(int*) (rom + romaddr(*(int*) (rom + 0x882d)) + (buf[1] >> 2) * 3)),
-                ed);
-        
-        buf = Drawmap(rom, ed->nbuf, buf + 2, ed);
-        buf = Drawmap(rom, ed->nbuf + 0x1000, buf, ed);
-        
-        Drawmap(rom, ed->nbuf, buf, ed);
-        
-        for(i = 0; i < 0x18c; i += 4)
-        {
-            if(*(short*)(rom + 0x271de + i) == ed->mapnum)
-            {
-                dm_x = (*(short*)(rom + 0x271e0 + i) & 0x3fff)>>1;
-                
-                ed->nbuf[dm_x]=0x1922;
-                ed->nbuf[dm_x+64]=0x1932;
-                ed->nbuf[dm_x+1]=0x1923;
-                ed->nbuf[dm_x+65]=0x1933;
-            }
-        }
-        
-        for(i = 2; i < ed->tsize; i += 2)
-        {
-            dm_x = *(short*) (ed->tbuf + i) & 0x1fff;
-            dm_x >>= 1;
-            ed->nbuf[dm_x] = 0xde0;
-            ed->nbuf[dm_x+64] = 0xdf0;
-            ed->nbuf[dm_x+1] = 0x4de0;
-            ed->nbuf[dm_x+65] = 0x4df0;
-        }
-    }
-    else
-        Drawmap(rom,ed->nbuf,buf+2,ed);
-}
-
-// =============================================================================
-
-const static char *mus_str[]={
+const char *mus_str[]={
     "Same",
     "None",
     "Title",
@@ -8037,7 +3826,12 @@ error:
     memcpy(rom+addr+4,buf,len);
     return addr+len+4;
 }
-void Modifywaves(FDOC*doc,int es)
+
+// =============================================================================
+
+void
+Modifywaves(FDOC * const doc,
+            int    const es)
 {
     int i,j;
     ZWAVE*zw=doc->waves,*zw2=zw+es;
@@ -8168,11 +3962,11 @@ void Savesongs(FDOC *doc)
                 
                 for(n = 0; n < 8; n++)
                 {
-                    put_16_le_i(trtbl->buf,
-                                n,
-                                Savescmd(doc, sp->tbl[n], p, q) );
+                    stle16b_i(trtbl->buf,
+                              n,
+                              Savescmd(doc, sp->tbl[n], p, q) );
                     
-                    if( get_16_le_i(trtbl->buf, n) )
+                    if( ldle16b_i(trtbl->buf, n) )
                         Addspcreloc(trtbl,n<<1),q=0;
                 }
                 
@@ -8463,7 +4257,8 @@ noerror:
     SetCursor(normal_cursor);
 }
 
-void Loadsongs(FDOC*doc)
+void
+Loadsongs(FDOC * const doc)
 {
     unsigned char*b,*c,*d;
     short*e;
@@ -8674,43 +4469,18 @@ error:
     if(sr->editor) SendMessage(clientwnd,WM_MDIACTIVATE,(int)(sr->editor),0);
     else Editwin(doc,"TRACKEDIT","Song editor",l+(i<<16),sizeof(TRACKEDIT));
 }
-HWAVEOUT hwo;
 int sndinit=0;
 
-// Sound device?
-int sounddev=0x10001;
+FDOC * sounddoc=0;
 
-WAVEHDR *wbufs;
-
-int wcurbuf;
-int wnumbufs;
-int wbuflen;
-FDOC*sounddoc=0;
-SONG*playedsong;
-int playedpatt;
-int envdat[]={
-    0,0x3ff00,0x54900,0x64d31,0x83216,0xaec33,0xc9a63,0x10624d,0x154725,
-    0x199999,0x202020,0x2B1DA4,0x333333,0x3F03F0,0x563B48,
-    0x667000,0x7E07E0,0xAAAAAA,0xCCCCCC,0x1000000,0x1555555,0x1999999,
-    0x2000000,0x2AAAAAA,0x3333333,0x4000000,0x5555555,0x6670000,
-    0x8000000,0xAAAAAAA,0x10000000,0x20000000
-};
-
-char midinst[16],midivol[16],midipan[16],midibank[16],midipbr[16];
-short midipb[16];
-ZMIXWAVE zwaves[8];
-ZCHANNEL zchans[8];
-short *wdata;
-int*mixbuf;
 int exitsound=0;
-int songtim,songspd=100;
-int songspdt=0,songspdd=0;
-unsigned short globvol,globvolt,globvold;
-short globtrans;
 
 //CRITICAL_SECTION cs_song;
 
-void Playpatt(void)
+// =============================================================================
+
+void
+Playpatt(void)
 {
     int i;
     ZCHANNEL*zch=zchans;
@@ -8718,20 +4488,11 @@ void Playpatt(void)
     sp=playedsong->tbl[playedpatt];
     for(i=0;i<8;i++) zch->playing=1,zch->tim=1,zch->loop=0,(zch++)->pos=sp->tbl[i];
 }
-const int freqvals[13]={0x157,0x16c,0x181,0x198,0x1b0,0x1ca,0x1e5,0x202,0x221,
-   0x241,0x263,0x288,0x2ae};
-const unsigned char nlength[8]={
-    0x32,0x65,0x7f,0x98,0xb2,0xcb,0xe5,0xfc
-};
-const unsigned char nvol[16]={
-    0x19,0x32,0x4c,0x65,0x72,0x7f,0x8c,0x98,0xa5,0xb2,0xbf,0xcb,0xd8,0xe5,0xf2,0xfc
-};
 
-unsigned char pbwayflag,volflag,pbstatflag,pbflag,fqflag,noteflag;
+// =============================================================================
 
-unsigned char activeflag=255,sndinterp=0;
-
-void midinoteoff(ZCHANNEL*zch)
+void
+midinoteoff(ZCHANNEL * const zch)
 {
     if(zch->midnote!=0xff)
     {
@@ -8748,7 +4509,10 @@ void midinoteoff(ZCHANNEL*zch)
     zch->midnote = 0xff;
 }
 
-void Stopsong(void)
+// =============================================================================
+
+void
+Stopsong(void)
 {
     int i;
     ZMIXWAVE*zw=zwaves;
@@ -8757,773 +4521,11 @@ void Stopsong(void)
     for(i=0;i<8;i++) (zw++)->pflag=0;
     else for(i=0;i<8;i++) midinoteoff(zchans+i);
 }
-int mix_freq,mix_flags;
 
-enum
-{
-    MIDI_ARR_WORDS = 0x19,
-    MIDI_ARR_BYTES = MIDI_ARR_WORDS * 2,
-};
+// =============================================================================
 
-unsigned short midi_inst[MIDI_ARR_WORDS] =
-{
-    0x0050,0x0077,0x002f,0x0050,0x0051,0x001b,0x0051,0x0051,
-    0x004d,0x0030,0x002c,0x0039,0x00b1,0x004f,0x000b,0x0004,
-    0x10a5,0x0038,0x003c,0x00a8,0x00a8,0x0036,0x0048,0x0035,
-    0x001a
-};
-
-unsigned short midi_trans[MIDI_ARR_WORDS]={
-    0x00fb,0x0005,0x000c,0x0c00,0x0000,0x0002,0xfb02,0xf602,
-    0x0027,0x0000,0x0000,0xf400,0x0024,0x0000,0x0018,0x000c,
-    0x0020,0x0000,0x0000,0x0028,0x0028,0x000c,0x000c,0x0001,
-    0x0000
-};
-
-int midi_timer;
-int ws_freq=22050,ws_bufs=24,ws_len=256,ws_flags=3;
-int miditimeres=5;
-int ms_tim1=5,ms_tim2=20,ms_tim3=5;
-
-void Updatesong(void)
-{
-    ZCHANNEL*zch;
-    ZMIXWAVE*zw;
-    SCMD*sc;
-    ZINST*zi;
-    
-    HMIDIOUT const hmo = (HMIDIOUT) hwo;
-    
-    int i,j,k,l,m;
-    
-    unsigned char chf;
-    
-    if(!(sounddoc&&playedsong)) return;
-    
-    if(sounddev < 0x20000)
-    {
-        songtim += ( (songspd * wbuflen) << ( 3 - (mix_flags & 1) ) )
-                 / mix_freq;
-    }
-    else songtim+=songspd*ms_tim2/20;
-    for(;songtim>0;) {
-        k=0;
-        zch=zchans;
-        zw=zwaves;
-        chf=1;
-        for(i=0;i<8;i++,zch++,zw++,chf<<=1) {
-            if(!zch->playing) continue;
-            zch->tim--;
-            k=1;
-            if(zch->ntim) {
-                zch->ntim--;
-                if(!zch->ntim) {
-                    l=zch->pos;
-                    j=zch->loop;
-nexttime:
-                    if(l==-1) {
-                        j--;
-                        if(j<=0) goto endnote;
-                        l=zch->lopst;
-                        goto nexttime;
-                    }
-                    sc=sounddoc->scmd+l;
-                    if(sc->cmd!=0xc8) {
-                        if(sc->cmd==0xef) {
-                            l=*(short*)&(sc->p1);
-                            goto nexttime;
-                        }
-                        if(sc->cmd>=0xe0) {
-                            l=sc->next;
-                            goto nexttime;
-                        }
-endnote:
-                        if(sounddev<0x20000) zw->envs=3;
-                        else midinoteoff(zch);
-                    }
-                }
-            }
-            if(zch->volt) {
-                zch->volt--;
-                zch->vol+=zch->vold;
-                volflag|=chf;
-            }
-            if(zch->pant) {
-                zch->pant--;
-                zch->pan+=zch->pand;
-                volflag|=chf;
-            }
-            
-            if(pbflag&chf)
-            {
-                if(!zch->pbt) {
-                    if(!zch->pbtim) zch->pbtim++;
-                    if(pbstatflag&chf) pbflag&=~chf; else {
-                        zch->pbt=zch->pbtim+1;
-                        
-                        // What is the significance of this constant?
-                        // Midi vs. non-midi?
-                        if(sounddev < 0x20000)
-                        {
-                            zch->note = j = zch->pbdst;
-                            
-                            l = j % 12;
-                            
-                            j =
-                            (
-                                freqvals[l]
-                              + ( (freqvals[l + 1] - freqvals[l]) * zch->ft )
-                            ) << (j / 12 + 4);
-                            
-                            zch->fdlt = (j - zch->freq) / zch->pbtim;
-                        }
-                        else
-                        {
-                            j = zch->pbdst - zch->note;
-                            zch->midpbdlt = ((j << 13) / midipbr[zch->midch] + 0x2000 - zch->midpb) / zch->pbtim;
-                        }
-                        pbstatflag|=chf;
-                    }
-                } else if(pbstatflag&chf) {
-                    if(sounddev<0x20000)
-                        zch->freq+=zch->fdlt;
-                    else zch->midpb+=zch->midpbdlt;
-                    fqflag|=chf;
-                }
-                zch->pbt--;
-            }
-            if(zch->vibt) {
-                zch->vibt--;
-                zch->vibdep+=zch->vibdlt;
-            }
-            zch->vibcnt+=zch->vibspd;
-            if(zch->vibdlt) fqflag|=chf;
-            if(!zch->tim) {
-again:
-                if(zch->pos==-1) {zch->playing=0;continue;}
-                sc=sounddoc->scmd+zch->pos;
-                j=sc->next;
-                if(j==-1 && zch->loop) {
-                    zch->loop--;
-                    if(!zch->loop) zch->pos=zch->callpos;
-                    else zch->pos=zch->lopst;
-                } else {
-                    if(j>=sounddoc->m_size) zch->playing=0,zch->pos=-1;
-                    else zch->pos=j;
-                }
-                if(sc->flag&1) zch->t1=sc->b1;
-                if(!zch->t1) zch->t1=255;
-                if(sc->flag&2) {
-                    j=sc->b2;
-                    zch->nvol=nvol[j&15];
-                    zch->nlength=nlength[(j>>4)&7];
-                }
-                if(sc->cmd<0xc8) {
-                    zch->ftcopy=zch->ft;
-                    j=sc->cmd - 0x80 + zch->trans+globtrans;
-                    
-                    if(pbwayflag & chf)
-                        j -= zch->pbdlt;
-                    
-                    if(sounddev < 0x20000)
-                    {
-                        zi = sounddoc->insts+zch->wnum;
-                        l = j % 12;
-                        
-                        zch->freq =
-                        (
-                            freqvals[l]
-                          + ( (freqvals[l + 1] - freqvals[l]) * zch->ft >> 8 )
-                        ) << (j / 12 + 4);
-                        
-                        zw->pos=0;
-                        zw->wnum=zi->samp;
-                        zw->envclk=0;
-                        if(zi->ad&128) {
-                            zw->atk=((zi->ad<<1)&31)+1;
-                            zw->dec=((zi->ad>>3)&14)+16;
-                            zw->sus=zi->sr>>5;
-                            zw->rel=zi->sr&31;
-                            zw->envs=0;
-                            zw->envx=0;
-                        } else {
-                            zw->sus=7;
-                            zw->rel=0;
-                            zw->atk=31;
-                            zw->dec=0;
-                            zw->envs=0;
-                        }
-                        zw->envclklo=0;
-                        zw->pflag=1;
-                    } else {
-                        midinoteoff(zch);
-                        if(activeflag&chf) {
-                            if(zch->wnum>=25) goto nonote;
-                            zch->midch=(midi_inst[zch->wnum]&0x80)?9:i;
-                            
-                            zch->midnum = (unsigned char) zch->wnum;
-                            
-                            if(zch->midch<8)
-                            {
-                                if(midibank[zch->midch]!=midi_inst[zch->wnum]>>8) {
-                                    midibank[zch->midch]=midi_inst[zch->wnum]>>8;
-                                    midiOutShortMsg(hmo, 0xb0 + zch->midch|(midibank[zch->midch]<<16));
-                                }
-                                if(midinst[zch->midch]!=midi_inst[zch->wnum]) {
-                                    midinst[zch->midch] = (char) midi_inst[zch->wnum];
-                                    midiOutShortMsg(hmo, 0xc0 + zch->midch|(midinst[zch->midch]<<8));
-                                }
-                                l=j+(char)(midi_trans[zch->wnum])+24;
-                                if(l>=0 && l<0x80) zch->midnote=l;
-                                if(midi_trans[zch->wnum]&0xff00) {
-                                    l=j+(char)(midi_trans[zch->wnum]>>8)+24;
-                                    if(l>=0 && l<0x80) zch->midnote|=l<<8;
-                                }
-                            } else {
-                                l=midi_inst[zch->wnum]&0x7f;
-                                if(midinst[zch->midch]!=midi_inst[zch->wnum]>>8) {
-                                    midinst[zch->midch]=midi_inst[zch->wnum]>>8;
-                                    midiOutShortMsg(hmo, 0xc0 + zch->midch|(midinst[zch->midch]<<8));
-                                }
-                                zch->midnote=l;
-                                zch->pbdst=(j<<1)-midi_trans[zch->wnum];
-                                zch->pbtim=0;
-                                pbflag|=chf;
-                            }
-                            zch->midpb = 0x2000 + (zch->ftcopy<<5)/midipbr[zch->midch];
-                            noteflag|=chf;
-                        }
-                    }
-                    fqflag|=chf;
-                    zch->pbt=zch->pbdly;
-                    zch->note=j;
-                    zch->vibt=zch->vibtim;
-                    zch->vibcnt=0;
-                    zch->vibdep=0;
-                    pbstatflag&=~chf;
-                    if(zch->pbdlt) pbflag|=chf,zch->pbdst=zch->pbdlt+zch->note;
-                    volflag|=chf;
-nonote:;
-                }
-                if(sc->cmd == 0xc9)
-                {
-                    if(sounddev < 0x20000)
-                        zw->envs = 3;
-                    else
-                        midinoteoff(zch);
-                    
-                    pbflag&=~chf;
-                }
-                if(sc->cmd < 0xe0)
-                {
-                    zch->tim = zch->t1;
-                    zch->ntim = (zch->nlength*zch->tim)>>8;
-                    j = zch->pos;
-                    
-                    if(j != -1)
-                    {
-                        sc = sounddoc->scmd + j;
-                        
-                        if(sc->cmd == 249)
-                        {
-                            zch->pbt = sc->p1;
-                            zch->pbtim = sc->p2;
-                            zch->pbdst = sc->p3-128+zch->trans+globtrans;
-                            pbstatflag &= ~chf;
-                            pbflag |= chf;
-                        }
-                        
-                        j = sc->next;
-                    }
-                    
-                    if(sounddev >= 0x20000)
-                    {
-                        if(zch->midpb == 0x2000 && (pbflag & chf))
-                        {
-                            l = zch->pbdst-zch->note;
-                            
-                            if(l < 0)
-                                l = -l;
-                            
-                            while(j != -1)
-                            {
-                                sc = sounddoc->scmd + j;
-                                
-                                if(sc->cmd < 0xe0 && sc->cmd == 0xc8)
-                                    break;
-                                
-                                if(sc->cmd == 0xe9)
-                                {
-                                    m = sc->p3 - 128 + zch->trans + globtrans - zch->note;
-                                    
-                                    if(m < 0)
-                                        m = -m;
-                                    
-                                    if(m > l)
-                                        l = m;
-                                }
-                                
-                                j = sc->next;
-                            }
-                            
-                            l += 2;
-                            
-                            if(midipbr[zch->midch] != l)
-                            {
-                                midiOutShortMsg(hmo, 0x6b0 + zch->midch + (l << 16));
-                                midipbr[zch->midch] = l;
-                            }
-                        }
-                        
-                        if((pbflag & chf) && (!zch->pbtim))
-                        {
-                            pbflag &= ~chf;
-                            j = zch->pbdst - zch->note;
-                            zch->midpb = ((j << 13) + (zch->ftcopy << 5)) / midipbr[zch->midch] + 0x2000;
-                        }
-                    }
-                }
-                else
-                {
-                    switch(sc->cmd)
-                    {
-                    case 224:
-                        
-                        zch->wnum=sc->p1;
-                        
-                        break;
-                    
-                    case 225:
-                        
-                        zch->pan=sc->p1<<8;
-                        volflag|=chf;
-                        
-                        break;
-                    
-                    case 226:
-                        
-                        j=sc->p1+1;
-                        zch->pant=j;
-                        zch->pand=(((sc->p2<<8)-zch->pan)/j);
-                        
-                        break;
-                    case 227:
-                        zch->vibtim=sc->p1+1;
-                        zch->vibspd=sc->p2;
-                        zch->vibdlt=(sc->p3<<8)/zch->vibtim;
-                        break;
-                    case 229:
-                        globvol=sc->p1<<8;
-                        break;
-                    case 230:
-                        j=sc->p1+1;
-                        globvolt=j;
-                        globvold=((sc->p2<<8)-globvol)/j;
-                        volflag|=chf;
-                        break;
-                    case 231:
-                        songspd=sc->p1<<8;
-                        break;
-                    case 232:
-                        j=sc->p1+1;
-                        songspdt=j;
-                        songspdd=((sc->p2<<8)-songspd)/j;
-                        break;
-                    case 233:
-                        globtrans=(char)sc->p1;
-                        break;
-                    case 234:
-                        zch->trans=sc->p1;
-                        break;
-                    case 237:
-                        zch->vol=sc->p1<<8;
-                        volflag|=chf;
-                        break;
-                    case 238:
-                        j=sc->p1+1;
-                        zch->volt=j;
-                        zch->vold=((sc->p2<<8)-zch->vol)/j;
-                        volflag|=chf;
-                        break;
-                    case 239:
-                        if(*(unsigned short*)&(sc->p1)>=sounddoc->m_size) break;
-                        zch->callpos=zch->pos;
-                        zch->lopst=zch->pos=*(unsigned short*)&(sc->p1);
-                        if(zch->pos>=sounddoc->m_size) zch->playing=0,zch->pos=zch->lopst=0;
-                        zch->loop=sc->p3;
-                        break;
-                    case 241:
-                        zch->pbdly=sc->p1;
-                        zch->pbtim=sc->p2;
-                        zch->pbdlt=sc->p3;
-                        pbwayflag&=~chf;
-                        break;
-                    case 242:
-                        zch->pbdly=sc->p1;
-                        zch->pbtim=sc->p2;
-                        zch->pbdlt=sc->p3;
-                        pbwayflag|=chf;
-                        break;
-                    case 244:
-                        zch->ft=sc->p1;
-                        break;
-                    }
-                    goto again;
-                }
-            }
-            if(volflag&chf)
-            {
-                volflag&=~chf;
-                if(sounddev<0x20000) {
-                    zw->vol1 = 0x19999 * (zch->nvol*zch->vol*((zch->pan>>8))>>22)>>16;
-                    zw->vol2=(0x19999 * ((zch->nvol*zch->vol*(20-((zch->pan>>8)))>>22))>>16);
-                } else {
-                    l=((zch->vol>>9)*globvol>>16)*soundvol>>8;
-                    if(l!=midivol[zch->midch]) {
-                        midivol[zch->midch]=l;
-                        midiOutShortMsg(hmo,(0x7b0 + zch->midch)|(l<<16));
-                    }
-                    l=((0x1400 - zch->pan) * 0x666)>>16;
-                    if(l!=midipan[zch->midch]) {
-                        midipan[zch->midch]=l;
-                        midiOutShortMsg(hmo,(0xab0 + zch->midch)|(l<<16));
-                    }
-                }
-            }
-            if(fqflag&chf) {
-                fqflag&=~chf;
-                if(sounddev<0x20000) {
-                    zi=sounddoc->insts+zch->wnum;
-                    l=zch->freq*((zi->multhi<<8)+zi->multlo)>>14;
-                    if(zch->vibdep) if(zch->vibcnt<128)
-                        l=l*(65536+(zch->vibdep*(zch->vibcnt-64)>>11))>>16;
-                    else l=l*(65536+(zch->vibdep*(191-zch->vibcnt)>>11))>>16;
-                    zw->freq=l;
-                } else {
-                    l=zch->midpb;
-                    if(zch->vibdep) if(zch->vibcnt<128)
-                    l+=(zch->vibdep*(zch->vibcnt-64)>>10)/midipbr[zch->midch];
-                    else l+=(zch->vibdep*(191-zch->vibcnt)>>10)/midipbr[zch->midch];
-                    if(l!=midipb[zch->midch]) {
-                        midipb[zch->midch]=l;
-                        midiOutShortMsg(hmo, 0xe0 + zch->midch+((l&0x7f)<<8)+((l&0x3f80)<<9));
-                    }
-                }
-            }
-            if(noteflag&chf) {
-                noteflag&=~chf;
-                if(zch->midnote!=0xff) {
-                    midiOutShortMsg(hmo, 0x90 + zch->midch|(zch->midnote<<8)|((zch->nvol<<15)&0x7f0000));
-                    if(zch->midnote&0xff00)
-                    midiOutShortMsg(hmo, 0x90 + zch->midch|(zch->midnote&0xff00)|((zch->nvol<<15)&0x7f0000));
-                }
-            }
-        }
-        
-        if(songspdt)
-        {
-            songspdt--;
-            songspd += songspdd;
-        }
-        
-        if(globvolt)
-        {
-            globvolt--;
-            globvol += globvold;
-        }
-        
-        if(!k)
-        {
-            playedpatt++;
-            if(playedpatt>=playedsong->numparts) if(playedsong->flag&2) playedpatt=playedsong->lopst; else {Stopsong();break;}
-            if(playedpatt>=playedsong->numparts) {Stopsong();break;}
-            Playpatt();
-        } else songtim-=6100;
-    }
-}
-void Playsong(FDOC*doc,int num)
-{
-    ZCHANNEL*zch=zchans;
-    int i;
-//  EnterCriticalSection(&cs_song);
-    Stopsong();
-    playedsong=doc->songs[num];
-    for(i=0;i<8;i++) {
-        zch->pand=zch->pant=zch->volt=zch->vold=zch->vibtim=0;
-        zch->vibdep=zch->vibdlt=zch->pbdlt=0;
-        zch->vol=65535;
-        zch->pan=2048;
-        zch->midpb=0x2000;
-        zch->midch=i;
-        zch->trans=0;
-        zch->ft=0;
-        zch->t1=255;
-        zch++;
-    }
-    songspd=5500;
-    songtim=0;
-    songspdt=0;
-    globvol=65535;
-    globvolt=0;
-    globtrans=0;
-    playedpatt=0;
-    volflag=pbflag=0;
-    sounddoc=doc;
-    Playpatt();
-//  LeaveCriticalSection(&cs_song);
-}
-
-int soundthr=0;
-
-void Mixbuffer(void)
-{
-    static int i,j,k,l,m,n,o;
-    ZMIXWAVE*zmw=zwaves;
-    ZWAVE*zw;
-    short chf=1;
-    int*b;
-    short*c;
-    unsigned char*d;
-    static char v1,v2;
-    
-    // \task Nitpicky, but why are all these static. Just makes things even
-    // less re-entrant for no apparent reason.
-    static unsigned short f;
-    static unsigned envx,
-                    envclk,
-                    envclklo,
-                    envclkadd,
-                    envmul;
-    
-    // if(soundthr) EnterCriticalSection(&cs_song);
-    
-    Updatesong();
-    ZeroMemory(mixbuf,wbuflen<<2);
-    envmul = ( wbuflen << ( 16 - (mix_flags & 1) ) ) / mix_freq << 16;
-    for(i=0;i<8;i++,zmw++,chf<<=1) {
-        if(!(activeflag&chf)) continue;
-        if(!zmw->pflag) continue;
-        n=zmw->wnum;
-        if(n<0 || n>=sounddoc->numwave) continue;
-        zw=sounddoc->waves+n;
-        b=mixbuf;
-        j=zmw->pos;
-        c=zw->buf;
-        envx=zmw->envx;
-        envclk=zmw->envclk;
-        envclklo=zmw->envclklo;
-        switch(zmw->envs)
-        {
-        
-        case 0:
-            envclkadd=envdat[zmw->atk];
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm adc edx,edx
-            __asm add envx,edx
-            
-            if(envx > 0xfe0000)
-            {
-                envx = 0xfe0000;
-                envclklo = 0;
-                
-                if(zmw->sus == 7)
-                    zmw->envs = 2;
-                else
-                    zmw->envs = 1;
-            }
-            
-            break;
-        
-        case 1:
-            
-            envclkadd=envdat[zmw->dec];
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm adc envclk,edx
-            
-            while(envclk > 0x20000)
-            {
-                envclk -= 0x20000;
-                envx -= envx >> 8;
-            }
-            
-            if(envx < (unsigned int) (zmw->sus << 21))
-            {
-                envx = zmw->sus << 21;
-                envclklo = 0;
-                zmw->envs = 2;
-            }
-            
-            break;
-        
-        case 2:
-            envclkadd=envdat[zmw->rel];
-            
-#if 1
-            __asm mov eax, envclkadd
-            __asm mov edx, envmul
-            __asm imul edx
-            __asm add envclklo, eax
-            __asm adc envclk, edx
-#else
-            // \task Not exactly equivalent. does carry really matter here?
-            // Do regression test.
-            {
-                uint64_t w = envclkadd;
-                uint64_t x = envmul;
-                uint64_t y = envclklo;
-                uint64_t z = ( (uint64_t) envclk ) << 32;
-                
-                uint64_t a = (w * x);
-                uint64_t b = (y | z) + a;
-                
-                envclklo = ( 0xffffffff &        b  );
-                envclk   = ( 0xffffffff & (b >> 32) );
-            }
-#endif
-            
-            while(envclk > 0x20000)
-            {
-                envclk -= 0x20000,
-                envx -= envx >> 8;
-            }
-            
-            break;
-        
-        case 3:
-            envclkadd=envdat[0x1f]>>1;
-            
-#if 1
-            __asm mov eax,envclkadd
-            __asm mov edx,envmul
-            __asm imul edx
-            __asm add envclklo,eax
-            __asm sbb envx,edx
-            
-#else
-            // \task not exactly equivalent? (sbb vs. sub) Do regression test.
-            {
-                signed borrow = 0;
-                
-                int32_t a = (envclkadd * envmul);
-                
-                envclklo += a;
-                
-                envx -= (envmul - borrow);
-            }
-#endif
-            
-            if(envx>=0x80000000) {
-                zmw->pflag=0;
-                envx=0;
-            }
-            break;
-        }
-        zmw->envx=envx;
-        zmw->envclk=envclk;
-        zmw->envclklo=envclklo;
-        v1=((zmw->vol1*(envx>>16)>>8)*globvol>>16)*soundvol>>8;
-        v2=((zmw->vol2*(envx>>16)>>8)*globvol>>16)*soundvol>>8;
-        f=(zmw->freq<<12)/mix_freq;
-        k=wbuflen;
-        if(zw->lopst<zw->end) l=zw->lopst<<12; else l=0;
-        m=zw->end<<12;
-        if(!m) continue;
-        if(mix_flags&1) {
-            k>>=1;
-            if(sndinterp) {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    *(b++)+=o*v2;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    *(b++)+=o*v2;
-                    j+=f;
-                }
-            } else {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    *(b++)+=c[j>>12]*v1;
-                    *(b++)+=c[j>>12]*v2;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    *(b++)+=c[j>>12]*v1;
-                    *(b++)+=c[j>>12]*v2;
-                    j+=f;
-                }
-            }
-        } else {
-            v1 = (v1 + v2) >> 1;
-            if(sndinterp) {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    o=j>>12;
-                    o=c[o]+((c[o+1]-c[o])*(j&4095)>>12);
-                    *(b++)+=o*v1;
-                    j+=f;
-                }
-            } else {
-                if(zw->lflag) while(k--) {
-                    if(j>=m) j+=l-m;
-                    *(b++)+=c[j>>12]*v1;
-                    j+=f;
-                } else while(k--) {
-                    if(j>=m) {zmw->pflag=0; break;}
-                    *(b++)+=c[j>>12]*v1;
-                    j+=f;
-                }
-            }
-        }
-        zmw->pos=j;
-    }
-    
-    // if(soundthr) LeaveCriticalSection(&cs_song);
-    
-    k = wbuflen;
-    b = mixbuf;
-    
-    if(mix_flags & 2)
-    {
-        c = wdata + (wcurbuf * wbuflen);
-        
-        while(k--)
-        {
-            *(c++) = ( *(b++) ) >> 7;
-        }
-    }
-    else
-    {
-        d = (wdata) + (wcurbuf * wbuflen);
-        
-        while(k--)
-        {
-            *(d++) = ( (*(b++) ) >> 15 ) ^ 0x80;
-        }
-    }
-}
-
-HANDLE wave_end;
-
-void CALLBACK midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+void CALLBACK
+midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 {
     (void) timerid, msg, inst, p1, p2;
     
@@ -9537,7 +4539,11 @@ void CALLBACK midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
     }
     Updatesong();
 }
-void CALLBACK midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
+
+// =============================================================================
+
+void CALLBACK
+midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
 {
     (void) win, msg, timerid, systime;
     
@@ -9547,7 +4553,10 @@ void CALLBACK midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
     Updatesong();
 }
 
-int CALLBACK soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+// =============================================================================
+
+int CALLBACK
+soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 {
     int r;
     
@@ -9594,7 +4603,8 @@ int CALLBACK soundfunc(LPVOID param)
     return 0;
 }
 
-void Exitsound(void)
+void
+Exitsound(void)
 {
     int n;
     
@@ -9655,163 +4665,6 @@ void CALLBACK testfunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 #pragma code_seg()
 #pragma data_seg()*/
 
-void Initsound(void)
-{
-    int n,sh;
-    
-    WAVEFORMATEX wfx;
-    WAVEHDR *wh;
-    
-    char *err;
-    const unsigned char blkal[4]={1,2,2,4};
-    
-    if(sndinit)
-        Exitsound();
-    
-    if((sounddev >> 16) == 2)
-    {
-        HMIDIOUT hmo;
-        
-        n = midiOutOpen(&hmo, sounddev - 0x20001, 0, 0, 0);
-        
-        if(n)
-            goto openerror;
-        
-        hwo = (HWAVEOUT) hmo;
-        
-        for(n = 0; n < 16; n++)
-        {
-            midinst[n] = midivol[n]=midipan[n]=midibank[n]=255;
-            midipbr[n] = 2;
-            midipb[n] = 65535;
-            midiOutShortMsg(hmo, 0x64b0 + n);
-            midiOutShortMsg(hmo, 0x65b0 + n);
-            midiOutShortMsg(hmo, 0x206b0 + n);
-        }
-        
-        noteflag = 0;
-        
-        for(n = 0; n < 8; n++)
-            zchans[n].midnote = 0xff;
-        
-        if(wver)
-        {
-//          miditimeres=ms_tim1;
-//          timeBeginPeriod(miditimeres);
-//          midi_timer=timeSetEvent(ms_tim2,ms_tim3,testfunc,0,TIME_PERIODIC);
-            
-            midi_timer=SetTimer(framewnd,1,ms_tim2,(TIMERPROC)midifunc2);
-        }
-        else
-        {
-            miditimeres = ms_tim1;
-            timeBeginPeriod(miditimeres);
-            midi_timer=timeSetEvent(ms_tim2,ms_tim3,midifunc,0,TIME_PERIODIC);
-            soundthr = 1;
-        }
-        
-        if(!midi_timer)
-        {
-            wsprintf(buffer,"Can't initialize timer: %08X",GetLastError());
-            MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-            
-            if(!wver)
-                timeEndPeriod(miditimeres);
-            
-            midiOutClose(hmo);
-            
-            return;
-        }
-        
-//      InitializeCriticalSection(&cs_song);
-        
-        sndinit = 1;
-        
-        goto endinit;
-    }
-
-    soundthr=0;
-//  ht=CreateThread(0,0,soundfunc,0,0,&sndthread);
-//  if(ht) CloseHandle(ht);
-    wbuflen=ws_len<<(ws_flags&1);
-    sh=(ws_flags>>1);
-    wfx.wFormatTag=1;
-    wfx.nChannels=(ws_flags&1)+1;
-    wfx.nSamplesPerSec=ws_freq;
-    wfx.nAvgBytesPerSec = ws_freq << ( sh + ( (ws_flags & 2) >> 1 ) );
-    wfx.nBlockAlign=blkal[ws_flags];
-    wfx.wBitsPerSample=(ws_flags&2)?16:8;
-    wfx.cbSize=0;
-    wnumbufs=ws_bufs;
-//  if(ht) n=waveOutOpen(&hwo,sounddev - 0x10002,&wfx,sndthread,0,CALLBACK_THREAD),soundthr=1;
-/*  else*/
-    
-    n = waveOutOpen(&hwo,
-                    sounddev - 0x10002,
-                    &wfx,
-                    (int) soundproc,
-                    0,
-                    CALLBACK_FUNCTION);
-    
-    if(n)
-    {
-openerror:
-        switch(n) {
-        case MIDIERR_NODEVICE:
-            err="No MIDI port was found.";
-            break;
-        case MMSYSERR_ALLOCATED:
-            err="Already in use";
-            break;
-        case MMSYSERR_BADDEVICEID:
-            err="The device was removed";
-            break;
-        case MMSYSERR_NODRIVER:
-            err="No driver found";
-            break;
-        case MMSYSERR_NOMEM:
-            err="Not enough memory";
-            break;
-        case WAVERR_BADFORMAT:
-            err="Unsupported playback quality";
-            break;
-        case WAVERR_SYNC:
-            err="It is synchronous";
-            break;
-        default:
-            wsprintf(buffer,"Unknown error %08X",n);
-            err=buffer+256;
-            break;
-        }
-        wsprintf(buffer,"Cannot initialize sound (%s)",err);
-        MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-        return;
-    }
-//  InitializeCriticalSection(&cs_song);
-    wh=wbufs=malloc(sizeof(WAVEHDR)*ws_bufs);
-    wdata=malloc(wbuflen*ws_bufs<<sh);
-    for(n=0;n<8;n++) zwaves[n].pflag=0;
-    for(n=0;n<wnumbufs;n++) {
-        wh->lpData=(LPSTR)(wdata)+(n*wbuflen<<sh);
-        wh->dwBufferLength=wbuflen<<sh;
-        wh->dwFlags=0;
-        wh->dwUser=n;
-        waveOutPrepareHeader(hwo,wh,sizeof(WAVEHDR));
-        wh++;
-    }
-    sndinit=1;
-    mixbuf=malloc(wbuflen*ws_bufs<<2);
-    mix_freq=ws_freq/6;
-    mix_flags=ws_flags;
-    for(wcurbuf=0;wcurbuf<wnumbufs;wcurbuf++)
-        Mixbuffer();
-    wcurbuf=0;
-    for(n=0;n<wnumbufs;n++)
-        waveOutWrite(hwo,wbufs+n,sizeof(WAVEHDR));
-endinit:
-    wave_end=CreateEvent(0,0,0,0);
-}
-
 // =============================================================================
 
 short AllocScmd(FDOC*doc)
@@ -9835,6 +4688,8 @@ short AllocScmd(FDOC*doc)
     if(doc->m_free!=-1) sc[doc->m_free].prev=-1;
     return i;
 }
+
+// =============================================================================
 
 void NewSR(FDOC*doc,int bank)
 {
@@ -9860,458 +4715,7 @@ void NewSR(FDOC*doc,int bank)
 // =============================================================================
 
 void
-LoadText(FDOC * const doc)
-{
-    int i = 0;
-    int data_pos = 0xe0000;
-    
-    int k;
-    int l;
-    
-    int m = 64;
-    
-    unsigned char a;
-    unsigned char *rom = doc->rom;
-    
-    // temporary buffer for each individual text message
-    unsigned char *b;
-    
-    int bd, bs;
-    
-    // text buffer?
-    doc->tbuf = malloc(256);
-    
-    for( ; ; )
-    {
-        bs = 128; // bs is the current maximum size for the buffer (can change as needed)
-        
-        bd = 2; // the size of the useful data in the message buffer
-        
-        b = (uint8_t*) malloc(128); // temporary buffer...
-        
-        for( ; ; )
-        {
-            a = rom[data_pos];
-            
-            if(a == 0x80)
-            {
-                // 0x80 tells us to go to the second data set 
-                data_pos = 0x75f40;
-            }
-            else if(a == 0xff)
-            {
-                // 0xff is the terminator byte for all text data, period
-                
-                doc->t_number = i; // the number of loaded pieces
-                doc->t_loaded = 1; // indicate that text is loaded and return
-                
-                return;
-            }
-            
-            else if(a < 0x67)
-            {
-                // if it's a character, increment the position in the main buffer
-                // updating that second buffer... not sure what it's for
-                data_pos++;
-                b[bd++] = a;
-            }
-            else if(a >= 0x88)
-            {
-                // use the dictionary to load the characters up
-                k = *(short*)(rom + 0x745f3 + (a << 1));
-                l = *(short*)(rom + 0x745f5 + (a << 1));
-                
-                while(k < l)
-                {
-                    b[bd++] = rom[0x78000 + k];
-                    k++;
-                }
-                
-                data_pos++;
-            }
-            
-            // 0x7f is a terminator byte for each message
-            else if(a == 0x7f)
-            {
-                // 0x7f is a terminator byte for each message
-                data_pos++;
-                
-                break;
-            }
-            else
-            {
-                // 0x7536B is a length indicator for each byte code
-                l = rom[0x7536b + a];
-                
-                while(l--)
-                    b[bd++] = rom[data_pos++];
-            }
-            
-            if(bd >= bs - 64)
-            {
-                // if the text data won't fit into the current buffer, reallocate
-                // and add 128 bytes to the temporary buffer
-                bs += 128;
-                b = (uint8_t*) realloc(b, bs);
-            }
-        }
-        
-        *(short*) b = bd;
-        
-        b = realloc(b, bd);
-        
-        if(i == m)
-        {
-            m += 64;
-            doc->tbuf = realloc(doc->tbuf, m << 2);
-        }
-        
-        doc->tbuf[i++] = b;
-    }
-}
-
-// =============================================================================
-
-void
-Savetext(FDOC*doc)
-{
-    int i,bd,j,k;
-    short l,m,n,o,p,q,r,v,t,u,w;
-    
-    // \task Can b2 overflow or is this just... fantasy?
-    unsigned char*b, b2[2048];
-    unsigned char*rom=doc->rom;
-    
-    size_t write_pos = 0xe0000;
-    
-    if(!doc->t_modf)
-        return;
-    
-    doc->t_modf=0;
-    
-    w = ( get_16_le(rom + 0x74703) - 0xc705 ) >> 1;
-    
-    for(i=0;i<doc->t_number;i++) {
-        b=doc->tbuf[i];
-        m=bd=0;
-        k=*(short*)b;
-        j=2;
-        r=w;
-        for(;j<k;)
-        {
-            q=b2[bd++]=b[j++];
-            if(q>=0x67) {
-                l=rom[0x7536b + q] - 1;
-                while(l--) b2[bd++]=b[j++];
-                m=bd;
-            }
-            if(bd>m+1) {
-                o=*(short*)(rom + 0x74703);
-                v=255;
-                t=w;
-                for(l=0;l<w;l++) {
-                    n=o;
-                    o=*(short*)(rom + 0x74705 + (l<<1));
-                    p=o-n-bd+m;
-                    if(p>=0) if(!memcmp(rom + 0x78000 + n,b2+m,bd-m)) {
-                        if(p<v) t=l,v=p;
-                        if(!p) {r=t;u=j;break;}
-                    }
-                }
-                if(t==w || b[j] >= 0x67) {
-                    if(r!=w) {
-                        b2[m]=r + 0x88;
-                        m++;
-                        j=u;
-                        bd=m;
-                        r=w;
-                    } else m=bd-1;
-                }
-            }
-        }
-        
-        write_pos += bd;
-        
-        // The subtraction of two accounts for the need for a message
-        // terminator code (0x7f) and the potential need for a master
-        // terminator code for all of the text data (0xff).
-        if( (write_pos < 0xe0000) && (write_pos > (0x77400 - 2) ) )
-        {
-            doc->t_modf = 1;
-            
-            MessageBox(framewnd,
-                       "Not enough space for monologue.",
-                       "Bad error happened",
-                       MB_OK);
-            
-            return;
-        }
-        
-        // Check if writing this message would put us past the end of the first
-        // bank where text data can reside. The subtraction of two is to
-        // account for a message terminator code (0x7f) as well as a possible
-        // additional bank switch code (0x80).
-        if( write_pos > (0xe8000 - 2) )
-        {
-            rom[write_pos - bd] = 0x80;
-            write_pos = 0x75f40 + bd;
-        }
-        
-        memcpy(rom + write_pos - bd, b2, bd);
-        
-        rom[write_pos++] = 0x7f;
-    }
-    
-    rom[write_pos] = 0xff;
-    
-    doc->modf = 1;
-}
-
-// =============================================================================
-
-const char z_alphabet[]=
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?-.,\0>()@£${}\"\0\0\0\0'\0\0\0\0\0\0\0 <\0\0\0\0";
-const static char*tsym_str[]=
-{
-    "Up",
-    "Down",
-    "Left",
-    "Right",
-    0,
-    "1HeartL",
-    "1HeartR",
-    "2HeartL",
-    "3HeartL",
-    "3HeartR",
-    "4HeartL",
-    "4HeartR",
-    0,0,
-    "A",
-    "B",
-    "X",
-    "Y"
-};
-const static char*tcmd_str[]={
-    "NextPic",
-    "Choose",
-    "Item",
-    "Name",
-    "Window",
-    "Number",
-    "Position",
-    "ScrollSpd",
-    "Selchg",
-    "Crash",
-    "Choose3",
-    "Choose2",
-    "Scroll",
-    "1",
-    "2",
-    "3",
-    "Color",
-    "Wait",
-    "Sound",
-    "Speed",
-    "Mark",
-    "Mark2",
-    "Clear",
-    "Waitkey",
-};
-
-// =============================================================================
-
-void
-Makeasciistring(FDOC          const * const doc,
-                char                * const buf,
-                unsigned char const * const buf2,
-                int                   const bufsize)
-{
-    int i;
-    
-    short j,k,l,m,n;
-    j=*(short*)buf2;
-    l=2;
-    for(i=0;i<bufsize-1;) {
-        if(l>=j) break;
-        k=buf2[l++];
-        if(k<0x5f)
-        {
-            if(!z_alphabet[k])
-            {
-                if(k==0x43) m=wsprintf(buffer,"...");
-                else m=wsprintf(buffer,"[%s]",tsym_str[k - 0x4d]);
-                goto longstring;
-            }
-            else
-            {
-                buf[i++]=z_alphabet[k];
-            }
-        }
-        else if(k >= 0x67 && k < 0x7f)
-        {
-            m=wsprintf(buffer,"[%s",tcmd_str[k - 0x67]);
-            n=doc->rom[0x7536b + k] - 1;
-            while(n--) m+=wsprintf(buffer+m," %02X",buf2[l++]);
-            buffer[m++]=']';
-longstring:
-            n = 0;
-            
-            while(m--)
-            {
-                buf[i++] = buffer[n++];
-                
-                if(i == bufsize - 1)
-                    break;
-            }
-        }
-        else
-        {
-            m = wsprintf(buffer, "[%02X]",k);
-            
-            goto longstring;
-        }
-    }
-    
-    buf[i] = 0;
-}
-
-// =============================================================================
-
-char * text_error;
-
-// =============================================================================
-
-uint8_t * Makezeldastring(FDOC *doc, char *buf)
-{
-    uint8_t * b2 = (uint8_t*) malloc(128);
-    char *n;
-    
-    int bd = 2, bs = 128;
-    
-    short j,l,m,k;
-    
-    for(;;)
-    {
-        j = *(buf++);
-        
-        // look for a [ character
-        if(j == '[')
-        {
-            // m is the distance to the ] character
-            m = strcspn(buf," ]");
-            
-            for(l = 0; l < 18; l++)
-                if(tsym_str[l] && (!tsym_str[l][m]) && !_strnicmp(buf,tsym_str[l],m))
-                    break;
-            
-            // the condition l == 18 means it did not find any string in the
-            // special symbol strings list to match this one
-            if(l == 18)
-            {
-                for(l = 0; l < 24; l++)
-                    if((!tcmd_str[l][m]) && !_strnicmp(buf,tcmd_str[l],m))
-                        break;
-                
-                // if this condition is true it means we didn't find a match in the 
-                // command strings either
-                if(l == 24)
-                {
-                    // strtol converts a string to a long data type
-                    j = (short) strtol(buf, &n, 16);
-                    
-                    // k is the distance from the start of the command to the 
-                    k = n - buf;
-                    
-                    // if the string doesn't match the pattern [XX] fogedda boud it                 
-                    if(k > 2 || k < 1)
-                    {
-                        buf[m] = 0;
-                        wsprintf(buffer, "Invalid command \"%s\"", buf);
-                        
-error:
-                        
-                        MessageBox(framewnd, buffer, "Bad error happened", MB_OK);
-                        free(b2);
-                        text_error = buf;
-                        
-                        return 0;
-                    };
-                    
-                    m = k;
-                    b2[bd++] = (char) j;
-                    l = 0;
-                }
-                else
-                    b2[bd++] = l + 0x67, l = doc->rom[0x753d2 + l] - 1;
-            }
-            else
-                b2[bd++] = l + 0x4d, l = 0;
-            
-            buf += m;
-            
-            while(l--)
-            {
-                if(*buf!=' ')
-                {
-syntaxerror:
-                    wsprintf(buffer,"Syntax error: '%c'",*buf);
-                    
-                    goto error;
-                }
-                
-                buf++;
-                
-                j = (short) strtol(buf,&n,16);
-                m = n - buf;
-                
-                if(m > 2 || m < 1)
-                {
-                    wsprintf(buffer,"Invalid number");
-                    goto error;
-                };
-                
-                buf += m;
-                b2[bd++] = (char) j;
-            }
-            
-            if(*buf!=']')
-                goto syntaxerror;
-            
-            buf++;
-        }
-        else
-        {
-            if(!j)
-                break;
-            
-            for(l = 0; l < 0x5f; l++)
-                if(z_alphabet[l] == j)
-                    break;
-            
-            if(l == 0x5f)
-            {
-                wsprintf(buffer,"Invalid character '%c'",j);
-                goto error;
-            }
-            
-            b2[bd++] = (char) l;
-        }
-        
-        if(bd > bs - 64)
-        {
-            bs += 128;
-            b2 = (uint8_t*) realloc(b2, bs);
-        }
-    }
-    
-    // \task Shouldn't we just structurize this stuff and store the length
-    // as a member? for pete's sake...
-    *(unsigned short*) b2 = bd;
-    
-    return b2;
-}
-
-void Removepatches(FDOC*doc)
+Removepatches(FDOC * const doc)
 {
     int j,k;
     PATCH*p;
@@ -10330,7 +4734,6 @@ void Removepatches(FDOC*doc)
     doc->patches=0;
     doc->numseg=0;
 }
-char asmpath[MAX_PATH];
 HACCEL actab;
 void ProcessMessage(MSG*msg)
 {
@@ -10424,7 +4827,8 @@ FileTimeEarlier(FILETIME const p_left,
 
 // =============================================================================
 
-int Buildpatches(FDOC*doc)
+int
+Buildpatches(FDOC * const doc)
 {
     DWORD q = 0;
     
@@ -10730,246 +5134,7 @@ BOOL CALLBACK patchdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-BOOL CALLBACK
-textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    TEXTEDIT * ed;
-    
-    FDOC *doc;
-    
-    int i, j, k, l, m;
-    
-    char *b = 0;
-    
-    uint8_t * c = 0;
-    
-    unsigned char *rom;
-    
-    HWND hc;
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        SetWindowLong(win, DWL_USER, lparam);
-        
-        ed = (TEXTEDIT*) lparam;
-        
-        CheckDlgButton(win, 3003, BST_CHECKED);
-        
-        ed->dlg = win;
-        ed->num = 0;
-        
-        doc = ed->ew.doc;
-        
-        if( ! doc->t_loaded)
-        {
-            LoadText(doc);
-        }
-        
-    updstrings:
-        
-        hc = GetDlgItem(win,3000);
-        
-        b = (char*) malloc(256);
-        
-        if(ed->num)
-        {
-            rom = doc->rom;
-            
-            j = ( get_16_le(rom + 0x74703) - 0xc705 ) >> 1;
-            
-            l = get_16_le(rom + 0x74703);
-            
-            for(i = 0; i < j; i++)
-            {
-                k = get_16_le_i(rom + 0x74705, i);
-                
-                memcpy(b+130,rom+l + 0x78000,k-l);
-                
-                *(short*)(b+128)=k-l+2;
-                
-                Makeasciistring(doc, b, b + 128, 128);
-                
-                wsprintf(buffer, "%03d: %s", i, b);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (long) buffer);
-                
-                l = k;
-            }
-        }
-        else
-        {
-            for(i = 0; i < doc->t_number; i++)
-            {
-                Makeasciistring(doc, b, doc->tbuf[i], 256);
-                
-                wsprintf(buffer, "%03d: %s", i, b);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (long) buffer);
-            }
-        }
-        
-        free(b);
-        
-        break;
-    
-    case WM_CLOSE:
-        
-        return 1;
-    
-    case WM_COMMAND:
-        
-        ed = (TEXTEDIT*) GetWindowLong(win, DWL_USER);
-        
-        if(!ed)
-            break;
-        
-        doc = ed->ew.doc;
-        
-        rom = doc->rom;
-        
-        switch(wparam)
-        {
-        
-        case 3000 | (LBN_DBLCLK << 16):
-            
-            i = SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
-            
-            if(i != -1)
-            {
-                b = malloc(2048);
-                
-                if(ed->num)
-                {
-                    k=((short*)(rom + 0x74705))[i];
-                    l=((short*)(rom + 0x74703))[i];
-                    memcpy(b+1026,rom+l + 0x78000,k-l);
-                    *(short*)(b+1024)=k-l+2;
-                    Makeasciistring(doc,b,b+1024,1024);
-                }
-                else
-                {
-                    Makeasciistring(doc, b, doc->tbuf[i], 2048);
-                }
-                
-                SetDlgItemText(win, 3001, b);
-                
-                free(b);
-            }
-            else
-            {
-                SetDlgItemText(win, 3001, 0);
-            }
-            
-            break;
-        
-        case 3002:
-            
-            i = SendDlgItemMessage(win,
-                                   3000,
-                                   LB_GETCURSEL,
-                                   0,
-                                   0);
-            
-            if(i != -1)
-            {
-                b = malloc(2048);
-                
-                GetDlgItemText(win, 3001, b, 2048);
-                
-                c = Makezeldastring(doc, b);
-                
-                hc = GetDlgItem(win, 3000);
-                
-                if(c)
-                {
-                    if(ed->num)
-                    {
-                        m = (*(short*)c) - 2;
-                        j = *(unsigned short*) (rom + 0x77ffe + *(short*)(rom + 0x74703));
-                        k = ((unsigned short*) (rom + 0x74705))[i];
-                        l = ((unsigned short*) (rom + 0x74703))[i];
-                        
-                        if(j + m + l - k > 0xc8d9)
-                        {
-                            MessageBeep(0);
-                            free(c);
-                            free(b);
-                            
-                            break;
-                        }
-                        
-                        memcpy(rom + 0x68000 + l + m, rom + 0x68000 + k, j - k);
-                        memcpy(rom + 0x68000 + l, c + 2, m);
-                        k -= l;
-                        
-                        l = ( get_16_le(rom + 0x74703) - 0xc703 ) >> 1;
-                        
-                        for(j = i + 1; j < l; j++)
-                            ((short*) (rom + 0x74703))[j] += m - k;
-                    }
-                    else
-                    {
-                        free(doc->tbuf[i]);
-                        doc->tbuf[i] = c;
-                    }
-                    
-                    Makeasciistring(doc,b,c,256);
-                    wsprintf(buffer,"%03d: %s",i,b);
-                    
-                    if(ed->num)
-                        free(c);
-                    
-                    SendMessage(hc, LB_DELETESTRING, i, 0);
-                    SendMessage(hc, LB_INSERTSTRING, i, (long)buffer);
-                    SendMessage(hc, LB_SETCURSEL, i, 0);
-                }
-                else
-                {
-                    i = text_error - b;
-                    
-                    hc = GetDlgItem(win, 3001);
-                    
-                    SendMessage(hc, EM_SETSEL, i, i);
-                    
-                    SetFocus(hc);
-                    
-                    free(b);
-                    
-                    break;
-                }
-                
-                free(b);
-                
-                doc->t_modf = 1;
-            }
-            
-            break;
-        
-        case 3003:
-            
-            ed->num = 0;
-            
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
-            
-            goto updstrings;
-        
-        case 3004:
-            
-            ed->num = 1;
-            
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
-            
-            goto updstrings;
-        }
-        
-        break;
-    }
-    
-    return FALSE;
-}
+// =============================================================================
 
 int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size2)
 {
@@ -11028,17 +5193,6 @@ int Handlescroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size
     ScrollWindowEx(win, dx, dy, 0, 0, 0, 0, SW_INVALIDATE | SW_ERASE);
     
     return i;
-}
-void Loadeditinst(HWND win,SAMPEDIT*ed)
-{
-    ZINST*zi;
-    zi=ed->ew.doc->insts+ed->editinst;
-    SetDlgItemInt(win,3014,(zi->multhi<<8)+zi->multlo,0);
-    wsprintf(buffer,"%04X",(zi->ad<<8)+zi->sr);
-    SetDlgItemText(win,3016,buffer);
-    wsprintf(buffer,"%02X",zi->gain);
-    SetDlgItemText(win,3018,buffer);
-    SetDlgItemInt(win,3020,zi->samp,0);
 }
 
 char mus_min[3]={0,15,31};
@@ -11339,86 +5493,6 @@ updsongs:
     return FALSE;
 }
 
-const static char* chest_str[]={
-    "Swd&&Sh1",
-    "Sword 2",
-    "Sword 3",
-    "Sword 4",
-    "Shield 1",
-    "Shield 2",
-    "Shield 3",
-    "Firerod",
-    "Icerod",
-    "Hammer",
-    "Hookshot",
-    "Bow",
-    "Boomerang",
-    "Powder",
-    "Bee",
-    "Bombos",
-    "Ether",
-    "Quake",
-    "Lamp",
-    "Shovel",
-    "Flute",
-    "Red cane",
-    "Bottle",
-    "Heart piece",
-    "Blue cane",
-    "Cape",
-    "Mirror",
-    "Power glove",
-    "Titan glove",
-    "Wordbook",
-    "Flippers",
-    "Pearl",
-    "Crystal",
-    "Net",
-    "Armor 2",
-    "Armor 3",
-    "Key",
-    "Compass",
-    "LiarHeart",
-    "Bomb",
-    "3 bombs",
-    "Mushroom",
-    "Red boom.",
-    "Red pot",
-    "Green pot",
-    "Blue pot",
-    "Red pot",
-    "Green pot",
-    "Blue pot",
-    "10 bombs",
-    "Big key",
-    "Map",
-    "1 rupee",
-    "5 rupees",
-    "20 rupees",
-    "Pendant 1",
-    "Pendant 2",
-    "Pendant 3",
-    "Bow&&Arrows",
-    "Bow&&S.Arr",
-    "Bee",
-    "Fairy",
-    "MuteHeart",
-    "HeartCont.",
-    "100 rupees",
-    "50 rupees",
-    "Heart",
-    "Arrow",
-    "10 arrows",
-    "Magic",
-    "300 rupees",
-    "20 rupees",
-    "Bee",
-    "Sword 1",
-    "Flute",
-    "Boots",
-    "No alternate"
-};
-
 char* sec_str[]={
     "Hole",
     "Warp",
@@ -11448,172 +5522,7 @@ Getsecretstring(uint8_t const * const rom,
     return a ? sprname[a] : "Nothing";
 }
 
-void Dungselectchg(DUNGEDIT*ed,HWND hc,int f)
-{
-    RECT rc;
-    unsigned char*rom=ed->ew.doc->rom;
-    int i,j,k,l;
-    static char *dir_str[4]={"Up","Down","Left","Right"};
-    
-    if(f)
-        ed->ischest=0;
-    
-    if(!ed->selobj)
-    {
-        if(f)
-            buffer[0]=0;
-    }
-    else if(ed->selchk == 9)
-    {
-        dm_x = (*(short*) (ed->tbuf + ed->selobj)) >> 1;
-        
-        if(f)
-            wsprintf(buffer,"Torch\nX: %02X\nY: %02X\nBG%d\nP: %d",dm_x&63,(dm_x>>6)&63,((dm_x>>12)&1)+1,(dm_x>>13)&7);
-    }
-    else if(ed->selchk == 8)
-    {
-        dm_x = (*(short*) (rom + ed->selobj + 2)) >> 1;
-        
-        if(f)
-            wsprintf(buffer,"Block\nX: %02X\nY: %02X\nBG%d",dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
-    }
-    else if(ed->selchk == 7)
-    {
-        dm_x = *(short*) (ed->sbuf + ed->selobj - 2) >> 1;
-        dm_k = ed->sbuf[ed->selobj];
-        cur_sec = Getsecretstring(rom, dm_k);
-        
-        if(f)
-            wsprintf(buffer,"Item %02X\nX: %02X\nY: %02X\nBG%d",dm_k,dm_x&63,(dm_x>>6)&63,(dm_x>>12)+1);
-    }
-    else if(ed->selchk == 6)
-    {
-        dm_x = ((ed->ebuf[ed->selobj+1]&31)<<1)+((ed->ebuf[ed->selobj]&31)<<7);
-        dm_dl = ed->ebuf[ed->selobj]>>7;
-        dm_l = ((ed->ebuf[ed->selobj]&0x60)>>2)|((ed->ebuf[ed->selobj+1]&0xe0)>>5);
-        dm_k = ed->ebuf[ed->selobj + 2] + (((dm_l & 7) == 7) ? 256 : 0);
-        
-        if(f)
-            wsprintf(buffer,"Spr %02X\nX: %02X\nY: %02X\nBG%d\nP: %02X",dm_k,dm_x&63,dm_x>>6,dm_dl+1,dm_l);
-    }
-    else if(ed->selchk & 1)
-    {
-        getdoor(ed->buf+ed->selobj,rom);
-        
-        if(f)
-            wsprintf(buffer,"Dir: %s\nType: %d\nPos: %d\n",dir_str[dm_k],dm_l,dm_dl);
-    }
-    else
-    {
-        getobj(ed->buf + ed->selobj);
-        
-        if(f)
-        {
-            if(dm_k >= 0xf8 && dm_k < 0x100) // Subtype 2 object
-            {
-                wsprintf(buffer,"Obj: %03X:%X\nX: %02X\nY: %02X",dm_k,dm_l,dm_x & 0x3f,dm_x >> 6);
-                
-                // If it's a chest object...
-                if( (dm_k == 0xf9 && dm_l == 9) || (dm_k == 0xfb && dm_l == 1) )
-                {
-                    for(k = 0; k < ed->chestnum; k++)
-                        if(ed->selobj == ed->chestloc[k])
-                            break;
-                    
-                    for(l = 0; l < 0x1f8; l += 3)
-                    {
-                        if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
-                        {
-                            k--;
-                            
-                            if(k < 0)
-                            {
-                                k = rom[0xe970 + l];
-                                i = rom[0x3b528 + k];
-                                
-                                if(i == 255)
-                                    i = 76;
-                                
-                                wsprintf(buffer + 21,
-                                         (rom[0xe96f + l] & 128) ? "\n%d:%s\n(%s)\n(Big)" : "\n%d:%s\n(%s)",
-                                         k,
-                                         chest_str[k],
-                                         chest_str[i]);
-                                
-                                // This is a chest object >_>.
-                                ed->ischest=1;
-                                
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-                wsprintf(buffer,"Obj: %03X\nX: %02X\nY: %02X",dm_k,dm_x&0x3f,dm_x>>6);
-            
-            if(dm_k<0xf8)
-                wsprintf(buffer + 20, "\nSize: %02X", dm_l);
-        }
-    }
-    
-    if(f)
-        SetDlgItemText(ed->dlg, ID_DungDetailText, buffer);
-    
-    if(!ed->selobj)
-        return;
-    
-    k = ed->mapscrollh;
-    l = ed->mapscrollv;
-    
-    i = ( (dm_x & 0x3f) << 3) - (k << 5);
-    j = ( ( (dm_x >> 6) & 0x3f) << 3) - (l << 5);
-    
-    if(f && ed->selobj)
-    {
-        if(i < 0)
-            k += i >> 5;
-        
-        if(j < 0)
-            l += j >> 5;
-        
-        if( ( (i + 32) >> 5) >= ed->mappageh)
-            k += ( (i + 32) >> 5) - ed->mappageh;
-        
-        if( ( (j + 32) >> 5) >= ed->mappagev )
-            l += ( (j + 32) >> 5) - ed->mappagev;
-        
-        if(k != ed->mapscrollh)
-        {
-            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION + (k << 16), 0);
-        }
-        
-        if(l != ed->mapscrollv)
-        {
-            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION + (l << 16), 0);
-        }
-    }
-    
-    rc.left = ((dm_x & 0x3f) << 3);
-    rc.top  = (((dm_x >> 6) & 0x3f) << 3);
-    
-    Getdungobjsize(ed->selchk, &rc, 0, 0, 0);
-    
-    ed->selrect = rc;
-    
-    rc.left -= k << 5;
-    rc.top  -= l << 5;
-    
-    rc.right  -= k << 5;
-    rc.bottom -= l << 5;
-    
-    ed->objt = dm_k;
-    ed->objl = dm_l;
-    
-    InvalidateRect(hc,&rc,0);
-}
-
-//Drawblock#********************************
+// =============================================================================
 
 void
 Drawblock(OVEREDIT const * const ed,
@@ -12004,8 +5913,6 @@ noblock:
 
 //Drawblock*********************************
 
-int gbtnt=0;
-
 void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
 {
     int a,
@@ -12059,11 +5966,126 @@ void Paintblocks(RECT*rc,HDC hdc,int x,int y,DUNGEDIT*ed)
 // =============================================================================
 
 void
+DrawDungeonMap8(DUNGEDIT const * const p_ed,
+                int              const p_x,
+                int              const p_y,
+                int              const p_offset,
+                uint16_t const * const p_buf)
+{
+    int const r = p_x << 3;
+    int const s = p_y >> 3;
+    int const t = p_offset + p_x + p_y;
+    
+    int u = 0;
+    
+    // Fake overworld editor. Type punning going on here.
+    OVEREDIT const * const fake_oed = (OVEREDIT*) p_ed;
+    
+    // -----------------------------
+    
+    if(p_ed->layering & 2)
+    {
+        // only used by special tilemap modes (title screen)
+        
+        Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 8);
+        
+        u = 1;
+    }
+    
+    switch(p_ed->layering >> 5)
+    {
+    
+    case 0:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+        }
+            
+        break;
+    
+    case 1:
+    case 5:
+    case 6:
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed,r,s, p_buf[t],u);
+        }
+        
+        break;
+    
+    case 2:
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+        }
+        
+        break;
+    
+    case 3:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
+        }
+        
+        break;
+    
+    case 4:
+    case 7:
+        
+        if(p_ed->disp & SD_DungShowBG1)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t], u);
+            
+            u = 1;
+        }
+        
+        if(p_ed->disp & SD_DungShowBG2)
+        {
+            Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
+        }
+        
+        break;
+    }
+    
+    if(p_ed->layering & 4)
+    {
+        Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 17);
+    }
+}
+
+// =============================================================================
+
+void
 DrawDungeon32x32(DUNGEDIT const * const p_ed,
-                 int const i,
-                 int const j,
-                 int const n,
-                 int const o,
+                 int              const i,
+                 int              const j,
+                 int              const n,
+                 int              const o,
                  uint16_t const * const p_buf)
 {
     // 
@@ -12072,8 +6094,7 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
     
     int p = 0;
     
-    // Take overworld editor. Type punning going on here.
-    OVEREDIT const * const fake_oed = (OVEREDIT*) p_ed;
+    // -----------------------------
     
     for(p = 0; p < 4; p++)
     {
@@ -12081,100 +6102,11 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
         
         for(q = 0; q < 256; q += 64)
         {
-            int const r = p << 3;
-            int const s = q >> 3;
-            int const t = m + p + q;
-            
-            int u = 0;
-            
-            if(p_ed->layering & 2)
-            {
-                Drawblock( (OVEREDIT*) p_ed,
-                          r, s,
-                          p_buf[t + 0x2000], 8);
-                
-                u = 1;
-            }
-            
-            switch(p_ed->layering >> 5)
-            {
-            case 0:
-                
-                if(p_ed->disp & 1)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t], u);
-                }
-                    
-                break;
-            
-            case 1:
-            case 5:
-            case 6:
-                
-                if(p_ed->disp & 2)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
-                    
-                    u = 1;
-                }
-                
-                if(p_ed->disp & 1)
-                {
-                    Drawblock(fake_oed,r,s, p_buf[t],u);
-                }
-                
-                break;
-            case 2:
-                
-                if(p_ed->disp & 2)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
-                    
-                    u = 1;
-                }
-                
-                if(p_ed->disp & 1)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t], u);
-                }
-                
-                break;
-            case 3:
-                
-                if(p_ed->disp & 1)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t], u);
-                    
-                    u = 1;
-                }
-                
-                if(p_ed->disp & 2)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u);
-                }
-                
-                break;
-            case 4: case 7:
-                
-                if(p_ed->disp & 1)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t], u);
-                    
-                    u = 1;
-                }
-                
-                if(p_ed->disp & 2)
-                {
-                    Drawblock(fake_oed, r, s, p_buf[t + 0x1000], u + 2);
-                }
-                
-                break;
-            }
-            
-            if(p_ed->layering & 4)
-            {
-                Drawblock(fake_oed, r, s, p_buf[t + 0x2000], 17);
-            }
+            DrawDungeonMap8(p_ed,
+                            p,
+                            q,
+                            m,
+                            p_buf);
         }
     }
 }
@@ -12182,7 +6114,7 @@ DrawDungeon32x32(DUNGEDIT const * const p_ed,
 // =============================================================================
 
 void
-Paintdungeon(DUNGEDIT const * ed,
+Paintdungeon(DUNGEDIT * const ed,
              HDC hdc,
              RECT *rc,
              int x,int y,
@@ -12203,8 +6135,8 @@ Paintdungeon(DUNGEDIT const * ed,
     
     if
     (
-        ( ! (ed->disp & 3))
-     || ( ( ! (ed->disp & 1) ) && ! (ed->layering >> 5) )
+        ( ! (ed->disp & SD_DungShowBothBGs))
+     || ( ( ! (ed->disp & SD_DungShowBG1) ) && ! (ed->layering >> 5) )
     )
     {
         oldobj = SelectObject(hdc, black_brush);
@@ -12247,104 +6179,6 @@ Paintdungeon(DUNGEDIT const * ed,
 
 // =============================================================================
 
-void Updateobjdisplay(CHOOSEDUNG*ed,int num)
-{
-    int i=num+(ed->scroll<<2),j,k,l,m,n,o,p;
-    
-    uint16_t objbuf[8192];
-    
-    unsigned char obj[6];
-    
-    RECT rc;
-    
-    for(j=0;j<8192;j++) objbuf[j]=0x1e9;
-    if(i>=0x260) return;
-    else if(i>=0x1b8) {
-        obj[0]=0xf0;
-        obj[1]=0xff;
-        obj[2]=(i - 0x1b8)/42;
-        obj[3]=((i - 0x1b8)%42)<<1;
-        obj[4]=0xff;
-        obj[5]=0xff;
-        getdoor(obj+2,ed->ed->ew.doc->rom);
-        rc.left=(dm_x&0x3f)<<3;
-        rc.top=(dm_x&0xfc0)>>3;
-    } else {
-        if(i<0x40) {
-            obj[0]=0xfc;
-            obj[1]=0;
-            obj[2]=i;
-        } else if(i<0x138) {
-            obj[0]=0;
-            obj[1]=0;
-            switch(obj3_t[i - 0x40]&15) {
-            case 0: case 2:
-                obj[1]=1;
-                break;  
-            }
-            obj[2]=i - 0x40;
-        } else {
-            obj[0] = i & 3;
-            obj[1] = ( (i - 0x138) >> 2) & 3;
-            obj[2] = 0xf8 + ( ( (i - 0x138) >> 4) & 7);
-        }
-        obj[3]=255;
-        obj[4]=255;
-        getobj(obj);
-        rc.left=0;
-        rc.top=0;
-    }
-    Getdungobjsize(ed->ed->selchk,&rc,0,0,1);
-    if(i<0x1b8) {
-        if(rc.top<0) j=-rc.top>>3; else j=0;
-        if(rc.left<0) k=-rc.left>>3; else k=0;
-        if(i<0x40) {
-            obj[0]|=k>>4;
-            obj[1]=(k<<4)|(j>>2);
-            obj[2]|=k<<6;
-        } else {
-            obj[0]|=k<<2;
-            obj[1]|=j<<2;
-        }
-        rc.right+=k<<3;
-        rc.bottom+=j<<3;
-        rc.left+=k<<3;
-        rc.top+=j<<3;
-    }
-    dm_buf=objbuf;
-    Drawmap(ed->ed->ew.doc->rom,objbuf,obj,ed->ed);
-    Paintdungeon(ed->ed,objdc,&rc,rc.left,rc.top,rc.right,rc.bottom,0,0,objbuf);
-    rc.right-=rc.left;
-    rc.bottom-=rc.top;
-    n=rc.right;
-    if(rc.bottom>n) n=rc.bottom;
-    n++;
-    j=ed->w>>2;
-    k=ed->h>>2;
-    l=(rc.right)*j/n;
-    m=(rc.bottom)*k/n;
-    o=((((i&3)<<1)+1)*ed->w>>3);
-    p=(((((i>>2)&3)<<1)+1)*ed->h>>3);
-    StretchBlt(ed->bufdc,o-(l>>1),p-(m>>1),l,m,objdc,rc.left,rc.top,rc.right,rc.bottom,SRCCOPY);
-    if(i<0x40) l=i + 0x100;
-    else if(i<0x138) l=i - 0x40;
-    else if(i<0x1b8) l=i + 0xe48;
-    else l=i - 0x1b8;
-    wsprintf(buffer,"%03X",l);
-    SetTextColor(ed->bufdc,0);
-    TextOut(ed->bufdc,o+1,p+1,buffer,3);
-    SetTextColor(ed->bufdc,0xffbf3f);
-    TextOut(ed->bufdc,o,p,buffer,3);
-}
-
-void Getdungselrect(int i,RECT*rc,CHOOSEDUNG*ed)
-{
-    rc->left=(i&3)*ed->w>>2;
-    rc->top=(i>>2)*ed->h>>2;
-    rc->right=rc->left+(ed->w>>2);
-    rc->bottom=rc->top+(ed->h>>2);
-}
-
 void
 Setpalette(HWND const win, HPALETTE const pal)
 {
@@ -12361,58 +6195,7 @@ Setpalette(HWND const win, HPALETTE const pal)
     return;
 }
 
-unsigned short dp_x[]={
-    2,98,52,
-    3,17,0x863c,0x1023,18,
-    6,56,0x1023,34,0x1023,56,0x8590,34,
-    4,0x83d8,49,0x872a,51,0x1023,51,
-    4,0x875a,51,0x1023,51,0x83d8,49,
-    16,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,
-    0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,
-    1,0x9488,97,
-    4,0x96dc,0x10cc,0x97f6,0x10cc,0x9914,0x10cc,0x9a2a,0x10cc,
-    6,0x9bf2,70,81,0x1064,0x1026,0x1062,85,
-    4,18,0x1023,18,68,
-    2,0x22d6,0x1023,
-    1,0x80e0,0x1024,
-    3,34,18,50,
-    4,34,34,34,34,
-    2,51,51,
-    1,0x9b4a,230
-};
-
-unsigned short dp_tab[]={
-    68,68,68,68,68,68,68,68,68,68,68,68,68,68,68,68,
-    67,67,67,67,52,52,52,52,34,34,34,34,68,50,34,34,
-    34,50,0x1054,52,68,68,50,34,0x1054,68,0x1024,50,54,68,68,68,
-    68,68,68,68,34,0x1024,0x1024,74,52,52,52,52,0xf000,51,54,113,
-    34,66,66,66,66,66,66,34,34,81,81,81,81,81,81,81,
-    81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,
-    81,51,19,19,19,19,19,19,19,19,19,19,19,19,19,22,
-    22,0,0,68,17,0,68,68,50,66,52,52,34,66,34,19,
-    19,19,19,19,19,19,19,83,51,0x1024,0x1024,34,51,68,68,68,
-    17,54,54,34,0,0x1024,0x1024,0,0,0,0,54,54,53,34,19,
-    34,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,34,34,49,17,17,97,97,0,0,
-    68,17,0,68,68,66,67,67,34,17,17,34,17,34,0,66,
-    66,67,67,67,67,0x1063,0x1063,66,0xf04e,34,49,17,17,17,17,17,
-    0x1024,0x1024,34,34,68,34,34,0,0,0,0,0,0,0,0,0,
-    17,17,17,17,0xf003,17,17,17,17,17,17,17,17,17,17,17,
-    17,17,68,19,19,66,66,66,34,34,68,34,34,34,0,0,
-    17,0xf008,17,49,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0,0,0xf010,0xf017,0,
-    0,0x1024,0x1024,0,0,0,0x1024,17,0x1024,0x1024,0x1024,0xf01e,0x1035,0x1044,34,0x1024,
-    0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0x1024,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,
-    0x1034,0x1054,0x1074,17,17,17,17,17,17,17,17,17,17,0xf02f,17,17,
-    34,34,33,34,52,0x108a,34,0xf02f,34,34,34,68,68,68,68,68,
-    68,68,34,34,34,34,68,68,68,68,0xf032,34,0xf052,0xf05a,0xf03b,34,
-    34,52,52,68,35,35,54,54,35,35,0x1064,0x1064,70,70,34,34,
-    34,34,34,34,34,34,34,68,68,34,34,56,0x1086,54,52,34,
-    34,34,34,34,0xf043,0x1033,34,34,34,34,0x1024,0x1053,70,54,34,34,
-    0xf057,0xf057,0xf048,34,34,34,68,52,52,67,67,68,52,52,67,67,
-    72,0x2110,0x108a,0xf04b,0x2110,34,56,56,72,52,68,0x1024,34,34,34,0
-};
-
-void Updateblk8sel(BLOCKSEL8*ed,int num)
+void Updateblk8sel(BLOCKSEL8 *ed, int num)
 {
     int i=num+(ed->scroll<<4);
     int j,k,l,m;
@@ -12440,9 +6223,11 @@ DUNGEDIT*dunged;
 void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
 {
     int i;
-    RECT rc;
+    
+    RECT rc = HM_GetClientRect(hc);
+    
     HPALETTE oldpal;
-    GetClientRect(hc,&rc);
+    
     bs->sel=0;
     bs->scroll=0;
     bs->flags=0;
@@ -12451,167 +6236,25 @@ void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
     bs->h=rc.bottom;
     bs->bufdc=CreateCompatibleDC(hdc);
     bs->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
+    
     SelectObject(bs->bufdc,bs->bufbmp);
     SelectObject(bs->bufdc,white_pen);
     SelectObject(bs->bufdc,black_brush);
     oldpal=SelectPalette(objdc,hpal,1);
     SelectPalette(bs->bufdc,hpal,1);
     Rectangle(bs->bufdc,0,0,bs->w,bs->h);
+    
     for(i=0;i<256;i++) Updateblk8sel(bs,i);
+    
     SelectPalette(objdc,oldpal,1);
     SelectPalette(bs->bufdc,oldpal,1);
-    SetWindowLong(hc,GWL_USERDATA,(int)bs);
+    
+    SetWindowLong(hc, GWLP_USERDATA, (LONG_PTR) bs);
+    
     Updatesize(hc);
 }
 
-LRESULT CALLBACK
-dpceditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    PAINTSTRUCT ps;
-    HDC hdc;
-    unsigned short*rdbuf;
-    int i,j,k,l,m,n,o,p,q,r;
-    unsigned short*b;
-    RECT rc;
-    switch(msg) {
-    case WM_LBUTTONUP:
-        if(dpce->flag&1) {
-            dpce->flag&=-2;
-            ReleaseCapture();
-        }
-        break;
-    case WM_LBUTTONDOWN:
-        SetCapture(win);
-        dpce->flag|=1;
-    case WM_MOUSEMOVE:
-        if(dpce->flag&1) {
-    case WM_RBUTTONDOWN:
-            k=dpce->sel;
-            l=dpce->dp_w[k];
-            m=dpce->dp_h[k];
-            rc.left=(dpce->w>>1)-(l<<2);
-            rc.top=(dpce->h>>1)-((m&127)<<2);
-            i=((short)lparam-rc.left)>>3;
-            j=((lparam>>16)-rc.top)>>3;
-            if(i<0 || j<0 || i>=l || j>=(m&127)) break;
-            b=(unsigned short*)(dpce->buf+dpce->dp_st[k]);
-            if(m&128)
-                b+=i+j*l;
-            else b+=j+i*m;
-            if(msg==WM_RBUTTONDOWN) {SendMessage(GetParent(win),4000,*b,0);break;}
-            *b=dpce->bs.sel|dpce->bs.flags;
-            rc.left+=i<<3;
-            rc.top+=j<<3;
-            rc.right=rc.left+8;
-            rc.bottom=rc.top+8;
-            InvalidateRect(win,&rc,0);
-        }
-        break;
-    case WM_PAINT:
-        hdc=BeginPaint(win,&ps);
-        i=dpce->sel;
-        j=dpce->dp_w[i];
-        k=dpce->dp_h[i];
-        l=dpce->dp_st[i];
-        r=k;
-        k&=127;
-        rdbuf=(unsigned short*)(dpce->buf+l);
-        l=0;
-        rc.left=(dpce->w>>1)-(j<<2);
-        rc.right=rc.left+(j<<3);
-        rc.top=(dpce->h>>1)-(k<<2);
-        rc.bottom=rc.right+(k<<3);
-        if(r&128) {
-        for(n=0;n<k;n+=4) {
-            for(m=0;m<j;m+=4) {
-                o=4;
-                p=4;
-                if(m>j-4) o=j&3;
-                if(n>k-4) p=k&3;
-                for(q=0;q<p;q++) {
-                    for(i=0;i<o;i++) {
-                        Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+i],0);
-                    }
-                    l+=j;
-                }
-                l-=j*p-o;
-                o<<=3;
-                p<<=3;
-                SetDIBitsToDevice(hdc,
-                                  rc.left + (m << 3),
-                                  rc.top + (n << 3),
-                                  o,
-                                  p,
-                                  0,
-                                  0,
-                                  0,
-                                  32,
-                                  drawbuf + ( (32 - p) << 5),
-                                  (BITMAPINFO*) &(dunged->bmih),
-                                  dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
-            }
-            l+=3*j;
-        }
-        } else {
-        for(m=0;m<j;m+=4) {
-            for(n=0;n<k;n+=4) {
-                o=4;
-                p=4;
-                if(m>j-4) o=j&3;
-                if(n>k-4) p=k&3;
-                for(i=0;i<o;i++) {
-                    for(q=0;q<p;q++) {
-                        Drawblock((OVEREDIT*)dunged,i<<3,q<<3,rdbuf[l+q],0);
-                    }
-                    l+=k;
-                }
-                l-=k*o-p;
-                o<<=3;
-                p<<=3;
-                SetDIBitsToDevice(hdc,
-                                  rc.left + (m << 3),
-                                  rc.top + (n << 3),
-                                  o,
-                                  p,
-                                  0,
-                                  0,
-                                  0,
-                                  32,
-                                  drawbuf + ( (32 - p) << 5),
-                                  (BITMAPINFO*) &(dunged->bmih),
-                                  dunged->hpal ? DIB_PAL_COLORS : DIB_RGB_COLORS);
-            }
-            l+=3*k;
-        }
-        }
-        EndPaint(win,&ps);
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-int loadpiece(int k,int j,int m)
-{
-    int n,o;
-    if(j<0x2000) {
-        n=dpce->dp_w[k]=j&15;
-        n*=o=(j>>4)&15;
-        o|=(j&0x1000)>>5;
-        dpce->dp_h[k]=o;
-        dpce->dp_st[k]=m;
-        m+=n<<1;
-    } else if(j<0x4000) {
-        n=dpce->dp_w[k]=j&63;
-        n*=o=(j>>6)&63;
-        o|=(j&0x1000)>>5;
-        dpce->dp_h[k]=o;
-        dpce->dp_st[k]=m;
-        m+=n<<1;        
-    }
-    return m;
-}
+// =============================================================================
 
 void Changeblk8sel(HWND win,BLOCKSEL8*ed)
 {
@@ -12626,549 +6269,7 @@ void Changeblk8sel(HWND win,BLOCKSEL8*ed)
     }
 }
 
-void Upddpcbuttons(HWND win)
-{
-    EnableWindow(GetDlgItem(win,IDC_BUTTON1),dpce->sel);
-    EnableWindow(GetDlgItem(win,IDC_BUTTON8),dpce->sel<dpce->num-1);
-    if(!IsWindowEnabled(GetFocus())) SetFocus(GetDlgItem(win,IDOK));
-}
-
-int GetBTOfs(DPCEDIT*ed)
-{
-    if(ed->bs.sel<0x140)
-        return ed->bs.sel + 0x71659;
-    else if(ed->bs.sel>=0x1c0)
-        return ed->bs.sel + 0x715d9;
-    else
-        return ed->bs.sel + 0x70eea + ((short*)(ed->bs.ed->ew.doc->rom + 0x71000))[((DUNGEDIT*)(ed->bs.ed))->gfxnum];
-}
-
-// "Dungeon piece" editor. Guess this edits dungeon objects.
-BOOL CALLBACK
-dpcdlgproc(HWND win,
-           UINT msg,
-           WPARAM wparam,
-           LPARAM lparam)
-{
-    HDC hdc;
-    
-    int i = 0,
-        j = 0,
-        k = 0,
-        l = 0,
-        m = 0;
-    
-    uint16_t const * b;
-    
-    HPALETTE oldpal;
-    RECT rc = empty_rect;
-    HWND hc;
-    BLOCKSEL8*bs;
-    switch(msg) {
-    case WM_QUERYNEWPALETTE:
-        Setpalette(win,dunged->hpal);
-        return 1;
-    case WM_PALETTECHANGED:
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
-        break;
-    case WM_INITDIALOG:
-        dpce=malloc(sizeof(DPCEDIT));
-        dpce->sel=0;
-        dpce->flag=0;
-        dpce->bs.ed=(OVEREDIT*)dunged;
-        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[0]);
-        SendDlgItemMessage(win,IDC_BUTTON8,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[1]);
-        memcpy(dpce->buf,dunged->ew.doc->rom + 0x1b52,0x342e);
-        
-        hdc = GetDC(win);
-        
-        InitBlksel8(GetDlgItem(win,IDC_CUSTOM1),&(dpce->bs),dunged->hpal,hdc);
-        
-        ReleaseDC(win, hdc);
-        
-        // \task Perhaps functionify this if it shows up a lot.
-        if(always)
-        {
-            HWND const sub_wnd = GetDlgItem(win, IDC_CUSTOM2);
-            
-            GetClientRect(sub_wnd, &rc);
-        }
-        
-        dpce->w=rc.right;
-        dpce->h=rc.bottom;
-        dpce->obj=i=lparam;
-        j=dp_tab[i];
-        if(i<0x40)
-        m=((unsigned short*)(dunged->ew.doc->rom + 0x83f0))[i];
-        else if(i<0x138) m=((unsigned short*)(dunged->ew.doc->rom + 0x7f80))[i];
-        else if(i<0x1b8) m=((unsigned short*)(dunged->ew.doc->rom + 0x8280))[i];
-        if((j&0xf000)==0xf000) {
-            b=dp_x + (j & 4095);
-            l=dpce->num=*(b++);
-            for(k=0;k<l;k++) {
-again:
-                j=*(b++);
-                if(j&32768) { m=j&32767; goto again; }
-                m=loadpiece(k,j,m);
-            }
-        } else {
-            dpce->num=1;
-            m=loadpiece(0,j,m);
-        }
-        Upddpcbuttons(win);
-        wparam=0;
-    case 4000:
-        bs=&(dpce->bs);
-        bs->flags=wparam&0xfc00;
-        CheckDlgButton(win,IDC_CHECK1,(wparam&16384)?BST_CHECKED:BST_UNCHECKED);
-        CheckDlgButton(win,IDC_CHECK2,(wparam&32768)?BST_CHECKED:BST_UNCHECKED);
-        CheckDlgButton(win,IDC_CHECK3,(wparam&8192)?BST_CHECKED:BST_UNCHECKED);
-        SetDlgItemInt(win,IDC_EDIT2,wparam&1023,0);
-        SetDlgItemInt(win,IDC_EDIT1,(wparam>>10)&7,0);
-        break;
-    case WM_DESTROY:
-        DeleteDC(dpce->bs.bufdc);
-        DeleteObject(dpce->bs.bufbmp);
-        free(dpce);
-        break;
-    case WM_COMMAND:
-        switch(wparam)
-        {
-        case IDC_EDIT2|(EN_CHANGE<<16):
-            bs=&(dpce->bs);
-            i=GetDlgItemInt(win,IDC_EDIT2,0,0);
-            if(i<0) i=0;
-            if(i>0x3ff) i=0x3ff;
-            j=bs->scroll<<4;
-            if(i<j) j=i;
-            if(i>=j+256) j=i-240;
-            hc=GetDlgItem(win,IDC_CUSTOM1);
-            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION|((j>>4)<<16),SB_VERT);
-            Changeblk8sel(hc,bs);
-            bs->sel=i;
-            if(i<0x200) {
-                SetDlgItemInt(win,IDC_EDIT8,dunged->ew.doc->rom[GetBTOfs(dpce)],0);
-                ShowWindow(GetDlgItem(win,IDC_EDIT8),SW_SHOW);
-                ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_SHOW);
-            } else {
-                ShowWindow(GetDlgItem(win,IDC_EDIT8),SW_HIDE);
-                ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_HIDE);
-            }
-            Changeblk8sel(hc,bs);
-            break;
-
-        case IDC_EDIT1|(EN_CHANGE<<16):
-            bs=&(dpce->bs);
-            bs->flags&=0xe000;
-            bs->flags|=(GetDlgItemInt(win,IDC_EDIT1,0,0)&7)<<10;
-            goto updflag;
-            break;
-
-        case IDC_EDIT3|(EN_CHANGE<<16):
-            bs=&(dpce->bs);
-            if(bs->sel<0x200)
-            bs->ed->ew.doc->rom[GetBTOfs(dpce)]=GetDlgItemInt(win,IDC_EDIT3,0,0);
-            break;
-        case IDC_CHECK1:
-            bs=&(dpce->bs);
-            bs->flags&=0xbc00;
-            if(IsDlgButtonChecked(win,IDC_CHECK1)) bs->flags|=0x4000;
-            goto updflag;
-        case IDC_CHECK2:
-            bs=&(dpce->bs);
-            bs->flags&=0x7c00;
-            if(IsDlgButtonChecked(win,IDC_CHECK2)) bs->flags|=0x8000;
-updflag:
-            if((bs->flags&0xdc00)!=bs->oldflags) {
-                bs->oldflags=bs->flags&0xdc00;
-                oldpal=SelectPalette(objdc,dunged->hpal,1);
-                SelectPalette(bs->bufdc,dunged->hpal,1);
-                for(i=0;i<256;i++) Updateblk8sel(bs,i);
-                SelectPalette(objdc,oldpal,1);
-                SelectPalette(bs->bufdc,oldpal,1);
-                InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
-            }
-            break;
-        case IDC_CHECK3:
-            bs=&(dpce->bs);
-            bs->flags&=0xdc00;
-            if(IsDlgButtonChecked(win,IDC_CHECK3)) bs->flags|=0x2000;
-            break;
-        case IDOK:
-            memcpy(dunged->ew.doc->rom + 0x1b52,dpce->buf,0x342e);
-            dunged->ew.doc->modf=1;
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        case IDC_BUTTON1:
-            dpce->sel--;
-            InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,1);
-            Upddpcbuttons(win);
-            break;
-        case IDC_BUTTON8:
-            dpce->sel++;
-            InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,1);
-            Upddpcbuttons(win);
-        }
-    }
-    return 0;
-}
-
-LRESULT CALLBACK
-dungselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    CHOOSEDUNG*ed;
-    PAINTSTRUCT ps;
-    HDC hdc;
-    HPALETTE oldpal;
-    SCROLLINFO si;
-    int i,j,k,l,m,n;
-    RECT rc;
-    switch(msg) {
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS;
-    case WM_KEYDOWN:
-        if(wparam>=65 && wparam<71) { wparam-=55; goto digscr; }
-        if(wparam>=48 && wparam<58) {
-            wparam-=48;
-digscr:
-            ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
-            ed->typednum=((ed->typednum<<4)|wparam)&0xfff;
-            i=ed->typednum;
-            if(!(ed->ed->selchk&1))
-                if(i>=0xf80) i-=0xe48;
-                else if(i>=0x140) break;
-                else if(i>=0x100) i-=0x100;
-                else if(i>=0xf8) break;
-                else i+=0x40;
-                else i+=0x1b8;
-            i>>=2;
-            j=ed->scroll;
-            goto scroll;
-        }
-        break;
-    case WM_VSCROLL:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
-        j=i=ed->scroll;
-        switch(wparam&65535) {
-        case SB_LINEDOWN:
-            i++;
-            break;
-        case SB_LINEUP:
-            i--;
-            break;
-        case SB_PAGEDOWN:
-            i+=4;
-            break;
-        case SB_PAGEUP:
-            i-=4;
-            break;
-        case SB_TOP:
-            i=0;
-            break;
-        case SB_BOTTOM:
-            i=0x6d;
-            break;
-        case SB_THUMBTRACK:
-        case SB_THUMBPOSITION:
-            i=wparam>>16;
-        }
-scroll:
-        if(ed->ed->selchk&1) {
-            if(i<0x6e) i=0x6e;
-            if(i>0x94) i=0x94;
-        } else {
-            if(i<0) i=0;
-            if(i>0x6a) i=0x6a;
-        }
-        if(i==j) break;
-        ed->scroll=i;
-        if(j<i-4) j=i-4;
-        if(j>i+4) j=i+4;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_POS;
-        si.nPos=i;
-        SetScrollInfo(win,SB_VERT,&si,1);
-        ScrollWindowEx(win,0,(j-i)*ed->h>>2,0,0,0,0,SW_INVALIDATE);
-        i<<=2;
-        j<<=2;
-        if(j<i) j+=16,k=i+16; else k=j,j=i;
-        oldpal=SelectPalette(objdc,ed->ed->hpal,0);
-        for(;j<k;j++) {
-            n=j-i;
-            m=(j&3)*ed->w>>2;
-            l=((j>>2)&3)*ed->h>>2;
-            Rectangle(ed->bufdc,m,l,m+(ed->w>>2),l+(ed->h>>2));
-            Updateobjdisplay(ed,n);
-        }
-        SelectPalette(objdc,oldpal,1);
-        break;
-    case WM_PAINT:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        hdc=BeginPaint(win,&ps);
-        oldpal=SelectPalette(hdc,ed->ed->hpal,1);
-        RealizePalette(hdc);
-        k=(ed->scroll&3)*ed->h>>2;
-        i=ed->h-k;
-        if(i>ps.rcPaint.bottom) j=ps.rcPaint.bottom; else j=i;
-        if(j>ps.rcPaint.top)
-            BitBlt(hdc,ps.rcPaint.left,ps.rcPaint.top,ps.rcPaint.right-ps.rcPaint.left,j-ps.rcPaint.top,ed->bufdc,ps.rcPaint.left,ps.rcPaint.top+k,SRCCOPY);
-        if(i<ps.rcPaint.top) j=ps.rcPaint.top; else j=i;
-        if(j<ps.rcPaint.bottom)
-            BitBlt(hdc,ps.rcPaint.left,j,ps.rcPaint.right-ps.rcPaint.left,ps.rcPaint.bottom-j,ed->bufdc,ps.rcPaint.left,j+k-ed->h,SRCCOPY);
-        i=ed->sel-(ed->scroll<<2);
-        if(i>=0 && i<16) {
-            Getdungselrect(i,&rc,ed);
-            FrameRect(hdc,&rc,green_brush);
-        }
-        SelectPalette(hdc,oldpal,0);
-        EndPaint(win,&ps);
-        break;
-    case WM_LBUTTONDOWN:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
-        SetFocus(win);
-        i=ed->sel-(ed->scroll<<2);
-        if(i>=0 && i<16) {
-            Getdungselrect(i,&rc,ed);
-            InvalidateRect(win,&rc,0);
-        }
-        i=((lparam&65535)<<2)/ed->w;
-        i|=(((lparam>>16)<<2)/ed->h)<<2;
-        ed->sel=i+(ed->scroll<<2);
-        if(i>=0 && i<16) {
-            Getdungselrect(i,&rc,ed);
-            InvalidateRect(win,&rc,0);
-        }
-        EnableWindow(GetDlgItem(ed->dlg,IDC_BUTTON1),dp_tab[ed->sel]);
-        break;
-    case WM_LBUTTONDBLCLK:
-        SendMessage(GetParent(win),WM_COMMAND,IDOK,0);
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
-BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    HWND hc;
-    HDC hdc;
-    CHOOSEDUNG *ed;
-    DUNGEDIT *de;
-    RECT rc;
-    SCROLLINFO si;
-    HPALETTE oldpal;
-    HWND *p;
-    
-    int i;
-    
-    switch(msg)
-    {
-    
-    case WM_QUERYNEWPALETTE:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,DWL_USER);
-        Setpalette(win,ed->ed->hpal);
-        
-        return 1;
-    
-    case WM_PALETTECHANGED:
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
-        
-        break;
-    
-    case WM_INITDIALOG:
-        ed=malloc(sizeof(CHOOSEDUNG));
-        ed->dlg=win;
-        de=ed->ed=(DUNGEDIT*)lparam;
-        
-        if(de->selchk&1)
-        {
-            getdoor(de->buf+de->selobj,de->ew.doc->rom);
-            i = dm_k * 42 + 0x1b8 + dm_l;
-        }
-        else
-        {
-            getobj(de->buf+de->selobj);
-            
-            if(dm_k<0xf8)
-                i = dm_k + 0x40;
-            else if(dm_k<0x100)
-                i = ( (dm_k - 0xf8) << 4) + dm_l + 0x138;
-            else
-                i = dm_k - 0x100;
-        }
-        
-        ed->sel=i;
-        ed->typednum=0;
-        
-        i >>= 2;
-        
-        if(de->selchk&1)
-        {
-            if(i>0x94)
-                i=0x94;
-        }
-        else if(i>0x6a)
-            i=0x6a;
-        
-        ed->scroll=i;
-        hdc=GetDC(win);
-        hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
-        ed->w=rc.right;
-        ed->h=rc.bottom;
-        ed->bufdc=CreateCompatibleDC(hdc);
-        ed->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
-        ReleaseDC(win,hdc);
-        SetBkMode(ed->bufdc,TRANSPARENT);
-        SelectObject(ed->bufdc,ed->bufbmp);
-        SetWindowLong(win,DWL_USER,(long)ed);
-        SetWindowLong(hc,GWL_USERDATA,(long)ed);
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_PAGE|SIF_RANGE|SIF_POS;
-        si.nPos=ed->scroll;
-        
-        if(de->selchk&1)
-        {
-            si.nMin=0x6e;
-            si.nMax=0x97;
-        }
-        else
-        {
-            si.nMin=0;
-            si.nMax=0x6d;
-        }
-        
-        si.nPage=4;
-        SetScrollInfo(hc,SB_VERT,&si,0);
-        SelectObject(ed->bufdc,black_brush);
-        Rectangle(ed->bufdc,0,0,ed->w,ed->h);
-        oldpal=SelectPalette(objdc,de->hpal,0);
-        SelectPalette(ed->bufdc,de->hpal,0);
-        SelectPalette(objdc,oldpal,1);
-        SelectPalette(ed->bufdc,oldpal,1);
-        EnableWindow(GetDlgItem(win,IDC_BUTTON1),dp_tab[ed->sel]);
-upddisp:
-        
-        for(i=0;i<16;i++)
-            Updateobjdisplay(ed,i);
-        
-        InvalidateRect(hc,0,0);
-        
-        break;
-    
-    case WM_DESTROY:
-        ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
-        DeleteDC(ed->bufdc);
-        DeleteObject(ed->bufbmp);
-        free(ed);
-        
-        break;
-    
-    case WM_COMMAND: // handle dialogue commands
-        
-        switch(wparam)
-        {
-        case IDOK:
-            ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
-            EndDialog(win, ed->sel);
-            
-            break;
-        
-        case IDCANCEL:
-            EndDialog(win,-1);
-            
-            break;
-        
-        case IDC_BUTTON1:
-            ed = (CHOOSEDUNG*) GetWindowLong(win, DWL_USER);
-            dunged = ed->ed;
-            
-            if(DialogBoxParam(hinstance,(LPSTR)IDD_DIALOG22,win,dpcdlgproc,ed->sel))
-            {
-                p = dunged->ew.doc->ents;
-                
-                for(i=0;i<168;i++,p++)
-                {
-                    if(*p)
-                    {
-                        de = (DUNGEDIT*) GetWindowLong(*p, GWL_USERDATA);
-                        Updatemap(de);
-                        InvalidateRect( GetDlgItem(de->dlg, ID_DungEditWindow),
-                                       0,
-                                       0);
-                    }
-                }
-                
-                hc=GetDlgItem(win,IDC_CUSTOM1);
-                
-                goto upddisp;
-            }
-            
-            break;
-        }
-    }
-    return FALSE;
-}
-
-char *Getoverstring(OVEREDIT *ed, int t, int n)
-{
-    int a;
-    switch(t) {
-    case 3:
-        wsprintf(buffer,"%02X",ed->ew.doc->rom[0xdbb73 + n]);
-        break;
-    case 5:
-        a=ed->ebuf[ed->sprset][n+2];
-        wsprintf(buffer,"%02X-%s",a,sprname[a]);
-        break;
-    case 7:
-        wsprintf(buffer,"%04X",((unsigned short*)(ed->ew.doc->rom + 0x15d8a))[n]);
-        break;
-    case 8:
-        wsprintf(buffer,"%02X",ed->ew.doc->rom[0xdb84c + n]);
-        break;
-    case 9:
-        if(n>8) wsprintf(buffer,"Whirl-%02X",((unsigned short*)(ed->ew.doc->rom + 0x16cf8))[n-9]);
-            else wsprintf(buffer,"Fly-%d",n+1);
-        break;
-    case 10:
-        wsprintf(buffer,"%02X-",ed->sbuf[n+2]);
-        strcpy(buffer+3,Getsecretstring(ed->ew.doc->rom,ed->sbuf[n+2]));
-        break;
-    default:
-        wsprintf(buffer,"Invalid object!");
-    }
-    return buffer;
-}
-
-void Overselchg(OVEREDIT *ed, HWND win)
-{
-    RECT rc;
-    if(ed->selobj==-1) return;
-    rc.left=ed->objx-(ed->mapscrollh<<5);
-    rc.top=ed->objy-(ed->mapscrollv<<5);
-    Getstringobjsize(Getoverstring(ed,ed->tool,ed->selobj),&rc);
-    InvalidateRect(win,&rc,0);
-}
-
-const static short tool_ovt[]={0,0,0,1,0,0,0,2,3,5,4};
-
-void Overtoolchg(OVEREDIT*ed,int i,HWND win)
-{
-    HWND hc=GetDlgItem(win,3001);
-    if(tool_ovt[i]!=tool_ovt[ed->tool]) InvalidateRect(hc,0,0);
-    else Overselchg(ed,hc);
-    ed->tool=i;
-    ed->selobj=-1;
-    Overselchg(ed,hc);
-}
+// =============================================================================
 
 const char * amb_str[9]={
     "Nothing",
@@ -13182,346 +6283,7 @@ const char * amb_str[9]={
     "Chime 2"
 };
 
-BOOL CALLBACK editdungprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,
-        j,
-        k,
-        l;
-    
-    unsigned char *rom;
-    
-    static int radio_ids[3] = {IDC_RADIO10,IDC_RADIO12,IDC_RADIO13};
-    
-    (void) lparam;
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        rom = dunged->ew.doc->rom;
-        j = dunged->ew.param;
-        
-        if(j < 0x85)
-        {
-            i = rom[0x15510 + j];
-            
-            if(i == 2)
-                // what exactly is a horizontal entrance doorway? O_o
-                CheckDlgButton(win, IDC_RADIO9, BST_CHECKED);
-            else if(i)
-                CheckDlgButton(win, IDC_RADIO3, BST_CHECKED);
-            else
-                CheckDlgButton(win, IDC_RADIO1, BST_CHECKED);
-        }
-        else
-        {
-            ShowWindow(GetDlgItem(win,IDC_RADIO9),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_RADIO3),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_RADIO1),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_STATIC3),SW_SHOW);
-            ShowWindow(GetDlgItem(win,IDC_EDIT1),SW_SHOW);
-            
-            SetDlgItemInt(win, IDC_EDIT1, ((short*) (rom + 0x15b36))[j], 0);
-        }
-        
-        i = rom[(j >= 0x85 ? 0x15b98 : 0x15595) + j];
-        
-        if(i & 0xf)
-            CheckDlgButton(win,IDC_RADIO5,BST_CHECKED);
-        else
-            CheckDlgButton(win,IDC_RADIO4,BST_CHECKED);
-        
-        SetDlgItemInt(win,IDC_EDIT2,i>>4,0);
-        
-        i = rom[(j >= 0x85 ? 0x15b9f : 0x1561a) + j];
-        
-        if(i & 0x20)
-            CheckDlgButton(win, IDC_CHECK1, BST_CHECKED);
-        
-        if(i & 0x02)
-            CheckDlgButton(win, IDC_CHECK4, BST_CHECKED);
-        
-        switch(l = rom[(j >= 0x85 ? 0x15ba6 : 0x1569f) + j])
-        {
-        
-        case 0:
-            
-            CheckDlgButton(win,IDC_RADIO6,BST_CHECKED);
-            
-            break;
-        
-        case 2:
-            
-            CheckDlgButton(win,IDC_RADIO8,BST_CHECKED);
-            
-            break;
-        
-        case 16:
-            
-            CheckDlgButton(win,IDC_RADIO7,BST_CHECKED);
-            
-            break;
-        
-        case 18:
-            
-            CheckDlgButton(win,IDC_RADIO11,BST_CHECKED);
-            
-            break;
-        }
-        
-        SetDlgItemInt(win,
-                      IDC_EDIT3,
-                      (char) rom[(j >= 0x85 ? 0x15b8a : 0x15406) + j], 1);
-        
-        i = ( (unsigned short*) (rom + (j >= 0x85 ? 0x15b28 : 0x15724) ) )[j];
-        
-        if(i && i != 0xffff)
-        {
-            k = (i >> 15) + 1;
-            
-            SetDlgItemInt(win, IDC_EDIT13, (i & 0x7e) >> 1, 0);
-            SetDlgItemInt(win, IDC_EDIT14, (i & 0x3f80) >> 7, 0);
-        }
-        else
-        {
-            k = 0;
-            
-            EnableWindow( GetDlgItem(win, IDC_EDIT13), 0);
-            EnableWindow( GetDlgItem(win, IDC_EDIT14), 0);
-        }
-        
-        CheckDlgButton(win, radio_ids[k], BST_CHECKED);
-        
-        j <<= 3;
-        
-        if(j >= 0x428)
-            j += 0xe37;
-        
-        SetDlgItemInt(win, IDC_EDIT4, rom[0x1491d + j], 0);
-        SetDlgItemInt(win, IDC_EDIT5, rom[0x1491e + j], 0);
-        SetDlgItemInt(win, IDC_EDIT22, rom[0x1491f + j], 0);
-        SetDlgItemInt(win, IDC_EDIT23, rom[0x14920 + j], 0);
-        SetDlgItemInt(win, IDC_EDIT24, rom[0x14921 + j], 0);
-        SetDlgItemInt(win, IDC_EDIT25, rom[0x14922 + j], 0);
-        SetDlgItemInt(win, IDC_EDIT26, rom[0x14923 + j], 0);
-        SetDlgItemInt(win, IDC_EDIT27, rom[0x14924 + j], 0);
-        
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_RADIO10:
-            EnableWindow(GetDlgItem(win,IDC_EDIT13),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT14),0);
-            break;
-        case IDC_RADIO12:
-        case IDC_RADIO13:
-            EnableWindow(GetDlgItem(win,IDC_EDIT13),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT14),1);
-            break;
-        case IDOK:
-            
-            rom = dunged->ew.doc->rom;
-            
-            j = dunged->ew.param;
-            
-            if(j < 0x85)
-            {
-                if( IsDlgButtonChecked(win, IDC_RADIO9) )
-                    i = 2;
-                else if( IsDlgButtonChecked(win, IDC_RADIO3) )
-                    i = 1;
-                else
-                    i = 0;
-                
-                rom[0x15510 + j] = i;
-            }
-            else
-                ((short*)(rom + 0x15b36))[j]=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            
-            i = IsDlgButtonChecked(win,IDC_RADIO5);
-            
-            rom[(j>=0x85?0x15b98:0x15595)+j]=i+(GetDlgItemInt(win,IDC_EDIT2,0,0)<<4);
-            i=0;
-            if(IsDlgButtonChecked(win,IDC_CHECK4)) i=2;
-            if(IsDlgButtonChecked(win,IDC_CHECK1)) i|=32;
-            rom[(j>=0x85?0x15b9f:0x1561a)+j]=i;
-            if(IsDlgButtonChecked(win,IDC_RADIO6)) i=0;
-            else if(IsDlgButtonChecked(win,IDC_RADIO8)) i=2;
-            else if(IsDlgButtonChecked(win,IDC_RADIO7)) i=16;
-            else i=18;
-            rom[(j>=0x85?0x15ba6:0x1569f)+j]=i;
-            
-            rom[(j >= 0x85 ? 0x15b8a : 0x15406) + j] =
-            GetDlgItemInt(win, IDC_EDIT3, 0, 1);
-            
-            if(IsDlgButtonChecked(win,IDC_RADIO10)) i=-1;
-            else {
-                i=(GetDlgItemInt(win,IDC_EDIT13,0,0)<<1)+(GetDlgItemInt(win,IDC_EDIT14,0,0)<<7);
-                if(IsDlgButtonChecked(win,IDC_RADIO13)) i|=0x8000;
-            }
-            ((short*)(rom+(j>=0x85?0x15b28:0x15724)))[j]=i;
-            i=((short*)(rom+(j>=0x85?0x15a64:0x14813)))[j];
-            k=(i&496)<<5;
-            i=(i&15)<<9;
-            j<<=3;
-            if(j>=0x428) j+=0xe37;
-            rom[0x1491d + j] = GetDlgItemInt(win, IDC_EDIT4, 0, 0);
-            rom[0x1491e + j] = GetDlgItemInt(win, IDC_EDIT5, 0, 0);
-            rom[0x1491f + j] = GetDlgItemInt(win, IDC_EDIT22, 0, 0);
-            rom[0x14920 + j] = GetDlgItemInt(win, IDC_EDIT23, 0, 0);
-            rom[0x14921 + j] = GetDlgItemInt(win, IDC_EDIT24, 0, 0);
-            rom[0x14922 + j] = GetDlgItemInt(win, IDC_EDIT25, 0, 0);
-            rom[0x14923 + j] = GetDlgItemInt(win, IDC_EDIT26, 0, 0);
-            rom[0x14924 + j] = GetDlgItemInt(win, IDC_EDIT27, 0, 0);
-            dunged->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-
-BOOL CALLBACK editroomprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,l;
-    HWND hc;
-    static int hs;
-    unsigned char*rom;
-    const static char*ef_str[8]={
-        "Nothing","01","Moving floor","Moving water","04","Red flashes","Light torch to see floor","Ganon room"
-    };
-    const static char * tag_str[64] = {
-        "Nothing","NW Kill enemy to open","NE Kill enemy to open","SW Kill enemy to open","SE Kill enemy to open","W Kill enemy to open","E Kill enemy to open","N Kill enemy to open","S Kill enemy to open","Clear quadrant to open","Clear room to open",
-        "NW Move block to open","NE Move block to open","SW Move block to open","SE Move block to open","W Move block to open","E Move block to open","N Move block to open",
-        "S Move block to open","Move block to open","Pull lever to open","Clear level to open door","Switch opens door(Hold)","Switch opens door(Toggle)",
-        "Turn off water","Turn on water","Water gate","Water twin","Secret wall (Right)","Secret wall (Left)","Crash","Crash",
-        "Use switch to bomb wall","Holes(0)","Open chest for holes(0)","Holes(1)","Holes(2)","Kill enemy to clear level","SE Kill enemy to move block","Trigger activated chest",
-        "Use lever to bomb wall","NW Kill enemy for chest","NE Kill enemy for chest","SW Kill enemies for chest","SE Kill enemy for chest","W Kill enemy for chest","E Kill enemy for chest","N Kill enemy for chest",
-        "S Kill enemy for chest","Clear quadrant for chest","Clear room for chest","Light torches to open","Holes(3)","Holes(4)","Holes(5)","Holes(6)",
-        "Agahnim's room","Holes(7)","Holes(8)","Open chest for holes(8)","Move block to get chest","Kill to open Ganon's door","Light torches to get chest","Kill boss again",
-    };
-    const static int warp_ids[17]={
-        IDC_STATIC2,IDC_STATIC3,IDC_STATIC4,IDC_STATIC5,
-        IDC_STATIC6,IDC_STATIC7,IDC_STATIC8,IDC_EDIT4,
-        IDC_EDIT6,IDC_EDIT7,IDC_EDIT15,IDC_EDIT16,
-        IDC_EDIT17,IDC_EDIT18,IDC_EDIT19,IDC_EDIT20,
-        IDC_EDIT21
-    };
-    const static char warp_flag[20]={
-        0x07,0x07,0x07,0x0f,0x1f,0x3f,0x7f,0x07,
-        0x07,0x0f,0x0f,0x1f,0x1f,0x3f,0x3f,0x7f,
-        0x7f,0,0,0
-    };
-    
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        rom=dunged->ew.doc->rom;
-        hc=GetDlgItem(win, IDC_COMBO1);
-        for(i=0;i<8;i++) SendMessage(hc,CB_ADDSTRING,0,(long)ef_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[4],0);
-        hc=GetDlgItem(win,IDC_COMBO2);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(long)tag_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[5],0);
-        hc=GetDlgItem(win,IDC_COMBO3);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(long)tag_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[6],0);
-        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[2]);
-        SendDlgItemMessage(win,IDC_BUTTON3,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[3]);
-        hs=dunged->hsize;
-        SetDlgItemInt(win,IDC_EDIT6,dunged->hbuf[7]&3,0);       // Hole/warp plane
-        SetDlgItemInt(win,IDC_EDIT15,(dunged->hbuf[7]>>2)&3,0); // Staircase plane 1
-        SetDlgItemInt(win,IDC_EDIT17,(dunged->hbuf[7]>>4)&3,0); // Staircase plane 2
-        SetDlgItemInt(win,IDC_EDIT19,(dunged->hbuf[7]>>6)&3,0);
-        SetDlgItemInt(win,IDC_EDIT21,dunged->hbuf[8]&3,0);
-        i=dunged->mapnum&0xff00;
-        SetDlgItemInt(win,IDC_EDIT4,dunged->hbuf[9]+i,0);  // Hole/warp room
-        SetDlgItemInt(win,IDC_EDIT7,dunged->hbuf[10]+i,0); // Staircase 1 room
-        SetDlgItemInt(win,IDC_EDIT16,dunged->hbuf[11]+i,0); // Staircase 2 room
-        SetDlgItemInt(win,IDC_EDIT18,dunged->hbuf[12]+i,0);
-        SetDlgItemInt(win,IDC_EDIT20,dunged->hbuf[13]+i,0);
-        SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x3f61d))[dunged->mapnum],0);
-        
-        for(i=0;i<57;i++) if(((short*)(rom + 0x190c))[i]==dunged->mapnum) {
-            CheckDlgButton(win,IDC_CHECK5,BST_CHECKED);
-            break;
-        }
-        
-    updbtn:
-        
-        l = 1 << (hs - 7);
-        
-        for(i=0;i<17;i++)
-            ShowWindow(GetDlgItem(win,warp_ids[i]),(warp_flag[i]&l)?SW_HIDE:SW_SHOW);
-        
-        EnableWindow(GetDlgItem(win,IDC_BUTTON1),hs>7);
-        EnableWindow(GetDlgItem(win,IDC_BUTTON3),hs<14);
-        
-        break;
-    
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_BUTTON1:
-            hs--;
-            if(hs==9) hs=7;
-            goto updbtn;
-        case IDC_BUTTON3:
-            hs++;
-            if(hs==8) hs=10;
-            goto updbtn;
-        case IDC_CHECK5:
-            rom=dunged->ew.doc->rom;
-            if(IsDlgButtonChecked(win,IDC_CHECK5)) {
-                for(i=0;i<57;i++)
-                    if( is16b_neg1_i(rom + 0x190c, i) )
-                    {
-                        ((short*)(rom + 0x190c))[i]=dunged->mapnum;
-                        break;
-                    }
-                
-                if(i == 57)
-                {
-                    MessageBox(framewnd,"You can't add anymore.","Bad error happened",MB_OK);
-                    CheckDlgButton(win,IDC_CHECK5,BST_UNCHECKED);
-                }
-            } else for(i=0;i<57;i++) if(((short*)(rom + 0x190c))[i]==dunged->mapnum) {
-                ((short*)(rom + 0x190c))[i]=-1;
-                break;
-            }
-            break;
-        case IDOK:
-            rom=dunged->ew.doc->rom;
-            dunged->hsize = hs;
-            dunged->hbuf[4] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO1,CB_GETCURSEL,0,0);
-            dunged->hbuf[5] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO2,CB_GETCURSEL,0,0);
-            dunged->hbuf[6] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO3,CB_GETCURSEL,0,0);
-            dunged->hbuf[7]=(GetDlgItemInt(win,IDC_EDIT6,0,0)&3)|
-            ((GetDlgItemInt(win,IDC_EDIT15,0,0)&3)<<2)|
-            ((GetDlgItemInt(win,IDC_EDIT17,0,0)&3)<<4)|
-            ((GetDlgItemInt(win,IDC_EDIT19,0,0)&3)<<6);
-            dunged->hbuf[8]=GetDlgItemInt(win,IDC_EDIT21,0,0)&3;
-            dunged->hbuf[9]=GetDlgItemInt(win,IDC_EDIT4,0,0);
-            dunged->hbuf[10]=GetDlgItemInt(win,IDC_EDIT7,0,0);
-            dunged->hbuf[11]=GetDlgItemInt(win,IDC_EDIT16,0,0);
-            dunged->hbuf[12]=GetDlgItemInt(win,IDC_EDIT18,0,0);
-            dunged->hbuf[13]=GetDlgItemInt(win,IDC_EDIT20,0,0);
-            ((short*)(rom + 0x3f61d))[dunged->mapnum]=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            
-            dunged->modf  = 1;
-            dunged->hmodf = 1;
-            
-            dunged->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-        }
-    }
-    return FALSE;
-}
+// ==============================================================================
 
 BOOL CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -13625,218 +6387,8 @@ BOOL CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-BOOL CALLBACK editexit(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    unsigned char*rom;
-    int i,j,k,l,m,n,o;
-    HWND hc;
-    const static int radio_ids[6]={IDC_RADIO2,IDC_RADIO4,IDC_RADIO5,IDC_RADIO6,IDC_RADIO7,IDC_RADIO8};
-    const static int door_ofs[2]={0x16367,0x16405};
-    const static int edit_ids[6]={IDC_EDIT8,IDC_EDIT9,IDC_EDIT10,IDC_EDIT11};
-    const static int hide_ids[20]={IDC_STATIC2,IDC_STATIC3,IDC_STATIC4,IDC_STATIC5,IDC_STATIC6,
-        IDC_EDIT15,IDC_EDIT22,IDC_EDIT23,IDC_EDIT24,IDC_EDIT25,
-        IDC_STATIC7,IDC_STATIC8,IDC_STATIC9,IDC_STATIC10,IDC_STATIC11,
-        IDC_EDIT26,IDC_EDIT27,IDC_EDIT28,IDC_EDIT29,IDC_EDIT30};
-    
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        rom=oved->ew.doc->rom;
-        i=oved->selobj;
-        j=(oved->ew.param&7)<<9;
-        k=(oved->ew.param&56)<<6;
-        SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x15d8a))[i],0);
-        SetDlgItemInt(win,IDC_EDIT2,((short*)(rom + 0x15f15))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT3,((short*)(rom + 0x15fb3))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT4,((short*)(rom + 0x1618d))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT5,((short*)(rom + 0x1622b))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT6,((short*)(rom + 0x16051))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT7,((short*)(rom + 0x160ef))[i]-j,1);
-        for(j=0;j<2;j++) {
-            l=((unsigned short*)(rom+door_ofs[j]))[i];
-            if(l && l!=65535) {
-                m=(l>>15)+1;
-                SetDlgItemInt(win,edit_ids[j*2],(l&0x7e)>>1,0);
-                SetDlgItemInt(win,edit_ids[j*2+1],(l&0x3f80)>>7,0);
-            } else {
-                m=0;
-                EnableWindow(GetDlgItem(win,edit_ids[j*2]),0);
-                EnableWindow(GetDlgItem(win,edit_ids[j*2+1]),0);
-            }
-            m+=3*j;
-            CheckDlgButton(win,radio_ids[m],BST_CHECKED);
-        }
-        SetDlgItemInt(win,IDC_EDIT12,rom[0x15e28 + i], 0);
-        SetDlgItemInt(win,IDC_EDIT13,(char)rom[0x162c9 + i], 1);
-        SetDlgItemInt(win,IDC_EDIT14,(char)rom[0x16318 + i], 1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_EDIT1|(EN_CHANGE<<16):
-            i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            rom=oved->ew.doc->rom;
-            if(i>=0x180 && i<0x190) {
-                j=SW_SHOW;
-                SetDlgItemInt(win,IDC_EDIT15,rom[0x16681 + i] >> 1, 0);
-                SetDlgItemInt(win,IDC_EDIT22,rom[0x16691 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT23,rom[0x166a1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT24,rom[0x166b1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT25,rom[0x166c1 + i], 0);
-                SetDlgItemInt(win,IDC_EDIT26,((short*)(rom + 0x163e1))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT27,((short*)(rom + 0x16401))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT28,((short*)(rom + 0x16421))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT29,((short*)(rom + 0x16441))[i], 0);
-                SetDlgItemInt(win,IDC_EDIT30,((short*)(rom + 0x164e1))[i], 0);
-            } else j=SW_HIDE;
-            for(k=0;k<20;k++)
-                ShowWindow(GetDlgItem(win,hide_ids[k]),j);
-            break;
-        case IDC_RADIO2:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),0);
-            break;
-        case IDC_RADIO4: case IDC_RADIO5:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),1);
-            break;
-        case IDC_RADIO6:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),0);
-            break;
-        case IDC_RADIO7: case IDC_RADIO8:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
-            break;
-        case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
-            Overselchg(oved,hc);
-            rom=oved->ew.doc->rom;
-            i=oved->selobj;
-            l = rom[0x15e28 + i] = GetDlgItemInt(win,IDC_EDIT12,0,0);
-            if(l!=oved->ew.param) oved->selobj=-1;
-            n=oved->mapsize?1023:511;
-            j=(l&7)<<9;
-            k=(l&56)<<6;
-            ((short*)(rom + 0x15d8a))[i]=o=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ((short*)(rom + 0x15f15))[i]=(l=(GetDlgItemInt(win,IDC_EDIT2,0,0)&n))+k;
-            ((short*)(rom + 0x15fb3))[i]=(m=(GetDlgItemInt(win,IDC_EDIT3,0,0)&n))+j;
-            ((short*)(rom + 0x15e77))[i]=((l&0xfff0)<<3)|((m&0xfff0)>>3);
-            ((short*)(rom + 0x1618d))[i]=(GetDlgItemInt(win,IDC_EDIT4,0,0)&n)+k;
-            ((short*)(rom + 0x1622b))[i]=(GetDlgItemInt(win,IDC_EDIT5,0,0)&n)+j;
-            ((short*)(rom + 0x16051))[i]=(oved->objy=GetDlgItemInt(win,IDC_EDIT6,0,0)&n)+k;
-            ((short*)(rom + 0x160ef))[i]=(oved->objx=GetDlgItemInt(win,IDC_EDIT7,0,0)&n)+j;
-            m=0;
-            for(j=0;j<2;j++) {
-                if(IsDlgButtonChecked(win,radio_ids[m])) l=0;
-                else {
-                    l=(GetDlgItemInt(win,edit_ids[j*2],0,0)<<1)+(GetDlgItemInt(win,edit_ids[j*2+1],0,0)<<7);
-                    if(IsDlgButtonChecked(win,radio_ids[m+2])) l|=0x8000;
-                }
-                ((short*)(rom+door_ofs[j]))[i]=l;
-                m+=3;
-            }
-            rom[0x162c9 + i] = GetDlgItemInt(win,IDC_EDIT13,0,1);
-            rom[0x16318 + i] = GetDlgItemInt(win,IDC_EDIT14,0,1);
-            if(o>=0x180 && o<0x190)
-            {
-                rom[0x16681 + o] = GetDlgItemInt(win,IDC_EDIT15,0,0)<<1;
-                rom[0x16691 + o] = GetDlgItemInt(win,IDC_EDIT22,0,0);
-                rom[0x166a1 + o] = GetDlgItemInt(win,IDC_EDIT23,0,0);
-                rom[0x166b1 + o] = GetDlgItemInt(win,IDC_EDIT24,0,0);
-                rom[0x166c1 + o] = GetDlgItemInt(win,IDC_EDIT25,0,0);
-                
-                ((short*)(rom + 0x163e1))[o]=GetDlgItemInt(win,IDC_EDIT26,0,0);
-                ((short*)(rom + 0x16401))[o]=GetDlgItemInt(win,IDC_EDIT27,0,0);
-                ((short*)(rom + 0x16421))[o]=GetDlgItemInt(win,IDC_EDIT28,0,0);
-                ((short*)(rom + 0x16441))[o]=GetDlgItemInt(win,IDC_EDIT29,0,0);
-                ((short*)(rom + 0x164e1))[o]=GetDlgItemInt(win,IDC_EDIT30,0,0);
-            }
-            Overselchg(oved,hc);
-            oved->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-BOOL CALLBACK editwhirl(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    unsigned char*rom;
-    int i,j,k,l,m,n;
-    HWND hc;
-    
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        rom=oved->ew.doc->rom;
-        i=oved->selobj;
-        j=(oved->ew.param&7)<<9;
-        k=(oved->ew.param&56)<<6;
-        if(i>8) SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x16ce6))[i],0);
-        else {
-            ShowWindow(GetDlgItem(win,IDC_STATIC2),SW_HIDE);
-            ShowWindow(GetDlgItem(win,IDC_EDIT1),SW_HIDE);
-        }
-        SetDlgItemInt(win,IDC_EDIT2,((short*)(rom + 0x16b29))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT3,((short*)(rom + 0x16b4b))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT4,((short*)(rom + 0x16bb1))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT5,((short*)(rom + 0x16bd3))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT6,((short*)(rom + 0x16b6d))[i]-k,1);
-        SetDlgItemInt(win,IDC_EDIT7,((short*)(rom + 0x16b8f))[i]-j,1);
-        SetDlgItemInt(win,IDC_EDIT12,((short*)(rom + 0x16ae5))[i],0);
-        SetDlgItemInt(win,IDC_EDIT13,(char)rom[0x16bf5 + i],1);
-        SetDlgItemInt(win,IDC_EDIT14,(char)rom[0x16c17 + i],1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_RADIO2:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),0);
-            break;
-        case IDC_RADIO4: case IDC_RADIO5:
-            EnableWindow(GetDlgItem(win,IDC_EDIT8),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT9),1);
-            break;
-        case IDC_RADIO6:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),0);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),0);
-            break;
-        case IDC_RADIO7: case IDC_RADIO8:
-            EnableWindow(GetDlgItem(win,IDC_EDIT10),1);
-            EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
-            break;
-        case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
-            Overselchg(oved,hc);
-            rom=oved->ew.doc->rom;
-            i=oved->selobj;
-            l=((short*)(rom + 0x16ae5))[i]=GetDlgItemInt(win,IDC_EDIT12,0,0);
-            n=(rom[0x12884 + l]<<8)|0xff;
-            j=(l&7)<<9;
-            k=(l&56)<<6;
-            if(l!=oved->ew.param) oved->selobj=-1;
-            if(i>8) ((short*)(rom + 0x16ce6))[i]=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ((short*)(rom + 0x16b29))[i]=(l=GetDlgItemInt(win,IDC_EDIT2,0,0)&n)+k;
-            ((short*)(rom + 0x16b4b))[i]=(m=GetDlgItemInt(win,IDC_EDIT3,0,0)&n)+j;
-            ((short*)(rom + 0x16b07))[i]=((l&0xfff0)<<3)|((m&0xfff0)>>3);
-            ((short*)(rom + 0x16bb1))[i]=(GetDlgItemInt(win,IDC_EDIT4,0,0)&n)+k;
-            ((short*)(rom + 0x16bd3))[i]=(GetDlgItemInt(win,IDC_EDIT5,0,0)&n)+j;
-            ((short*)(rom + 0x16b6d))[i]=(oved->objy=GetDlgItemInt(win,IDC_EDIT6,0,0)&n)+k;
-            ((short*)(rom + 0x16b8f))[i]=(oved->objx=GetDlgItemInt(win,IDC_EDIT7,0,0)&n)+j;
-            rom[0x16bf5 + i] = GetDlgItemInt(win,IDC_EDIT13,0,1);
-            rom[0x16c17 + i] = GetDlgItemInt(win,IDC_EDIT14,0,1);
-            Overselchg(oved,hc);
-            oved->ew.doc->modf=1;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
+// =============================================================================
+
 BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     HWND hc;
@@ -13891,7 +6443,8 @@ int __stdcall askinteger(int max,char*caption,char*text)
     
     return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
 }
-static char*screen_text[]={
+
+static char const * screen_text[] = {
     "Title screen",
     "Naming screen",
     "Player select",
@@ -13905,7 +6458,8 @@ static char*screen_text[]={
     "Destination list"
 };
 
-static char*level_str[]={
+char const * level_str[] =
+{
     "None",
     "Church",
     "Castle",
@@ -13923,9 +6477,10 @@ static char*level_str[]={
     "Agahnim 2"
 };
 
-//Setpalmode#*******************************
+// =============================================================================
 
-void Setpalmode(DUNGEDIT *ed)
+void
+Setpalmode(DUNGEDIT *ed)
 {
     int i,
         j,
@@ -13955,11 +6510,10 @@ void Setpalmode(DUNGEDIT *ed)
         ((short*)(&(ed->pal)))[i] = (i - k) & 255;
 }
 
-//Setpalmode********************************
+// =============================================================================
 
-//Setfullmode#******************************
-
-void Setfullmode(DUNGEDIT *ed)
+void
+Setfullmode(DUNGEDIT *ed)
 {
     int pal[256];
     
@@ -14031,7 +6585,8 @@ void Delgraphwin(DUNGEDIT*ed)
         dispwnd = lastgraph;
 }
 
-void Updpal(void*ed)
+void
+Updpal(void*ed)
 {
     if(ed == dispwnd && ( (DUNGEDIT*) ed)->hpal)
         Setpalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
@@ -14048,1013 +6603,7 @@ void Setdispwin(DUNGEDIT *ed)
     }
 }
 
-// Fix entrance scrolling settings.
-// Seems to update those 8 numbers that control scrolls in entrances?
-void FixEntScroll(FDOC*doc,int j)
-{
-    unsigned char *rom = doc->rom;
-    HWND win;
-    int i,k,l,n,o,p;
-    
-    const static unsigned char hfl[4]={0xd0,0xb0};
-    const static unsigned char vfl[4]={0x8a,0x86};
-    
-    k=((short*)(rom+(j>=0x85?0x15a64:0x14813)))[j];
-    
-    win = doc->dungs[k];
-    
-    if(win)
-        n = GetDlgItemInt(win, ID_DungLayout, 0, 0);
-    else
-        n = rom[romaddr(*(int*)(rom + 0xf8000 + k * 3))+1]>>2;
-    
-    o = rom[(j >= 0x85 ? 0x15ac7 : 0x14f5a) + (j << 1)] & 1;
-    p = rom[(j >= 0x85 ? 0x15ad5 : 0x15064) + (j << 1)] & 1;
-    
-    i = (((vfl[o] >> n) << 1) & 2) + (((hfl[p] >> n) << 5) & 32);
-    
-    rom[(j>=0x85?0x15b9f:0x1561a)+j]=i;
-    rom[(j>=0x85?0x15ba6:0x1569f)+j]=(o<<1)+(p<<4);
-    
-    i = (k >> 4) << 1;
-    l = (k & 15) << 1;
-    
-    j <<= 3;
-    
-    if(j >= 0x428)
-        j += 0xe37;
-    
-    rom[0x1491d + j] = i + o;
-    rom[0x1491e + j] = i;
-    rom[0x1491f + j] = i + o;
-    rom[0x14920 + j] = i + 1;
-    rom[0x14921 + j] = l + p;
-    rom[0x14922 + j] = l;
-    rom[0x14923 + j] = l + p;
-    rom[0x14924 + j] = l + 1;
-}
-
-//dungdlgproc*********************************
-
-BOOL CALLBACK dungdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int j, // the "entrance" number. not a room number. Is used to retrieve the room #
-        k, // the room number retrieved using j.
-        i, // 
-        l,
-        m,
-        n;
-    
-    HWND hc;
-    
-    DUNGEDIT *ed;
-    
-    uint8_t *buf2;
-    
-    unsigned char *rom;
-    
-//  const static int inf_ofs[5]={0x14813,0x14f59,0x15063,0x14e4f,0x14d45};
-//  const static int inf_ofs2[5]={0x156be,0x15bb4,0x15bc2,0x15bfa,0x15bec};
-    
-    // music offsets?
-    const static unsigned char mus_ofs[] =
-    {
-        255,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,240,241,242,243
-    };
-    
-    const static char *bg2_str[] =
-    {
-        "Off",
-        "Parallaxing",
-        "Dark",
-        "On top",
-        "Translucent",
-        "Parallaxing2",
-        "Normal",
-        "Addition",
-        "Dark room"
-    };
-    
-    const static char *coll_str[] =
-    {
-        "One",
-        "Both",
-        "Both w/scroll",
-        "Moving floor",
-        "Moving water"
-    };
-    
-    // message handling for the window.
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        SetWindowLong(win, DWL_USER, lparam);
-        
-        ed = (DUNGEDIT*) lparam;
-        
-        // get the 'room' we're looking at.
-        j = ed->ew.param;
-        
-        rom = ed->ew.doc->rom;
-        
-        // the dungedit has been initialized.
-        ed->init = 1;
-        
-        // pass this win to ed's dialogue.
-        ed->dlg = win;
-        
-        // void the HPALETTE in ed.
-        ed->hpal = 0;
-        
-        if(j >= 0x8c)
-        {
-            // Only certain controls are necessary for working with a dungeon
-            // overlay or layout, so hide the rest.
-            for(i = 0; i < ID_DungOverlayHideCount; i++)
-                ShowWindow( GetDlgItem(win, overlay_hide[i]), SW_HIDE );
-            
-            if(j < 0x9f)
-                buf2 = rom + romaddr( *(int*) (rom + 0x26b1c + j * 3) );
-            else if(j < 0xa7)
-                buf2 = rom + romaddr( *(int*) (rom + romaddr( *(int*) (rom + 0x882d) ) + (j - 0x9f) * 3 ) );
-            else
-                buf2 = rom + (rom[0x9c25] << 15) - 0x8000 + *(unsigned short*) (rom + 0x9c2a);
-            
-            for(i = 0; ; i += 3)
-                if( is16b_neg1(buf2 + i) )
-                    break;
-            
-            ed->chkofs[0] = 2;
-            ed->len = ed->chkofs[2] = ed->chkofs[1] = i + 4;
-            ed->selobj = 2;
-            ed->buf = (uint8_t*) malloc(i + 4);
-            
-            *(short*)(ed->buf)=15;
-            
-            memcpy(ed->buf+2,buf2,i+2);
-            ed->hbuf[0] = 0;
-            ed->hbuf[1] = 1;
-            ed->hbuf[2] = 0;
-            ed->hbuf[3] = 0;
-            ed->hbuf[4] = 0;
-            ed->gfxtmp = 0;
-            
-            CheckDlgButton(win, ID_DungShowBG1, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowBG2, BST_CHECKED);
-            
-            Initroom(ed,win);
-        }
-        else
-        {
-            // not an overlay
-            
-            k = ( (short*) ( rom + ( j >= 0x85 ? 0x15a64 : 0x14813 ) ) )[j];
-            
-            // read in the room number, put it to screen.
-            SetDlgItemInt(win, ID_DungEntrRoomNumber, k, 0);
-            
-            i = (k & 0x1f0) << 5;
-            l = (k & 0x00f) << 9;
-            
-            if(j >= 0x85)
-            {
-                // these are the starting location maps
-                SetDlgItemInt(win, ID_DungEntrYCoord, ((short*) (rom + 0x15ac6) )[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15ad4) )[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x15ab8) )[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x15aaa) )[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15af0) )[j], 0);
-                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x15ae2) )[j], 0);
-            }
-            else
-            {
-                // these are normal rooms
-                SetDlgItemInt(win, ID_DungEntrYCoord, ((short*) (rom + 0x14f59))[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15063))[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x14e4f))[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x14d45))[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15277))[j], 0);
-                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x1516d))[j], 0);
-            }
-            
-            // the show BG1, BG2, Sprite, check boxes.
-            // make them initially checked.
-            CheckDlgButton(win, ID_DungShowBG1, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowBG2, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowSprites, BST_CHECKED);
-            
-            for(i = 0; i < 4; i++)
-                // map in the arrow bitmaps for those buttons at the top l.eft
-                SendDlgItemMessage(win, ID_DungLeftArrow + i, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[i]);
-            
-            for(i = 0; i < 40; i++)
-                // map in the names of the music tracks
-                SendDlgItemMessage(win, ID_DungEntrSong, CB_ADDSTRING, 0, (int) mus_str[i]);
-            
-            // if j is a starting location, use 0x15bc9, otherwise 0x1582e as an offset.
-            l = rom[ (j >= 0x85 ? 0x15bc9 : 0x1582e) + j ];
-            
-            for(i = 0; i < 40; i++)
-            {
-                if(mus_ofs[i] == l)
-                {
-                    SendDlgItemMessage(win, ID_DungEntrSong, CB_SETCURSEL, i, 0);
-                    
-                    break;
-                }
-            }
-            
-            for(i = 0; i < 9; i++)
-                SendDlgItemMessage(win, ID_DungBG2Settings, CB_ADDSTRING, 0, (int) bg2_str[i]);
-            
-            for(i = 0; i < 5; i++)
-                SendDlgItemMessage(win, ID_DungCollSettings, CB_ADDSTRING, 0, (int) coll_str[i]);
-            
-            for(i = 0; i < 15; i++)
-            {
-                SendDlgItemMessage(win,
-                                   ID_DungEntrPalaceID,
-                                   CB_ADDSTRING,
-                                   0,
-                                   (int) level_str[i]);
-            }
-            
-            SendDlgItemMessage(win,
-                               ID_DungEntrPalaceID,
-                               CB_SETCURSEL,
-                               ( (rom[ (j >= 0x85 ? 0x15b91 : 0x1548b) + j] + 2) >> 1) & 0x7f,
-                               0);
-            
-            ed->gfxtmp = rom[(j >= 0x85 ? 0x15b83 : 0x15381) + j];
-            
-            SetDlgItemInt(win, ID_DungEntrTileSet, ed->gfxtmp, 0);
-            
-            Openroom(ed, k);
-        }
-        
-        // \task Investigate this. Do all dungeons really set the backdrop color
-        // to pure black?
-        ed->pal[0] = blackcolor;
-        
-        // for the first entry of each palette, the first color is "blackcolor"
-        for(i = 16; i < 256; i += 16)
-            ed->pal[i] = ed->pal[0];
-        
-        // start at the top left corner of the dungeon map
-        ed->mapscrollh = 0;
-        ed->mapscrollv = 0;
-        
-        // it's the bit map information header... whatever that is.
-        ed->bmih = zbmih;
-        ed->selchk = 0;
-        ed->withfocus = 0;
-        ed->disp = 7;
-        ed->anim = 0;
-        ed->init = 0;
-        
-        Getblocks(ed->ew.doc, 0x79);
-        Getblocks(ed->ew.doc, 0x7a);
-        
-        Addgraphwin(ed, 1);
-        Updatemap(ed);
-        
-        goto updpal3;
-    
-    case 4002: // used as a code to update the palette? so it seems
-        
-        InvalidateRect( GetDlgItem(win, ID_DungEditWindow), 0, 0);
-        
-        break;
-    
-    case WM_COMMAND:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win, DWL_USER);
-        
-        if(!ed || ed->init)
-            break;
-        
-        switch(wparam)
-        {
-        
-        // the arrow buttons
-        case ID_DungLeftArrow:
-        case ID_DungRightArrow:
-        case ID_DungUpArrow:
-        case ID_DungDownArrow:
-            
-            k = ed->mapnum;
-            
-            k = ( k + nxtmap[wparam - ID_DungLeftArrow] & 0xff) + (k & 0x100);
-            
-            if(ed->ew.doc->dungs[k])
-            {
-                MessageBox(framewnd,"The room is already open in another editor","Bad error happened",MB_OK);
-                break;
-            }
-newroom:
-            
-            if(Closeroom(ed))
-                break;
-            
-            ed->init = 1;
-            
-            Openroom(ed, k);
-            
-            ed->init = 0;
-            Updatemap(ed);
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            Dungselectchg(ed, hc, 1);
-            InvalidateRect(hc,0,0);
-            
-            goto updpal;
-        
-        case ID_DungChangeRoom:
-            
-            k = askinteger(295, "Jump to room", "Room #");
-            
-            if(k == -1)
-                break;
-            
-            goto newroom;
-        
-        case ID_DungShowBG1:
-            
-            // \task What's with these bitpatterns? enumerate them?
-            ed->disp &= -2;
-            
-            if(IsDlgButtonChecked(win, ID_DungShowBG1) == BST_CHECKED)
-                ed->disp |= 1;
-            
-            goto updscrn;
-        
-        case ID_DungShowBG2:
-            
-            ed->disp &= -3;
-            
-            if(IsDlgButtonChecked(win, ID_DungShowBG2) == BST_CHECKED)
-                ed->disp |= 2;
-            
-            goto updscrn;
-        
-        case ID_DungShowSprites:
-            
-            ed->disp &= -5;
-            
-            if(IsDlgButtonChecked(win, ID_DungShowSprites) == BST_CHECKED)
-                ed->disp |= 4;
-            
-            goto updscrn;
-        
-        case ID_DungAnimateButton:
-            
-            ed->anim++;
-            
-            if(ed->anim == 3)
-                ed->anim = 0;
-            
-            wsprintf(buffer, "Frm%d", ed->anim + 1);
-            
-            SetWindowText((HWND)lparam,buffer);
-            
-            goto updscrn;
-        
-        case ID_DungObjLayer1:
-            
-            i = 0;
-            
-        updchk:
-            
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            
-            Dungselectchg(ed, hc, 0);
-            
-            if(ed->chkofs[i + 1] == ed->chkofs[i] + 2)
-            {
-                i++;
-                
-                if(ed->chkofs[i + 1] <= ed->chkofs[i] + 2)
-                {
-                    i--;
-                    ed->selobj = 0;
-                    
-                    goto no_obj;
-                }
-            }
-            
-            ed->selobj = ed->chkofs[i];
-no_obj:
-            ed->selchk = i;
-            
-            Dungselectchg(ed,hc,1);
-            
-            break;
-        
-        case ID_DungObjLayer2:
-            
-            i = 2;
-            
-            goto updchk;
-        
-        case ID_DungObjLayer3:
-            
-            i = 4;
-            
-            goto updchk;
-        
-        case ID_DungSprLayer:
-            
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            
-            Dungselectchg(ed,hc,0);
-            
-            ed->selchk = 6;
-            ed->selobj = ed->esize > 2;
-            
-            Dungselectchg(ed,hc,1);
-            
-            break;
-        
-        case ID_DungEntrRoomNumber | (EN_CHANGE << 16):
-        case ID_DungEntrYCoord | (EN_CHANGE << 16):
-        case ID_DungEntrXCoord | (EN_CHANGE << 16):
-        case ID_DungEntrYScroll | (EN_CHANGE << 16):
-        case ID_DungEntrXScroll | (EN_CHANGE << 16):
-        case ID_DungFloor1 | (EN_CHANGE << 16):
-        case ID_DungFloor2 | (EN_CHANGE << 16):
-        case ID_DungEntrTileSet | (EN_CHANGE << 16):
-        case ID_DungLayout | (EN_CHANGE << 16):
-        case ID_DungTileSet | (EN_CHANGE << 16):
-        case ID_DungPalette | (EN_CHANGE << 16):
-        case ID_DungSprTileSet | (EN_CHANGE << 16):
-        case ID_DungEntrCameraX | (EN_CHANGE << 16):
-        case ID_DungEntrCameraY | (EN_CHANGE << 16):
-            
-            wparam &= 65535;
-            
-            j = GetDlgItemInt(win, wparam, 0, 0);
-            
-            rom = ed->ew.doc->rom;
-            
-            // \task consider a different check for this. The enumerations
-            // could change order.
-            if(wparam > ID_DungEntrXScroll)
-            {
-                switch(wparam)
-                {
-                
-                case ID_DungFloor1:
-                    
-                    if(j>15)
-                    {
-                        SetDlgItemInt(win, ID_DungFloor1, 15, 0);
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungFloor1, 0, 0);
-                        break;
-                    }
-                    
-                    ed->buf[0] &= 0xf0;
-                    ed->buf[0] |= j;
-                    
-                    if(ed->ew.param < 0x8c)
-                        ed->modf = 1;
-updmap:
-                    
-                    Updatemap(ed);
-                    
-updscrn: // update the screen (obviously)
-                    
-                    hc = GetDlgItem(win, ID_DungEditWindow);
-                    
-                    InvalidateRect(hc,0,0);
-                    
-                    break;
-                
-                case ID_DungFloor2:
-                    
-                    if(j > 15)
-                    {
-                        SetDlgItemInt(win, ID_DungFloor2, 15, 0);
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungFloor2, 0, 0);
-                        break;
-                    }
-                    
-                    ed->buf[0]&=0xf;
-                    ed->buf[0]|=j<<4;
-                    ed->modf=1;
-                    
-                    goto updmap;
-                
-                case ID_DungLayout:
-                    
-                    if(j > 7)
-                    {
-                        SetDlgItemInt(win, ID_DungLayout, 7, 0);
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungLayout, 0, 0);
-                        break;
-                    }
-                    
-                    ed->buf[1] = j << 2;
-                    ed->modf = 1;
-                    
-                    for(i = 0; i < 0x85; i++)
-                    {
-                        if(((short*)(rom + 0x14813))[i] == ed->mapnum)
-                            FixEntScroll(ed->ew.doc,i);
-                    }
-                    
-                    for( ; i < 0x8c; i++)
-                    {
-                        if(((short*)(rom + 0x15a64))[i] == ed->mapnum)
-                            FixEntScroll(ed->ew.doc, i);
-                    }
-                    
-                    goto updmap;
-                
-                case ID_DungEntrTileSet:
-                    
-                    if(j > 30)
-                    {
-                        SetDlgItemInt(win, ID_DungEntrTileSet, 30, 0);
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungEntrTileSet, 0, 0);
-                        break;
-                    }
-                    
-                    ed->gfxtmp = j;
-                    rom[ed->ew.param + (ed->ew.param >= 0x85 ? 0x15b83 : 0x15381)] = j;
-                    ed->ew.doc->modf = 1;
-updgfx:
-                    
-                    for(i = 0; i < 0; i++)
-                        Releaseblks(ed->ew.doc,ed->blocksets[i]);
-                    
-                    j = 0x6073 + (ed->gfxtmp << 3);
-                    l = 0x5d97 + (ed->gfxnum << 2);
-                    
-                    for(i = 0; i < 8; i++)
-                        ed->blocksets[i] = rom[j++];
-                    
-                    for(i = 3; i < 7; i++)
-                    {
-                        if(m = rom[l++])
-                            ed->blocksets[i] = m;
-                    }
-                    
-                    ed->blocksets[8] = rom[0x1011e + ed->gfxnum];
-                    
-                    for(i=0;i<9;i++)
-                        Getblocks(ed->ew.doc,ed->blocksets[i]);
-                    
-                    goto updscrn;
-                
-                case ID_DungTileSet:
-                    
-                    if(j > 23)
-                    {
-                        SetDlgItemInt(win, ID_DungTileSet, 23, 0);
-                        
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungTileSet, 0, 0);
-                        
-                        break;
-                    }
-                    
-                    ed->gfxnum = j;
-                    ed->modf = 1;
-                    ed->hmodf = 1;
-                    
-                    goto updgfx;
-                
-                case ID_DungSprTileSet:
-                    
-                    ed->sprgfx = j;
-                    ed->modf   = 1;
-                    ed->hmodf  = 1;
-                    
-                    l = 0x5c57 + (j << 2);
-                    
-                    for(i = 0; i < 4; i++)
-                    {
-                        Releaseblks(ed->ew.doc, ed->blocksets[i + 11]);
-                        
-                        ed->blocksets[i+11]=rom[l+i] + 0x73;
-                        
-                        Getblocks(ed->ew.doc,ed->blocksets[i+11]);
-                    }
-                    
-                    break;
-                    
-                updpal:
-                    
-                    rom = ed->ew.doc->rom;
-                    
-                updpal3:
-                    
-                    j = ed->palnum;
-                    
-                    goto updpal2;
-                
-                case ID_DungPalette:
-                    
-                    if(j > 71)
-                    {
-                        SetDlgItemInt(win, ID_DungPalette, 71, 0);
-                        
-                        break;
-                    }
-                    else if(j < 0)
-                    {
-                        SetDlgItemInt(win, ID_DungPalette, 0, 0);
-                        
-                        break;
-                    }
-                    
-                    ed->palnum = j;
-                    
-                    if(ed->ew.param < 0x8c)
-                    {
-                        ed->modf = 1;
-                        ed->hmodf = 1;
-                    }
-                    
-updpal2:
-                    
-                    buf2 = rom + (j << 2) + 0x75460;
-                    i = 0x1bd734 + buf2[0]*90;
-                    
-                    Loadpal(ed, rom, i, 0x21, 15, 6);
-                    Loadpal(ed, rom, i, 0x89, 7, 1);
-                    Loadpal(ed, rom, 0x1bd39e + buf2[1] * 14, 0x81, 7, 1);
-                    Loadpal(ed, rom, 0x1bd4e0 + buf2[2] * 14, 0xd1, 7, 1);
-                    Loadpal(ed, rom, 0x1bd4e0 + buf2[3] * 14, 0xe1, 7, 1);
-                    Loadpal(ed, rom, 0x1bd308, 0xf1, 15, 1);
-                    Loadpal(ed, rom, 0x1bd648, 0xdc, 4, 1);
-                    Loadpal(ed, rom, 0x1bd630, 0xd9, 3, 1);
-                    Loadpal(ed, rom, 0x1bd218, 0x91, 15, 4);
-                    Loadpal(ed, rom, 0x1bd6a0, 0, 16, 2);
-                    
-                    Loadpal(ed, rom, 0x1bd4d2, 0xe9, 7, 1);
-                    
-                    if(ed->hbuf[4] == 6)
-                        Loadpal(ed, rom, 0x1be22c, 0x7b, 2, 1);
-                    
-                    Updpal(ed);
-                    
-                    break;
-                
-                case ID_DungEntrCameraX:
-                    
-                    ((short*)(rom+(ed->ew.param>=0x85?0x15af0:0x15277)))[ed->ew.param]=j;
-                    ed->ew.doc->modf=1;
-                    
-                    break;
-                
-                case ID_DungEntrCameraY:
-                    
-                    ((short*)(rom+(ed->ew.param>=0x85?0x15ae2:0x1516d)))[ed->ew.param]=j;
-                    ed->ew.doc->modf=1;
-                    
-                    break;
-                }
-            }
-            else
-            {
-                j = ed->ew.param;
-                k = GetDlgItemInt(win, ID_DungEntrRoomNumber, 0, 0);
-                
-                if((unsigned)k > 295)
-                {
-                    ed->init = 1;
-                    SetDlgItemInt(win, ID_DungEntrRoomNumber, 295, 0);
-                    ed->init = 0;
-                    k = 295;
-                }
-                
-                ((short*)(rom+(j>=0x85?0x15a64:0x14813)))[j]=k;
-                i=(k&496)<<5;
-                l=(k&15)<<9;
-                
-                m = GetDlgItemInt(win, ID_DungEntrYScroll, 0, 0);
-                n = GetDlgItemInt(win, ID_DungEntrXScroll, 0, 0);
-                
-                if(j>=0x85)
-                {
-                    ((short*)(rom + 0x15ac6))[j]=GetDlgItemInt(win, ID_DungEntrYCoord, 0, 0)+i;
-                    ((short*)(rom + 0x15ad4))[j]=GetDlgItemInt(win, ID_DungEntrXCoord, 0, 0)+l;
-                    ((short*)(rom + 0x15ab8))[j] = m + i;
-                    ((short*)(rom + 0x15aaa))[j] = n + l;
-                }
-                else
-                {
-                    ((short*)(rom + 0x14f59))[j]=GetDlgItemInt(win, ID_DungEntrYCoord, 0, 0)+i;
-                    ((short*)(rom + 0x15063))[j]=GetDlgItemInt(win, ID_DungEntrXCoord, 0, 0)+l;
-                    ((short*)(rom + 0x14e4f))[j] = m + i;
-                    ((short*)(rom + 0x14d45))[j] = n + l;
-                }
-                
-                SetDlgItemInt(win, ID_DungEntrCameraX, n + 127, 0);
-                SetDlgItemInt(win, ID_DungEntrCameraY, m + 119, 0);
-                
-                if(wparam < ID_DungStatic4)
-                    FixEntScroll(ed->ew.doc, j);
-            }
-            
-            break;
-        
-        case ID_DungEntrSong | (CBN_SELCHANGE << 16):
-        case ID_DungEntrPalaceID | (CBN_SELCHANGE << 16):
-        case ID_DungBG2Settings | (CBN_SELCHANGE << 16):
-        case ID_DungCollSettings | (CBN_SELCHANGE << 16):
-            
-            rom = ed->ew.doc->rom;
-            
-            j = SendMessage((HWND)lparam,CB_GETCURSEL,0,0);
-            
-            if(j == -1)
-                break;
-            
-            switch(wparam & 65535)
-            {
-            
-            case ID_DungEntrSong:
-                
-                rom
-                [
-                    (ed->ew.param >= 0x85 ? 0x15bc9 : 0x1582e)
-                  + ed->ew.param
-                ] = mus_ofs[j];
-                
-                ed->ew.doc->modf = 1;
-                
-                break;
-            
-            case ID_DungEntrPalaceID:
-                
-                rom
-                [
-                    (ed->ew.param >= 0x85 ? 0x15b91 : 0x1548b)
-                  + ed->ew.param
-                ] = (j << 1) - 2;
-                
-                ed->ew.doc->modf = 1;
-                
-                goto updscrn;
-            
-            case ID_DungBG2Settings:
-                
-                ed->layering=bg2_ofs[j];
-                ed->hmodf=ed->modf=1;
-                
-                goto updscrn;
-            
-            case ID_DungCollSettings:
-                
-                ed->coll=j;
-                ed->hmodf=ed->modf=1;
-                
-                break;
-            }
-            
-            break;
-        
-        case ID_DungEntrProps:
-            
-            dunged = ed;
-            
-            ShowDialog(hinstance,
-                       (LPSTR) IDD_DIALOG14,
-                       framewnd,
-                       editdungprop,
-                       0);
-            
-            break;
-        
-        case ID_DungEditHeader:
-            
-            dunged=ed;
-            
-            ShowDialog(hinstance,
-                       (LPSTR) IDD_HEADER,
-                       framewnd,
-                       editroomprop,
-                       0);
-            
-            goto updpal;
-        
-        case ID_DungItemLayer:
-            
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            Dungselectchg(ed,hc,0);
-            ed->selchk=7;
-            ed->selobj=(ed->ssize>2)?2:0;
-            Dungselectchg(ed,hc,1);
-            
-            break;
-        
-        case ID_DungBlockLayer:
-            
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            Dungselectchg(ed,hc,0);
-            ed->selchk=8;
-            ed->selobj=0;
-            Dungselectchg(ed,hc,1);
-            
-            break;
-        
-        case ID_DungTorchLayer:
-            
-            hc = GetDlgItem(win, ID_DungEditWindow);
-            Dungselectchg(ed,hc,0);
-            ed->selchk=9;
-            ed->selobj=(ed->tsize>2)?2:0;
-            Dungselectchg(ed,hc,1);
-            
-            break;
-        
-        case ID_DungSortSprites:
-            
-            *ed->ebuf^=1;
-            ed->modf=1;
-            
-            break;
-        
-        case ID_DungExit:
-            rom=ed->ew.doc->rom;
-            for(i=0;i<79;i++)
-            {
-                if(((unsigned short*)(rom + 0x15d8a))[i]==ed->mapnum)
-                    goto foundexit;
-            }
-            
-            MessageBox(framewnd,"None is set.","Bad error happened",MB_OK);
-            
-            break;
-foundexit:
-            
-            SendMessage(ed->ew.doc->editwin, 4000, rom[0x15e28 + i] + 0x20000,0);
-        }
-        
-        break;
-    }
-    
-    return FALSE;
-}
-
-//dungdlgproc*******************************************
-
-//getgbmap**********************************************
-
-int getbgmap(OVEREDIT*ed,int a,int b) {
-    int c,d;
-    switch(a) {
-    case 0:
-        d=0;
-        if(b==2) c=158; else c=151;
-        break;
-    case 64:
-        d=0;
-        c=151;
-        break;
-    case 128:
-        d=2;
-        if(b==2) c=160; else c=151;
-        break;
-    case 3: case 5: case 7:
-        d=1;
-        c=149;
-        break;
-    case 67: case 69: case 71:
-        d=1;
-        c=156;
-        break;
-    case 136: case 147:
-        d=2;
-        c=159;
-        break;
-    case 91:
-        if(b) {
-            d=1;
-            c=150;
-            break;
-        }
-    default:
-        if(b) d=2; else
-    case 112:
-        d=0;
-        c=159;
-    }
-    if(b || a>=128) ed->layering=d; else ed->layering=0;
-    return c;
-}
-
 // =============================================================================
-
-void
-loadovermap(uint16_t      * const b4,
-            int             const m,
-            int             const k,
-            unsigned char * const rom)
-{
-    // Index of the current position in the low and upper byte arrays
-    // of the decompressed map32 arrays.
-    int i = 0;
-    
-    // Represents the target index in the output buffer of map32.
-    int j = 0;
-    
-    size_t row = 0;
-    
-    unsigned char *b2, *b3;
-    
-    if(m > 0x9f)
-    {
-        // Can't load maps indexed 0xa0 and higher.
-        return;
-    }
-    
-    b2 = Uncompress(rom + romaddr(*(int*) (rom + 0x1794d + m * 3)), 0, 1);
-    b3 = Uncompress(rom + romaddr(*(int*) (rom + 0x17b2d + m * 3)), 0, 1);
-    
-    for(row = 0; row < 16; row += 1)
-    {
-        /// column
-        int co = 0;
-        
-        for(co = 0; co < 16; co++)
-        {
-            b4[j] = b3[i] + (b2[i] << 8);
-            
-            i += 1;
-            j += 1;
-        }
-        
-        if(k == 0)
-        {
-            // This to aid in loading 1024x1024 maps, since they consist of four
-            // smaller areas pasted together.
-            j += 16;
-        }
-    }
-    
-    free(b2);
-    free(b3);
-}
-
-// =============================================================================
-
-const static int wmap_ofs[4]={0,32,2048,2080};
-
-void Wmapselectwrite(WMAPEDIT*ed) {
-    int i,j,k,l,m,n,o,p,q;
-    m=ed->ew.param?32:64;
-    if(ed->stselx!=ed->rectleft || ed->stsely!=ed->recttop) {
-        ed->undomodf=ed->modf;
-        memcpy(ed->undobuf,ed->buf,0x1000);
-        if(ed->rectleft<0) i=-ed->rectleft; else i=0;
-        if(ed->recttop<0) j=-ed->recttop; else j=0;
-        if(ed->rectright>m) k=m; else k=ed->rectright;
-        k-=ed->rectleft;
-        if(ed->rectbot>m) l=m; else l=ed->rectbot;
-        l-=ed->recttop;
-        q=ed->rectright-ed->rectleft;
-        p=j*q;
-        
-        o = ( (ed->recttop + j) << 6) + ed->rectleft;
-        
-        for( ; j < l; j++)
-        {
-            for(n = i; n < k; n++)
-            {
-                ed->buf[n+o]=ed->selbuf[n+p];
-            }
-            o+=64;
-            p+=q;
-        }
-        ed->modf=1;
-    }
-    ed->selflag=0;
-    free(ed->selbuf);
-}
 
 void Paintfloor(LMAPEDIT * const ed)
 {
@@ -15710,432 +7259,10 @@ updscrn:
     return FALSE;
 }
 
-BOOL CALLBACK wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    WMAPEDIT*ed;
-    BLOCKSEL8*bs;
-    unsigned char*rom;
-    HWND hc;
-    HDC hdc;
-    RECT rc;
-    int i,j,k;
-    int *b,*b2;
-    static char*mapmark_str[10]={
-        "Hyrule castle",
-        "Village guy",
-        "Sahasrahla",
-        "Pendants",
-        "Master sword",
-        "Agahnim's tower",
-        "First crystal",
-        "All crystals",
-        "Agahnim's other tower",
-        "Flute locations"
-    };
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        ed=(WMAPEDIT*)lparam;
-        Getblocks(ed->ew.doc,223);
-        ed->hpal=0;
-        ed->anim=0;
-        ed->gfxtmp=255;
-        ed->mapscrollh=0;
-        ed->mapscrollv=0;
-        ed->bmih=zbmih;
-        
-        rom = ed->ew.doc->rom;
-        
-        b = (int*)(rom + 0x54727 + (ed->ew.param << 12));
-        
-        j=ed->ew.param?1:4;
-        
-        for(k=0;k<j;k++)
-        {
-            b2=(int*)(ed->buf+wmap_ofs[k]);
-            for(i=0;i<32;i++) {
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                *(b2++)=*(b++);
-                b2+=8;
-            }
-        }
-        memcpy(ed->undobuf,ed->buf,0x1000);
-        Loadpal(ed,rom,ed->ew.param?0xadc27:0xadb27,0,16,8);
-        hc=GetDlgItem(win,3000);
-        SetWindowLong(hc,GWL_USERDATA,(long)ed);
-        Updatesize(hc);
-        bs=&(ed->bs);
-        hdc=GetDC(win);
-        hc=GetDlgItem(win,3001);
-        GetClientRect(hc,&rc);
-        bs->ed=(OVEREDIT*)ed;
-        bs->sel=0;
-        bs->scroll=0;
-        bs->flags=0;
-        bs->dfl=0;
-        bs->w=rc.right;
-        bs->h=rc.bottom;
-        bs->bufdc=CreateCompatibleDC(hdc);
-        bs->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
-        ReleaseDC(win,hdc);
-        Addgraphwin((DUNGEDIT*)ed,2);
-        Setdispwin((DUNGEDIT*)ed);
-        SelectObject(bs->bufdc,bs->bufbmp);
-        SelectObject(bs->bufdc,white_pen);
-        SelectObject(bs->bufdc,black_brush);
-        Rectangle(bs->bufdc,0,0,bs->w,bs->h);
-        
-        if(always)
-        {
-            HPALETTE const oldpal = SelectPalette(objdc, ed->hpal, 1);
-            HPALETTE const oldpal2 = SelectPalette(bs->bufdc, ed->hpal, 1);
-            
-            for(i = 0; i < 256; i++)
-                Updateblk8sel(bs,i);
-            
-            SelectPalette(objdc, oldpal, 1);
-            SelectPalette(bs->bufdc, oldpal2, 1);
-        }
-        
-        SetWindowLong(hc, GWL_USERDATA, (int) bs);
-        Updatesize(hc);
-        
-        ed->tool=1;
-        ed->dtool=0;
-        ed->selflag=0;
-        ed->modf=0;
-        ed->undomodf=0;
-        ed->selbuf=0;
-        ed->marknum=0;
-        CheckDlgButton(win,3003,BST_CHECKED);
-        hc=GetDlgItem(win,3005);
-        for(i=0;i<10;i++) SendMessage(hc,CB_ADDSTRING,0,(long)mapmark_str[i]);
-        SendMessage(hc,CB_SETCURSEL,0,0);
-        break;
-    case 4002:
-        InvalidateRect(GetDlgItem(win,3000),0,0);
-        InvalidateRect(GetDlgItem(win,3001),0,0);
-        break;
-    case WM_DESTROY:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
-        ed->ew.doc->wmaps[ed->ew.param]=0;
-        Delgraphwin((DUNGEDIT*)ed);
-        Releaseblks(ed->ew.doc,223);
-        DeleteDC(ed->bs.bufdc);
-        DeleteObject(ed->bs.bufbmp);
-        free(ed);
-        break;
-    
-    // \task What is this constant?
-    case 4000:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
-        j=wparam;
-        if(j<0) j=0;
-        if(j>0xff) j=0xff;
-        hc=GetDlgItem(win,3001);
-        Changeblk8sel(hc,&(ed->bs));
-        ed->bs.sel=j;
-        Changeblk8sel(hc,&(ed->bs));
-        break;
-    case WM_COMMAND:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
-        j=ed->tool;
-        switch(wparam) {
-        case 3002:
-            ed->tool=0;
-            break;
-        case 3003:
-            ed->tool=1;
-            break;
-        case 3004:
-            ed->tool=2;
-            break;
-        case 3005|(CBN_SELCHANGE<<16):
-            
-            ed->marknum = (short) SendMessage((HWND)lparam,CB_GETCURSEL,0,0);
-            
-            if(j==4)
-                break;
-updscrn:
-            j=0;
-            InvalidateRect(GetDlgItem(win,3000),0,0);
-            break;
-        case 3006:
-            ed->tool=3;
-            ed->selmark=0;
-            break;
-        case 3008:
-            ed->tool=4;
-            goto updscrn;
-        case 3007:
-            if(ed->selflag) Wmapselectwrite(ed);
-            b2=malloc(0x1000);
-            memcpy(b2,ed->buf,0x1000);
-            memcpy(ed->buf,ed->undobuf,0x1000);
-            memcpy(ed->undobuf,b2,0x1000);
-            free(b2);
-            i=ed->undomodf;
-            ed->undomodf=ed->modf;
-            ed->modf=i;
-            goto updscrn;
-        }
-        if(j==4 && ed->tool!=4) goto updscrn;
-    }
-    return FALSE;
-}
-const static int blkx[16]={0,8,0,8,16,24,16,24,0,8,0,8,16,24,16,24};
-const static int blky[16]={0,0,8,8,0,0,8,8,16,16,24,24,16,16,24,24};
-int Keyscroll(HWND win,int wparam,int sc,int page,int scdir,int size,int size2)
-{
-    int i;
-    switch(wparam) {
-    case VK_UP:
-        i=SB_LINEUP;
-        break;
-    case VK_DOWN:
-        i=SB_LINEDOWN;
-        break;
-    case VK_PRIOR:
-        i=SB_PAGEUP;
-        break;
-    case VK_NEXT:
-        i=SB_PAGEDOWN;
-        break;
-    case VK_HOME:
-        i=SB_TOP;
-        break;
-    case VK_END:
-        i=SB_BOTTOM;
-        break;
-    default:
-        return sc;
-    }
-    return Handlescroll(win,i,sc,page,scdir,size,size2);
-}
-
 // =============================================================================
 
-void
-Blk16Search_OnPaint(OVEREDIT const * const p_ed,
-                    HWND             const p_win)
-{
-    unsigned char const * const rom = p_ed->ew.doc->rom;
-    
-    int i = 0,
-        j = 0,
-        m = 0;
-    
-    PAINTSTRUCT ps;
-    
-    HDC const hdc = BeginPaint(p_win, &ps);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal,1);
-    
-    HGDIOBJ const oldbrush = SelectObject(hdc, trk_font);
-    HGDIOBJ const oldobj2 = SelectObject(hdc, white_pen);
-    
-    // -----------------------------
-    
-    RealizePalette(hdc);
-    
-    i = (ps.rcPaint.top >> 4);
-    j = ( (ps.rcPaint.bottom + 15) >> 4);
-    
-    FillRect(hdc,&(ps.rcPaint), black_brush);
-    
-    m = i + p_ed->schscroll;
-    
-    SetTextColor(hdc, 0xffffff);
-    
-    SetBkColor(hdc, 0);
-    
-    for( ; i < j; i += 2)
-    {
-        int k = 0;
-        
-        for(k = 0; k < 1024; k++)
-            drawbuf[k] = 0;
-        
-        for(k = 0; k < 2; k++)
-        {
-            int l = 0;
-            
-            unsigned short const * o = 0;
-            
-            RECT rc;
-            
-            if(m >= 0xea8)
-                break;
-            
-            o = (unsigned short*) (rom + 0x78000 + (m << 3));
-            
-            for(l = 0; l < 4; l++)
-                Drawblock(p_ed,
-                          blkx[l] + 8,
-                          blky[l] + (k << 4),
-                          *(o++),
-                          0);
-            rc.left=4;
-            rc.right=20;
-            rc.top = ( (i + k) << 4) + 2;
-            rc.bottom=rc.top+12;
-            
-            DrawFrameControl(hdc,&rc,DFC_BUTTON,
-                             ((p_ed->selsch[m>>3]&(1<<(m&7))) ? (DFCS_BUTTONCHECK | DFCS_CHECKED):DFCS_BUTTONCHECK)
-                             +((p_ed->schpush == m) ? DFCS_PUSHED : 0));
-            
-            rc.left=24;
-            rc.right=40;
-            
-            DrawFrameControl(hdc,
-                             &rc,
-                             DFC_BUTTON,
-                             ((p_ed->selsch[0x1d5 + (m >> 3)] & (1 << (m & 7)))
-                           ? (DFCS_BUTTONCHECK|DFCS_CHECKED)
-                           : DFCS_BUTTONCHECK)
-                           +((p_ed->schpush==m + 0xea8)?DFCS_PUSHED:0));
-            
-            rc.left=44;
-            rc.right=60;
-            
-            DrawFrameControl(hdc,
-                             &rc,
-                             DFC_BUTTON,
-                             ((p_ed->selsch[0x3aa + (m >> 3)] & (1 << (m & 7)))
-                           ? (DFCS_BUTTONCHECK|DFCS_CHECKED)
-                           : DFCS_BUTTONCHECK)
-                           + ((p_ed->schpush== m + 0x1d50) ? DFCS_PUSHED : 0));
-            
-            wsprintf(buffer,"%04d",m);
-            
-            TextOut(hdc,64,rc.top,buffer,4);
-            
-            m++;
-        }
-        
-        k = i << 4;
-        
-        Paintblocks(&(ps.rcPaint),hdc,100,k, (DUNGEDIT*) p_ed);
-        
-        MoveToEx(hdc,108,k,0);
-        LineTo(hdc,124,k);
-        
-        MoveToEx(hdc,108,k+16,0);
-        LineTo(hdc,124,k+16);
-    }
-    
-    SelectObject(hdc, oldbrush);
-    SelectObject(hdc, oldobj2);
-    
-    SelectPalette(hdc, oldpal, 1);
-    
-    EndPaint(p_win, &ps);
-}
-
-// =============================================================================
-
-LRESULT CALLBACK
-blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    OVEREDIT *ed;
-    RECT rc;
-    SCROLLINFO si;
-    int i,j,k;
-    
-    switch(msg) {
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS|DLGC_WANTARROWS;
-    case WM_KEYDOWN:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(wparam >= 48 && wparam < 58)
-        {
-            wparam -= 48;
-            
-            ed->schtyped /* <<=4 */ *=10;
-            ed->schtyped+=wparam;
-            ed->schtyped%=5000;
-            ed->schscroll=Handlescroll(win,SB_THUMBPOSITION|(ed->schtyped<<16),ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        } else ed->schscroll=Keyscroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    case WM_SIZE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nMin=0;
-        si.nMax=0xea8;
-        si.nPage=lparam>>20;
-        ed->schpage=si.nPage;
-        SetScrollInfo(win,SB_VERT,&si,1);
-        ed->schscroll=Handlescroll(win,-1,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    case WM_VSCROLL:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->schscroll=Handlescroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
-        break;
-    
-    case WM_PAINT:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(ed)
-        {
-            Blk16Search_OnPaint(ed, win);
-        }
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-        SetFocus(win);
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        i=(short)lparam;
-        j=lparam>>16;
-        k=(j>>4)+ed->schscroll;
-        if(k<0 || k>=0xea8) break;
-        if(ed->schpush!=-1)
-            InvalidateRect(win,&(ed->schrc),0);
-        if((j&15)>=2 && (j&15)<14) {
-            if(i>4 && i<20) j=0,rc.left=4;
-            else if(i>24 && i<40) j=0xea8,rc.left=24;
-            else if(i>44 && i<60) j=0x1d50,rc.left=44;
-            else break;
-            ed->schpush=k+j;
-            rc.right=rc.left+16;
-            rc.top = ( (k - ed->schscroll) << 4) + 2;
-            rc.bottom=rc.top+12;
-            ed->schrc=rc;
-            InvalidateRect(win,&rc,0);
-            SetCapture(win);
-        }
-        break;
-    case WM_LBUTTONUP:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->schpush!=-1) {
-            i=(short)lparam;
-            j=lparam>>16;
-            rc=ed->schrc;
-            if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom)
-            ed->selsch[ed->schpush>>3]^=(1<<(ed->schpush&7));
-            ed->schpush=-1;
-            InvalidateRect(win,&(ed->schrc),0);
-            ReleaseCapture();
-        }
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-BOOL CALLBACK findblks(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+findblks(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     DWORD read_bytes  = 0;
     DWORD write_bytes = 0;
@@ -16271,45 +7398,10 @@ brk:
     return 0;
 }
 
-void Getblock32(unsigned char*rom,int m,short*l)
-{
-    int n;
-    if(m==-1) { l[0]=l[1]=l[2]=l[3]=0xdc4; return; }
-    n=(m>>2)*6;
-    switch(m&3) {
-    case 0:
-        l[0] = rom[0x18000 + n] | (rom[0x18004 + n] >> 4) << 8;
-        l[1] = rom[0x1b400 + n] | (rom[0x1b404 + n] >> 4) << 8;
-        l[2] = rom[0x20000 + n] | (rom[0x20004 + n] >> 4) << 8;
-        l[3] = rom[0x23400 + n] | (rom[0x23404 + n] >> 4) << 8;
-        break;
-    case 1:
-        l[0] = rom[0x18001 + n] | (rom[0x18004 + n] & 15) << 8;
-        l[1] = rom[0x1b401 + n] | (rom[0x1b404 + n] & 15) << 8;
-        l[2] = rom[0x20001 + n] | (rom[0x20004 + n] & 15) << 8;
-        l[3] = rom[0x23401 + n] | (rom[0x23404 + n] & 15) << 8;
-        break;
-    case 2:
-        l[0] = rom[0x18002 + n] | (rom[0x18005 + n] >> 4) << 8;
-        l[1] = rom[0x1b402 + n] | (rom[0x1b405 + n] >> 4) << 8;
-        l[2] = rom[0x20002 + n] | (rom[0x20005 + n] >> 4) << 8;
-        l[3] = rom[0x23402 + n] | (rom[0x23405 + n] >> 4) << 8;
-        break;
-    case 3:
-        l[0] = rom[0x18003 + n] | (rom[0x18005 + n] & 15) << 8;
-        l[1] = rom[0x1b403 + n] | (rom[0x1b405 + n] & 15) << 8;
-        l[2] = rom[0x20003 + n] | (rom[0x20005 + n] & 15) << 8;
-        l[3] = rom[0x23403 + n] | (rom[0x23405 + n] & 15) << 8;
-        break;
-    }
-}
-const char*sprset_str[]={
-    "Beginning","First part","Second part"
-};
+// =============================================================================
 
-//LoadOverlays*******************************************
-
-void LoadOverlays(FDOC *doc)
+void
+LoadOverlays(FDOC * const doc)
 {
     int i,k,l,m,bd,bs,o,p;
     
@@ -16470,11 +7562,10 @@ okovl:
     doc->o_loaded = 1;
 }
 
-//LoadOverlays************************************
+// =============================================================================
 
-//SaveOverlays#************************************
-
-void SaveOverlays(FDOC *doc)
+void
+SaveOverlays(FDOC * const doc)
 {
     int i, // counter variable
         j = 0,
@@ -16651,9 +7742,7 @@ nextovl:;
     doc->o_modf = 0;
 }
 
-// SaveOverlays**********************************
-
-// Unloadovl#***************************************
+// =============================================================================
 
 void Unloadovl(FDOC *doc)
 {
@@ -16665,11 +7754,10 @@ void Unloadovl(FDOC *doc)
     doc->o_loaded = 0;
 }
 
-//Unloadovl******************************************
+// =============================================================================
 
-//loadoverovl#***********************************
-
-int loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
+int
+loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
 {
     unsigned short*b;
     int i,k,l;
@@ -16691,17 +7779,24 @@ int loadoverovl(FDOC *doc, uint16_t *buf, int mapnum)
     }
     return 1;
 }
-void Changeblk16sel(HWND win,BLOCKSEL16*ed)
+
+// =============================================================================
+
+void
+Changeblk16sel(HWND win, BLOCKSEL16*ed)
 {
-    RECT rc,rc2;
+    RECT rc = HM_GetClientRect(win);
+    RECT rc2;
+    
     int i=ed->sel-(ed->scroll<<4);
-    GetClientRect(win,&rc);
+    
     rc2.left=(rc.right>>1)-64+((i&7)<<4);
     rc2.right=rc2.left+16;
     rc2.top=(i&0xfff8)<<1;
     rc2.bottom=rc2.top+16;
     InvalidateRect(win,&rc2,0);
 }
+
 void SetBS16(BLOCKSEL16*bs,int i,HWND hc)
 {
     int j;
@@ -17023,8 +8118,10 @@ BOOL CALLBACK blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         memcpy(ed->pal, oed->pal, 1024);
         
         ed->blkwnd = hc;
+        
         hc = GetDlgItem(win, IDC_CUSTOM2);
-        GetClientRect(hc, &rc);
+        
+        rc = HM_GetClientRect(hc);
         
         ed->pwidth = rc.right;
         ed->pheight = rc.bottom;
@@ -17039,7 +8136,7 @@ BOOL CALLBACK blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 ed->buf[j] |= i;
         }
         
-        SetWindowLong(hc, GWL_USERDATA, (int) ed);
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) ed);
         
         break;
     
@@ -17380,27 +8477,34 @@ nowmap:
 
 int Editblocks(OVEREDIT *ed, int num, HWND win)
 {
-    int x[2];
     int i;
     
-    // \task Pointer problem on 64-bit (and just generally)
-    x[0]=(int)ed;
+    // First slot is for the editor pointer, second is for the blockset to
+    // edit.
+    LPARAM x[2];
     
-    if(num==17)
+    // -----------------------------
+    
+    // \task Pointer problem on 64-bit (and just generally)
+    x[0] = (LPARAM) ed;
+    
+    if(num == 17)
     {
-        num=askinteger(219,"Edit blocks","Which blocks?");
+        num = askinteger(219,
+                         "Edit blocks",
+                         "Which blocks?");
         
-        if(num==-1)
+        if(num == -1)
             return 0;
         
-        Getblocks(ed->ew.doc,num);
+        Getblocks(ed->ew.doc, num);
         
         num += 32;
     }
     
-    x[1]=num;
+    x[1] = num;
     
-    i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG16,win,blockdlgproc,(long)x);
+    i = ShowDialog(hinstance,(LPSTR)IDD_DIALOG16,win,blockdlgproc, (LPARAM) x);
     
     if(num >= 32 && num < 256)
         Releaseblks(ed->ew.doc, num - 32);
@@ -17408,455 +8512,13 @@ int Editblocks(OVEREDIT *ed, int num, HWND win)
     return i;
 }
 
-BOOL CALLBACK z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    FDOC*doc;
-    HWND hc;
-    int i,j,k,l;
-    TVINSERTSTRUCT tvi;
-    TVHITTESTINFO hti;
-    TVITEM*itemstr;
-    HTREEITEM hitem;
-    RECT rc;
-    ZOVER*ov;
-    OVEREDIT*oed;
-    unsigned char*rom;
-    int lp;
-    static char *pal_text[]={
-        "Sword",
-        "Shield",
-        "Clothes",
-        "World colors 1",
-        "World colors 2",
-        "Area colors 1",
-        "Area colors 2",
-        "Enemies 1",
-        "Dungeons",
-        "Miscellanous colors",
-        "World map",
-        "Enemies 2",
-        "Other sprites",
-        "Dungeon map",
-        "Triforce",
-        "Crystal"
-    };
-    static char*locs_text[]={
-        "Pendant 1",
-        "Pendant 2",
-        "Pendant 3",
-        "Agahnim 1",
-        "Crystal 2",
-        "Crystal 1",
-        "Crystal 3",
-        "Crystal 6",
-        "Crystal 5",
-        "Crystal 7",
-        "Crystal 4",
-        "Agahnim 2"
-    };
-    static char pal_num[]={
-        4,3,3,6,2,20,16,24,20,2,2,16,18,1,1,1
-    };
-    char buf[32];
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        doc=(FDOC*)lparam;
-        hc=GetDlgItem(win,3000);
-        tvi.hParent=0;
-        tvi.hInsertAfter=TVI_LAST;
-        tvi.item.mask=TVIF_CHILDREN|TVIF_PARAM|TVIF_TEXT|TVIF_STATE;
-        tvi.item.stateMask=TVIS_BOLD;
-        tvi.item.state=0;
-        tvi.item.lParam=0;
-        tvi.item.pszText="Overworld";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<160;i++)
-        {
-            tvi.item.lParam=i + 0x20000;
-            wsprintf(buf,"Area %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Dungeons";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<133;i++)
-        {
-            tvi.item.lParam=i + 0x30000;
-            wsprintf(buf,"Entrance %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<7;i++)
-        {
-            tvi.item.lParam=i + 0x30085;
-            wsprintf(buf,"Starting location %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<19;i++)
-        {
-            tvi.item.lParam=i + 0x3008c;
-            wsprintf(buf,"Overlay %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        for(i=0;i<8;i++)
-        {
-            tvi.item.lParam=i + 0x3009f;
-            wsprintf(buf,"Layout %02X",i);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.lParam=0x300a7;
-        tvi.item.pszText="Watergate overlay";
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Music";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
-        for(i=0;i<3;i++)
-        {
-            tvi.item.lParam=i + 0x40000;
-            wsprintf(buf,"Bank %d",i+1);
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.lParam=0x40003;
-        tvi.item.pszText="Waves";
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="World maps";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Normal world";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x60000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Dark world";
-        tvi.item.lParam=0x60001;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Monologue";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x50000;
-        tvi.hParent=0;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Palettes";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        hitem=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        k=0;
-        for(i=0;i<16;i++) {
-            l=pal_num[i];
-            tvi.item.pszText=pal_text[i];
-            tvi.item.cChildren=1;
-            tvi.item.lParam=0;
-            tvi.hParent=hitem;
-            tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-            tvi.item.pszText=buf;
-            tvi.item.cChildren=0;
-            for(j=0;j<l;j++) {
-                tvi.item.lParam=k + 0x70000;
-                wsprintf(buf,"%s pal %d",pal_text[i],j);
-                SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-                k++;
-            }
-        }
-        tvi.item.pszText="Dungeon maps";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<14;i++)
-        {
-            tvi.item.lParam=i + 0x80000;
-            tvi.item.pszText=level_str[i+1];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Dungeon properties";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<12;i++)
-        {
-            tvi.item.lParam=i + 0x90000;
-            tvi.item.pszText=locs_text[i];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="Menu screens";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.cChildren=0;
-        for(i=0;i<11;i++)
-        {
-            tvi.item.lParam=i + 0xa0000;
-            tvi.item.pszText=screen_text[i];
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.item.pszText="3D Objects";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0xb0000;
-        tvi.hParent=0;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Link's graphics";
-        tvi.item.lParam=0xc0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="ASM hacks";
-        tvi.item.lParam=0xd0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Graphic schemes";
-        tvi.item.lParam=0xe0000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        break;
-    case WM_NOTIFY:
-        switch(wparam) {
-        case 3000:
-            switch(((NMHDR*)lparam)->code) {
-            case NM_DBLCLK:
-                GetWindowRect(((NMHDR*)lparam)->hwndFrom,&rc);
-                
-                hti.pt.x = mouse_x-rc.left;
-                hti.pt.y = mouse_y-rc.top;
-                hitem = (HTREEITEM) SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_HITTEST,0,(long)&hti);
-                
-                if(!hitem)
-                    break;
-                
-                if(!(hti.flags & TVHT_ONITEM))
-                    break;
-                
-                itemstr = &(tvi.item);
-                itemstr->hItem = hitem;
-                itemstr->mask = TVIF_PARAM;
-                
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
-                
-                lp = itemstr->lParam;
-open_edt:
-                
-                doc = (FDOC*)GetWindowLong(win,DWL_USER);
-                j = lp & 0xffff;
-                
-                switch(lp>>16)
-                {
+// =============================================================================
 
-                    // double clicked on an overworld area
-                case 2:
-                    ov = doc->overworld;
-                    
-                    if(j < 128)
-                        j = doc->rom[0x125ec + (j & 0x3f)] | (j & 0x40);
-                    
-                    for(i=0;i<4;i++)
-                    {
-                        k = map_ind[i];
-                        
-                        if(j >= k && ov[j - k].win)
-                        {
-                            hc = ov[j - k].win;
-                            oed = (OVEREDIT*)GetWindowLong(hc,GWL_USERDATA);
-                            
-                            if(i && !(oed->mapsize))
-                                continue;
-                            
-                            SendMessage(clientwnd,WM_MDIACTIVATE,(int)hc,0);
-                            
-                            hc = GetDlgItem(oed->dlg,3001);
-                            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION|((i&1)<<20),0);
-                            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION|((i&2)<<19),0);
-                            
-                            return FALSE;
-                        }
-                    }
-                    
-                    wsprintf(buf,"Area %02X",j);
-                    ov[j].win = Editwin(doc,"ZEOVER",buf,j,sizeof(OVEREDIT));
-                    
-                    break;
-                
-                case 3:
-                    
-                    // double clicked on a dungeon item
-                    if(doc->ents[j])
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (int) (doc->ents[j]),
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    if(j < 0x8c)
-                    {
-                        k = ((short*) (doc->rom + (j >= 0x85 ? 0x15a64 : 0x14813)))[j];
-                        
-                        if(doc->dungs[k])
-                        {
-                            MessageBox(framewnd,
-                                       "The room is already open in another editor",
-                                       "Bad error happened",
-                                       MB_OK);
-                            
-                            break;
-                        }
-                        
-                        if(j >= 0x85)
-                            wsprintf(buf,"Start location %02X",j - 0x85);
-                        else
-                            wsprintf(buf,"Entrance %02X",j);
-                    }
-                    else if(j < 0x9f)
-                        wsprintf(buf,"Overlay %d",j - 0x8c);
-                    else if(j < 0xa7)
-                        wsprintf(buf,"Layout %d",j - 0x9f);
-                    else
-                        wsprintf(buf,"Watergate overlay");
-                    
-                    hc = Editwin(doc,"ZEDUNGEON",buf,j, sizeof(DUNGEDIT));
-                    
-                    oed = (OVEREDIT*) GetWindowLong(hc,GWL_USERDATA);
-                    hc = GetDlgItem(oed->dlg, ID_DungEditWindow);
-                    
-                    Dungselectchg((DUNGEDIT*)oed,hc,1);
-                    
-                    break;
-                case 4:
-                    if(doc->mbanks[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->mbanks[j]),0);break;}
-                    if(j==3) doc->mbanks[3]=Editwin(doc,"MUSBANK","Wave editor",3,sizeof(SAMPEDIT)); else {
-                        wsprintf(buf,"Song bank %d",j+1);
-                        doc->mbanks[j]=Editwin(doc,"MUSBANK",buf,j,sizeof(MUSEDIT));
-                    }
-                    break;
-                case 6:
-                    if(doc->wmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->wmaps[j]),0);break;}
-                    wsprintf(buf,"World map %d",j+1);
-                    doc->wmaps[j]=Editwin(doc,"WORLDMAP",buf,j,sizeof(WMAPEDIT));
-                    break;
-                case 5:
-                    
-                    if(doc->t_wnd)
-                    {
-                        SendMessage(clientwnd, WM_MDIACTIVATE, (int)(doc->t_wnd), 0);
-                        
-                        break;
-                    }
-                    
-                    doc->t_wnd = Editwin(doc,"ZTXTEDIT","Text editor",0,sizeof(TEXTEDIT));
-                    
-                    break;
-                
-                case 7:
-                    if(doc->pals[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->pals[j]),0);break;}
-                    
-                    k = 0;
-                    
-                    for(i=0;i<16;i++)
-                    {
-                        if(k + pal_num[i] > j)
-                            break;
-                        
-                        k += pal_num[i];
-                    }
-                    
-                    wsprintf(buf,"%s palette %d",pal_text[i],j-k);
-                    
-                    doc->pals[j] = Editwin(doc,
-                                           "PALEDIT",
-                                           buf,
-                                           j | (i << 10) | ( (j - k) << 16),
-                                           sizeof(PALEDIT));
-                    
-                    break;
-                
-                case 8:
-                    if(doc->dmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->dmaps[j]),0);break;}
-                    doc->dmaps[j]=Editwin(doc,"LEVELMAP",level_str[j+1],j,sizeof(LMAPEDIT));
-                    break;
-                case 9:
-                    activedoc=doc;
-                    ShowDialog(hinstance,MAKEINTRESOURCE(IDD_DIALOG17),framewnd,editbosslocs,j);
-                    break;
-                case 10:
-                    if(doc->tmaps[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->tmaps[j]),0);break;}
-                    doc->tmaps[j]=Editwin(doc,"TILEMAP",screen_text[j],j,sizeof(TMAPEDIT));
-                    break;
-                case 11:
-                    if(doc->perspwnd) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->perspwnd),0);break;}
-                    doc->perspwnd=Editwin(doc,"PERSPEDIT","3D object editor",0,sizeof(PERSPEDIT));
-                    break;
-                case 12:
-                    
-                    oed = (OVEREDIT*) malloc(sizeof(OVEREDIT));
-                    
-                    oed->bmih=zbmih;
-                    oed->hpal=0;
-                    oed->ew.doc=doc;
-                    oed->gfxnum=0;
-                    oed->paltype=3;
-                    if(palmode) Setpalmode((DUNGEDIT*)oed);
-                    rom=doc->rom;
-                    Getblocks(doc,225);
-                    Loadpal(oed,rom,0x1bd308,0xf1,15,1);
-                    Loadpal(oed,rom,0x1bd648,0xdc,4,1);
-                    Loadpal(oed,rom,0x1bd630,0xd9,3,1);
-                    Editblocks(oed,0xf0104,framewnd);
-                    Releaseblks(doc,225);
-                    
-                    if(oed->hpal)
-                        DeleteObject(oed->hpal);
-                    
-                    free(oed);
-                    
-                    break;
-                
-                case 13:
-                    
-                    if(doc->hackwnd)
-                    {
-                        SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->hackwnd),0);
-                        
-                        break;
-                    }
-                    
-                    doc->hackwnd = Editwin(doc, "PATCHLOAD", "Patch modules", 0, sizeof(PATCHLOAD));
-                    
-                    break;
-                
-                case 14:
-                    
-                    // Graphic Themes
-                    ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_GRAPHIC_THEMES),
-                               framewnd,
-                               editvarious,
-                               (int) doc);
-                    
-                    break;
-                }
-            }
-        }
-        break;
-    case 4000:
-        lp=wparam;
-        goto open_edt;
-    }
-    return FALSE;
-}
-
-int Savesecrets(FDOC*doc,int num,unsigned char*buf,int size)
+int
+Savesecrets(FDOC          * const doc,
+            int             const num,
+            uint8_t const * const buf,
+            int             const size)
 {
     int i,j,k;
     int adr[128];
@@ -17908,164 +8570,6 @@ int Savesecrets(FDOC*doc,int num,unsigned char*buf,int size)
         ((short*)(rom + 0xdc2f9))[i]=adr[i]+j-k;
     }
     return 0;
-}
-
-void Savemap(OVEREDIT*ed)
-{
-    unsigned char*rom,*b2,*b3,*b5;
-    int i,j,k,l,m,n,p;
-    short o[4];
-    ZOVER*ov;
-    FDOC*doc;
-    
-    unsigned short * b6;
-    
-    uint16_t * b4 = 0;
-    
-    static int sprofs[]={0,0x40,0xd0};
-    ov=ed->ov;
-    if(!ov->modf) return;
-    m=ed->ew.param;
-    doc=ed->ew.doc;
-    rom=doc->rom;
-    if(m<0x90) {
-        if(ed->ecopy[ed->sprset]!=-1) {
-            n=ed->ecopy[ed->sprset];
-            ed->esize[n]=ed->esize[ed->sprset];
-            ed->e_modf[n]=ed->e_modf[ed->sprset];
-            ed->ebuf[n]=ed->ebuf[ed->sprset];
-        }
-        for(k=0;k<3;k++) o[k]=*(short*)(rom+sprset_loc[k]+m*2);
-        for(k=1;k<3;k++)
-            if(ed->e_modf[k]) {
-                for(l=m>>7;l<k;l++) if(o[l]==o[k]) {
-                    if(ed->ecopy[k]==-1) *(unsigned short*)(rom+sprset_loc[k]+m*2)=0xcb41;
-                    else *(unsigned short*)(rom+sprset_loc[k]+m*2)=o[ed->ecopy[k]],ed->e_modf[k]=0;
-                    break;
-                }
-            }
-        for(k=1;k<3;k++) {
-            if(ed->ecopy[k]!=-1) {
-                Savesprites(doc,sprofs[k]+m + 0x10000,0,0);
-                *(unsigned short*)(rom+sprset_loc[k]+m*2)=*(unsigned short*)(rom+sprset_loc[ed->ecopy[k]]+m*2);
-            }
-        }
-        for(k=0;k<3;k++)
-            if(ed->e_modf[k] && ed->ecopy[k]==-1) {
-                Savesprites(doc,sprofs[k]+m,ed->ebuf[k],ed->esize[k]);
-            }
-        if(m<0x80) Savesecrets(doc,m,ed->sbuf,ed->ssize);
-    }
-    if(m<0x40) {
-        rom[0x7a41 + ed->ew.param]=ed->sprgfx[0];
-        rom[0x7a81 + ed->ew.param]=ed->sprgfx[1];
-        rom[0x7b41 + ed->ew.param]=ed->sprpal[0];
-        rom[0x7b81 + ed->ew.param]=ed->sprpal[1];
-    }
-    rom[0x7ac1 + ed->ew.param]=ed->sprgfx[2];
-    rom[0x7bc1 + ed->ew.param]=ed->sprpal[2];
-    b2=malloc(0x200);
-    b3=b2 + 0x100;
-    if(ed->mapsize) n=4; else n=1;
-    
-    for(k=0;k<n;k++)
-    {
-        if(m + map_ind[k] > 0x9f)
-            continue;
-        
-        b4 = ov->buf + map_ofs[k];
-        
-        for(j=0;j<16;j++) {
-            for(i=0;i<16;i++) {
-                l=*(b4++);
-                *(b3++)=l;
-                *(b2++)=l>>8;
-            }
-            b4+=16;
-        }
-        b2-=0x100;
-        b3-=0x100;
-        b5=Compress(b2,0x100,&i,1);
-        issplit=0;
-        memcpy(rom+Changesize(doc,m+map_ind[k] + 0x30000,i),b5,i);
-        free(b5);
-        b5=Compress(b3,0x100,&i,1);
-        memcpy(rom+Changesize(doc,m+map_ind[k]+(issplit?0x100a0:160),i),b5,i);
-        free(b5);
-    }
-    free(b2);
-    if(ed->ovlmodf) {
-        l=0;
-        n=256;
-        b6=malloc(512);
-        b4=doc->ovlbuf;
-        j=0;
-        for(;;) {
-            k=0xffff;
-            for(i=0;i<0x1400;i++) {
-                p=ed->ovlmap[i];
-                if(p>=j && p<k) k=p;
-            }
-            j=k+1;
-            if(k==0xffff) break;
-            if(l) b6[l++]=0xffff;
-            b6[l++]=k;
-            for(i=0;i<0x1400;i++)
-                if(ed->ovlmap[i]==k) b6[l++]=i;
-            if(l>=192) n+=256,b6=realloc(b6,n<<1);
-        }
-        b6[l++]=0xfffe;
-        if(!(doc->o_enb[m>>3]&(1<<(m&7)))) {
-            k=b4[m];
-            doc->o_enb[m>>3]|=(1<<(m&7));
-            goto foundnextovl;
-        }
-        for(i=0;i<128;i++) {
-            if(i!=m && b4[i]==b4[m]) {
-                wsprintf(buffer,"The overlay in area %02X is used several times. Modify only in this area?",m);
-                if(MessageBox(0,buffer,"Gigasoft Hyrule Magic",MB_YESNO)==IDYES) {
-                    k=b4[m]; goto foundnextovl; } else goto modallovl;
-            }
-        }
-modallovl:
-        k=b4[128];
-        for(i=0;i<128;i++) {
-            if(i==m) continue;
-            j=b4[i];
-            if(j<k && j>b4[m]) k=j;
-        }
-foundnextovl:
-        j=b4[m];
-        
-        if(l+j==k) goto nochgovls;
-        
-        for(i=0;i<129;i++)
-            if(b4[i]>=k) b4[i]+=l+j-k;
-        
-        b4[m]=j;
-        
-        if(l+j<k)
-            memmove(b4 + l + j,
-                    b4 + k,
-                    (b4[128] - l - j) << 1);
-        
-        doc->ovlbuf = (uint16_t*) b4 = (uint16_t*) realloc(b4, b4[128] << 1);
-        
-        if(l + j > k)
-            memmove(b4 + l + j,
-                    b4 + k,
-                    (b4[128] - l - j) << 1);
-        
-    nochgovls:
-        
-        memcpy(b4+j,b6,l<<1);
-        free(b6);
-        doc->o_modf=1;
-    }
-    ed->ovlmodf=0;
-    ed->ov->modf=0;
-    ed->e_modf[0]=ed->e_modf[1]=ed->e_modf[2];
-    doc->modf=1;
 }
 
 int fronttest(POINT*pt,POINT*pt2,POINT*pt3)
@@ -18129,86 +8633,93 @@ TEXTMETRIC textmetric;
 // \note More re-entrant version of another function in that it
 // doesn't write using a global text buffer.
 void
-PaintSprName(HDC hdc,
+PaintSprName(HDC p_dc,
              int x,
              int y,
-             int n,
-             int o,
-             int          const p_clip_width,
+             RECT const * const p_clip,
              char const * const p_name)
 {
     size_t len = strlen(p_name);
     
-    signed final_len = (signed) len;
-    
     // -----------------------------
     
-    // \task It would appear that the clip width is being used as height too?
-    // Does this always assume that window area are square?
-    if( (y + textmetric.tmHeight) > (p_clip_width - o) )
-        return;
+    // Probably not strictly necessary, but the program doesn't make a point
+    // to set it anywhere more general.
+    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
     
-    if( (len * textmetric.tmAveCharWidth) + x > (p_clip_width - n) )
-        final_len = (p_clip_width - n - x) / textmetric.tmAveCharWidth;
+    SetTextColor(p_dc, 0);
     
-    if(len <= 0)
-        return;
-    
-    SetTextColor(hdc, 0);
-    
-    TextOut(hdc,x + 1, y + 1, p_name, final_len);
-    TextOut(hdc,x - 1, y - 1, p_name, final_len);
-    TextOut(hdc,x + 1, y - 1, p_name, final_len);
-    TextOut(hdc,x - 1, y + 1, p_name, final_len);
+    ExtTextOut(p_dc, x + 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x - 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x + 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
+    ExtTextOut(p_dc, x - 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
     
 #if 0
-    SetTextColor(hdc, 0xffbf3f);
+    SetTextColor(p_dc, 0xffbf3f);
 #else
-    SetTextColor(hdc, 0xfefefe);
+    SetTextColor(p_dc, 0xfefefe);
 #endif
     
-    TextOut(hdc,x, y, p_name, final_len);
+    ExtTextOut(p_dc,x, y, ETO_CLIPPED, p_clip, p_name, len, NULL);
 }
 
 // =============================================================================
 
 void
-Paintspr(HDC hdc,
-         int x,
-         int y,
-         int n,
-         int o,
-         int w)
+Paintspr(HDC const p_dc,
+         int const p_x,
+         int const p_y,
+         int const p_hscroll,
+         int const p_vscroll,
+         size_t const p_window_size)
 {
     size_t const len = strlen(buffer);
     
-    signed final_len = (signed) len;
+    size_t final_len = (signed) len;
     
     // -----------------------------
     
-    if( (y + textmetric.tmHeight) > (w - o) )
-        return;
+    // \task Small nitpick, but "secrets" drawn at the far right
+    // edge of the screen can leave a half circle artifact.
+    // also the very bottom of the screen. This is owing to their
+    // being 8 pixel aligned. Certainly fixable but will have to look
+    // a bit in depth.
     
-    if( (len * textmetric.tmAveCharWidth) + x > (w - n) )
-        final_len = (w - n - x) / textmetric.tmAveCharWidth;
+    // Probably not strictly necessary, but the program doesn't make a point
+    // to set it anywhere more general.
+    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
     
-    if(final_len <= 0)
-        return;
+    if( (len * textmetric.tmAveCharWidth) + p_x > (p_window_size - p_hscroll) )
+        final_len = (p_window_size - p_hscroll - p_x) / textmetric.tmAveCharWidth;
     
-    SetTextColor(hdc, 0);
+    {
+        char text_buf[0x100];
+        
+        sprintf(text_buf, "x = %d, y = %d, n = %d, o = %d, w = %d",
+                p_x, p_y, p_hscroll, p_vscroll, p_window_size);
+        
+        SetDlgItemText(debug_window, IDC_STATIC2, text_buf);
+    }
     
-    TextOut(hdc, x + 1, y + 1, buffer, final_len);
-    TextOut(hdc, x - 1, y - 1, buffer, final_len);
-    TextOut(hdc, x + 1, y - 1, buffer, final_len);
-    TextOut(hdc, x - 1, y + 1, buffer, final_len);
+    if(final_len > len)
+    {
+        final_len = len;
+    }
+    
+    SetTextColor(p_dc, 0);
+    
+    TextOut(p_dc, p_x + 1, p_y + 1, buffer, final_len);
+    TextOut(p_dc, p_x - 1, p_y - 1, buffer, final_len);
+    TextOut(p_dc, p_x + 1, p_y - 1, buffer, final_len);
+    TextOut(p_dc, p_x - 1, p_y + 1, buffer, final_len);
     
 #if 0
-    SetTextColor(hdc, 0xffbf3f);
+    SetTextColor(p_dc, 0xffbf3f);
 #else
-    SetTextColor(hdc, 0xfefefe);
+    SetTextColor(p_dc, 0xfefefe);
 #endif
     
-    TextOut(hdc, x, y, buffer, final_len);
+    TextOut(p_dc, p_x, p_y, buffer, final_len);
 }
 
 // =============================================================================
@@ -18219,7 +8730,8 @@ void Getsampsel(SAMPEDIT*ed,RECT*rc)
     rc->right=(ed->selr<<16)/ed->zoom+1-ed->scroll;
 }
 
-long CALLBACK perspdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+perspdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PERSPEDIT*ed;
     HDC hdc;
@@ -18567,7 +9079,9 @@ updsize:
             p[k]=128;
             Get3dpt(ed,p[0],p[1],p[2],&pt3);
             SelectObject(hdc,white_pen);
-            if((j<3) ^fronttest(&pt,&pt2,&pt3)) {
+            
+            if( (j < 3) ^ fronttest(&pt,&pt2,&pt3) )
+            {
                 m=0;
                 for(;;) {
                     if(e[l]) goto nextaxis;
@@ -18724,308 +9238,6 @@ void Savepersp(PERSPEDIT*ed)
     ed->ew.doc->modf=1;
 }
 
-void Getselectionrect(OVEREDIT*ed,RECT*rc)
-{
-    int i,j;
-    i=(ed->rectleft-ed->mapscrollh)<<5;
-    j=((ed->rectright-ed->mapscrollh)<<5);
-    if(i<j) rc->left=i,rc->right=j; else rc->left=j,rc->right=i;
-    i=(ed->recttop-ed->mapscrollv)<<5;
-    j=((ed->rectbot-ed->mapscrollv)<<5);
-    if(i<j) rc->top=i,rc->bottom=j; else rc->top=j,rc->bottom=i;
-}
-void Overselectwrite(OVEREDIT*ed) {
-    int i,j,k,l,m,n,o,p,q;
-    m=ed->mapsize?32:16;
-    if(ed->stselx!=ed->rectleft || ed->stsely!=ed->recttop) {
-        ed->undomodf=ed->ov->modf;
-        memcpy(ed->undobuf,ed->ov->buf,0x800);
-        if(ed->rectleft<0) i=-ed->rectleft; else i=0;
-        if(ed->recttop<0) j=-ed->recttop; else j=0;
-        if(ed->rectright>m) k=m; else k=ed->rectright;
-        k-=ed->rectleft;
-        if(ed->rectbot>m) l=m; else l=ed->rectbot;
-        l-=ed->recttop;
-        q=ed->rectright-ed->rectleft;
-        
-        p=j*q;
-        
-        o = ( (ed->recttop + j) << 5) + ed->rectleft;
-        
-        for(;j<l;j++) {
-            for(n=i;n<k;n++) {
-                ed->ov->buf[n+o]=ed->selbuf[n+p];
-            }
-            o+=32;
-            p+=q;
-        }
-        ed->ov->modf=1;
-    }
-    ed->selflag=0;
-    free(ed->selbuf);
-}
-
-void
-Wmapselectionrect(WMAPEDIT const * const ed,
-                  RECT           * const rc)
-{
-    int i = ( ed->rectleft - (ed->mapscrollh << 2) ) << 3;
-    
-    int j = ( (ed->rectright - (ed->mapscrollh << 2) ) << 3);
-    
-    if(i < j)
-    {
-        rc->left  = i;
-        rc->right = j;
-    }
-    else
-    {
-        rc->left  = j;
-        rc->right = i;
-    }
-    
-    i = (ed->recttop-(ed->mapscrollv<<2))<<3;
-    j = ((ed->rectbot-(ed->mapscrollv<<2))<<3);
-    
-    if(i < j)
-    {
-        rc->top    = i;
-        rc->bottom = j;
-    }
-    else
-    {
-        rc->top    = j;
-        rc->bottom = i;
-    }
-}
-
-COLORREF custcols[16];
-const static int pal_addr[]={
-    0x1bd630,0x1bd648,0x1bd308,0x1be6c8,0x1bd218,0x1be86c,0x1be604,0x1bd4e0,
-    0x1bd734,0x1bd660,0xadb27,0x1bd39e,0x1bd446,0x1be544,0xcc425,0x1eccd3
-};
-
-void Savepal(PALEDIT*ed)
-{
-    int k;
-    short *b;
-    if(!ed->modf) return;
-    k=ed->palw*ed->palh;
-    b=(short*)(ed->ew.doc->rom+romaddr(pal_addr[(ed->ew.param>>10)&63]+(k*(ed->ew.param>>16)<<1)));
-    memcpy(b,ed->pal,k<<1);
-    ed->modf=0;
-    ed->ew.doc->modf=1;
-}
-
-long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i = 0,j,k,m,n;
-    short*b,l;
-    HDC hdc;
-    HGDIOBJ oldobj;
-    RECT rc;
-    PAINTSTRUCT ps;
-    CHOOSECOLOR cc;
-    const static char pal_w[]={
-        3,4,15,7,15,7,7,7,15,16,16,7,7,16,8,8
-    };
-    const static char pal_h[]={
-        1,1,1,5,4,3,1,1,6,2,8,1,1,6,1,1
-    };
-    PALEDIT *ed;
-    switch(msg) {
-    case WM_CLOSE:
-        ed=(PALEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->ew.doc->modf==2) goto deflt;
-        if(ed->modf) {
-            wsprintf(buffer,"Confirm palette modification?",ed->ew.param);
-            switch(MessageBox(framewnd,buffer,"Palette editor",MB_YESNOCANCEL)) {
-            case IDYES:
-                Savepal(ed);
-                goto deflt;
-            case IDCANCEL:
-                break;
-            case IDNO:
-                goto deflt;
-            }
-        }
-        goto deflt;
-    case WM_MDIACTIVATE:
-        activedoc=((WMAPEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        break;
-    case WM_GETMINMAXINFO:
-        ed=(PALEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        break;
-    case WM_PAINT:
-        ed=(PALEDIT*)GetWindowLong(win,GWL_USERDATA);
-        hdc=BeginPaint(win,&ps);
-        GetClientRect(win,&rc);
-        k=0;
-        
-        m = ( rc.right - (ed->palw << 4) ) >> 1;
-        n = ( rc.bottom - (ed->palh << 4) ) >> 1;
-        
-        oldobj=SelectObject(hdc,white_pen);
-        
-        for(j=0;j<ed->palh;j++)
-        {
-            for(i = 0; i < ed->palw; i++, k++)
-            {
-                rc.left=m+(i<<4);
-                rc.right=rc.left+16;
-                rc.top=n+(j<<4);
-                rc.bottom=rc.top+16;
-                
-                FillRect(hdc,&rc,ed->brush[k]);
-                
-                if(ed->pal[k] & 0x8000)
-                {
-                    // I see that this paints a diagonal line on the
-                    // palette entry, but does this do anything practical?
-                    // In some programs this indicates that a default color
-                    // is used instead, but hard to say here.
-                    
-                    MoveToEx(hdc, rc.left + 3, rc.top + 13, 0);
-                    LineTo(hdc, rc.left + 13, rc.top + 3);
-                }
-            }
-        }
-        SelectObject(hdc,oldobj);
-        
-        rc.left = m;
-        rc.top = n;
-        rc.right = rc.left + (i << 4);
-        rc.bottom=rc.top+(j<<4);
-        
-        FrameRect(hdc,&rc,black_brush);
-        
-        EndPaint(win,&ps);
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-        
-        ed = (PALEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        GetClientRect(win, &rc);
-        
-        m = ( rc.right - (ed->palw << 4) ) >> 1;
-        n = ( rc.bottom - (ed->palh << 4) ) >> 1;
-        i = ( (lparam & 65535) - m ) >> 4;
-        j = ( (lparam >> 16) - n ) >> 4;
-        
-        if(i<0 || i>=ed->palw || j<0 || j>=ed->palh) break;
-        
-        k = i + j * ed->palw;
-        
-        if(msg == WM_RBUTTONDOWN)
-        {
-            ed->pal[k] ^= 0x8000;
-            
-            goto upd;
-        }
-        
-        cc.lStructSize = sizeof(cc);
-        cc.hwndOwner = framewnd;
-        
-        // Not using a custom template.
-        cc.hInstance = NULL;
-        
-        l = ed->pal[k];
-        
-        cc.rgbResult = ((l & 0x1f) << 3) + ((l & 0x3e0) << 6) + ((l & 0x7c00) << 9);
-        cc.lpCustColors=custcols;
-        cc.Flags = CC_ANYCOLOR | CC_RGBINIT | CC_FULLOPEN;
-        
-        if(ChooseColor(&cc))
-        {
-            cc.rgbResult&=0xf8f8f8;
-            
-            ed->pal[k] = (uint16_t)
-            (
-                ( (cc.rgbResult &     0xf8) >> 3)
-              + ( (cc.rgbResult &   0xf800) >> 6)
-              + ( (cc.rgbResult & 0xf80000) >> 9)
-            );
-            
-            DeleteObject(ed->brush[k]);
-            ed->brush[k]=CreateSolidBrush(cc.rgbResult);
-upd:
-            ed->modf=1;
-            rc.left=m+(i<<4);
-            rc.top=n+(j<<4);
-            rc.right=rc.left+16;
-            rc.bottom=rc.top+16;
-            
-            InvalidateRect(win,&rc,0);
-        }
-        
-        break;
-    
-    case WM_DESTROY:
-        
-        ed = (PALEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
-        for(i=ed->palw*ed->palh-1;i>=0;i--) DeleteObject(ed->brush[i]);
-        free(ed->pal);
-        free(ed->brush);
-        ed->ew.doc->pals[ed->ew.param&1023]=0;
-        
-        break;
-    
-    case WM_CREATE:
-        ed=(PALEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        i=(ed->ew.param>>10)&63;
-        ed->palw=pal_w[i];
-        ed->palh=pal_h[i];
-        k=ed->palw*ed->palh;
-        ed->pal=malloc(k*2);
-        ed->brush=malloc(k*4);
-        ed->modf=0;
-        b=(short*)(ed->ew.doc->rom+romaddr(pal_addr[i]+(k*(ed->ew.param>>16)<<1)));
-        for(j=0;j<k;j++) {
-            l=ed->pal[j]=b[j];
-            ed->brush[j]=CreateSolidBrush(((l&0x1f)<<3)+((l&0x3e0)<<6)+((l&0x7c00)<<9));
-        }
-        Updatesize(win);
-        
-    deflt:
-    default:
-        
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
-void Saveworldmap(WMAPEDIT*ed)
-{
-    int i,j=ed->ew.param?1:4,k;
-    int*b,*b2;
-    if(!ed->modf) return;
-    b=(int*)(ed->ew.doc->rom + 0x54727 + (ed->ew.param<<12));
-    for(i=0;i<j;i++) {
-        b2=(int*)(ed->buf+wmap_ofs[i]);
-        for(k=0;k<32;k++) {
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            *(b++)=*(b2++);
-            b2+=8;
-        }
-    }
-    ed->modf=0;
-    ed->ew.doc->modf=1;
-}
 void Savedungmap(LMAPEDIT*ed)
 {
     int i,j,k,l,m,n,o,p;
@@ -19131,7 +9343,8 @@ void Savetmap(TMAPEDIT*ed)
     ed->ew.doc->modf=1;
 }
 
-long CALLBACK tmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+tmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TMAPEDIT *ed;
     switch(msg) {
@@ -19177,38 +9390,7 @@ deflt:
     return 0;
 }
 
-//Drawblock32#******************************
-
-void Drawblock32(OVEREDIT *ed, int m, int t)
-{
-    int k,
-        n,
-        p,
-        q;
-    
-    unsigned short *o;
-    unsigned char *rom = ed->ew.doc->rom;
-    
-    short l[4];
-    
-    Getblock32(rom, m, l);
-    
-    p = 0;
-    
-    for(k = 0; k < 4; k++)
-    {
-        o = (unsigned short*)(rom + 0x78000 + ((((ed->disp & 8) && ovlblk[k] != 65535) ? ovlblk[k] : l[k]) << 3));
-        
-        for(q = 0; q < 4; q++)
-        {
-            n = *(o++);
-            Drawblock(ed, blkx[p], blky[p], n, t);
-            p++;
-        }
-    }
-}
-
-//Drawblock32*******************************
+// =============================================================================
 
 void Trackchgsel(HWND win,RECT*rc,TRACKEDIT*ed)
 {
@@ -19218,7 +9400,8 @@ void Trackchgsel(HWND win,RECT*rc,TRACKEDIT*ed)
     InvalidateRect(win,rc,1);
 }
 
-long CALLBACK trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT *ed, *ed2;
     HDC hdc;
@@ -19276,7 +9459,7 @@ selchg:
         j=(lparam>>16)/textmetric.tmHeight+ed->scroll;
         if(j>ed->len) j=ed->len;
         if(j<0) j=0;
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         if(msg!=WM_MOUSEMOVE) if(j<ed->len) {
             sc=ed->ew.doc->scmd+ed->tbl[j];     
             i=lparam&65535;
@@ -19292,7 +9475,7 @@ selchg:
             else k=-1;
             goto dontgetrc2;
 updfld:
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
 dontgetrc2:
             if(k==ed->csel && j==ed->sel) {
                 switch(k) {
@@ -19340,7 +9523,7 @@ setrow:
         ed->sel=j;
         goto dontgetrc;
 updrow:
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
 dontgetrc:
         if(j>=ed->scroll+ed->page) {
             k=j-ed->page;
@@ -19390,34 +9573,50 @@ modfrow:
             if(!mark_doc) break;
             goto unmark;
         case 'L':
-            if(mark_doc!=ed->ew.doc || mark_sr!=ed->ew.param) {
-unmark:
-                if(mark_doc) {
-                    oldobj=mark_doc->sr[mark_sr].editor;
-                    if(oldobj) {
-                        oldobj=GetDlgItem(GetDlgItem(oldobj,2000),3000);
-                        GetClientRect(oldobj,&rc);
-                        Trackchgsel(oldobj,&rc,(TRACKEDIT*)GetWindowLong(oldobj,GWL_USERDATA));
+            
+            if(mark_doc!=ed->ew.doc || mark_sr!=ed->ew.param)
+            {
+                
+            unmark:
+                
+                if(mark_doc)
+                {
+                    HWND w = mark_doc->sr[mark_sr].editor;
+                    
+                    if(w)
+                    {
+                        HWND sw = GetDlgItem(GetDlgItem(w, 2000), 3000);
+                        rc = HM_GetClientRect(sw);
+                        Trackchgsel(sw, &rc,
+                                    (TRACKEDIT*) GetWindowLongPtr(sw, GWLP_USERDATA));
                     }
                 }
-                if(wparam=='U') {
-                    mark_doc=0;
+                
+                if(wparam=='U')
+                {
+                    mark_doc = 0;
                     break;
                 }
+                
                 mark_doc=ed->ew.doc;
                 mark_sr=ed->ew.param;
                 mark_first=mark_last=ed->tbl[mark_start=mark_end=ed->sel];
-                GetClientRect(win,&rc);
-            } else {
-                GetClientRect(win,&rc);
+                rc = HM_GetClientRect(win);
+            }
+            else
+            {
+                rc = HM_GetClientRect(win);
                 Trackchgsel(win,&rc,ed);
                 j=ed->sel;
                 if(j>=ed->len) j=ed->len-1;
                 if(ed->sel>=mark_start) mark_last=ed->tbl[mark_end=j];
                 else mark_first=ed->tbl[mark_start=j];
             }
+            
             Trackchgsel(win,&rc,ed);
+            
             break;
+        
         case 'M':
             if(!mark_doc) break;
             if(mark_doc!=ed->ew.doc) {
@@ -19528,7 +9727,7 @@ unmark:
         switch(wparam) {
         case VK_DOWN:
             if(ed->sel==ed->len) break;
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
             j=ed->sel+1;
             goto setrow;
         case VK_UP:
@@ -19702,7 +9901,7 @@ digkey:
             sc=ed->ew.doc->scmd+ed->tbl[j];
             k=ed->csel;
             if(j==-1 || k==-1) break;
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
             m=wparam-'0';
             switch(k) {
             case 0:
@@ -19766,7 +9965,7 @@ digkey:
             k += textmetric.tmHeight;
         }
         
-        k = (ed->sel-ed->scroll) * textmetric.tmHeight;
+        k = (ed->sel - ed->scroll) * textmetric.tmHeight;
         
         SetROP2(hdc, R2_NOTXORPEN);
         
@@ -19788,15 +9987,21 @@ digkey:
             rc.right=csel_r[ed->csel];
             DrawFocusRect(hdc,&rc);
         }
+        
         SelectObject(hdc,oldobj);
         SelectObject(hdc,oldobj2);
         EndPaint(win,&ps);
         break;
+        
     default:
+        
         return DefWindowProc(win,msg,wparam,lparam);
     }
+    
     return 0;
 }
+
+// =============================================================================
 
 char const *
 Getsprstring(DUNGEDIT const * const ed,
@@ -19929,11 +10134,15 @@ tmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetScrollInfo(win,SB_HORZ,&si,1);
         ed->mapscrollv=Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
         ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
+        
         break;
+    
     case WM_VSCROLL:
         ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
+        
         break;
+    
     case WM_HSCROLL:
         ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
@@ -20038,7 +10247,7 @@ draw:
                         {
                             if(msg==WM_RBUTTONDOWN)
                             {
-                                k = get_16_le
+                                k = ldle16b
                                 (
                                     ed->buf + ed->sel + 4
                                   + ( ( ( p - ed->selrect.top ) >> 2) & -2 )
@@ -20047,7 +10256,7 @@ draw:
                                 goto getblk;
                             }
                             
-                            put_16_le
+                            stle16b
                             (
                                 ed->buf + ed->sel + 4
                               + ( ( (p - ed->selrect.top) >> 2) & -2 ),
@@ -20261,1719 +10470,9 @@ updblk:
                 Tmapobjchg(ed,win);
                 ed->modf=1;
             }
+            
             break;
         }
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-long CALLBACK dungmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    // Handles the actual dungeon map portion
-    // of the dungeon dialog
-    
-    SCROLLINFO si;
-    
-    int i, j, k, l, m, n, o, p, q = 0;
-    
-    PAINTSTRUCT ps;
-    HDC hdc;
-    HPALETTE oldpal;
-    DUNGEDIT *ed;
-    HBRUSH oldbrush = 0,
-           oldobj2 = 0,
-           oldobj3 = 0;
-    RECT rc,rc2;
-    HMENU menu,menu2;
-    POINT pt;
-    
-    unsigned char * rom = 0;
-    
-    switch(msg)
-    {
-    
-    case WM_LBUTTONUP:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->withfocus&10) {
-            ReleaseCapture();
-            ed->withfocus&=-15;
-            ed->selcorner=16;
-            goto updcursor;
-        }
-        break;
-    case WM_MOUSEMOVE:
-        
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        
-updcursor:
-        
-        {
-            HM_MouseMoveData d = HM_GetMouseMoveData(win, wparam, lparam);
-            
-            char info[0x200];
-            
-            sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x / 8, d.m_rel_pos.y / 8);
-            
-            SetDlgItemText(debug_window, IDC_STATIC2, info);
-        }
-        
-        o=((short)lparam)+(ed->mapscrollh<<5);
-        p=(lparam>>16)+(ed->mapscrollv<<5);
-        
-        if(ed->withfocus & 2)
-        {
-            if(o > ed->dragx + 7 || o < ed->dragx || p > ed->dragy+7 || p < ed->dragy)
-            {
-                if(ed->selchk == 9)
-                    dm_x = *(short*)(ed->tbuf+ed->selobj) >> 1;
-                else if(ed->selchk == 8)
-                    dm_x = *(short*)(ed->ew.doc->rom + ed->selobj + 2) >> 1;
-                else if(ed->selchk == 7)
-                    dm_x = *(short*)(ed->sbuf + ed->selobj - 2) >> 1;
-                else if(ed->selchk == 6)
-                    dm_x = ((ed->ebuf[ed->selobj] & 31) << 7) + ((ed->ebuf[ed->selobj + 1] & 31) << 1);
-                else if(ed->selchk & 1)
-                    break;
-                else
-                    getobj(ed->buf + ed->selobj);
-                
-                i = (o - ed->dragx) >> 3;
-                j = (p - ed->dragy) >> 3;
-                
-                if(!(i||j))
-                    break;
-                
-                if(ed->selchk == 6)
-                    i &= -2, j &= -2;
-                
-                k = (dm_x & 0x3f) + i;
-                l = ((dm_x >> 6) & 0x3f) + j;
-                
-                if(k > 0x3f || k < 0 || l > 0x3f || l < 0)
-                    ed->withfocus |= 4;
-                else
-                {
-                    Dungselectchg(ed,win,0);
-                    dm_x &= 0x6000;
-                    dm_x |= k + (l << 6);
-                    
-                    if(ed->selchk==9)
-                    {
-                        *(short*)(ed->tbuf+ed->selobj)=dm_x<<1;
-                        goto modfx;
-                    }
-                    else if(ed->selchk == 8)
-                    {
-                        *(short*)(ed->ew.doc->rom + ed->selobj+2) = dm_x << 1;
-                        goto ncursor;
-                    }
-                    else if(ed->selchk == 7)
-                    {
-                        *(short*)(ed->sbuf+ed->selobj-2) = dm_x<<1;
-                        goto modfx;
-                    }
-                    else if(ed->selchk & 1)
-                        setdoor(ed->buf + ed->selobj), ed->modf = 1;
-                    else if(ed->selchk == 6)
-                    {
-                        if(dm_l >= 0x18 && dm_x > 0xfc0)
-                            ed->withfocus |= 4;
-                        else
-                        {
-                            ed->ebuf[ed->selobj] = (ed->ebuf[ed->selobj] & 224) + ((dm_x >> 7) & 31);
-                            ed->ebuf[ed->selobj+1] = (ed->ebuf[ed->selobj + 1] & 224) + ((dm_x >> 1) & 31);
-modfx:
-                            ed->modf = 1;
-ncursor:
-                            if(ed->withfocus & 4)
-                            {
-                                SetCursor(normal_cursor);
-                                ed->withfocus &= -5;
-                            }
-                        }
-                    }
-                    else
-upddrag:
-                        setobj(ed,ed->buf+ed->selobj);
-                }
-                
-                if(ed->withfocus & 4)
-                    SetCursor(forbid_cursor);
-                else
-                {
-                    ed->dragx += i << 3;
-                    ed->dragy += j << 3;
-                    
-                    goto updmap;
-                }
-            }
-        }
-        else
-        {
-            i = 0;
-            
-            if(ed->withfocus & 8)
-            {
-                o = (o + 4) & -8;
-                p = (p + 4) & -8;
-                i = o - ed->dragx;
-                j = p - ed->dragy;
-                
-                if(!(i||j))
-                    break;
-                
-                k = ed->objt;
-                l = obj3_t[k];
-                n = obj3_m[k];
-                rc = ed->sizerect;
-                m = ed->selcorner;
-                
-                if(m & 1)
-                    rc.left = o;
-                
-                if(m & 2)
-                    rc.right = o;
-                
-                if(m & 4)
-                    rc.top = p;
-                
-                if(m & 8)
-                    rc.bottom = p;
-                
-                p = ( (rc.right - rc.left) >> 3) - obj3_w[k];
-                q = ( (rc.bottom - rc.top) >> 3) - obj3_h[k];
-                
-                switch(l & 192)
-                {
-                case 0:
-                    
-                    o = p;
-                    
-                    break;
-                
-                case 64:
-                    
-                    o = 0;
-                    
-                    if(m & 3)
-                        o = p;
-                    
-                    if((m & 12) && q > o)
-                        o = q;
-                    
-                    break;
-                
-                case 128:
-                    
-                    o = q;
-                    
-                    break;
-                }
-                
-                o /= obj3_m[k];
-                
-                switch(l & 15)
-                {
-                case 0: case 2:
-                    if(o>16) o=0;
-                    else if(o<1) o=1;
-                    break;
-                case 1:
-                    if(o>16) o=15;
-                    else if(o<1) o=0;
-                    else o--;
-                    break;
-                case 3:
-                    if(o>4) o=3;
-                    else if(o<1) o=0;
-                    else o--;
-                    o<<=2;
-                    q/=obj3_m[k];
-                    if(q>4) o+=3;
-                    else if(q>=1) o+=q-1;
-                    break;
-                case 4:
-                    o-=4;
-                    o>>=3;
-                    if(o<0) o=0;
-                    if(o>3) o=3;
-                    if(q>32) o+=12;
-                    else if(q>24) o+=8;
-                    else if(q>20) o+=4;
-                    break;
-                }
-                
-                if(o == ed->objl)
-                    break;
-                
-                Dungselectchg(ed,win,0);
-                dm_k = k; // assign the object's type.
-                dm_l = o; // assign the object's subtype
-                rc.left=0;
-                rc.top=0;
-                Getdungobjsize(0,&rc,0,0,1);
-                
-                if(l == 20)
-                    dm_x = (short) (((m&1)?ed->sizerect.right:(ed->sizerect.left+rc.right-rc.left))>>3)-3;
-                else
-                    dm_x = (short) (((m&1)?(ed->sizerect.right-rc.right+rc.left):ed->sizerect.left)>>3);
-                
-                if(l & 32)
-                    dm_x += (short)
-                    (
-                        (
-                            (
-                                (m & 4) ? ed->sizerect.bottom
-                                        : (ed->sizerect.top + rc.bottom - rc.top)
-                            ) >> 3
-                        )
-                      - ( (l & 16) ? 1 : 5 )
-                    ) << 6;
-                else
-                    dm_x += (short) (((m & 4) ? (ed->sizerect.bottom - rc.bottom + rc.top) : ed->sizerect.top)>>3<<6);
-                goto upddrag;
-            }
-            else
-            {
-                i=0;
-                
-                if(ed->selchk < 6 && !(ed->selchk&1) && ed->selobj && ed->objt < 0xf8)
-                {
-                    k = ed->objt;
-                    j = obj3_t[k];
-                    
-                    if(obj3_m[k])
-                    {
-                        rc = ed->selrect;
-                        
-                        if(j < 128 && p >= rc.top - 2 && p < rc.bottom + 2)
-                        {
-                            if(o >= rc.left - 2 && o < rc.left + 2) i |= 1;
-                            if(o < rc.right + 2 && o >= rc.right - 2) i |= 2;
-                        }
-                        if((j>=64 || ((j&15)>=3)) && o>=rc.left-2 && o<rc.right+2) {
-                            if(p>=rc.top-2 && p<rc.top+2) i|=4;
-                            if(p<rc.bottom+2 && p>=rc.bottom-2) i|=8;
-                        }
-                    }
-                }
-//              if(ed->selcorner!=i) {
-                    ed->selcorner=i;
-                    SetCursor(sizecsor[szcofs[i]]);
-//              }
-            }
-        }
-        break;
-    
-    case WM_LBUTTONDOWN:
-        
-        // What to do if the left mouse button goes down.
-        
-        // Obtains the rom and other data structures associated with this room.
-        // notes: o is the x coordinate of the click, p is the y coordinate
-        // q is the size of the object we're looking for (3 bytes or 2 bytes)
-        // m is the number of objects of that type in the array we're looking through
-        // n is a counter to step through those objects
-        // i is flag variable (bit 0: it's a door (type 2 object)
-        ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        o = (lparam & 65535) + (ed->mapscrollh << 5);
-        p = (lparam >> 16) + (ed->mapscrollv << 5);
-        
-        if(ed->selcorner)
-        {
-            ed->withfocus |= 8;
-            ed->dragx = (o + 4) & -8;
-            ed->dragy = (p + 4) & -8;
-            ed->sizerect = ed->selrect;
-            
-            SetCapture(win);
-        }
-        else
-        {
-            if(ed->selobj && o >= ed->selrect.left && o < ed->selrect.right && p >= ed->selrect.top && p < ed->selrect.bottom)
-                goto movesel;
-            
-            Dungselectchg(ed,win,0);
-            
-            // If it's a layout, handle only type 1 objects
-            if(ed->ew.param >= 0x8c)
-                i = 0, q = 3;
-            else
-            {
-                i = ed->selchk;
-                
-                if(i < 6)
-                {
-                    i &= 6;
-                    
-                    if(ed->chkofs[i+2] != ed->chkofs[i+1])
-                        i |= 1;
-                    
-                    q = 3 - (i & 1);
-                }
-            }
-            
-            if(i == 9)
-                n = 2, m = ed->tsize - 2, q = 2;
-            else if(i == 8)
-                n = 0x271de, m = 0x27366, rom = ed->ew.doc->rom, q = 4;
-            else if(i == 7)
-                n = 0, m = ed->ssize - 3, rom = ed->ew.doc->rom, q = 3;
-            else if(i == 6)
-                n = 1, m = ed->esize - 3, q = 3;
-            else
-                n = ed->chkofs[i & 6], m = ed->chkofs[i + 1] - 2 - q;
-            
-            ed->selobj=0;
-            
-            for(;m>=n;m-=q)
-            {
-                if(i < 6 && (i & 1) && m < ed->chkofs[i])
-                {
-                    i--, q = 3, m -= 3;
-                    
-                    if(m < n)
-                        break;
-                }
-                
-                if(i == 9)
-                {
-                    dm_x = (*(short*) (ed->tbuf + m) >> 1) & 0xfff;
-                }
-                else if(i == 8)
-                {
-                    if(*(short*) (rom + m) != ed->mapnum)
-                        continue;
-                    
-                    dm_x = (*(short*) (rom + m + 2) >> 1) & 0xfff;
-                }
-                else if(i == 7)
-                {
-                    dm_x = *(short*) (ed->sbuf + m) >> 1;
-                    dm_k = ed->sbuf[m + 2];
-                    cur_sec = Getsecretstring(ed->ew.doc->rom, dm_k);
-                }
-                else if(i == 6)
-                {
-                    dm_x = ((ed->ebuf[m] & 31) << 7) + ((ed->ebuf[m + 1] & 31) << 1);
-                    
-                    dm_l = ((ed->ebuf[m] & 0x60) >> 2) | ((ed->ebuf[m + 1] & 0xe0) >> 5);
-                    dm_k = ed->ebuf[m + 2] + (((dm_l & 7) == 7) ? 256 : 0);
-                }
-                else if(i & 1)
-                    getdoor(ed->buf + m, ed->ew.doc->rom);
-                else
-                    getobj(ed->buf + m);
-                
-                rc.left = ((dm_x & 0x3f) << 3);
-                rc.top = ((dm_x >> 6) << 3);
-                
-                Getdungobjsize(i, &rc, 0, 0, 0);
-                
-                if(o >= rc.left && o < rc.right && p >= rc.top && p < rc.bottom)
-                {
-                    if(i == 7)
-                        m += 2;
-                    
-                    ed->selobj = m;
-                    ed->selchk = i;
-movesel:
-                    
-                    ed->withfocus |= 2;
-                    ed->dragx = o;
-                    ed->dragy = p;
-                    
-                    SetCapture(win);
-                    
-                    break;
-                }
-            }
-            Dungselectchg(ed,win,1);
-        }
-        
-        SetFocus(win);
-        
-        break;
-    
-    case WM_ACTIVATE:
-        
-        if(wparam == WA_ACTIVE)
-            SetFocus(win);
-        
-        break;
-    
-    case WM_SIZE:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!ed)
-            break;
-        
-        si.cbSize = sizeof(si);
-        
-        si.fMask = SIF_RANGE | SIF_PAGE;
-        
-        {
-            unsigned const height = HIWORD(lparam);
-            unsigned const width  = LOWORD(lparam);
-            
-            unsigned const divider = 9;
-            
-            si.nMin = 0;
-            si.nMax = ( ( (512 + 32) / divider ) - 1 );
-            
-            si.nPage = (height / divider);
-            
-            ed->mappagev = si.nPage;
-            ed->map_vscroll_delta = divider;
-        }
-        
-        SetScrollInfo(win, SB_VERT, &si, 1);
-        
-        si.nMin = 0;
-        si.nMax = 15;
-        
-        si.nPage = (lparam & 65535) >> 5;
-        ed->mappageh = si.nPage;
-        
-        SetScrollInfo(win, SB_HORZ, &si, 1);
-        
-        ed->mapscrollv = Handlescroll(win,
-                                      -1,
-                                      ed->mapscrollv,
-                                      ed->mappagev,
-                                      SB_VERT,
-                                      16,
-                                      ed->map_vscroll_delta);
-        
-        ed->mapscrollh = Handlescroll(win,
-                                      -1,
-                                      ed->mapscrollh,
-                                      ed->mappageh,
-                                      SB_HORZ,
-                                      16,
-                                      32);
-        
-        break;
-    
-    case WM_MOUSEWHEEL:
-        
-        if(always)
-        {
-            HM_MouseWheelData const d = HM_GetMouseWheelData(wparam, lparam);
-            
-            unsigned scroll_type = SB_LINEUP;
-            
-            WPARAM fake_wp = 0;
-            
-            SCROLLINFO si_v = HM_GetVertScrollInfo(win);
-            
-            // -----------------------------
-            
-            if(d.m_distance > 0)
-            {
-                // wheel moving up or left
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEUP;
-                }
-                else
-                {
-                    scroll_type = SB_LINEUP;
-                }
-            }
-            else
-            {
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEDOWN;
-                }
-                else
-                {
-                    scroll_type = SB_LINEDOWN;
-                }
-            }             
-            
-            fake_wp = MAKEWPARAM(scroll_type, 0);
-            
-            ed = (DUNGEDIT*) GetWindowLong(win, GWL_USERDATA);
-            
-            ed->mapscrollv = Handlescroll(win,
-                                          fake_wp,
-                                          ed->mapscrollv,
-                                          ed->mappagev,
-                                          SB_VERT,
-                                          (si_v.nMax - si_v.nMin) + 1,
-                                          ed->map_vscroll_delta);
-        }
-        
-        break;
-    
-    case WM_VSCROLL:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        
-        {
-            SCROLLINFO const si_v = HM_GetVertScrollInfo(win);
-            
-            ed->mapscrollv=Handlescroll(win,
-                                        wparam,
-                                        ed->mapscrollv,
-                                        ed->mappagev,
-                                        SB_VERT,
-                                        (si_v.nMax - si_v.nMin) + 1,
-                                        ed->map_vscroll_delta);
-        }
-        
-        break;
-    
-    case WM_HSCROLL:
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
-        break;
-    
-    case WM_GETDLGCODE:
-        return DLGC_WANTARROWS | DLGC_WANTCHARS;
-    
-    case WM_CHAR:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
-        if(wparam >= 64)
-            wparam &= 223;
-        
-        if(!ed->selobj)
-            break;
-        
-        if(ed->selchk > 7)
-            break;
-        
-        if(ed->selchk == 7)
-            switch(wparam)
-            {
-            
-            case '-':
-                
-                ed->sbuf[ed->selobj-1]^=32;
-                ed->modf=1;
-                
-                goto updsel;
-            }
-        else if(ed->selchk == 6)
-            switch(wparam)
-            {
-            
-            case ',':
-            case '.':
-                
-                Dungselectchg(ed,win,0);
-                dm_l=((ed->ebuf[ed->selobj]&0x60)>>2)|((ed->ebuf[ed->selobj+1]&0xe0)>>5);
-                
-                if(wparam==',')
-                    dm_l--;
-                else
-                    dm_l++;
-                
-                i=(ed->ebuf[ed->selobj]&159)|((dm_l<<2)&96);
-                
-                if(i==255)
-                    break;
-                
-                ed->ebuf[ed->selobj]=i;
-                ed->ebuf[ed->selobj+1]=(ed->ebuf[ed->selobj+1]&31)|(dm_l<<5);
-                ed->modf=1;
-                
-                goto updsel;
-            
-            case '-':
-                
-                i=ed->ebuf[ed->selobj]^128;
-                
-                if(i==255)
-                    break;
-                
-                ed->ebuf[ed->selobj]=i;
-                ed->modf=1;
-                
-                goto updsel;
-        }
-        else if(!(ed->selchk & 1))
-            switch(wparam)
-            {
-            
-            case '.':
-                
-                getobj(ed->buf + ed->selobj);
-                
-                if(dm_k > 0xff)
-                    break;
-                
-                dm_l++;
-                
-                goto upd;
-            
-            case ',':
-                
-                getobj(ed->buf+ed->selobj);
-                
-                if(dm_k > 0xff)
-                    break;
-                
-                dm_l--;
-                
-                goto upd;
-            
-            case '-':
-                
-                getobj(ed->buf + ed->selobj);
-                
-                dm_k ^= 0x100;
-                
-                if(dm_k >= 0x100)
-                    dm_k &= 0x13f;
-                else
-                    dm_l = 0;
-                
-                goto upd;
-            
-            case 2:
-                
-                j = ed->chkofs[ed->selchk];
-            
-            if(ed->selobj == j)
-                break;
-            
-            i = *(int*) (ed->buf + ed->selobj);
-            
-            memmove(ed->buf+j+3,ed->buf+j,ed->selobj-j);
-            *(short*)(ed->buf+j)=i;
-            ed->buf[j+2]=i>>16;
-            ed->selobj=j;
-            ed->modf=1;
-            
-            goto updmap;
-        
-        case 22:
-            
-            j=ed->chkofs[ed->selchk+1]-5;
-            
-            if(ed->selobj == ed->chkofs[ed->selchk + 1] - 5)
-                break;
-            
-            i=*(int*)(ed->buf+ed->selobj);
-            memcpy(ed->buf+ed->selobj,ed->buf+ed->selobj+3,j-ed->selobj);
-            *(short*)(ed->buf+j)=i;
-            
-            ed->buf[j+2]=i>>16;
-            ed->selobj=j;
-            ed->modf=1;
-            
-            goto updmap;
-        
-        case 'B':
-            
-            if(ed->selobj == ed->chkofs[ed->selchk])
-                break;
-            
-            i=*(int*)(ed->buf+ed->selobj-3);
-            *(short*)(ed->buf+ed->selobj-3)=*(short*)(ed->buf+ed->selobj);
-            
-            ed->buf[ed->selobj-1]=ed->buf[ed->selobj+2];
-            *(short*)(ed->buf+ed->selobj)=i;
-            
-            ed->buf[ed->selobj+2]=i>>16;
-            ed->selobj-=3;
-            ed->modf=1;
-            
-            goto updmap;
-        
-        case 'V':
-            
-            if(ed->selobj == ed->chkofs[ed->selchk + 1] - 5)
-                break;
-            
-            i = *(int*) (ed->buf + ed->selobj + 3);
-            *(short*)(ed->buf+ed->selobj+3)=*(short*)(ed->buf+ed->selobj);
-            
-            ed->buf[ed->selobj+5]=ed->buf[ed->selobj+2];
-            *(short*)(ed->buf+ed->selobj)=i;
-            
-            ed->buf[ed->selobj+2]=i>>16;
-            ed->selobj+=3;
-            ed->modf=1;
-            
-            goto updmap;
-        
-        case '+': // Trying to add an item to a chest.
-        case '\\': // Decrements the item value, '+' increments the item value.
-            
-            rom = ed->ew.doc->rom;
-            
-            for(k = 0; k < ed->chestnum; k++)
-                if(ed->selobj == ed->chestloc[k])
-                    break;
-            
-            if(k == ed->chestnum)
-                break;
-            
-            for(l = 0; l < 0x1f8; l += 3)
-            {
-                // If the room index in the data matches the room index of the room we're looking at...
-                if( (*(short*) (rom + 0xe96e + l) & 0x7fff) == ed->mapnum)
-                {
-                    k--;
-                    
-                    if(k < 0)
-                    {
-                        m = *(char*)(rom + 0xe970 + l);
-                        
-                        if(wparam == '\\') 
-                            m++;
-                        else
-                            m--;
-                        
-                        if(m < 0)
-                            m = 75;
-                        
-                        if(m > 75)
-                            m = 0;
-                        
-chestchg:
-                        
-                        *(char*) (rom + 0xe970 + l) = m;
-                        
-                        Dungselectchg(ed, win, 1);
-                        
-                        break;
-                    }
-                }
-            }
-            
-            // If we got to the end of the array without finding a match...
-            if(l == 0x1f8)
-            {
-                for(l = 0; l < 0x1f8; l += 3)
-                {
-                    if( is16b_neg1(rom + 0xe96e + l) )
-                    {
-                        // Note that if it is a big chest (0xFB) we will set the MSBit.
-                        *(short*)(rom + 0xe96e + l) = ed->mapnum | ((ed->buf[ed->selobj + 2] == 0xfb) ? 0x8000 : 0);
-                        
-                        // Give it a default value of zero (sword + blue shield)
-                        m = 0;
-                        
-                        goto chestchg;
-                    }
-                }
-                
-                if(l == 0x1f8)
-                    MessageBox(framewnd,"You can't add anymore chests.","Bad error happened",MB_OK);
-            }
-        }
-        else
-            switch(wparam)
-            {
-            case 2:
-                j=ed->chkofs[ed->selchk];
-                if(ed->selobj==j) break;
-                i=*(short*)(ed->buf+ed->selobj);
-                memmove(ed->buf+j+2,ed->buf+j,ed->selobj-j-2);
-                *(short*)(ed->buf+j)=i;
-                ed->selobj=j;
-                ed->modf=1;
-                goto updmap;
-            case 22:
-                j=ed->chkofs[ed->selchk+1]-4;
-                if(ed->selobj==j) break;
-                i=*(short*)(ed->buf+ed->selobj);
-                memmove(ed->buf+ed->selobj,ed->buf+ed->selobj+2,j-ed->selobj);
-                *(short*)(ed->buf+j)=i;
-                ed->selobj=j;
-                ed->modf=1;
-                goto updmap;
-            case 'B':
-                if(ed->selobj==ed->chkofs[ed->selchk]) break;
-                i=*(short*)(ed->buf+ed->selobj-2);
-                *(short*)(ed->buf+ed->selobj-2)=*(short*)(ed->buf+ed->selobj);
-                *(short*)(ed->buf+ed->selobj)=i;
-                ed->selobj-=2;
-                ed->modf=1;
-                goto updmap;
-            case 'V':
-                if(ed->selobj==ed->chkofs[ed->selchk+1]-4) break;
-                i=*(short*)(ed->buf+ed->selobj+2);
-                *(short*)(ed->buf+ed->selobj+2)=*(short*)(ed->buf+ed->selobj);
-                *(short*)(ed->buf+ed->selobj)=i;
-                ed->selobj+=2;
-                ed->modf=1;
-                goto updmap;
-            }
-        break;
-    
-    case WM_LBUTTONDBLCLK:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-chooseobj:
-        if(!ed->selobj) break;
-        if(ed->selchk>=7) break;
-        if(ed->selchk==6) {
-            q=(ed->ebuf[ed->selobj+1]>=224)?768:512;
-            i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,ed->ebuf[ed->selobj+2]+q);
-        } else i = ShowDialog(hinstance,
-                              MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                              framewnd,
-                              choosedung,
-                              (long) ed);
-        if(i==-1) break;
-        
-        Dungselectchg(ed,win,0);
-        SetFocus(win);
-        if(ed->selchk==6) {
-            ed->ebuf[ed->selobj+2]=i;
-            if(i&256) ed->ebuf[ed->selobj+1]|=224;
-            else ed->ebuf[ed->selobj+1]&=31;
-            ed->modf=1;
-            goto updsel;
-        } else if(ed->selchk&1) {
-            getdoor(ed->buf+ed->selobj,ed->ew.doc->rom);
-            i-=0x1b8;
-            dm_k=i/42;
-            dm_l=i%42;
-            goto upddr;
-        } else {
-            getobj(ed->buf+ed->selobj);
-            if(i<0x40) dm_k=i + 0x100;
-            else if(i<0x138) {
-                dm_k=i - 0x40;
-                j=obj3_t[dm_k];
-                dm_l=(j==0)|(j==2);
-            }
-            else
-            {
-                dm_k = ( ( (i - 0x138) >> 4) & 7) + 0xf8;
-                dm_l = (i - 0x138) & 15;
-            }
-            
-            goto upd;
-        }
-        break;
-    case WM_RBUTTONDOWN:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetFocus(win);
-        menu = CreatePopupMenu();
-        
-        rom = ed->ew.doc->rom;
-        
-        if(ed->selchk < 6)
-        {
-            AppendMenu(menu,MF_STRING,1,"Insert an object");
-            if(ed->ew.param<0x8c) AppendMenu(menu,MF_STRING,2,"Insert a door");
-        }
-        else if(ed->selchk == 6)
-            AppendMenu(menu, MF_STRING, 4, "Insert an enemy");
-        else if(ed->selchk==7)
-            AppendMenu(menu,MF_STRING,7,"Insert an item");
-        else if(ed->selchk==8)
-            AppendMenu(menu,MF_STRING,8,"Insert a block");
-        else if(ed->selchk==9)
-            AppendMenu(menu,MF_STRING,9,"Insert a torch");
-        
-        if(ed->selchk < 7 && ed->selobj)
-            AppendMenu(menu,MF_STRING,5,"Choose an object");
-        
-        if(ed->selobj)
-            AppendMenu(menu,MF_STRING,3,"Remove");
-        
-        i = 0;
-        
-        if(ed->selchk < 6)
-            i = ed->chkofs[ed->selchk + 1] - ed->chkofs[ed->selchk] > 2;
-        else if(ed->selchk == 6)
-            i = ed->esize > 1;
-        else if(ed->selchk == 7)
-            i = ed->ssize > 0;
-        else if(ed->selchk == 8)
-        {
-            for(i = 0; i < 0x18c; i += 4)
-            {
-                if( *(short*) (rom + 0x271de + i) == ed->mapnum)
-                {
-                    i = 1;
-                    
-                    break;
-                }
-            }
-        }
-        else if(ed->selchk==9) i=ed->tsize;
-        if(i) AppendMenu(menu,MF_STRING,6,"Remove all");
-        AppendMenu(menu,MF_STRING,10,"Discard room header");
-        menu2=CreateMenu();
-        for(i=0;i<15;i++) {
-            wsprintf(buffer,"%d",i);
-            AppendMenu(menu2,MF_STRING,256+i,buffer);
-        }
-        AppendMenu(menu2,MF_STRING,271,"Other...");
-        AppendMenu(menu,MF_POPUP|MF_STRING,(int)menu2,"Edit blocks");
-        GetCursorPos(&pt);
-        k=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_LEFTBUTTON|TPM_LEFTALIGN|TPM_TOPALIGN|TPM_NONOTIFY,pt.x,pt.y,0,win,0);
-        DestroyMenu(menu);
-        i=(lparam&65535)+(ed->mapscrollh<<5);
-        j=(lparam>>16)+(ed->mapscrollv<<5);
-        if(k>=256) {
-            if(k>=264) k+=2;
-            Editblocks((OVEREDIT*)ed,k-256,win);
-        }
-        else
-            switch(k)
-            {
-            case 1:
-                m = ed->selchk | 1;
-                
-                Dungselectchg(ed,win,0);
-                
-                ed->selchk &= 6;
-                
-                if(ed->selobj >= ed->chkofs[m] || !ed->selobj)
-                    l = ed->chkofs[m] - 2;
-                else
-                    l = ed->selobj;
-                
-                o = ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                               framewnd,
-                               choosedung,
-                               (long) ed);
-                
-                if(o==-1) break;
-                for(n=m;n<7;n++) ed->chkofs[n]+=3;
-                ed->buf=realloc(ed->buf,ed->len);
-                memmove(ed->buf+l+3,ed->buf+l,ed->len-l-3);
-                ed->selobj=l;
-                dm_x=((i>>3)&0x3f)|((j<<3)&0xfc0);
-                ed->buf[l]=0;
-                ed->buf[l+1]=0;
-                ed->buf[l+2]=0;
-                if(o<0x40) dm_k=o + 0x100;
-                else if(o<0x138) {
-                    dm_k=o - 0x40;
-                    j=obj3_t[dm_k];
-                    dm_l=(j==0)|(j==2);
-                }
-                else
-                {
-                    dm_k = ( ( (o - 0x138) >> 4) & 7) + 0xf8;
-                    dm_l = (o - 0x138) & 15;
-                }
-                
-                goto upd;
-            
-            case 2:
-            m=(ed->selchk|1)+1;
-            Dungselectchg(ed,win,0);
-            ed->selchk|=1;
-            if(ed->selobj=ed->chkofs[m-1] || !ed->selobj) l=ed->chkofs[m]-2;
-            else l=ed->selobj;
-            if(l==ed->chkofs[m-1]-2) p=4; else p=2;
-            o=ShowDialog(hinstance,
-                         MAKEINTRESOURCE(IDD_DUNG_CHOOSE_OBJECT),
-                         framewnd,
-                         choosedung,
-                         (long)ed);
-            if(o==-1) break;
-            for(n=m;n<7;n++) ed->chkofs[n]+=p;
-            ed->buf=realloc(ed->buf,ed->len);
-            memcpy(ed->buf+l+p,ed->buf+l,ed->len-l-p);
-            if(p==4) { *(short*)(ed->buf+l)=-16; l+=2; }
-            ed->selobj=l;
-            o-=0x1b8;
-            dm_k=o/42;
-            dm_l=o%42;
-            goto upddr;
-        case 3:
-            Dungselectchg(ed,win,0);
-            m=ed->selchk;
-            l=ed->selobj;
-            if(m==9) {
-                memcpy(ed->tbuf+ed->selobj,ed->tbuf+ed->selobj+2,ed->tsize-ed->selobj-2);
-                ed->tsize-=2;
-                if(ed->tsize==2) ed->tsize=0;
-                ed->tbuf=realloc(ed->tbuf,ed->tsize);
-                ed->modf=1;
-            } else if(m==8) *(short*)(rom+ed->selobj)=-1,ed->ew.doc->modf=1;
-            else if(m==7) {
-                memcpy(ed->sbuf+ed->selobj-2,ed->sbuf+ed->selobj+1,ed->ssize-ed->selobj-1);
-                ed->ssize-=3;
-                ed->sbuf=realloc(ed->sbuf,ed->ssize);
-                ed->modf=1;
-            } else if(m==6) {
-                memcpy(ed->ebuf+ed->selobj,ed->ebuf+ed->selobj+3,ed->esize-ed->selobj-3);
-                ed->esize-=3;
-                ed->ebuf=realloc(ed->ebuf,ed->esize);
-                ed->modf=1;
-            } else if(m&1) {
-                if(ed->chkofs[m+1]==ed->chkofs[m]+4) p=4,l-=2; else p=2;
-                for(n=m+1;n<7;n++) ed->chkofs[n]-=p;
-                memcpy(ed->buf+l,ed->buf+l+p,ed->len-l);
-                ed->buf=realloc(ed->buf,ed->len);
-                ed->modf=1;
-            } else {
-                dm_k=0;
-                dm_x=0;
-                dm_l=0;
-                setobj(ed,ed->buf+l);
-                for(n=m+1;n<7;n++) ed->chkofs[n]-=3;
-                memcpy(ed->buf+l,ed->buf+l+3,ed->len-l);
-                ed->buf=realloc(ed->buf,ed->len);
-            }
-            ed->selobj=0;
-            goto updmap;
-        case 4:
-            Dungselectchg(ed,win,0);
-            o=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,512);
-            
-            if(o == -1)
-                break;
-            
-            if(!ed->selobj)
-                ed->selobj = 1;
-            
-            ed->esize+=3;
-            ed->ebuf=realloc(ed->ebuf,ed->esize);
-            memmove(ed->ebuf+ed->selobj+3,ed->ebuf+ed->selobj,ed->esize-ed->selobj-3);
-            ed->ebuf[ed->selobj]=j>>4;
-            i>>=4;
-            if(o&256) i+=224;
-            ed->ebuf[ed->selobj+1]=i;
-            ed->ebuf[ed->selobj+2]=o;
-            ed->modf=1;
-            goto updsel;
-        case 5:
-            goto chooseobj;
-        case 6: // delete all objects, sprites, etc. "REMOVE ALL"
-            if(ed->selchk<6) {
-                k = ed->selchk;
-                j = ed->chkofs[k];
-                i = ed->chkofs[k + 1] - 2;
-                
-                if(j == i)
-                    break;
-                
-                if(k & 1)
-                    j -= 2;
-                else
-                {
-                    dm_k = 0;
-                    dm_x = 0;
-                    dm_l = 0;
-                    
-                    for(l = j; l < i; l += 3)
-                        setobj(ed, ed->buf + l);
-                }
-                
-                memcpy(ed->buf + j, ed->buf + i, ed->len - i);
-                
-                for(k += 1; k < 7; k++)
-                    ed->chkofs[k] += j - i;
-                
-                ed->buf = realloc(ed->buf, ed->len);
-                
-                Updatemap(ed);
-            }
-            else if(ed->selchk == 6)
-            {
-                // remove all sprites
-                
-                ed->ebuf = realloc(ed->ebuf,1);
-                ed->esize = 1;
-                ed->modf = 1;
-            }
-            else if(ed->selchk == 7)
-            {
-                ed->sbuf=realloc(ed->sbuf,0);
-                ed->ssize=0;
-                ed->modf=1;
-            }
-            else if(ed->selchk==8)
-            {
-                for(i=0;i<0x18c;i+=4)
-                    if(*(short*)(rom + 0x271de + i)==ed->mapnum) *(short*)(rom + 0x271de + i)=-1;
-                ed->ew.doc->modf=1;
-                Updatemap(ed);
-            }
-            else
-            {
-                ed->tbuf=realloc(ed->tbuf,0);
-                ed->tsize=0;
-                ed->modf=1;
-                Updatemap(ed);
-            }
-            InvalidateRect(win,0,0);
-            ed->selobj=0;
-            goto updsel;
-        case 7:
-            Dungselectchg(ed,win,0);
-            ed->sbuf=realloc(ed->sbuf,ed->ssize+=3);
-            if(!ed->selobj) ed->selobj=ed->ssize-1;
-            memmove(ed->sbuf+ed->selobj+1,ed->sbuf+ed->selobj-2,ed->ssize-ed->selobj-1);
-            *(short*)(ed->sbuf+ed->selobj-2)=((i>>2)&0x7e)+((j<<4)&0x1f80);
-            ed->sbuf[ed->selobj]=0;
-            ed->modf=1;
-            goto updsel;
-        case 8:
-            Dungselectchg(ed,win,0);
-            
-            for(k=0;k<0x18c;k+=4)
-                if( is16b_neg1(rom + 0x271de + k) )
-                {
-                    *(short*)(rom + 0x271de + k)=ed->mapnum;
-                    *(short*)(rom + 0x271e0 + k)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-                    ed->selobj=0x271de + k;
-                    break;
-                }
-            
-            if(k==0x18c)
-                MessageBox(framewnd,"You can't add anymore blocks","Bad error happened",MB_OK);
-            ed->ew.doc->modf=1;
-            goto updmap;
-        case 9:
-            Dungselectchg(ed,win,0);
-            k=ed->tsize;
-            if(!k) k+=2;
-            ed->selobj=k;
-            ed->tbuf=realloc(ed->tbuf,k+=2);
-            ed->tsize=k;
-            *(short*)(ed->tbuf)=ed->mapnum;
-            *(short*)(ed->tbuf+k-2)=((i>>2)&0x7e)|((j<<4)&0x1f80);
-            ed->modf=1;
-            goto updmap;
-        case 10:
-            i=askinteger(295,"Use another header","Room #");
-            if(i<0) break;
-            
-            LoadHeader(ed, i);
-            
-            ed->hmodf = i + 2;
-            ed->modf  = i + 2;
-            
-            goto updmap;
-        }
-        break;
-    case WM_KEYDOWN:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        rom=ed->ew.doc->rom;
-        if(!(lparam&0x1000000)) switch(wparam) {
-        case VK_RIGHT:
-            wparam=VK_NUMPAD6;
-            break;
-        case VK_LEFT:
-            wparam=VK_NUMPAD4;
-            break;
-        case VK_DOWN:
-            wparam=VK_NUMPAD2;
-            break;
-        case VK_UP:
-            wparam=VK_NUMPAD8;
-            break;
-        }
-        if(ed->selchk>7) break;
-        else if(ed->selchk==7) if(wparam==VK_RIGHT) {
-            if(ed->ssize==0) break;
-            Dungselectchg(ed,win,0);
-            if(!ed->selobj) ed->selobj=2; else ed->selobj+=3;
-            if(ed->selobj>=ed->ssize) ed->selobj=ed->ssize-1;
-            goto selchg;
-        } else if(wparam==VK_LEFT) {
-            if(ed->ssize<2) break;
-            Dungselectchg(ed,win,0);
-            ed->selobj-=3;
-            if(ed->selobj<1) ed->selobj=2;
-            goto selchg;
-        } else {
-            if(!ed->selobj) break;
-            Dungselectchg(ed,win,0);
-            switch(wparam) {
-            case VK_NUMPAD4:
-                ed->sbuf[ed->selobj-2]-=2;
-                ed->modf=1;
-                goto updsel;
-            case VK_NUMPAD6:
-                ed->sbuf[ed->selobj-2]+=2;
-                ed->modf=1;
-                goto updsel;
-            case VK_NUMPAD8:
-                *((short*)(ed->sbuf+ed->selobj-2))-=128;
-                ed->modf=1;
-                goto updsel;
-            case VK_NUMPAD2:
-                *((short*)(ed->sbuf+ed->selobj-2))+=128;
-                ed->modf=1;
-                goto updsel;
-            case 'N':
-                k=-1;
-                goto updpot;
-            case 'M':
-                k=1;
-                goto updpot;
-            case 'J':
-                k=-16;
-                goto updpot;
-            case 'K':
-                k=16;
-updpot:
-                j=ed->sbuf[ed->selobj];
-                if(j>22) j=(j>>1)-41;
-                j+=k;
-                if(j>27) j-=28;
-                if(j<0) j+=28;
-                if(j>22) j=(j+41)<<1;
-                ed->sbuf[ed->selobj]=j;
-                Dungselectchg(ed,win,1);
-                ed->modf=1;
-                break;
-            }
-        }
-        else if(ed->selchk==6) if(wparam==VK_RIGHT)
-        {
-            if(ed->esize<2) break;
-            Dungselectchg(ed,win,0);
-            if(!ed->selobj) ed->selobj=1; else ed->selobj+=3;
-            if(ed->selobj>=ed->esize) ed->selobj=ed->esize-3;
-            goto selchg;
-        }
-        else if(wparam == VK_LEFT)
-        {
-            if(ed->esize<2) break;
-            Dungselectchg(ed,win,0);
-            ed->selobj-=3;
-            if(ed->selobj<1) ed->selobj=1;
-            goto selchg;
-        } else {
-            if(!ed->selobj) break;
-            Dungselectchg(ed,win,0);
-            switch(wparam) {
-        case VK_NUMPAD6:
-            dm_x=ed->ebuf[ed->selobj+1];
-            ed->ebuf[ed->selobj+1]=(dm_x&224)|((dm_x+1)&31);
-            ed->modf=1;
-            goto updsel;
-        case VK_NUMPAD4:
-            dm_x=ed->ebuf[ed->selobj+1];
-            ed->ebuf[ed->selobj+1]=(dm_x&224)|((dm_x-1)&31);
-            ed->modf=1;
-            goto updsel;
-        case VK_NUMPAD8:
-            dm_x=ed->ebuf[ed->selobj];
-            ed->ebuf[ed->selobj]=(dm_x&224)|((dm_x-1)&31);
-            ed->modf=1;
-            goto updsel;
-        case VK_NUMPAD2:
-            dm_x=ed->ebuf[ed->selobj];
-            ed->ebuf[ed->selobj]=(dm_x&224)|((dm_x+1)&31);
-            ed->modf=1;
-            goto updsel;
-        case 'N':
-            ed->ebuf[ed->selobj+2]--;
-            ed->modf=1;
-            goto updsel;
-        case 'M':
-            ed->ebuf[ed->selobj+2]++;
-            ed->modf=1;
-            goto updsel;
-        case 'J':
-            ed->ebuf[ed->selobj+2]-=16;
-            ed->modf=1;
-            goto updsel;
-        case 'K':
-            ed->ebuf[ed->selobj+2]+=16;
-            ed->modf=1;
-            goto updsel;
-        case 'B':
-            if(ed->selobj==1) break;
-            i=*(int*)(ed->ebuf+ed->selobj-3);
-            *(short*)(ed->ebuf+ed->selobj-3)=*(short*)(ed->ebuf+ed->selobj);
-            ed->ebuf[ed->selobj-1]=ed->ebuf[ed->selobj+2];
-            *(short*)(ed->ebuf+ed->selobj)=i;
-            ed->ebuf[ed->selobj+2]=i>>16;
-            ed->selobj-=3;
-            ed->modf=1;
-            goto updsel;
-        case 'V':
-            if(ed->selobj==ed->esize-3) break;
-            i=*(int*)(ed->ebuf+ed->selobj+3);
-            *(short*)(ed->ebuf+ed->selobj+3)=*(short*)(ed->ebuf+ed->selobj);
-            ed->ebuf[ed->selobj+5]=ed->ebuf[ed->selobj+2];
-            *(short*)(ed->ebuf+ed->selobj)=i;
-            ed->ebuf[ed->selobj+2]=i>>16;
-            ed->selobj+=3;
-            ed->modf=1;
-            goto updsel;
-        } }
-        else if(ed->selchk & 1)
-            if(wparam == VK_RIGHT)
-            {
-                if(ed->chkofs[ed->selchk] >= ed->chkofs[ed->selchk + 1] - 2)
-                    break;
-                
-                Dungselectchg(ed,win,0);
-                
-                if(!ed->selobj)
-selfirst:
-                    ed->selobj = ed->chkofs[ed->selchk];
-                else
-                {
-                    ed->selobj += 2;
-                    
-                    if(ed->selobj >= ed->chkofs[ed->selchk + 1] - 2)
-                    {
-                        ed->selobj = ed->chkofs[ed->selchk + 1] - 4;
-                        break;
-                    }
-                }
-                
-                goto selchg;
-            }
-            else if(wparam == VK_LEFT)
-            {
-                if(ed->chkofs[ed->selchk] == ed->chkofs[ed->selchk + 1] - 2)
-                    break;
-                
-                Dungselectchg(ed,win,0);
-                
-                if(!ed->selobj)
-                    goto selfirst;
-                
-                ed->selobj -= 2;
-                
-                if(ed->selobj < ed->chkofs[ed->selchk])
-                {
-                    if(ed->chkofs[ed->selchk] != ed->chkofs[ed->selchk - 1] + 2)
-                    {
-                        ed->selchk--;
-                        ed->selobj -= 3;
-                    }
-                    else
-                    {
-                        ed->selobj = ed->chkofs[ed->selchk];
-                        break;
-                    }
-                }
-                
-                goto selchg;
-            }
-            else
-            {
-                if(!ed->selobj)
-                    break;
-                
-                Dungselectchg(ed,win,0);
-                
-                switch(wparam)
-                {
-                case VK_NUMPAD6:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_dl++;
-                    if(dm_dl>11) dm_dl=0;
-                    goto upddr;
-                case VK_NUMPAD4:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_dl--;
-                    if(dm_dl>11) dm_dl=11;
-                    goto upddr;
-                case VK_NUMPAD2:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_k--;
-                    goto upddr;
-                case VK_NUMPAD8:
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_k++;
-                    goto upddr;
-                case 'K':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l+=0x10;
-                    goto upddr;
-                case 'J':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l-=0x10;
-                    goto upddr;
-                case 'M':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l++;
-                    goto upddr;
-                case 'N':
-                    getdoor(ed->buf+ed->selobj,rom);
-                    dm_l--;
-                upddr:
-                    
-                    if(dm_l>41)
-                        dm_l-=42;
-                    
-                    if(dm_l>41)
-                        dm_l+=84;
-                    setdoor(ed->buf+ed->selobj);
-                    ed->modf=1;
-                    goto updmap;
-                }
-            }
-            else if(wparam==VK_RIGHT)
-            {
-                if(ed->chkofs[ed->selchk] == ed->chkofs[ed->selchk+1]-2)
-                    break;
-                
-                Dungselectchg(ed,win,0);
-                
-                if(!ed->selobj)
-                    goto selfirst;
-                
-                ed->selobj+=3;
-                
-                if(ed->selobj>=ed->chkofs[ed->selchk+1]-2)
-                    if(ed->chkofs[ed->selchk+2]==ed->chkofs[ed->selchk+1])
-                    {
-                        ed->selobj=ed->chkofs[ed->selchk+1]-5+(ed->selchk&1);
-                        break;
-                    }
-                    else
-                        ed->selobj+=2,ed->selchk++;
-                    
-                    goto selchg;
-            }
-            else if(wparam == VK_LEFT)
-            {
-                if(ed->chkofs[ed->selchk]==ed->chkofs[ed->selchk+1]-2) break;
-                Dungselectchg(ed,win,0);
-                if(!ed->selobj) goto selfirst;
-                ed->selobj-=3;
-                if(ed->selobj<ed->chkofs[ed->selchk]) {
-                    ed->selobj=ed->chkofs[ed->selchk];
-                    break;
-                }
-                
-            selchg:
-                
-                Dungselectchg(ed,win,1);
-                
-                break;
-            }
-            else
-            {
-                if(!ed->selobj) break;
-                Dungselectchg(ed,win,0);
-                switch(wparam) {
-            case VK_NUMPAD6:
-                getobj(ed->buf+ed->selobj);
-                dm_x++;
-                if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x++;
-                goto upd;
-            case VK_NUMPAD4:
-                getobj(ed->buf+ed->selobj);
-                dm_x--;
-                if(dm_k<0x100 && (dm_x&0x3f)==0x3f) dm_x--;
-                goto upd;
-            case VK_NUMPAD2:
-                getobj(ed->buf+ed->selobj);
-                dm_x+=64;
-                goto upd;
-            case VK_NUMPAD8:
-                getobj(ed->buf+ed->selobj);
-                dm_x-=64;
-                goto upd;
-            case 'K':
-                getobj(ed->buf+ed->selobj);
-                dm_k+=0x10;
-                if(dm_k>0xff && dm_k<0x110) dm_k-=0x100;
-                if(dm_k>0x13f) dm_k-=0x40;
-                goto upd;
-            case 'J':
-                getobj(ed->buf+ed->selobj);
-                dm_k-=0x10;
-                if(dm_k>0xef && dm_k<0x100) dm_k+=0x40;
-                if(dm_k<0) dm_k+=0x100;
-                goto upd;
-            case 'M':
-                getobj(ed->buf+ed->selobj);
-                dm_k++;
-                if(dm_k==0x100) dm_k=0;
-                if(dm_k==0x140) dm_k=0x100;
-                goto upd;
-            case 'N':
-                getobj(ed->buf+ed->selobj);
-                dm_k--;
-                if(dm_k==0xff) dm_k=0x13f;
-                
-                // \task Just a gentle reminder that if we change this to
-                // an unsigned type we will probably have problems
-                // (due to integer promotion rules).
-                if(dm_k==-1) dm_k=0xff;
-            upd:
-                setobj(ed,ed->buf+ed->selobj);
-            updmap:
-                Updatemap(ed);
-            updsel:
-                Dungselectchg(ed,win,1);
-            } }
-            break;
-    case WM_SETFOCUS:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->withfocus|=1;
-        Dungselectchg(ed,win,0);
-        break;
-    case WM_KILLFOCUS:
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->withfocus&=-2;
-        Dungselectchg(ed,win,0);
-        break;
-    case WM_PAINT:
-        
-        ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-        
-        if(!ed)
-            break;
-        else
-        {
-            HRGN update_region = CreateRectRgn(0, 0, 0, 0);
-            
-            RECT update_rect;
-            
-            BOOL result_1 = GetUpdateRect(win, NULL, FALSE);
-            
-            BOOL result_2 = GetUpdateRect(win, &update_rect, FALSE);
-            
-            int result_3 = GetUpdateRgn(win, update_region, FALSE);
-            
-            if(result_1 != result_2)
-            {
-                SetDlgItemText(debug_window, IDC_STATIC3, "wtf #1");
-                
-                break;
-            }
-            
-            if( HM_IsEmptyRect(update_rect) )
-            {
-                SetDlgItemText(debug_window, IDC_STATIC3, "wtf #2");
-                
-                break;
-            }
-            
-            hdc = BeginPaint(win, &ps);
-            
-            if( HM_IsEmptyRect(ps.rcPaint) )
-            {
-                if(result_3 == NULLREGION)
-                {
-                    SetDlgItemText(debug_window, IDC_STATIC3, "wtf #3");
-                }
-                else
-                {
-                    SetDlgItemText(debug_window, IDC_STATIC3, "wtf #4");
-                }
-                
-                EndPaint(win, &ps);
-                
-                break;
-            }
-            
-            oldpal = SelectPalette(hdc, ed->hpal, 1);
-            RealizePalette(hdc);
-        }
-        
-        k = ((ps.rcPaint.right + 31) & 0xffffffe0);
-        l = ((ps.rcPaint.bottom + 31) & 0xffffffe0);
-        n = ed->mapscrollh << 5;
-        o = (ed->mapscrollv * ed->map_vscroll_delta);
-        
-        if(l + o > 0x200)
-            l = 0x200 - o;
-        
-        if(k + n > 0x200)
-            k = 0x200 - n;
-        
-        rom = ed->ew.doc->rom;
-        
-        Paintdungeon(ed,hdc,&(ps.rcPaint),ps.rcPaint.left&0xffffffe0,ps.rcPaint.top&0xffffffe0,k,l,n,o,ed->nbuf);
-        
-        if(ed->disp & 4)
-        {
-            oldbrush=SelectObject(hdc,trk_font);
-            SetBkMode(hdc,TRANSPARENT);
-            oldobj2=SelectObject(hdc,purple_brush);
-            for(i=1;i<ed->esize;i+=3) {
-                j=((ed->ebuf[i+1]&31)<<4)-n;
-                k=((ed->ebuf[i]&31)<<4)-o;
-                Ellipse(hdc,j,k,j+16,k+16);
-                strcpy(buffer,Getsprstring(ed,i));
-                Paintspr(hdc,j,k,n,o,512);
-            }
-            SelectObject(hdc,red_brush);
-            for(i=0;i<ed->ssize;i+=3) {
-                j=*(short*)(ed->sbuf+i);
-                k=((j&0x1f80)>>4)-o;
-                j=((j&0x7e)<<2)-n;
-                Ellipse(hdc,j,k,j+16,k+16);
-                strcpy(buffer,Getsecretstring(rom,ed->sbuf[i+2]));
-                Paintspr(hdc,j,k,n,o,512);
-            }
-            SelectObject(hdc,oldobj2);
-        }
-        i=ed->selobj;
-        if(i) {
-            if(ed->selchk==9) {
-                dm_x=(*(short*)(ed->tbuf+i)>>1)&0xfff;
-            } else if(ed->selchk==8) {
-                dm_x=(*(short*)(ed->ew.doc->rom+i+2)>>1)&0xfff;
-            } else if(ed->selchk==7) {
-                dm_x=(*(short*)(ed->sbuf+i-2)>>1)&0xfff;
-                dm_k=ed->sbuf[i];
-                cur_sec=Getsecretstring(ed->ew.doc->rom,dm_k);              
-            } else if(ed->selchk==6) {
-                dm_x=((ed->ebuf[i+1]&31)<<1)+((ed->ebuf[i]&31)<<7);
-                dm_k=ed->ebuf[i+2]+((ed->ebuf[i+1]>=224)?256:0);
-            } else if(ed->selchk&1)
-                getdoor(ed->buf+i,ed->ew.doc->rom),k=4,l=4;
-                else getobj(ed->buf+i);
-            rc=ed->selrect;
-            
-            rc.left-=n;
-            rc.top-=o;
-            rc.right-=n;
-            rc.bottom-=o;
-            
-            if(rc.right>ps.rcPaint.left && rc.left<ps.rcPaint.right &&
-                rc.bottom>ps.rcPaint.top && rc.top<ps.rcPaint.bottom)
-            {
-                if(rc.right+n>512)
-                    rc2.right=512-n;
-                
-                if(rc.bottom+o>512)
-                    rc2.bottom=512-n;
-                
-                if(ed->selchk>=6 && ed->selchk<8 && (ed->disp&4))
-                {
-                    oldobj3=SelectObject(hdc,black_brush);
-                    oldobj2=SelectObject(hdc,green_pen);
-                    Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
-                    
-                    if(ed->selchk==6)
-                        strcpy(buffer,Getsprstring(ed,i));
-                    else
-                        strcpy(buffer,Getsecretstring(ed->ew.doc->rom,dm_k));
-                    
-                    Paintspr(hdc,rc.left,rc.top,n,o,512);
-                    SelectObject(hdc,oldobj2);
-                    SelectObject(hdc,oldobj3);
-                }
-                else
-                    FrameRect(hdc,&rc,(ed->withfocus&1)?green_brush:gray_brush);
-            }
-        }
-        
-        if(ed->disp & 4)
-            SelectObject(hdc, oldbrush);
-        
-        oldpal = SelectPalette(hdc, oldpal, 1);
-        
-        EndPaint(win,&ps);
         
         break;
     
@@ -21995,201 +10494,7 @@ void Drawdot(HDC hdc,RECT*rc,int q,int n,int o)
     Ellipse(hdc,rc->left,rc->top,rc->right,rc->bottom);
 }
 
-HGDIOBJ
-Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,unsigned char *rom)
-{
-    HGDIOBJ oldobj = 0;
-    
-    RECT rc;
-    int i,j,k,m;
-    short *b2,*b3;
-    unsigned char*b6;
-    
-    switch(t)
-    {
-    
-    case 0:
-        oldobj = SelectObject(hdc, purple_brush);
-        if(ed->ew.param<0x90) {
-            m=ed->sprset;
-            b6=ed->ebuf[m];
-            for(i=ed->esize[m]-3;i>=0;i-=3) {
-                if(ed->tool==5 && i==ed->selobj) continue;
-                rc.left=((b6[i+1])<<4)-n;
-                rc.top=((b6[i])<<4)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                Getoverstring(ed,5,i);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-        break;
-    case 1:
-        b2=(short*)(ed->ew.doc->rom + 0xdb96f);
-        b3=(short*)(ed->ew.doc->rom + 0xdba71);
-        oldobj = SelectObject(hdc, yellow_brush);
-        for(i=0;i<129;i++) {
-            if(ed->tool==3 && i==ed->selobj) continue;
-            if(b2[i]==ed->ew.param) {
-                j=b3[i];
-                rc.left=((j&0x7e)<<3)-n;
-                rc.top=((j&0x1f80)>>3)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                wsprintf(buffer,"%02X",rom[0xdbb73 + i]);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-        break;
-    case 2:
-        b2=(short*)(rom + 0x160ef);
-        b3=(short*)(rom + 0x16051);
-        oldobj = SelectObject(hdc, white_brush);
-        for(i=0;i<79;i++) {
-            if(ed->tool==7 && i==ed->selobj) continue;
-            if(rom[0x15e28 + i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
-                rc.left=j-n;
-                rc.top=k-o;
-                Drawdot(hdc,&rc,q,n,o);
-                wsprintf(buffer,"%04X",((unsigned short*)(rom + 0x15d8a))[i]);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-        break;
-    case 3:
-        b2=(short*)(ed->ew.doc->rom + 0xdb826);
-        b3=(short*)(ed->ew.doc->rom + 0xdb800);
-        oldobj = SelectObject(hdc, black_brush);
-        for(i=0;i<19;i++) {
-            if(ed->tool==8 && i==ed->selobj) continue;
-            if(b2[i]==ed->ew.param) {
-                j=b3[i];
-                j+=0x400;
-                rc.left=((j&0x7e)<<3)-n;
-                rc.top=((j&0x1f80)>>3)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                wsprintf(buffer,"%02X",rom[0xdb84c + i]);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-        break;
-    case 4:
-        oldobj = SelectObject(hdc, red_brush);
-        if(ed->ew.param<0x80) {
-            for(i=0;i<ed->ssize;i+=3) {
-                if(ed->tool==10 && i==ed->selobj) continue;
-                j=ed->sbuf[i];
-                k=ed->sbuf[i+1];
-                j+=k<<8;
-                rc.left=((j&0x7e)<<3)-n;
-                rc.top=((j&0x1f80)>>3)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                Getoverstring(ed,10,i);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-        break;
-    case 5:
-        b2=(short*)(rom + 0x16b8f);
-        b3=(short*)(rom + 0x16b6d);
-        oldobj = SelectObject(hdc, blue_brush);
-        for(i=0;i<17;i++) {
-            if(ed->tool==9 && i==ed->selobj) continue;
-            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
-                rc.left=j-n;
-                rc.top=k-o;
-                Drawdot(hdc,&rc,q,n,o);
-                Getoverstring(ed,9,i);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-            }
-        }
-    }
-    
-    return oldobj;
-}
-
-static int wmmark_ofs[7]={
-    0x53de4,0x53e2c,0x53e08,0x53e50,0x53e74,0x53e98,0x53ebc
-};
-static int wmpic_ofs[7]={
-    0x53ee0,0x53f04,0x53ef2,0x53f16,0x53f28,0x53f3a,0x53f4c
-};
-
-void Getwmapstring(WMAPEDIT const * const ed,
-                   int i)
-{
-    if(ed->marknum==9)
-        wsprintf(buffer,"%d",i+1);
-    else wsprintf(buffer,"%d-%04X",i+1,((unsigned short*)(ed->ew.doc->rom+wmpic_ofs[i]))[ed->marknum]);
-}
-void Wmapselchg(WMAPEDIT*ed,HWND win,int c)
-{
-    RECT rc;
-    HWND win2;
-    WMAPEDIT*ed2;
-    int a,b;
-    a=ed->ew.param?0:128;
-    b=a-(ed->mapscrollv<<5);
-    a-=ed->mapscrollh<<5;
-    rc.left=ed->objx+a;
-    rc.top=ed->objy+b;
-    if(ed->tool==4) {
-        rc.right=rc.left+64;
-        rc.bottom=rc.top+64;
-    } else {
-        Getwmapstring(ed,ed->selmark);
-        Getstringobjsize(buffer,&rc);
-    }
-    InvalidateRect(win,&rc,0);
-    if(c) {
-        win2=ed->ew.doc->wmaps[ed->ew.param^1];
-        ed->ew.doc->modf=1;
-        if(!win2) return;
-        ed2=(WMAPEDIT*)GetWindowLong(win2,GWL_USERDATA);
-        if((ed->tool==4 && ed2->tool!=4) || (ed->tool!=4 && 
-            (ed2->marknum!=ed->marknum || ed2->tool==4))) return;
-        win2=GetDlgItem(ed2->dlg,3000);
-        rc.right-=a;
-        rc.bottom-=b;
-        a=ed2->ew.param?0:128;
-        b=a-(ed2->mapscrollv<<5);
-        a-=ed2->mapscrollh<<5;
-        rc.left=ed->objx+a;
-        rc.top=ed->objy+b;
-        rc.right+=a;
-        rc.bottom+=b;
-        InvalidateRect(win2,&rc,0);
-    }
-}
-int Getwmappos(WMAPEDIT      const * const ed,
-               unsigned char const * const rom,
-               int i,
-               RECT *rc,
-               int n,
-               int o)
-{
-    int a,b;
-    b=ed->marknum;
-    if(b==9) {
-        rc->left = ( rom[0x53763 + i] + (rom[0x5376b + i] << 8) ) >> 4;
-        rc->top  = ( rom[0x53773 + i] + (rom[0x5377b + i] << 8) ) >> 4;
-    } else {
-        a=((short*)(rom+wmmark_ofs[i]))[b];
-        if(a<0) return 1;
-        rc->left=a>>4;
-        rc->top=((short*)(rom+wmmark_ofs[i]+18))[b]>>4;
-    }
-    if(!ed->ew.param) rc->left+=128,rc->top+=128;
-    rc->left-=n;
-    rc->top-=o;
-    return 0;
-}
+// =============================================================================
 
 int Fixscrollpos(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dp,int m,int l,int door1,int door2)
 {
@@ -22236,6 +10541,9 @@ int Fixscrollpos(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int d
     }
     return n;
 }
+
+// =============================================================================
+
 void lmapblkchg(HWND win,LMAPEDIT*ed)
 {
     RECT rc;
@@ -22245,7 +10553,11 @@ void lmapblkchg(HWND win,LMAPEDIT*ed)
     rc.bottom=rc.top+16;
     InvalidateRect(win,&rc,0);
 }
-long CALLBACK lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+
+// =============================================================================
+
+LRESULT CALLBACK
+lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j,k,l,n,o,p,q;
     
@@ -22572,7 +10884,7 @@ LevelMapDisplay_OnPaint(LMAPEDIT const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 lmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j,k = 0,l = 0,p,q,s;
@@ -22761,808 +11073,7 @@ chgloc:
     return 0;
 }
 
-static int sprs[5] = {0, 64, 128, 208, 272};
-
 // =============================================================================
-
-void
-WorldMapDisplay_OnPaint(WMAPEDIT const * const p_ed,
-                        HWND             const p_win)
-{
-    unsigned char const * const rom = p_ed->ew.doc->rom;
-    
-    unsigned char const * b2 = 0;
-    unsigned char const * b4 = 0;
-    
-    int j = 0,
-        k = 0,
-        l = 0,
-        m = 0,
-        n = 0,
-        o = 0,
-        t = 0;
-    
-    RECT rc = empty_rect;
-    
-    PAINTSTRUCT ps;
-    
-    HDC const hdc = BeginPaint(p_win, &ps);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, p_ed->hpal, 1);
-    
-    HGDIOBJ oldobj2;
-    
-    // -----------------------------
-    
-    RealizePalette(hdc);
-    
-    k = ((ps.rcPaint.right+31)&0xffffffe0);
-    l = ((ps.rcPaint.bottom+31)&0xffffffe0);
-    n = p_ed->mapscrollh<<5;
-    o = p_ed->mapscrollv<<5;
-    j = ps.rcPaint.top&0xffffffe0;
-    
-    b4 = p_ed->buf + ( (j + o) << 3);
-    
-    m = p_ed->ew.param ? 0x100 : 0x200;
-    
-    t = (j + o) >> 3;
-    
-    if(p_ed->selflag || p_ed->dtool==2 || p_ed->dtool==3)
-        Wmapselectionrect(p_ed,&rc);
-    
-    for(;j<l;j+=32)
-    {
-        int i = ps.rcPaint.left & 0xffffffe0;
-        int s = (i + n) >> 3;
-        
-        if(j + o >= m)
-            break;
-        
-        b2 = b4 + s;
-        
-        for(;i<k;i+=32)
-        {
-            int q = 0;
-            
-            if(i + n >= m)
-                break;
-            
-            for(q=0;q<32;q+=8)
-            {
-                int p = 0;
-                
-                for(p = 0; p < 32; p += 8)
-                {
-                    int r = b2[ (p >> 3) + (q << 3) ];
-                    
-                    if(p_ed->dtool == 3)
-                    {
-                        if(i + p >= rc.left && i + p < rc.right && j + q >= rc.top && j + q < rc.bottom)
-                            r = p_ed->bs.sel;
-                    }
-                    else if(p_ed->selflag)
-                    {
-                        if(i + p >= rc.left && i + p < rc.right && j + q >= rc.top && j + q < rc.bottom)
-                            r = p_ed->selbuf[s + (p >> 3) - p_ed->rectleft + (t + (q >> 3) - p_ed->recttop) * (p_ed->rectright - p_ed->rectleft)];
-                    }
-                    
-                    Drawblock((OVEREDIT*) p_ed,
-                              p,
-                              q,
-                              r,
-                              0);
-                }
-            }
-            
-            b2 += 4;
-            s += 4;
-            
-            Paintblocks(&(ps.rcPaint),hdc,i,j, (DUNGEDIT*) p_ed);
-        }
-        
-        b4+=256;
-        t+=4;
-    }
-    
-    if(rc.right > m - n)
-        rc.right = m - n;
-    
-    if(rc.bottom > m - o)
-        rc.bottom = m - o;
-    
-    if(p_ed->dtool == 2)
-    {
-        if(rc.right > rc.left && rc.bottom > rc.top)
-            FrameRect(hdc, &rc, white_brush);
-    }
-    
-    if(p_ed->selflag)
-        FrameRect(hdc,&rc,green_brush);
-    
-    oldobj2 = SelectObject(hdc, trk_font);
-    
-    SetBkMode(hdc, TRANSPARENT);
-    
-    if(p_ed->tool == 4)
-    {
-        int i = 0;
-        
-        HGDIOBJ const oldobj = SelectObject(hdc, white_pen);
-        
-        for(i = 0; i < 64; i++)
-        {
-            j=((i&7)<<5)-n;
-            k=((i&56)<<2)-o;
-            if(m==0x200) j+=128,k+=128;
-            l=rom[0x125ec + i];
-            wsprintf(buffer,"%02X",l);
-            Paintspr(hdc,j+8,k+8,n,o,m);
-            
-            if(l!=i)
-                continue;
-            
-            l = rom[0x12844 + i] ? 64 : 32;
-            
-            MoveToEx(hdc,j+l,k,0);
-            LineTo(hdc,j,k);
-            LineTo(hdc,j,k+l);
-        }
-        
-        j = 0;
-        k = 0;
-        
-        if(m == 0x200)
-            j = 128, k = 128;
-        
-        j -= n;
-        k -= o;
-        
-        MoveToEx(hdc,j+256,k,0);
-        LineTo(hdc,j+256,k+256);
-        LineTo(hdc,j,k+256);
-        
-        SelectObject(hdc, oldobj);
-    }
-    else
-    {
-        int i = 0;
-        
-        int const l = p_ed->marknum;
-        
-        HGDIOBJ const oldobj = SelectObject(hdc, purple_brush);
-        
-        if(l==9)
-            i=7;
-        else
-            i=6;
-        
-        for( ; i >= 0; i--)
-        {
-            if( p_ed->tool == 3 && i == p_ed->selmark )
-                continue;
-            
-            if( Getwmappos(p_ed, rom, i, &rc, n, o) )
-                continue;
-            
-            Drawdot(hdc,&rc,m,n,o);
-            Getwmapstring(p_ed,i);
-            Paintspr(hdc, rc.left,rc.top,n,o,m);
-        }
-        
-        if(p_ed->tool == 3)
-        {
-            i = p_ed->selmark;
-            
-            if(i!=-1)
-            {
-                if(!Getwmappos(p_ed, rom,i,&rc,n,o))
-                {
-                    Getwmapstring(p_ed,i);
-                    Getstringobjsize(buffer,&rc);
-                    if(rc.right>m-n) rc.right=m-n;
-                    if(rc.bottom>m-o) rc.bottom=m-o;
-                    FillRect(hdc,&rc,black_brush);
-                    FrameRect(hdc,&rc,green_brush);
-                    Paintspr(hdc,rc.left,rc.top,n,o,m);
-                }
-            }
-        }
-        
-        SelectObject(hdc,oldobj);
-    }
-    
-    SelectObject(hdc, oldobj2);
-    
-    SelectPalette(hdc, oldpal, 1);
-    
-    EndPaint(p_win, &ps);
-}
-
-// =============================================================================
-
-long CALLBACK wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    WMAPEDIT*ed;
-    int i,j,k,l,m,n,o,p,q;
-    FDOC*doc;
-    SCROLLINFO si;
-    unsigned char*b2,*b4,*rom;
-    short*b1,*b3;
-    static int sprxpos[4]={0,32,0,32};
-    static int sprypos[4]={0,0,32,32};
-    static int sctpos[4]={0,64,4096,4160};
-    int u[20];
-    
-    RECT rc = {0,0,0,0};
-    
-    POINT pt;
-    switch(msg) {
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS;
-    case WM_CHAR:
-        if(wparam==26) wmapdlgproc(GetParent(win),WM_COMMAND,3007,0);
-        break;
-    case WM_SIZE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nMin=0;
-        si.nMax=ed->ew.param?8:16;
-        si.nPage=lparam>>21;
-        ed->mappagev=si.nPage;
-        SetScrollInfo(win,SB_VERT,&si,1);
-        si.nPage=(lparam&65535)>>5;
-        ed->mappageh=si.nPage;
-        SetScrollInfo(win,SB_HORZ,&si,1);
-        ed->mapscrollv=Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,si.nMax,32);
-        ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,si.nMax,32);
-        break;
-    case WM_VSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->ew.param?8:16,32);
-        break;
-    case WM_HSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->ew.param?8:16,32);
-        break;
-    case WM_LBUTTONDOWN:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->dtool) break;
-        if(ed->tool!=1 && ed->selflag) {
-            Wmapselectwrite(ed);
-            Wmapselectionrect(ed,&rc);
-            InvalidateRect(win,&rc,0);
-        }
-        ed->dtool=ed->tool+1;
-        SetCapture(win);
-        SetFocus(win);
-        goto mousemove;
-    case WM_RBUTTONDOWN:
-    case WM_MOUSEMOVE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-mousemove:
-        
-        n=ed->mapscrollh<<5;
-        o=ed->mapscrollv<<5;
-        j=((short)lparam)+n;
-        k=(lparam>>16)+o;
-        q=ed->ew.param?256:512;
-        if(j<0) j=0;
-        if(j>=q) j=q-1;
-        if(k<0) k=0;
-        if(k>=q) k=q-1;
-        if(msg==WM_RBUTTONDOWN) {
-            if(ed->tool==3) {
-                rom=ed->ew.doc->rom;
-                if(ed->marknum==9) l=8; else l=7;
-                if(q==512) j-=128,k-=128;
-                if(j<0) j=0;
-                if(k<0) k=0;
-                if(j>255) j=255;
-                if(k>255) k=255;
-                
-                for(i = 0; i < l; i++)
-                    if( Getwmappos(ed,rom,i,&rc,n,o) )
-                        break;
-                
-                if(i < l || ed->selmark != -1)
-                {
-                    HMENU menu = CreatePopupMenu();
-                    
-                    if(i<l)
-                    {
-                        for(i=0;i<l;i++) if(Getwmappos(ed,rom,i,&rc,n,o)) {
-                            wsprintf(buffer,"Insert icon %d",i+1);
-                            AppendMenu(menu, MF_STRING, i + 1, buffer);
-                        }
-                    }
-                    
-                    if(ed->selmark != -1)
-                        AppendMenu(menu, MF_STRING, 10, "Remove icon");
-                    
-                    GetCursorPos(&pt);
-                    
-                    i = TrackPopupMenu(menu,
-                                       TPM_RETURNCMD | TPM_LEFTBUTTON | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY,
-                                       pt.x,
-                                       pt.y,
-                                       0,
-                                       win,
-                                       0);
-                    
-                    DestroyMenu(menu);
-                    
-                    if(i==10) {
-                        Wmapselchg(ed,win,1);
-                        ((short*)(rom+wmmark_ofs[ed->selmark]))[ed->marknum]=-1;
-                        ed->selmark=-1;
-                    } else if(i) {
-                        Wmapselchg(ed,win,0);
-                        i--;
-                        b1=((short*)(rom+wmmark_ofs[i]))+ed->marknum;
-                        ed->selmark=i;
-                        *b1=j<<4;
-                        b1[9]=k<<4;
-                        ed->objx=j;
-                        ed->objy=k;
-                        Wmapselchg(ed,win,1);
-                    }
-                }
-                break;
-            }
-            i=ed->buf[(j>>3)+(k>>3<<6)];
-            SendMessage(GetParent(win),4000,i,0);
-            break;
-        }
-        switch(ed->dtool) {
-        case 1:
-            if(msg==WM_LBUTTONDOWN) {
-                memcpy(ed->undobuf,ed->buf,0x1000);
-                ed->undomodf=ed->modf;
-            }
-            j&=0xfff8;
-            k&=0xfff8;
-            ed->buf[(j>>3)+(k<<3)]=ed->bs.sel;
-            ed->modf=1;
-            rc.left=j-n;
-            rc.right=j-n+8;
-            rc.top=k-o;
-            rc.bottom=k-o+8;
-            InvalidateRect(win,&rc,0);
-            break;
-        case 2:
-        case 3:
-            j>>=3;
-            k>>=3;
-            if(msg==WM_LBUTTONDOWN) {
-                if(ed->selflag) if(j>=ed->rectleft && j<ed->rectright && k>=ed->recttop && k<ed->rectbot) {
-                    ed->selx=j;
-                    ed->sely=k;
-                } else {
-                    Wmapselectwrite(ed);
-                    Wmapselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    goto newsel;
-                } else newsel: ed->rectleft=ed->rectright=j,ed->recttop=ed->rectbot=k;
-            } else {
-                if(ed->selflag) {
-                    if(j==ed->selx && k==ed->sely) break;
-                    Wmapselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    ed->rectleft+=j-ed->selx;
-                    ed->rectright+=j-ed->selx;
-                    ed->recttop+=k-ed->sely;
-                    ed->rectbot+=k-ed->sely;
-                    ed->selx=j;
-                    ed->sely=k;
-                } else {
-                    if(j>=ed->rectleft) j++;
-                    if(k>=ed->recttop) k++;
-                    if(ed->rectright==j && ed->rectbot==k) break;
-                    Wmapselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    ed->rectright=j,ed->rectbot=k;
-                }
-                Wmapselectionrect(ed,&rc);
-                InvalidateRect(win,&rc,0);
-            }
-            break;
-        case 4:
-            rom=ed->ew.doc->rom;
-            p=ed->marknum;
-            if(msg==WM_LBUTTONDOWN) {
-                q=ed->ew.param?0:128;
-                Wmapselchg(ed,win,0);
-                ed->selmark=-1;
-                if(p==9) l=8; else l=7;
-                for(i=0;i<l;i++) {
-                    if(Getwmappos(ed,rom,i,&rc,n,o)) continue;
-                    rc.left+=n;
-                    rc.top+=o;
-                    if(j>=rc.left && k>=rc.top && j<rc.left+16 && k<rc.top+16) {
-                        ed->selmark=i;
-                        ed->objx = (short) (rc.left - q);
-                        ed->objy = (short) (rc.top - q);
-                        ed->selx=j;
-                        ed->sely=k;
-                        Wmapselchg(ed,win,0);
-                        return 0;
-                    }
-                }
-                ed->dtool=0;
-                ReleaseCapture();
-                break;
-            } else {
-                i=ed->selmark;
-                j-=ed->selx;
-                k-=ed->sely;
-                if(!(j||k)) break;
-                Wmapselchg(ed,win,1);
-                ed->objx+=j;
-                ed->objy+=k;
-                if(ed->objx<0) j-=ed->objx,ed->objx=0;
-                if(p==9) {
-                    l=rom[0x53763 + i]+(rom[0x5376b + i]<<8)+(j<<4);
-                    rom[0x53763 + i]=l;
-                    rom[0x5376b + i]=l>>8;
-                    l=rom[0x53773 + i]+(rom[0x5377b + i]<<8)+(k<<4);
-                    rom[0x53773 + i]=l;
-                    rom[0x5377b + i]=l>>8;
-                } else {
-                    ((short*)(rom+wmmark_ofs[i]))[p]+=j<<4;
-                    ((short*)(rom+wmmark_ofs[i]+18))[p]+=k<<4;
-                }
-                ed->selx+=j;
-                ed->sely+=k;
-                Wmapselchg(ed,win,1);
-            }
-            break;
-        case 5:
-            doc=ed->ew.doc;
-            rom=doc->rom;
-            if(q==512) j-=128,k-=128;
-            if(j>=0 && k>=0 && j<256 && k<256) {
-                i=(j>>5)+(k>>5<<3);
-                if(rom[0x12844 + i]) {
-                    i=rom[0x125ec + i];
-                    if(doc->overworld[i].win) {
-                        MessageBox(framewnd,"You can't change the map size while it is being edited.","Bad error happened",MB_OK);
-                        goto maperror;
-                    }
-                    for(n=0;n<128;n+=64) {
-                        m=0xe0000 + ((short*)(rom + 0xdc2f9))[n+i];
-                        for(o=0;*(short*)(rom+m+o)!=-1;o+=3);
-                        for(l=1;l<4;l++) ((short*)(rom + 0xdc2f9))[n+i+map_ind[l]]=m+o;
-                    }
-                    b2=malloc(512);
-                    b4=malloc(512);
-                    for(n=0;n<5;n++) {
-                        u[n]=((short*)(rom + 0x4c881))[sprs[n]+i];
-                    }
-                    for(n=0;n<5;n++) {
-                        p=((short*)(rom + 0x4c881))[sprs[n]+i];
-                        for(o=0;o<n;o++) {
-                            if(u[n]==u[o]) {
-                                ((short*)(rom + 0x4c881))[sprs[n]+i]=((short*)(rom + 0x4c881))[sprs[o]+i];
-                                ((short*)(rom + 0x4c881))[sprs[n]+i+1]=((short*)(rom + 0x4c881))[sprs[o]+i+1];
-                                ((short*)(rom + 0x4c881))[sprs[n]+i+8]=((short*)(rom + 0x4c881))[sprs[o]+i+8];
-                                ((short*)(rom + 0x4c881))[sprs[n]+i+9]=((short*)(rom + 0x4c881))[sprs[o]+i+9];
-                                goto nextspr;
-                            }
-                        }
-                        memcpy(b2,rom + 0x50000 + p,512);
-                        for(l=0;l<4;l++) {
-                            m=i+map_ind[l];
-                            p=0;
-                            for(o=0;b2[o]!=0xff;o+=3) {
-                                if(((b2[o]&32)==sprypos[l]) &&
-                                    ((b2[o+1]&32)==sprxpos[l])) {
-                                    b4[p++]=b2[o]&31;
-                                    b4[p++]=b2[o+1]&31;
-                                    b4[p++]=b2[o+2];
-                                }
-                            }
-                            Savesprites(ed->ew.doc,sprs[n]+m,b4,p);
-                        }
-nextspr:;
-                    }
-                    for(n=0;n<128;n+=64) {
-                        memcpy(b2,rom + 0xe0000 + ((short*)(rom + 0xdc2f9))[n+i],512);
-                        for(l=0;l<4;l++) {
-                            m=i+map_ind[l];
-                            p=0;
-                            for(o=0;*(short*)(b2+o)!=-1;o+=3) {
-                                q=*(short*)(b2+o);
-                                k=(q&0x1f80)>>7;
-                                j=(q&0x7e)>>1;
-                                if(k>=sprypos[l] && k<sprypos[l]+32 &&
-                                    j>=sprxpos[l] && j<sprxpos[l]+32) {
-                                    *(short*)(b4+p)=q&0xfbf;
-                                    b4[p+2]=b2[o+2];
-                                    p+=3;
-                                }
-                            }
-                            if(Savesecrets(ed->ew.doc,n+m,b4,p)) Savesecrets(ed->ew.doc,n+m,0,0);
-                        }
-                    }
-                    free(b4);
-                    free(b2);
-                    for(l=0;l<4;l++) {
-                        m=i+map_ind[l];
-                        rom[0x125ec + m]=m;
-                        rom[0x12844 + m]=0;
-                        rom[0x12884 + m]=1;
-                        rom[0x1788d + m]=1;
-                        rom[0x178cd + m]=1;
-                        rom[0x4c635 + m]=2;
-                        rom[0x4c675 + m]=2;
-                        rom[0x4c6b5 + m]=2;
-                        ((short*)(rom + 0x12634))[m]=96;
-                        ((short*)(rom + 0x126b4))[m]=64;
-                        ((short*)(rom + 0x12734))[m]=6144;
-                        ((short*)(rom + 0x127b4))[m]=4096;
-                        ((short*)(rom + 0x13ee2))[m]=(((short*)(rom + 0x128c4))[m]=(m&56)<<6)-224;
-                        ((short*)(rom + 0x13f62))[m]=(((short*)(rom + 0x12944))[m]=(m&7)<<9)-256;
-                    }
-                    goto updlayout;
-                } else if(((i&7)<7) && ((i&56)<56) && (!rom[0x12845 + i])
-                    && (!rom[0x1284c + i]) && (!rom[0x1284d + i])) {
-                    if(doc->overworld[i].win || doc->overworld[i+1].win || doc->overworld[i+8].win || doc->overworld[i+9].win ) {
-                        MessageBox(framewnd,"You can't change the map size while it is being edited.","Bad error happened",MB_OK);
-                        goto maperror;
-                    }
-                    for(n=0;n<5;n++) {
-                        u[n]=((unsigned short*)(rom + 0x4c881))[sprs[n]+i];
-                        u[n+5]=((unsigned short*)(rom + 0x4c881))[sprs[n]+i+1];
-                        u[n+10]=((unsigned short*)(rom + 0x4c881))[sprs[n]+i+8];
-                        u[n+15]=((unsigned short*)(rom + 0x4c881))[sprs[n]+i+9];
-                    }
-                    for(n=0;n<5;n++)
-                        for(o=0;o<n;o++)
-                            if(((u[n]==u[o]&&u[n]!=0xcb41)
-                                || (u[n+5]==u[o+5]&&u[n+5]!=0xcb41)
-                                || (u[n+10]==u[o+10]&&u[n+10]!=0xcb41)
-                                || (u[n+15]==u[o+15]&&u[n+15]!=0xcb41)) &&
-                                !(u[n]==u[o] && u[n+5]==u[o+5] && u[n+10]==u[o+10] && u[n+15]==u[o+15])) {
-                                MessageBox(framewnd,"The manner in which sprites sets are reused in the different parts of the game is not the same throughout the 4 areas.","Bad error happened",MB_OK);
-                                goto maperror;
-                            }
-                    ((short*)(rom + 0x12634))[i]=96;
-                    ((short*)(rom + 0x12636))[i]=96;
-                    ((short*)(rom + 0x12644))[i]=4192;
-                    ((short*)(rom + 0x12646))[i]=4192;
-                    ((short*)(rom + 0x126b4))[i]=128;
-                    ((short*)(rom + 0x126b6))[i]=128;
-                    ((short*)(rom + 0x126c4))[i]=4224;
-                    ((short*)(rom + 0x126c6))[i]=4224;
-                    ((short*)(rom + 0x12734))[i]=6144;
-                    ((short*)(rom + 0x12736))[i]=6208;
-                    ((short*)(rom + 0x12744))[i]=6144;
-                    ((short*)(rom + 0x12746))[i]=6208;
-                    ((short*)(rom + 0x127b4))[i]=8192;
-                    ((short*)(rom + 0x127b6))[i]=8256;
-                    ((short*)(rom + 0x127c4))[i]=8192;
-                    ((short*)(rom + 0x127c6))[i]=8256;
-                    b4=malloc(512);
-                    for(n=0;n<5;n++) {
-                        for(o=0;o<n;o++) if(u[n]==u[o] && u[n+5]==u[o+5] && u[n+10]==u[o+10] && u[n+15]==u[o+15]) goto nextspr2;
-                        p=0;
-                        for(l=0;l<4;l++) {
-                            m=i+map_ind[l];
-                            b2=rom + 0x50000 + ((short*)(rom + 0x4c881))[sprs[n]+m];
-                            for(o=0;b2[o]!=0xff;o+=3) {
-                                b4[p++]=b2[o]+sprypos[l];
-                                b4[p++]=b2[o+1]+sprxpos[l];
-                                b4[p++]=b2[o+2];
-                            }
-                        }
-                        Savesprites(ed->ew.doc,sprs[n]+i+1,0,0);
-                        Savesprites(ed->ew.doc,sprs[n]+i+8,0,0);
-                        Savesprites(ed->ew.doc,sprs[n]+i+9,0,0);
-                        Savesprites(ed->ew.doc,sprs[n]+i,b4,p);
-nextspr2:;
-                    }
-                    for(n=0;n<5;n++)
-                        for(o=0;o<n;o++)
-                            if(u[n]==u[o] && u[n+5]==u[o+5] && u[n+10]==u[o+10] && u[n+15]==u[o+15])
-                                ((short*)(rom + 0x4c881))[sprs[n]+i]=((short*)(rom + 0x4c881))[sprs[o]+i];
-                    for(n=0;n<128;n+=64) {
-                        p=0;
-                        for(l=0;l<4;l++) {
-                            m=i+map_ind[l];
-                            b2=rom + 0xe0000 + ((short*)(rom + 0xdc2f9))[n+m];
-                            for(o=0;*(short*)(b2+o)!=-1;o+=3) {
-                                *(short*)(b4+p)=(*(short*)(b2+o))+sctpos[l];
-                                b4[p+2]=b2[o+2];
-                                p+=3;
-                            }
-                        }
-                        Savesecrets(ed->ew.doc,n+i+1,0,0);
-                        Savesecrets(ed->ew.doc,n+i+8,0,0);
-                        Savesecrets(ed->ew.doc,n+i+9,0,0);
-                        Savesecrets(ed->ew.doc,n+i,b4,p);
-                    }
-                    free(b4);
-                    for(l=0;l<4;l++) {
-                        m=i+map_ind[l];
-                        rom[0x125ec + m]=i;
-                        rom[0x12844 + m]=32;
-                        rom[0x12884 + m]=3;
-                        rom[0x1788d + m]=0;
-                        rom[0x178cd + m]=0;
-                        rom[0x4c635 + m]=4;
-                        rom[0x4c675 + m]=4;
-                        rom[0x4c6b5 + m]=4;
-                        ((short*)(rom + 0x13ee2))[m]=(((short*)(rom + 0x128c4))[m]=(i&56)<<6)-224;
-                        ((short*)(rom + 0x13f62))[m]=(((short*)(rom + 0x12944))[m]=(i&7)<<9)-256;
-                    }
-updlayout:
-                    b1=(short*)(rom + 0xdb96f);
-                    b3=(short*)(rom + 0xdba71);
-                    for(m=0;m<129;m++) {
-                        l=b1[m];
-                        if(l>=128) continue;
-                        n=b3[m];
-                        j=((l&7)<<9)+((n&0x7e)<<3);
-                        k=((l&56)<<6)+((n&0x1f80)>>3);
-                        o=rom[0x125ec + (((j>>9)+(k>>9<<3))&63)];
-                        b1[m]=o|(l&64);
-                        b3[m] =
-                        ( ( ( j - ( (short*) (rom + 0x12944))[o] ) >> 3 ) & 0x7e)
-                      + ( ( ( k - ( (short*) (rom + 0x128c4))[o] ) << 3 ) & 0x1f80);
-                    }
-                    for(m=0;m<79;m++) {
-                        l=rom[0x15e28 + m];
-                        if(l>=128) continue;
-                        rom[0x15e28 + m]=Fixscrollpos(rom,0x160ef,0x16051,0x15fb3,0x15f15,0x1622b,0x1618d,0x15e77,m,l,0x16367,0x16405);
-                    }
-                    for(m=0;m<17;m++) {
-                        l=((short*)(rom + 0x16ae5))[m];
-                        if(l>=128) continue;
-                        ((short*)(rom + 0x16ae5))[m]=Fixscrollpos(rom,0x16b8f,0x16b6d,0x16b4b,0x16b29,0x16bd3,0x16bb1,0x16b07,m,l,0,0);
-                    }
-                    b1=(short*)(rom + 0xdb826);
-                    b3=(short*)(rom + 0xdb800);
-                    for(m=0;m<19;m++) {
-                        l=b1[m];
-                        if(l>=128) continue;
-                        n=b3[m] + 0x400;
-                        j=((l&7)<<9)+((n&0x7e)<<3);
-                        k=((l&56)<<6)+((n&0x1f80)>>3);
-                        o=rom[0x125ec + (((j>>9)+(k>>9<<3))&63)];
-                        b1[m]=o|(l&64);
-                        
-                        b3[m] =
-                        ( ( ( j - get_16_le_i(rom + 0x12944, o) ) >> 3 ) & 0x7e )
-                      + ( ( ( k - get_16_le_i(rom + 0x128c4, o) ) << 3 ) & 0x1f80 )
-                      - 0x400;
-                    }
-                    ed->ew.doc->modf=1;
-                    ed->objx=((i&7)<<5);
-                    ed->objy=((i&56)<<2);
-                    Wmapselchg(ed,win,1);
-                }
-            }
-maperror:
-            ed->dtool=0;
-            ReleaseCapture();
-            break;
-        }
-        break;
-    case WM_LBUTTONUP:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->dtool>1 && ed->dtool<4) {
-            Wmapselectionrect(ed,&rc);
-            InvalidateRect(win,&rc,0);
-            if(ed->rectleft<ed->rectright) i=ed->rectleft,j=ed->rectright;
-            else i=ed->rectright,j=ed->rectleft;
-            if(ed->recttop<ed->rectbot) k=ed->recttop,l=ed->rectbot;
-            else k=ed->rectbot,l=ed->recttop;
-            if(ed->dtool==3) {
-                ed->undomodf=ed->modf;
-                memcpy(ed->undobuf,ed->buf,0x1000);
-                for(m=i;m<j;m++)
-                    for(n=k;n<l;n++)
-                        ed->buf[m+(n<<6)]=ed->bs.sel;
-                ed->modf=1;
-            } else if(!ed->selflag) {
-                ed->rectleft=i;
-                ed->rectright=j;
-                ed->recttop=k;
-                ed->rectbot=l;
-                ed->selflag=1;
-                ed->stselx=i;
-                ed->stsely=k;
-                j-=i;
-                l-=k;
-                l<<=6;
-                i+=k<<6;
-                n=0;
-                b4=ed->buf;
-                ed->selbuf=malloc((ed->rectright-ed->rectleft)*(ed->rectbot-ed->recttop));
-                for(o=0;o<l;o+=64) for(m=0;m<j;m++) ed->selbuf[n++]=b4[m+i+o];
-            }
-        }
-        if(ed->dtool) ReleaseCapture();
-        ed->dtool=0;
-        break;
-    
-    case WM_PAINT:
-        
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(ed)
-        {
-            WorldMapDisplay_OnPaint(ed, win);
-        }
-        
-        break;
-    
-    case WM_KEYDOWN:
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
-        i=ed->selmark;
-        if(ed->tool!=3 || i==-1 || ed->marknum==9) break;
-        if(wparam>=65 && wparam<71) { wparam-=55; goto digit; }
-        if(wparam>=48 && wparam<58) {
-            wparam-=48;
-digit:
-            b1=((short*)(ed->ew.doc->rom+wmpic_ofs[i]))+ed->marknum;
-            *b1<<=4;
-            *b1|=wparam;
-            Wmapselchg(ed,win,1);
-        }
-        
-        break;
-    
-    default:
-        
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
-void changeposition(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dx,int dy,int sp,int map,int i,int q,int door1,int door2)
-{
-    int a=(map&7)<<9,b=(map&56)<<6,d,e,f,g,h,j,k,l;
-    k=((short*)(rom+x))[i];
-    l=((short*)(rom+y))[i];
-    h=((short*)(rom+x))[i]=k+dx;
-    j=((short*)(rom+y))[i]=l+dy;
-    if(door1) if(((unsigned short*)(rom+door2))[i]+1>=2) j+=39; else j+=19;
-    d=((short*)(rom+sx))[i];
-    f=((short*)(rom+cx))[i];
-    if((dx<0 && h<f) || (dx>0 && h>f)) dx=h-f; else dx=0;
-    d+=dx;
-    if(d<a) dx+=a-d,d=a;
-    if(d>a+q) dx+=a+q-d,d=a+q;
-    ((short*)(rom+sx))[i]=d;
-    ((short*)(rom+cx))[i]+=dx;
-    e=((short*)(rom+sy))[i];
-    g=((short*)(rom+cy))[i];
-    if((dy<0 && j<g) || (dy>0 && j>g)) dy=j-g; else dy=0;
-    e+=dy;
-    if(e<b) dy+=b-e,e=b;
-    if(e>b+q+32) dy+=b+q+32-e,e=b+q+32;
-    ((short*)(rom+sy))[i]=e;
-    ((short*)(rom+cy))[i]+=dy;
-    ((short*)(rom+sp))[i]=(((e-b)&0xfff0)<<3)+(((d-a)&0xfff0)>>3);
-    
-    if(door1)
-    {
-        if( ((unsigned short*)(rom + door1))[i] + 1 >= 2 )
-            ((short*)(rom + door1))[i] +=
-            ( ( ( (j - 19) & 0xfff0) - (l & 0xfff0) ) << 3 )
-          + ( ( ( h & 0xfff0) - (k & 0xfff0) ) >> 3 );
-        
-        if( ((unsigned short*)(rom + door2))[i] + 1 >= 2 )
-            ((short*)(rom + door2))[i] +=
-            ( ( ( (j - 39) & 0xfff0 ) - (l & 0xfff0) ) << 3 )
-          + ( ( (h & 0xfff0) - (k & 0xfff0) ) >> 3 );
-    }
-}
 
 void Updateblk32disp(BLOCKEDIT32 *ed, int num)
 {
@@ -23594,7 +11105,7 @@ void Updateblk16disp(BLOCKEDIT16 *ed, int num)
     StretchBlt(ed->bufdc,(num&1)*ed->w>>1,(num&2)*ed->h>>2,ed->w>>1,ed->h>>1,objdc,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SRCCOPY);
 }
 
-long CALLBACK
+LRESULT CALLBACK
 blkedit16proc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     BLOCKEDIT16*ed;
@@ -23643,6 +11154,7 @@ blkedit16proc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     return 0;
 }
 
+// \note Unused. Looks like this was for tile properties.
 char*terrain_str[]={
     "Land",
     "Wall",
@@ -23756,7 +11268,7 @@ BOOL CALLBACK editblock16(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         *(int*)(ed->blks+2)=((int*)l)[1];
         SetWindowLong(win,GWL_USERDATA,(int)ed);
         hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
+        rc = HM_GetClientRect(hc);
         ed->w=rc.right;
         ed->h=rc.bottom;
         hdc=GetDC(win);
@@ -23906,7 +11418,8 @@ updflag:
     return FALSE;
 }
 
-long CALLBACK blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKEDIT32*ed;
     PAINTSTRUCT ps;
@@ -23989,133 +11502,18 @@ long CALLBACK blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-void Palselrect(BLKEDIT8 *ed, HWND win, RECT *rc)
-{
-    (void) win;
-    
-    rc->left = (ed->psel & 15) * ed->pwidth >> 4;
-    rc->top  = (ed->psel >> 4) * ed->pheight >> 4;
-    rc->right  = ((ed->psel & 15) + 1) * ed->pwidth >> 4;
-    rc->bottom = ((ed->psel >> 4) + 1) * ed->pheight >> 4;
-}
+// =============================================================================
 
-// Palette selection window that gets used when editing 8x8 tiles
-// (at the very least in the case of dungeon objects)
-long CALLBACK palselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j,k,l,m,n;
-    
-    BLKEDIT8*ed;
-    
-    OVEREDIT*oed;
-    
-    PAINTSTRUCT ps;
-    
-    RECT rc;
-    
-    switch(msg)
-    {
-    
-    case WM_PAINT:
-        
-        ed = (BLKEDIT8*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!ed) break;
-        
-        oed = ed->oed;
-        
-        if(always)
-        {
-            HDC const hdc = BeginPaint(win, &ps);
-            
-            HPALETTE const oldpal = SelectPalette(hdc, ed->oed->hpal, 1);
-            
-            HGDIOBJ const oldobj = GetCurrentObject(hdc, OBJ_BRUSH);
-            
-            HBRUSH newobj = 0;
-            
-            k=(ps.rcPaint.left<<4)/ed->pwidth;
-            j=(ps.rcPaint.top<<4)/ed->pheight;
-            l=((ps.rcPaint.right<<4)+ed->pwidth-1)/ed->pwidth;
-            m=((ps.rcPaint.bottom<<4)+ed->pheight-1)/ed->pheight;
-            
-            RealizePalette(hdc);
-            
-            for(;j<m;j++)
-            {
-                for(i=k;i<l;i++)
-                {
-                    HBRUSH const oldob2 = newobj;
-                    
-                    if(oed->hpal)
-                        newobj = CreateSolidBrush(0x1000000 + ((short*)(oed->pal))[i+(j<<4)]);
-                    else
-                    {
-                        // \task Useless? No, but confusing (next line consumes
-                        // this value)
-                        n = i + (j << 4);
-                        
-                        n = (oed->pal[n].rgbBlue  << 16)
-                          + (oed->pal[n].rgbGreen <<  8)
-                          + (oed->pal[n].rgbRed);
-                        
-                        newobj = CreateSolidBrush(n);
-                    }
-                    
-                    SelectObject(hdc, newobj);
-                    
-                    if(oldob2)
-                        DeleteObject(oldob2);
-                    
-                    Rectangle(hdc,i*ed->pwidth>>4,j*ed->pheight>>4,(i+1)*ed->pwidth>>4,(j+1)*ed->pheight>>4);
-                }
-            }
-            
-            Palselrect(ed,win,&rc);
-            FrameRect(hdc,&rc,green_brush);
-            
-            SelectPalette(hdc,oldpal,1);
-            SelectObject(hdc,oldobj);
-            
-            if(newobj)
-                DeleteObject(newobj);
-            
-            EndPaint(win, &ps);
-        }
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-        ed=(BLKEDIT8*)GetWindowLong(win,GWL_USERDATA);
-        Palselrect(ed,win,&rc);
-        InvalidateRect(win,&rc,0);
-        if(ed->blknum==260) j=ed->psel&0xf0;
-        else if(ed->blknum>=256) j=ed->psel&0xfc; else j=ed->psel&0xf8;
-        ed->psel=(((short)lparam)<<4)/ed->pwidth+((lparam>>12)/ed->pheight<<4);
-        if(ed->blknum==260) i=ed->psel&0xf0,k=15;
-        else if(ed->blknum>=256) i=ed->psel&0xfc,k=3; else i=ed->psel&0xf8,k=7;
-        if(ed->oed->gfxtmp!=0xff && i!=j) {
-            for(j=(ed->size<<6)-1;j>=0;j--) {
-                ed->buf[j]&=k;
-                if(ed->buf[j]) ed->buf[j]|=i;
-            }
-            InvalidateRect(ed->blkwnd,0,0);
-        }
-        Palselrect(ed,win,&rc);
-        InvalidateRect(win,&rc,0);
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-long CALLBACK blkedit8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+blkedit8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLKEDIT8*ed;
     PAINTSTRUCT ps;
     HDC hdc;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_PAINT:
         
         ed = (BLKEDIT8*)GetWindowLong(win,GWL_USERDATA);
@@ -24164,7 +11562,8 @@ long CALLBACK blkedit8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-long CALLBACK blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKSEL8*ed;
     SCROLLINFO si;
@@ -24360,7 +11759,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
     
     RealizePalette(hdc);
     
-    GetClientRect(p_win, &rc);
+    rc = HM_GetClientRect(p_win);
     
     j = ( (ps.rcPaint.bottom + 31) >> 5) << 2;
     
@@ -24394,7 +11793,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
                 Drawblock(p_ed->ed,
                           blkx[p],
                           blky[p],
-                          get_16_le_i(o, k),
+                          ldle16b_i(o, k),
                           0);
                 
                 p++;
@@ -24442,7 +11841,7 @@ Blksel16_OnPaint(BLOCKSEL16 const * const p_ed,
 
 // =============================================================================
 
-long CALLBACK
+LRESULT CALLBACK
 blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     BLOCKSEL16* ed;
@@ -24535,7 +11934,7 @@ blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     case WM_LBUTTONDOWN:
         ed=(BLOCKSEL16*)GetWindowLong(win,GWL_USERDATA);
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         
         i = (rc.right >> 1) - 64;
         
@@ -24611,7 +12010,7 @@ BOOL CALLBACK editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetWindowLong(hc,GWL_USERDATA,(int)ed);
         Updatesize(hc);
         hc=GetDlgItem(win,IDC_CUSTOM1);
-        GetClientRect(hc,&rc);
+        rc = HM_GetClientRect(hc);
         ed->w=rc.right;
         ed->h=rc.bottom;
         hdc=GetDC(win);
@@ -24746,7 +12145,9 @@ BOOL CALLBACK editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     }
     return FALSE;
 }
-long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+
+LRESULT CALLBACK
+blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
@@ -24845,7 +12246,7 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_LBUTTONDOWN:
         ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         i=(rc.right>>1)-64;
         j=lparam&65535;
         
@@ -24873,7 +12274,7 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         oldpal = SelectPalette(hdc, ed->hpal, 1);
         
         RealizePalette(hdc);
-        GetClientRect(win, &rc);
+        rc = HM_GetClientRect(win);
         
         j = ((ps.rcPaint.bottom + 31) >> 5) << 2;
         
@@ -24924,9 +12325,10 @@ long CALLBACK blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-//aboutfunc#*******************************
+// =============================================================================
 
-BOOL CALLBACK aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     (void) lparam;
     
@@ -24936,161 +12338,10 @@ BOOL CALLBACK aboutfunc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return FALSE;
 }
 
-//aboutfunc*******************************
+// =============================================================================
 
-BOOL CALLBACK wavesetting(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetDlgItemInt(win,IDC_EDIT1,ws_freq,0);
-        SetDlgItemInt(win,IDC_EDIT2,ws_bufs,0);
-        SetDlgItemInt(win,IDC_EDIT3,ws_len,0);
-        CheckDlgButton(win,IDC_CHECK1,ws_flags&1);
-        CheckDlgButton(win,IDC_CHECK2,(ws_flags>>1)&1);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            ws_freq=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ws_bufs=GetDlgItemInt(win,IDC_EDIT2,0,0);
-            ws_len=GetDlgItemInt(win,IDC_EDIT3,0,0);
-            ws_flags=IsDlgButtonChecked(win,IDC_CHECK1)
-                |(IsDlgButtonChecked(win,IDC_CHECK2)<<1);
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-BOOL CALLBACK midisetting(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    (void) lparam;
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetDlgItemInt(win,IDC_EDIT1,ms_tim1,0);
-        SetDlgItemInt(win,IDC_EDIT2,ms_tim2,0);
-        SetDlgItemInt(win,IDC_EDIT3,ms_tim3,0);
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            ms_tim1=GetDlgItemInt(win,IDC_EDIT1,0,0);
-            ms_tim2=GetDlgItemInt(win,IDC_EDIT2,0,0);
-            ms_tim3=GetDlgItemInt(win,IDC_EDIT3,0,0);
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-int Soundsetting(HWND win,int dev)
-{
-    if((dev>>16)==1) {
-        return ShowDialog(hinstance,(LPSTR)IDD_DIALOG3,win,wavesetting,0);
-    } else return ShowDialog(hinstance,(LPSTR)IDD_DIALOG13,win,midisetting,0);
-}
-BOOL CALLBACK seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j,lp;
-    TVINSERTSTRUCT tvi;
-    TVITEM*itemstr;
-    WAVEOUTCAPS woc;
-    MIDIOUTCAPS moc;
-    HWND hc;
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,0);
-        hc=GetDlgItem(win,IDC_TREE1);
-        tvi.hParent=0;
-        tvi.hInsertAfter=TVI_LAST;
-        tvi.item.mask=TVIF_CHILDREN|TVIF_PARAM|TVIF_TEXT|TVIF_STATE;
-        tvi.item.stateMask=TVIS_BOLD;
-        tvi.item.state=0;
-        tvi.item.lParam=0;
-        tvi.item.pszText="Wave devices";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Wave mapper";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x10001;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        j=waveOutGetNumDevs();
-        if(j>256) j=256;
-        tvi.item.pszText=woc.szPname;
-        for(i=0;i<j;i++) {
-            if(waveOutGetDevCaps(i,&woc,sizeof(woc))) continue;
-            tvi.item.lParam=0x10002 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        tvi.hParent=0;
-        tvi.item.pszText="Midi devices";
-        tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        tvi.item.pszText="Midi mapper";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x20000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        j=midiOutGetNumDevs();
-        if(j>256) j=256;
-        tvi.item.pszText=moc.szPname;
-        for(i=0;i<j;i++) {
-            if(midiOutGetDevCaps(i,&moc,sizeof(moc))) continue;
-            tvi.item.lParam=0x20001 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
-        }
-        break;
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDOK:
-            lp=GetWindowLong(win,DWL_USER);
-            if(!lp) break;
-            if(!Soundsetting(win,lp)) break;
-            Exitsound();
-            sounddev=lp;
-            Initsound();
-            EndDialog(win,1);
-            break;
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-        break;
-    case WM_NOTIFY:
-        switch(wparam) {
-        case IDC_TREE1:
-            switch(((NMHDR*)lparam)->code) {
-            case TVN_SELCHANGED:
-                itemstr=&(((NMTREEVIEW*)lparam)->itemNew);
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
-                SetWindowLong(win,DWL_USER,itemstr->lParam);
-                break;
-            }
-        }
-    }
-    return FALSE;
-}
-
-typedef struct {
-    int sprsetedit;
-    int namechg;
-    char savespr[0x11c][16];
-    int flag;
-    int soundvol;
-    unsigned short inst[25];
-    unsigned short trans[25];
-    char saveasmp[MAX_PATH];
-} CONFIG;
-
-void Updatesprites(void)
+void
+Updatesprites(void)
 {
     FDOC *doc;
     HWND win;
@@ -25102,26 +12353,47 @@ void Updatesprites(void)
     for(doc=firstdoc;doc;doc=doc->next) {
         for(i=0;i<144;i++) {
             win=doc->overworld[i].win;
-            if(win) {
+            if(win)
+            {
+                text_buf_ty text_buf;
+                
                 win=GetDlgItem(GetDlgItem(win,2000),3001);
                 oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(oe->disp&4)) continue;
+                
+                if( ! (oe->disp & SD_OverShowMarkers) )
+                    continue;
+                
                 k=oe->esize[oe->sprset];
                 l=oe->ebuf[oe->sprset];
-                for(j=0;j<k;j++) {
+                
+                for(j=0;j<k;j++)
+                {
                     rc.left=(l[j+1]<<4)-(oe->mapscrollh<<5);
                     rc.top=(l[j]<<4)-(oe->mapscrollv<<5);
-                    Getstringobjsize(Getoverstring(oe,5,j),&rc);
+                    
+                    GetOverString(oe, 5, j, text_buf);
+                    
+                    Getstringobjsize(text_buf, &rc);
+                    
                     InvalidateRect(win,&rc,0);
                 }
-                if(i<128) {
+                
+                if(i < 128)
+                {
                     k=oe->ssize;
                     l=oe->sbuf;
-                    for(j=0;j<k;j++) {
+                    
+                    for(j=0;j<k;j++)
+                    {
                         m=*(short*)(l+j);
+                        
                         rc.left=((m&0x7e)<<3)-(oe->mapscrollh<<5);
                         rc.top=((m&0x1f80)>>3)-(oe->mapscrollv<<5);
-                        Getstringobjsize(Getoverstring(oe,10,j),&rc);
+                        
+                        GetOverString(oe, 10, j, text_buf);
+                        
+                        Getstringobjsize(text_buf, &rc);
+                        
                         InvalidateRect(win,&rc,0);
                     }
                 }
@@ -25132,9 +12404,13 @@ void Updatesprites(void)
             if(win) {
                 win=GetDlgItem(GetDlgItem(win,2000), ID_DungEditWindow);
                 ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
-                if(!(ed->disp&4)) break;
+                
+                if( ! (ed->disp & SD_OverShowMarkers) )
+                    break;
+                
                 k=ed->esize;
                 l=ed->ebuf;
+                
                 for(j=1;j<k;j++) {
                     rc.left=((l[j+1]&31)<<4)-(ed->mapscrollh<<5);
                     rc.top=((l[j]&31)<<4)-(ed->mapscrollv<<5);
@@ -25155,1217 +12431,10 @@ void Updatesprites(void)
     }
 }
 
-BOOL CALLBACK editsprname(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i,j;
-    static CONFIG*config=0;
-    SCROLLINFO si;
-    if(msg==WM_HSCROLL) {
-        i=soundvol;
-        switch(wparam&65535) {
-        case SB_LEFT:
-            i=0;
-            break;
-        case SB_RIGHT:
-            i=256;
-            break;
-        case SB_LINELEFT:
-            i--;
-            break;
-        case SB_LINERIGHT:
-            i++;
-            break;
-        case SB_THUMBPOSITION:
-        case SB_THUMBTRACK:
-            i=wparam>>16;
-            break;
-        case SB_PAGELEFT:
-            i-=16;
-            break;
-        case SB_PAGERIGHT:
-            i+=16;
-        }
-        if(i<0) i=0;
-        if(i>256) i=256;
-        soundvol=i;
-        config->flag|=4;
-        volflag|=255;
-        si.cbSize=sizeof(si);
-        si.nPos=i;
-        si.fMask=SIF_POS;
-        SetScrollInfo((HWND)lparam,SB_CTL,&si,1);
-soundvolchg:
-        wsprintf(buffer,"%d%%",soundvol*100/256);
-        SetDlgItemText(win,IDC_STATIC2,buffer);
-    } else if(msg==WM_COMMAND) switch(wparam) {
-    case IDC_EDIT1|(EN_CHANGE<<16):
-updname:
-        i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        if(config->sprsetedit) j=0x1b; else j=255;
-        if(i>j || i<0) { SetDlgItemInt(win,IDC_EDIT1,j,0); break; }
-        config->namechg=1;
-        SetDlgItemText(win,IDC_EDIT2,sprname[i+config->sprsetedit]);
-        config->namechg=0;
-        break;
-    case IDC_EDIT2|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        config->flag|=1;
-        Updatesprites();
-        GetDlgItemText(win,IDC_EDIT2,sprname[i+config->sprsetedit],16);
-        Updatesprites();
-        break;
-    case IDC_EDIT3|(EN_CHANGE<<16):
-        i=GetDlgItemInt(win,IDC_EDIT3,0,0);
-        if(i>24 || i<0) { SetDlgItemInt(win,IDC_EDIT3,24,0); break; }
-        config->namechg=1;
-        SetDlgItemInt(win,IDC_EDIT4,midi_inst[i]&255,0);
-        SetDlgItemInt(win,IDC_EDIT5,midi_inst[i]>>8,0);
-        SetDlgItemInt(win,IDC_EDIT6,(char)(midi_trans[i]),1);
-        SetDlgItemInt(win,IDC_EDIT8,(char)(midi_trans[i]>>8),1);
-        config->namechg=0;
-        break;
-    case IDC_EDIT4|(EN_CHANGE<<16):
-    case IDC_EDIT5|(EN_CHANGE<<16):
-    case IDC_EDIT6|(EN_CHANGE<<16):
-    case IDC_EDIT8|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        i=GetDlgItemInt(win,IDC_EDIT3,0,0);
-        midi_inst[i]=GetDlgItemInt(win,IDC_EDIT4,0,0)+(GetDlgItemInt(win,IDC_EDIT5,0,0)<<8);
-        midi_trans[i]=(GetDlgItemInt(win,IDC_EDIT6,0,1)&255)+(GetDlgItemInt(win,IDC_EDIT8,0,1)<<8);
-        config->flag|=8;
-        break;
-    case IDC_EDIT9|(EN_CHANGE<<16):
-        if(config->namechg) break;
-        GetDlgItemText(win,IDC_EDIT9,asmpath,MAX_PATH);
-        config->flag|=16;
-        break;
-    case IDC_RADIO1:
-        config->sprsetedit=0;
-        goto updname;
-    case IDC_RADIO3:
-        config->sprsetedit=256;
-        goto updname;
-    case IDCANCEL:
-        if(config->flag&1) {
-            Updatesprites();
-            memcpy(sprname,config->savespr,0x11c0);
-            Updatesprites();
-        }
-        
-        strcpy(asmpath,config->saveasmp);
-        
-        memcpy(midi_inst, config->inst, MIDI_ARR_BYTES);
-        memcpy(midi_trans, config->trans, MIDI_ARR_BYTES);
-        
-        soundvol=config->soundvol;
-        free(config);
-        EndDialog(win,0);
-        
-        break;
-    
-    case IDOK:
-        
-        cfg_flag |= config->flag;
-        
-        if(config->flag)
-            cfg_modf = 1;
-        
-        free(config);
-        
-        EndDialog(win,0);
-        
-        break;
-    }
-    else if(msg == WM_INITDIALOG)
-    {
-        config=malloc(sizeof(CONFIG));
-        config->sprsetedit=0;
-        config->namechg=1;
-        config->soundvol=soundvol;
-        config->flag=0;
-        memcpy(config->savespr,sprname,0x11c0);
-        memcpy(config->inst,midi_inst,100);
-        CheckDlgButton(win,IDC_RADIO1,BST_CHECKED);
-        SetDlgItemInt(win,IDC_EDIT1,0,0);
-        SetDlgItemInt(win,IDC_EDIT3,0,0);
-        SetDlgItemText(win,IDC_EDIT9,asmpath);
-        strcpy(config->saveasmp,asmpath);
-        config->namechg=0;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_POS|SIF_RANGE|SIF_PAGE;
-        si.nPos=soundvol;
-        si.nMin=0;
-        si.nMax=256;
-        si.nPage=16;
-        SetScrollInfo(GetDlgItem(win,IDC_SCROLLBAR1),SB_CTL,&si,0);
-        goto soundvolchg;
-    }
-    return FALSE;
-}
-
 // =============================================================================
 
 BOOL CALLBACK
-overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    int i, // 
-        j, // the overworld area number to load.
-        k, // The offset for the 8 byte array of blockset information, for a particular area.
-        l, // and auxiliary offset for additional blocktypes that are swapped in sometimes.
-        m, // use as the graphics number.
-        n,
-        p,
-        q;
-    
-    short o[4];
-    
-    HWND hc;
-    OVEREDIT *ed, *oed;
-    ZOVER *ov;
-    
-    unsigned char *rom, *b2;
-    
-    uint16_t * b4 = 0;
-    uint16_t * b5 = 0;
-    
-    switch(msg)
-    {
-    
-    case WM_MOUSEMOVE:
-        
-        if(always)
-        {
-            char handle_text[0x100];
-            
-            HM_MouseMoveData const d = HM_GetMouseMoveData(win, wparam, lparam);
-            
-            HWND const child = ChildWindowFromPoint(win, d.m_rel_pos);
-            
-            sprintf(handle_text,
-                    "hwnd: %p, x: %d, y: %d",
-                    child,
-                    d.m_screen_pos.x,
-                    d.m_screen_pos.y);
-             
-            SetDlgItemText(win, SD_OverWindowFocus, handle_text);
-        }
-        
-        break;
-    
-    case WM_INITDIALOG:
-        
-        SetWindowLong(win,DWL_USER,lparam);
-        
-        ed = (OVEREDIT*) lparam;
-        ed->hpal = 0;
-        
-        j = ed->ew.param;
-        rom = ed->ew.doc->rom;
-        
-        ed->gfxtmp = (j & 0x40) ? 0x21 : 0x20;
-        
-        if(j == 0x88 || j == 0x93)
-            ed->gfxtmp = 0x24;
-        
-        k = 0x6073 + (ed->gfxtmp << 3);
-        m = rom[0x7c9c + j];
-        
-        if(j == 0x95)
-            m = 0x22;
-        else if(j == 0x96)
-            m = 0x3b;
-        else if(j == 0x88 || j == 0x93)
-            m = 0x51;
-        else if(j == 0x9e)
-            m = 0x21;
-        else if(j == 0x9c)
-            m = 0x41;
-        else if(j > 0x7f)
-            m = 0x2f;
-        
-        ed->gfxnum = m;
-        l = 0x5d97 + (m << 2);
-        
-        if(j < 0x80)
-            ed->mapsize = rom[0x12844 + (j & 0x3f)];
-        else if(j == 0x81)
-            ed->mapsize = 0x20;
-        else
-            ed->mapsize = 0;
-        
-        EnableWindow( GetDlgItem(win, 3007), j < 0x80); //graphics number
-        EnableWindow( GetDlgItem(win, 3010), j < 0x80); //palette number
-        
-        if(j < 0x80)
-        {
-            // Determines whether the up/down/left/right arrows are grayed out or not.
-            EnableWindow(GetDlgItem(win, 3029), j & 7);
-            EnableWindow(GetDlgItem(win, 3030), (j + (ed->mapsize ? 2 : 1)) & 7);
-            EnableWindow(GetDlgItem(win, 3031), j & 56);
-            EnableWindow(GetDlgItem(win, 3032), (j + (ed->mapsize ? 16 : 8)) & 56);
-        }
-        else
-        {
-            //Disable the directional arrows if it's an overlay or special area.
-            EnableWindow(GetDlgItem(win, 3029), 0);
-            EnableWindow(GetDlgItem(win, 3030), 0);
-            EnableWindow(GetDlgItem(win, 3031), 0);
-            EnableWindow(GetDlgItem(win, 3032), 0);
-        }
-        
-        //Tell the window to set an appropriate graphic for each arrow button.
-        for(i = 0; i < 4; i++)
-            SendDlgItemMessage(win, 3029 + i, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[i]);
-        
-        //The GFX# box is set here.
-        SetDlgItemInt(win, 3007, m, 0);
-        
-        //Write down the first eight blocksets this area will use
-        for(i = 0; i < 8; i++)
-            ed->blocksets[i] = rom[k++];
-        
-        // rewrite some of these blockset entries with the ones located at $5D97 + (4*gfxnumber)
-        for(i = 3; i < 7; i++)
-        {
-            m = rom[l++];
-            
-            if(m != 0)
-                ed->blocksets[i] = m;
-        }
-        
-        // Tells us which area it is, without regard to light / dark world.
-        m = j & 0x3f;
-        
-        // In certain cases, the 8th blockset is 0x58 or 0x5A
-        if((m >= 3 && m <= 7) || j == 0x95)
-            ed->blocksets[8] = 0x58, l = 2;
-        else
-            ed->blocksets[8] = 0x5a, l = 0;
-        
-        // more blockset crap... blah blah.
-        ed->blocksets[9] = ed->blocksets[8] + 1;
-        ed->blocksets[10] = (j & 0x40) ? 126 : 116;
-        
-        // If we be in da dark world...
-        if(j >= 0x40)
-        {
-            ed->sprgfx[2] = ed->sprgfx[1] = ed->sprgfx[0] = rom[0x7ac1 + j];
-            ed->sprpal[2] = ed->sprpal[1] = ed->sprpal[0] = rom[0x7bc1 + j];
-        }
-        else
-        {
-            ed->sprgfx[0] = rom[0x7a41 + j];
-            ed->sprgfx[1] = rom[0x7a81 + j];
-            ed->sprgfx[2] = rom[0x7ac1 + j];
-            ed->sprpal[0] = rom[0x7b41 + j];
-            ed->sprpal[1] = rom[0x7b81 + j];
-            ed->sprpal[2] = rom[0x7bc1 + j];
-        }
-        
-        k = 0x5b57 + (ed->sprgfx[1] << 2);
-        
-        for(i = 0; i < 4; i++)
-            ed->blocksets[i + 11] = rom[k + i] + 0x73;
-        
-        for(i = 0; i < 15; i++)
-            Getblocks(ed->ew.doc, ed->blocksets[i]);
-        
-        Getblocks(ed->ew.doc, 0x79);
-        Getblocks(ed->ew.doc, 0x7a);
-        
-        if( (j & 0x40) || j == 0x96)
-            l++;
-        
-        if(j == 0x88 || j == 0x93)
-            l = 4;
-        
-        Loadpal(ed, rom, 0x1be6c8 + (( (unsigned short*) (rom + 0xdec3b))[l]), 0x21, 7, 5);
-        Loadpal(ed, rom, (j & 0x40) ? 0x1bd290 : 0x1bd218, 0x91, 15, 4);
-        Loadpal(ed, rom, 0x1bd660, 0, 16, 2);
-        Loadpal(ed, rom, (j & 0x40) ? 0x1bd3c8 : 0x1bd3ac, 0x81, 7, 1);
-        Loadpal(ed, rom, (j & 0x40) ? 0x1bd4c4 : 0x1bd4a8, 0x89, 7, 1);
-        Loadpal(ed, rom, (j & 0x40) ? 0x1bd4b6 : 0x1bd49a, 0xe9, 7, 1);
-        
-        m = ed->sprpal[1];
-        
-        b2 = rom + 0x7d580 + (m << 1);
-        
-        Loadpal(ed, rom, 0x1bd4e0 + (( (unsigned short*) (rom + 0xdebd6) )[b2[0]]), 0xd1, 7, 1);
-        Loadpal(ed, rom, 0x1bd4e0 + (( (unsigned short*) (rom + 0xdebd6) )[b2[1]]), 0xe1, 7, 1);
-        Loadpal(ed, rom, 0x1bd308, 0xf1, 15, 1);
-        Loadpal(ed, rom, 0x1bd648, 0xdc, 4, 1);
-        Loadpal(ed, rom, 0x1bd630, 0xd9, 3, 1);
-        
-        if(j < 0x88)
-            m = rom[0x7d1c + j];
-        // special case palette #s.
-        else if(j == 0x95)
-            m = 7;
-        else if(j == 0x96)
-            m = 18;
-        else if(j == 0x9d)
-            m = 6;
-        else if(j == 0x97 || j == 0x9e)
-            m = 7;
-        else if(j == 0x9c)
-            m = 23;
-        else
-            m = 0;
-        
-        b2 = rom + 0x75504 + (m << 2);
-        
-        // Set the palette number, visible in the dialog's edit box.
-        SetDlgItemInt(win, 3010, m, 0);
-        
-        if(b2[0] < 128)
-            Loadpal(ed,rom,0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[0]]), 0x29, 7, 3);
-        
-        if(b2[1] < 128)
-            Loadpal(ed, rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[1]]), 0x59, 7, 3);
-        
-        if(b2[2] < 128)
-            Loadpal(ed, rom, 0x1be604 + (((unsigned char*)(rom + 0xdebc6))[b2[2]]), 0x71, 7, 1);
-        
-        // \task SePH asked about this part where the backdrop is handled.
-        // See if it can be fixed.
-        if(j & 0x40)
-            ed->pal[0] = darkcolor;
-        else
-            ed->pal[0] = greencolor;
-        
-        if(j == 0x5b || j == 0x88)
-            ed->pal[0] = blackcolor;
-        
-        m = j & 0x3f;
-        
-        if(m == 3 || m == 5 || m == 7 || j == 0x95)
-            ed->pal[0] = deathcolor;
-        
-        for(i = 16; i < 256; i += 16)
-            ed->pal[i] = ed->pal[0];
-        
-        ov = ed->ew.doc->overworld + j;
-        ov->buf = malloc(0xa00);
-        ov->modf = 0;
-        
-        ed->ov = ov;
-        
-        if(ed->mapsize)
-            l = 4;
-        else
-            l = 1;
-        
-        for(k = 0; k < l; k++)
-        {
-            loadovermap(ov->buf + map_ofs[k], j + map_ind[k], 0, rom);
-        }
-        
-        loadovermap(ov->buf + 1024, getbgmap(ed, j, 1), 1, rom);
-        
-        if(j < 0x80)
-        {
-            ed->ovlenb = loadoverovl(ed->ew.doc,ed->ovlmap,j);
-            
-            if(ed->ew.doc->o_loaded == 2)
-                EnableWindow(GetDlgItem(win, 3037), 0);
-        }
-        
-        ed->ovlmodf = 0;
-        memcpy(ed->undobuf, ed->ov->buf, 0x800);
-        
-        ed->undomodf = 0;
-        ed->bmih = zbmih;
-        ed->sel_scroll = 0;
-        ed->sel_select = 0;
-        ed->selblk = 0;
-        ed->mapscrollh = 0;
-        ed->mapscrollv = 0;
-        ed->selflag = 0;
-        ed->selobj = -1;
-        ed->anim = 0;
-        ed->disp = 4;
-        ed->schflag = 0;
-        
-        for(i = 0; i < 0x3aa; i++)
-            ed->selsch[i] = 0;
-        
-        for( ; i < 0x57f; i++)
-            ed->selsch[i] = 0xff;
-        
-        for(i = 3000; i < 3002; i++)
-        {
-            hc = GetDlgItem(win, i);
-            
-            SetWindowLong(hc, GWL_USERDATA, (int) ed);
-            ShowWindow(hc, SW_SHOW);
-            Updatesize(hc);
-        }
-        
-        ed->bs.ed = ed;
-        ed->bs.scroll = 0;
-        ed->bs.sel = 0;
-        
-        hc = GetDlgItem(win, 3038);
-        SetWindowLong(hc,GWL_USERDATA,(int)&(ed->bs));
-        Updatesize(hc);
-        
-        CheckDlgButton(win,3003,BST_CHECKED);
-        CheckDlgButton(win,3019,BST_CHECKED);
-        ed->tool = 1;
-        ed->dtool = 0;
-        ed->sprset = 1;
-        
-        hc = GetDlgItem(win, 3020);
-        
-        if(j < 0x90)
-        {
-            ed->e_modf[0] = 0;
-            ed->e_modf[1] = 0;
-            ed->e_modf[2] = 0;
-            ed->ecopy[0] = -1;
-            ed->ecopy[1] = -1;
-            ed->ecopy[2] = -1;
-            l = j >> 7;
-            
-            for(i = l; i < 3; i++)
-            {
-                o[i] = *(short*)(rom + sprset_loc[i] + j*2);
-                
-                for(k = l; k < i; k++)
-                {
-                    if(o[i] == o[k])
-                    {
-                        ed->ebuf[i] = ed->ebuf[k];
-                        ed->esize[i] = ed->esize[k];
-                        ed->ecopy[i] = k;
-                        
-                        if(i == 1)
-                            ed->sprset = 0;
-                    }
-                }
-                
-                b2 = rom + 0x50000 + o[i];
-                
-                for(k = 0; ; k += 3)
-                {
-                    if(b2[k] == 0xff)
-                        break;
-                }
-                
-                ed->esize[i] = k;
-                ed->ebuf[i] = malloc(k);
-                memcpy(ed->ebuf[i], b2, k);
-                
-                SendMessage(hc,CB_ADDSTRING,0,(long)(sprset_str[i]));
-            }
-            
-            SendMessage(hc, CB_SETCURSEL, ed->sprset - l, 0);
-            
-            if(j < 0x80)
-            {
-                b2 = rom + 0xE0000 + *(short*)(rom + 0xDC2F9 + j*2);
-                
-                for(k = 0; ; k += 3)
-                {
-                    if(b2[k] == 0xff)
-                        break;
-                }
-                
-                ed->ssize = k;
-                ed->sbuf = malloc(k);
-                memcpy(ed->sbuf, b2, k);
-            }
-        }
-        else
-        {
-            ShowWindow(hc,SW_HIDE);
-            ShowWindow(GetDlgItem(win,3016),SW_HIDE);
-        }
-        
-        if(j >= 0x80)
-        {
-            ShowWindow(GetDlgItem(win,3027),SW_HIDE);
-            ShowWindow(GetDlgItem(win,3037),SW_HIDE);
-        }
-        
-        EnableWindow(GetDlgItem(win,3018),j<0x80);
-        EnableWindow(GetDlgItem(win,3034),j<0x80);
-        
-        SetDlgItemInt(win,3018,ed->sprgfx[ed->sprset],0);
-        SetDlgItemInt(win,3034,ed->sprpal[ed->sprset],0);
-        
-        Addgraphwin((DUNGEDIT*)ed,1);
-        
-        break;
-    
-    case 4002:
-        
-        InvalidateRect(GetDlgItem(win,3000),0,0);
-        InvalidateRect(GetDlgItem(win,3001),0,0);
-        
-        break;
-    
-    case 4000:
-        
-        SetDlgItemInt(win,3005,wparam,0);
-        
-        break;
-    
-    case WM_COMMAND:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, DWL_USER);
-        
-        if(!ed)
-            break;
-        
-        switch(wparam)
-        {
-        case 3002:
-            
-            Overtoolchg(ed, 0, win);
-            
-            break;
-        
-        case 3003:
-            
-            Overtoolchg(ed, 1, win);
-            
-            break;
-        
-        case 3004:
-            
-            Overtoolchg(ed, 2, win);
-            
-            break;
-        
-        case 3005 | (EN_CHANGE << 16):
-            
-            if(ed->disp & 8)
-            {
-                i = GetDlgItemInt(win, 3005, 0, 0);
-                
-                if(i != ed->bs.sel)
-                {
-                    ed->selblk = i;
-                    
-                    SetBS16(&(ed->bs), i, GetDlgItem(win, 3038));
-                }
-            }
-            else
-            {
-                i = GetDlgItemInt(win, 3005, 0, 0);
-                
-                if(i < 0)
-                    SetDlgItemInt(win, 3005, 0, 0);
-                else if(i > 0x22a7)
-                    SetDlgItemInt(win, 3005, 0x22a7, 0);
-                else
-                    Changeselect(GetDlgItem(win,3000),GetDlgItemInt(win,3005,0,0));
-            }
-            
-            break;
-        
-        case 3007 | (EN_CHANGE << 16):
-            
-            if(ed->ew.param > 0x7f)
-                break;
-            
-            rom = ed->ew.doc->rom;
-            m = GetDlgItemInt(win, 3007, 0, 0);
-            
-            if(ed->gfxnum != m)
-            {
-                if(m > 79 || m < 0)
-                {
-                    SetDlgItemInt(win, 3007, 79, 0);
-                    break;
-                }
-                
-                rom[0x7c9c + ed->ew.param] = m;
-                
-                ed->gfxnum = m;
-                
-                l = 0x5d97 + (m << 2);
-                k = 0x6073 + (ed->gfxtmp << 3);
-                
-                for(i = 3; i < 7; i++)
-                {
-                    Releaseblks(ed->ew.doc, ed->blocksets[i]);
-                    
-                    m = rom[l++];
-                    
-                    if(m == 0)
-                        m = rom[k + i];
-                    
-                    ed->blocksets[i] = m;
-                    
-                    Getblocks(ed->ew.doc,m);
-                }
-updscrn:
-                InvalidateRect(GetDlgItem(win,3000),0,0);
-updmap:
-                InvalidateRect(GetDlgItem(win,3001),0,0);
-            }
-            
-            break;
-        
-        case 3008:
-            
-            ed->anim++;
-            
-            if(ed->anim == 3)
-                ed->anim = 0;
-            
-            wsprintf(buffer,"Frame %d",ed->anim+1);
-            SetWindowText((HWND)lparam,buffer);
-            
-            goto updscrn;
-        
-        case 3013:
-            
-            Overtoolchg(ed,3,win);
-            
-            break;
-        
-        case 3011:
-            ed->disp &= -2;
-            ed->disp |= IsDlgButtonChecked(win, 3011);
-            
-            goto updmap;
-        
-        case SD_OverGrid32CheckBox:
-            
-            ed->disp &= -3;
-            ed->disp |= IsDlgButtonChecked(win, SD_OverGrid32CheckBox) << 1;
-            
-            goto updscrn;
-        
-        case 3019:
-            
-            ed->disp &= -5;
-            ed->disp |= IsDlgButtonChecked(win, 3019) << 2;
-            
-            goto updscrn;
-        
-        case 3037:
-            
-            ed->selblk = 0;
-            ed->disp &= -9;
-            ed->disp |= IsDlgButtonChecked(win, 3037) << 3;
-            
-            ShowWindow(GetDlgItem(win,3000),(ed->disp&8)?SW_HIDE:SW_SHOW);
-            ShowWindow(GetDlgItem(win,3038),(ed->disp&8)?SW_SHOW:SW_HIDE);
-            
-            goto updmap;
-        
-        case 3010 | (EN_CHANGE << 16):
-            
-            if(ed->ew.param > 0x7f)
-                break;
-            
-            rom = ed->ew.doc->rom;
-            b2 = rom + 0x75504 + ((rom[0x7d1c + ed->ew.param] = GetDlgItemInt(win, 3010, 0, 0)) << 2);
-            
-            if(b2[0] < 128)
-                Loadpal(ed, rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[0]]), 0x29, 7, 3);
-            
-            if(b2[1] < 128)
-                Loadpal(ed, rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[1]]), 0x59, 7, 3);
-            
-            if(b2[2] < 128)
-                Loadpal(ed, rom, 0x1be604 + (((unsigned char*)(rom + 0xdebc6))[b2[2]]), 0x71, 7, 1);
-            
-            Updpal(ed);
-            
-            break;
-        
-        case 3014:
-            
-            if(ed->selflag)
-            {
-                free(ed->selbuf);
-                ed->selflag = 0;
-                
-                goto updmap;
-            }
-            
-            b4 = (uint16_t*) malloc(0x800);
-            
-            memcpy(b4,ed->ov->buf,0x800);
-            memcpy(ed->ov->buf,ed->undobuf,0x800);
-            memcpy(ed->undobuf,b4,0x800);
-            
-            free(b4);
-            
-            i = ed->undomodf;
-            ed->undomodf = ed->ov->modf;
-            ed->ov->modf = i;
-            
-            goto updmap;
-        
-        case 3015:
-            
-            Overtoolchg(ed,4,win);
-            
-            break;
-        
-        case 3016:
-            
-            Overtoolchg(ed, 5, win);
-            
-            break;
-        
-        case 3018 | (EN_CHANGE << 16):
-            
-            if(ed->ew.param > 0x7f)
-                break;
-            
-            m = GetDlgItemInt(win, 3018, 0, 0);
-            
-            if(ed->ew.param>=0x40)
-                n = 2;
-            else
-                n = ed->sprset;
-            
-            if(ed->sprgfx[n] != m)
-            {
-                if(m > 79 || m < 0)
-                {
-                    SetDlgItemInt(win, 3018, 79, 0);
-                    break;
-                }
-                
-                ed->ov->modf = 1;
-                ed->sprgfx[n] = m;
-                
-updsprgfx:
-                
-                rom = ed->ew.doc->rom;
-                k = 0x5b4c + (ed->sprgfx[ed->sprset] << 2);
-                
-                for(i = 11; i < 15; i++)
-                {
-                    m = rom[k + i] + 0x73;
-                    
-                    Releaseblks(ed->ew.doc, ed->blocksets[i]);
-                    ed->blocksets[i] = m;
-                    
-                    Getblocks(ed->ew.doc,m);
-                }
-                
-                m = ed->sprpal[n];
-                
-                goto updsprpal;
-            }
-            
-            break;
-        
-        case 3034 | (EN_CHANGE << 16):
-            
-            if(ed->ew.param > 0x7f)
-                break;
-            
-            rom = ed->ew.doc->rom;
-            m = GetDlgItemInt(win, 3034, 0, 0);
-            
-            if(ed->ew.param >= 0x40)
-                n = 2;
-            else
-                n = ed->sprset;
-            
-            if(ed->sprpal[n] != m)
-            {
-                if(m > 79 || m < 0)
-                {
-                    SetDlgItemInt(win, 3034, 79, 0);
-                    break;
-                }
-                
-                ed->ov->modf = 1;
-                ed->sprpal[n] = m;
-                
-updsprpal:
-                
-                b2 = rom + 0x7d580 + (m << 1);
-                
-                Loadpal(ed, rom, 0x1bd4e0 + (((unsigned short*)(rom + 0xdebd6))[b2[0]]), 0xd1, 7, 1);
-                Loadpal(ed, rom, 0x1bd4e0 + (((unsigned short*)(rom + 0xdebd6))[b2[1]]), 0xe1, 7, 1);
-                
-                goto updscrn;
-            }
-            
-            break;
-        
-        case 3020 | (CBN_SELCHANGE << 16):
-            
-            if((n = ed->ecopy[ed->sprset]) != -1)
-            {
-                ed->esize[n] = ed->esize[ed->sprset];
-                ed->e_modf[n] = ed->e_modf[ed->sprset];
-                ed->ebuf[n] = ed->ebuf[ed->sprset];
-            }
-            
-            n = SendMessage((HWND)lparam,CB_GETCURSEL,0,0)+(ed->ew.param>>7);
-            
-            if(ed->ecopy[n] != -1)
-            {
-                wsprintf(buffer, "The sprites are the same as in the %s. Do you want to modify only this set?",sprset_str[ed->ecopy[n]]);
-                
-                if(MessageBox(framewnd,buffer,"Hyrule Magic",MB_YESNO)==IDYES)
-                {
-                    ed->esize[n] = ed->esize[ed->ecopy[n]];
-                    ed->ebuf[n] = malloc(ed->esize[n]);
-                    memcpy(ed->ebuf[n], ed->ebuf[ed->ecopy[n]], ed->esize[n]);
-                    ed->ecopy[n] = -1;
-                    ed->e_modf[n]=1;
-                    ed->ov->modf=1;
-                }
-            }
-            
-            ed->sprset = n;
-            
-            if((m = ed->ecopy[n]) != -1)
-            {
-                ed->esize[n] = ed->esize[m];
-                ed->e_modf[n] = ed->e_modf[m];
-                ed->ebuf[n] = ed->ebuf[m];
-            }
-            
-            if(ed->tool == 5)
-                ed->selobj = -1;
-            
-            loadovermap(ed->ov->buf + 1024, getbgmap(ed,ed->ew.param,n), 1, ed->ew.doc->rom);
-            
-            SetDlgItemInt(win,3018,ed->sprgfx[(ed->ew.param>=0x40)?2:n],0);
-            SetDlgItemInt(win,3034,ed->sprpal[(ed->ew.param>=0x40)?2:n],0);
-            
-            m = ed->sprgfx[n];
-            
-            goto updsprgfx;
-        
-        case 3021:
-            
-            if(ed->selflag)
-            {
-                if(copybuf)
-                    free(copybuf);
-                
-                copy_w = ed->rectright - ed->rectleft;
-                copy_h = ed->rectbot-ed->recttop;
-                copybuf = malloc(copy_w * copy_h << 1);
-                
-                k = ed->rectleft + (ed->recttop << 5);
-                l = 0;
-                b4 = ed->ov->buf;
-                
-                for(j = 0; j < copy_h; j++)
-                {
-                    for(i = 0; i < copy_w; i++)
-                        copybuf[l++] = b4[i + k];
-                    
-                    k += 32;
-                }
-            }
-            else
-                MessageBox(framewnd,"Nothing is selected","Bad error happened",MB_OK);
-            
-            break;
-        
-        case 3022:
-            
-            Overtoolchg(ed,6,win);
-            
-            break;
-        
-        case 3023:
-            
-            Overtoolchg(ed,7,win);
-            
-            break;
-        
-        case 3024:
-            
-            oved = ed;
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG11,framewnd,editovprop,0);
-            
-            break;
-        
-        case 3025:
-            
-            Overtoolchg(ed,8,win);
-            
-            break;
-        
-        case 3026:
-            
-            Overtoolchg(ed,9,win);
-            
-            break;
-        
-        case 3027:
-            
-            Overtoolchg(ed,10,win);
-            
-            break;
-        
-        case 3028:
-            ov = ed->ew.doc->overworld;
-            j = ed->ew.param^0x40;
-            
-            if(j >= 0x80)
-                break;
-            
-            goto overlaunch;
-        
-        case 3029:
-        case 3030:
-        case 3031:
-        case 3032:
-            
-            ov = ed->ew.doc->overworld;
-            j = ed->ew.param;
-            
-            if(j >= 0x80)
-                break;
-            
-overlaunch:
-            
-            rom = ed->ew.doc->rom;
-            wparam = (wparam - 3029) ^ 1;
-            
-            if(ed->mapsize)
-                if(wparam == 0)
-                    j++;
-                else if(wparam == 2)
-                    j += 8;
-            
-            if(wparam < 10)
-            {
-                j += rom[0x12834 + (wparam << 1)] >> 1;
-            }
-            
-            j = ed->ew.doc->rom[0x125ec + (j & 0x3f)] | (j & 0x40);
-            
-            if(ov[j].win)
-            {
-                hc = ov[j].win;
-                SendMessage(clientwnd,WM_MDIACTIVATE,(int)hc,0);
-                
-                oed = (OVEREDIT*) GetWindowLong(hc, GWL_USERDATA);
-            }
-            else
-            {
-                wsprintf(buffer, "Area %02X", j);
-                ov[j].win = Editwin(ed->ew.doc,"ZEOVER",buffer,j,sizeof(OVEREDIT));
-            }
-            
-            break;
-        
-        case 3035:
-            
-            if(ed->schflag)
-            {
-                SetWindowText((HWND)lparam,"Search");
-                ShowWindow(GetDlgItem(win,3036),SW_HIDE);
-                
-                ed->schflag=0;
-                free(ed->schbuf);
-                
-                goto updsel32;
-            }
-            else
-            {
-                
-search2:
-                
-                if(GetKeyState(VK_CONTROL) & 128)
-                {
-                    // \task Test this out. What does it do?
-                    ed->schbuf = (uint16_t*) malloc(0x4550);
-                    SetCursor(wait_cursor);
-                    rom=ed->ew.doc->rom;
-                    ed->schflag=1;
-                    ov=ed->ew.doc->overworld;
-                    
-                    b2 = (uint8_t*) malloc(0x455);
-                    
-                    memset(b2,0,0x455);
-                    
-                    for(i = 0; i < 160; i++, ov++)
-                    {
-                        if(ov->win)
-                        {
-                            b5 = ov->buf;
-                            
-                            for(j = 0; j < 1008; j++)
-                            {
-                                if(j & 16)
-                                    j += 16;
-                                
-                                l = (unsigned short) b5[j];
-                                
-                                if(l < 0x22a8)
-                                    b2[l >> 3] |= 1 << (l & 7);
-                            }
-                        }
-                        else
-                        {
-                            // Allocate a buffer large enough for a 512x512
-                            // pixel map of map32 tiles.
-                            
-                            b5 = (uint16_t*) malloc(512);
-                            
-                            loadovermap(b5,i,1,rom);
-                            for(j=0;j<512;j++)
-                                if((l=(unsigned short)b5[j])<0x22a8) b2[l>>3]|=1<<(l&7);
-                            free(b5);
-                        }
-                    }
-                    
-                    for(i = k = l = 0, j = 1; i < 0x22a8; i++)
-                    {
-                        if(!(b2[l] & j))
-                            ed->schbuf[k++] = i;
-                        
-                        if(j == 128)
-                            j = 1, l++;
-                        else j <<= 1;
-                    }
-                    
-                    free(b2);
-                    
-                    goto schok;
-                }
-                
-                i = ShowDialog(hinstance,
-                               (LPSTR) IDD_DIALOG19,
-                               framewnd,
-                               findblks,
-                               (int) ed);
-                
-                if(i != 0)
-                {
-                    ed->schflag = 1;
-                    ed->schbuf = malloc(0x4550);
-                    SetCursor(wait_cursor);
-                    
-                    k = 0;
-                    rom = ed->ew.doc->rom;
-                    p = 0;
-                    
-                    for(l = 0; l < 4; l++)
-                        if(ed->schyes[l] != -1)
-                            p |= 1 << l;
-                    
-                    for(i = 0; i < 0x22a8; i++)
-                    {
-                        Getblock32(rom, i, o);
-                        n = 0;
-                        q = 0;
-                        
-                        for(j = 0; j < 4; j++)
-                        {
-                            m = o[j] + 0xea8;
-                            
-                            if(ed->selsch[m >> 3] & (1 << (m & 7)))
-                                goto contsch;
-                            
-                            if(ed->selsch[ (m + 0xea8) >> 3 ] & (1 << (m & 7)))
-                                q = 1;
-                            
-                            for(l = 0; l < 4; l++)
-                            {
-                                m = ed->schyes[l];
-                                
-                                if(m == -1)
-                                    break;
-                                if(m == o[j])
-                                    n |= 1 << l;
-                            }
-                        }
-                        
-                        if(n == p && q)
-                            ed->schbuf[k++] = i;
-contsch:;
-                    }
-schok:
-                    
-                    if(wparam == 3036)
-                    {
-                        j = m = 0;
-                        
-                        for(i = 0; i < k; i++)
-                        {
-                            l = ed->schbuf[i];
-                            
-                            while(b4[j] < l)
-                            {
-                                if(j == ed->schnum)
-                                    goto sc2done;
-                                
-                                j++;
-                            }
-                            
-                            if(b4[j] == l)
-                                ed->schbuf[m++] = l;
-                        }
-sc2done:
-                        k = m;
-                        
-                        free(b4);
-                    }
-                    
-                    ed->schnum = k;
-                    SetCursor(normal_cursor);
-                    
-                    if(wparam == 3035)
-                    {
-                        SetWindowText((HWND)lparam, "Show all");
-                        ShowWindow(GetDlgItem(win,3036), SW_SHOW);
-                    }
-updsel32:
-                    hc = GetDlgItem(win, 3000);
-                    InvalidateRect(hc, 0, 1);
-                    Updatesize(hc);
-                }
-            }
-            
-            break;
-        
-        case 3036:
-            
-            b4 = ed->schbuf;
-            goto search2;
-        }
-        
-        break;
-        
-    case WM_DESTROY:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, DWL_USER);
-        
-        Delgraphwin((DUNGEDIT*) ed);
-        
-        free(ed->ov->buf);
-        
-        for(i = 0; i < 15; i++)
-            Releaseblks(ed->ew.doc, ed->blocksets[i]);
-        
-        Releaseblks(ed->ew.doc, 0x79);
-        Releaseblks(ed->ew.doc, 0x7a);
-        
-        ed->ov->win = 0;
-        
-        free(ed);
-        
-        break;
-    }
-    
-    return FALSE;
-}
-
-BOOL CALLBACK trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT*ed;
     FDOC*doc;
@@ -26439,7 +12508,7 @@ SD_ENTRY over_sd[] =
     {"BUTTON","Background",128,48,80,20,3011,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Grid",208,48,50,20, SD_OverGrid32CheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Markers",258,48,70,20,3019,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
-    {"BUTTON","Overlay",328,48,70,20,3037,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Overlay",328,48,70,20, SD_OverOverlayChkBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Exit",0,72,60,20,3023,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
     {"BUTTON","Properties",256,0,60,20,3024,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","Hole",128,72,60,20,3025,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
@@ -26447,8 +12516,8 @@ SD_ENTRY over_sd[] =
     {"BUTTON","Item",256,72,60,20,3027,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
     {"BUTTON","",400,0,20,20,3029,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","",425,0,20,20,3030,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","",450,0,20,20,3031,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","",475,0,20,20,3032,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",450,0,20,20, SD_OverUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",475,0,20,20, SD_OverDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",329,24,70,80,3020,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"EDIT","0",56,0,0,20,3005,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,3},
     {"STATIC","GFX#:",0,24,40,20,3006,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
@@ -26457,11 +12526,11 @@ SD_ENTRY over_sd[] =
     {"EDIT","",130,24,30,20,3010,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Spr GFX#:",165,24,55,20,3017,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",220,24,30,20,3018,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Spr pal:",255,24,45,20,3033,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",300,24,25,20,3034,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Search",56,20,0,20,3035,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
-    {"BUTTON","Search2",56,42,0,20,3036,WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
-    {"BLKSEL16","",152,70,0,0,3038,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    {"STATIC","Spr pal:",255,24,45,20, SD_OverSprTileSetStatic, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",300,24,25,20, SD_OverSprTileSetEditCtl, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"BUTTON","Search",56,20,0,20, SD_OverMapSearchBtn, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BUTTON","Search2",56,42,0,20, SD_OverAdjustSearchBtn, WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BLKSEL16","",152,70,0,0, SD_OverMap16_Selector, WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
     
     // For testing window focus
     {"STATIC", "Window Focus: ",
@@ -26476,22 +12545,22 @@ SD_ENTRY over_sd[] =
 SD_ENTRY dung_sd[]={
     {"STATIC","",0,0,60,20, ID_DungRoomNumber, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Room:",4,72,40,52, ID_DungStatic1, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",54,72,30,52, ID_DungEntrRoomNumber, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",54,72,30,52, ID_DungEntrRoomNumber, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Y:",4,48,15,28, ID_DungStatic2, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",29,48,40,28, ID_DungEntrYCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",29,48,40,28, ID_DungEntrYCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","X:",4,24,15,4, ID_DungStatic3, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",29,24,40,4, ID_DungEntrXCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",29,24,40,4, ID_DungEntrXCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Y scroll:",79,48,40,28, ID_DungStatic4, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","X scroll:",79,24,40,4, ID_DungStatic5, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","CX:",173,24,20,4, ID_DungStatic17, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","CY:",239,24,20,4, ID_DungStatic18, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"BUTTON","More",301,24,36,4, ID_DungEntrProps, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"STATIC","Blockset:",104,72,45,52, ID_DungStatic8, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
-    {"EDIT","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"NumEdit","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
     {"STATIC","Music:",204,72,40,52, ID_DungStatic9, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
     {"COMBOBOX","",254,72,80,-44, ID_DungEntrSong, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
     {"STATIC","Dungeon:",204,48,48,28, ID_DungStatic10, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
@@ -26504,21 +12573,21 @@ SD_ENTRY dung_sd[]={
     {"BUTTON","",135,0,20,20, ID_DungDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","Jump",160,0,40,20, ID_DungChangeRoom, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Floor 1:",204,0,55,20, ID_DungStatic6, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Floor 2:",204,24,55,20, ID_DungStatic7, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Blockset:",298,0,55,20, ID_DungStatic13, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","EnemyBlk:",395,0,55,20, ID_DungStatic16, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Palette:",298,24,55,20, ID_DungStatic14, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Collision:",395,24,50,20, ID_DungStatic15, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",450,24,90,120, ID_DungCollSettings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"BUTTON","Exit",550,24,40,24, ID_DungExit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"STATIC","Layout:",0,24,40,20, ID_DungStatic11, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","More",490,0,30,24, ID_DungEditHeader, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"NumEdit","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","BG2:",75,24,30,20, ID_DungStatic12, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"COMBOBOX","",105,24,95,100, ID_DungBG2Settings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
     {"BUTTON","Starting location",0,86,340,0, ID_DungStartLocGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
@@ -26672,446 +12741,7 @@ SD_ENTRY patch_sd[]={
     {"BUTTON","Build",80,68,0,20,3004,WS_VISIBLE|WS_CHILD,0,3}
 };
 
-BOOL CALLBACK sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    SAMPEDIT*ed;
-    HWND hc;
-    HGLOBAL hgl;
-    char*b,*dat;
-    int i = 0, j = 0, k = 0;
-    
-    ZWAVE*zw,*zw2;
-    ZINST*zi;
-    WAVEFORMATEX*wfx;
-    
-    const static int wavehdr[] =
-    {
-        0x46464952,0,0x45564157,0x20746d66,16,0x10001,
-        11025,22050,0x100002,0x61746164
-    };
-    
-    switch(msg) {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        ed=(SAMPEDIT*)lparam;
-        ed->dlg=win;
-        if(!ed->ew.doc->m_loaded) Loadsongs(ed->ew.doc);
-        ed->init=1;
-        ed->editsamp=0;
-        ed->editinst=0;
-        ed->zoom=65536;
-        ed->scroll=0;
-        ed->flag=0;
-        SetDlgItemInt(win,3001,0,0);
-        SetWindowLong(GetDlgItem(win,3002),GWL_USERDATA,(int)ed);
-        SetDlgItemInt(win,3012,0,0);
-        Loadeditinst(win,ed);
-chgsamp:
-        i=ed->editsamp;
-        zw=ed->ew.doc->waves+i;
-        ed->zw=zw;
-updcopy:
-        if(zw->copy!=-1) {
-            CheckDlgButton(win,3003,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_SHOW);
-            SetDlgItemInt(win,3004,zw->copy,0);
-            EnableWindow(GetDlgItem(win,3006),0);
-            EnableWindow(GetDlgItem(win,3008),0);
-        } else {
-            CheckDlgButton(win,3003,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_HIDE);
-            EnableWindow(GetDlgItem(win,3006),1);
-            EnableWindow(GetDlgItem(win,3008),1);
-        }
-        SetDlgItemInt(win,3008,zw->end,0);
-        SetDlgItemInt(win,3010,zw->lopst,0);
-        if(zw->lflag)
-        {
-            CheckDlgButton(win,3009,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-        }
-        else
-        {
-            CheckDlgButton(win,3009,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-        }
-        ed->sell=0;
-        ed->selr=0;
-upddisp:
-        ed->init=0;
-        if(ed->sell>=zw->end) ed->sell=ed->selr=0;
-        if(ed->selr>=zw->end) ed->selr=zw->end;
-        hc=GetDlgItem(win,3002);
-        Updatesize(hc);
-        InvalidateRect(hc,0,1);
-        break;
-    case WM_COMMAND:
-        
-        ed=(SAMPEDIT*)GetWindowLong(win,DWL_USER);
-        
-        if(ed->init)
-            break;
-        
-        switch(wparam)
-        {
-        
-        case 3003:
-            zw=ed->zw;
-            if(zw->copy!=-1) {
-                zw->copy=-1;
-                zw->end=zw->lflag=0;
-                
-                zw->buf = (short*) calloc(1, sizeof(short));
-                
-                ShowWindow(GetDlgItem(win,3004),SW_HIDE);
-            }
-            else
-            {
-                j=ed->ew.doc->numwave;
-                zw2=ed->ew.doc->waves;
-                for(i=0;i<j;i++) {
-                    if(zw2->copy==-1 && i!=ed->editsamp) goto chgcopy;
-                    zw2++;
-                }
-                CheckDlgButton(win,3003,BST_UNCHECKED);
-chgcopy:
-                zw->copy=i;
-                free(zw->buf);
-                zw->end=zw2->end;
-                zw->lopst=zw2->lopst;
-                
-                zw->buf = (int16_t*) calloc(zw->end + 1, sizeof(int16_t));
-                
-                i = (zw->end + 1) * sizeof(int16_t);
-                
-                memcpy(zw->buf, zw2->buf, i);
-            }
-            
-            goto updcopy;
-        
-        case 3005:
-            
-            zw = ed->zw;
-            
-            i = (ed->selr - ed->sell) << 1;
-            j = ed->sell;
-            
-            if(i == 0)
-                i = zw->end << 1, j = 0;
-            
-            hgl=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,44+i);
-            b=GlobalLock(hgl);
-            memcpy(b,wavehdr,40);
-            *(int*)(b+4)=36+i;
-            *(int*)(b+40)=i;
-            memcpy(b+44,zw->buf+j,i);
-            GlobalUnlock(hgl);
-            OpenClipboard(0);
-            EmptyClipboard();
-            SetClipboardData(CF_WAVE,hgl);
-            CloseClipboard();
-            break;
-        case 3006:
-            OpenClipboard(0);
-            hgl=GetClipboardData(CF_WAVE);
-            if(!hgl) {
-                MessageBox(framewnd,"Nothing is on the clipboard.","Bad error happened",MB_OK);
-                CloseClipboard();
-                break;
-            }
-            b=GlobalLock(hgl);
-            if((*(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157) {
-error:
-                MessageBox(framewnd,"This is not a wave.","Bad error happened",MB_OK);
-noclip:
-                GlobalUnlock(hgl);
-                CloseClipboard();
-                break;
-            }
-            
-            j = *(int*) (b + 4);
-            b += 8;
-            dat = 0;
-            wfx = 0;
-            
-            for(i = 4; i < j;)
-            {
-                switch(*(int*)(b+i))
-                {
-                
-                case 0x20746d66:
-                    wfx = (WAVEFORMATEX*) (b + i + 8);
-                    
-                    break;
-                
-                case 0x61746164:
-                    dat = b + i + 8;
-                    
-                    k = *(int*)(b + i + 4);
-                    
-                    if(wfx)
-                        goto foundall;
-                    
-                    break;
-                }
-                
-                i += 8 + *(int*) ( b + i + 4);
-            }
-            if((!wfx)||!dat) goto error;
-foundall:
-            if(wfx->wFormatTag!=1) {
-                MessageBox(framewnd,"The wave is not PCM","Bad error happened",MB_OK);
-                goto noclip;
-            }
-            if(wfx->nChannels!=1) {
-                MessageBox(framewnd,"Only mono is allowed.","Bad error happened",MB_OK);
-                goto noclip;
-            }
-            
-            if(wfx->wBitsPerSample == 16)
-                k >>= 1;
-            
-            // \task Fixing a bug around here when you paste beyond the range
-            // of the current sample.
-            zw = ed->zw;
-            
-            zw->end += k - (ed->selr - ed->sell);
-            
-            if(k > (ed->selr - ed->sell) )
-            {
-                // Resize the sample buffer if the size of the data being
-                // pasted in exceeds the size of the currently selected
-                // region.
-                zw->buf = (short*) realloc(zw->buf, (zw->end + 1) << 1);
-            }
-            
-            // Move the part of the sample that is to the right of the selection
-            // region in such a way that there is just enough room to copy
-            // the new data in.
-            memmove(zw->buf + ed->sell + k,
-                    zw->buf + ed->selr,
-                    (zw->end - k - ed->sell) << 1);
-            
-            if(k < (ed->selr - ed->sell) )
-            {
-                // Shrink the sample buffer if the pasted in data is smaller
-                // than the selection region.
-                zw->buf = (short*) realloc(zw->buf, ( (zw->end + 1) << 1 ) );
-            }
-            
-            if(zw->lopst >= ed->selr)
-                zw->lopst += ed->sell + k - ed->selr;
-            
-            if(zw->lopst >= zw->end)
-                zw->lflag = 0, zw->lopst = 0;
-            
-            if(zw->lflag)
-                zw->buf[zw->end] = zw->buf[zw->lopst];
-            
-            ed->selr = ed->sell + k;
-            
-            if(wfx->wBitsPerSample == 16)
-                memcpy(zw->buf+ed->sell,dat,k<<1);
-            else
-            {
-                j = ed->sell;
-                
-                for(i = 0; i < k; i++)
-                    zw->buf[j++] = ( (dat[i] - 128) << 8 );
-            }
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            GlobalUnlock(hgl);
-            CloseClipboard();
-            Modifywaves(ed->ew.doc,ed->editsamp);
-            ed->init=1;
-            if(!zw->lflag) {
-                CheckDlgButton(win,3009,BST_UNCHECKED);
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-            }
-            SetDlgItemInt(win,3008,zw->end,0);
-            SetDlgItemInt(win,3010,zw->lopst,0);
-            goto upddisp;
-        case 3009:
-            zw=ed->zw;
-            if(!zw->lflag) {
-                zw->lflag=1;
-                ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            } else {
-                zw->lflag=0;
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-            }
-            Modifywaves(ed->ew.doc,ed->editsamp);
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            break;
-        case 3021:
-            if(sounddev>=0x20000) {
-                MessageBox(framewnd,"A wave device must be selected","Bad error happened",MB_OK);
-                break;
-            }
-            if(sndinit) Stopsong();
-            else Initsound();
-            playedsong=0;
-            sounddoc=ed->ew.doc;
-            globvol=65535;
-            zwaves->wnum=ed->editsamp;
-            zwaves->vol1=zwaves->vol2=127;
-            zwaves->sus=7;
-            zwaves->rel=0;
-            zwaves->atk=31;
-            zwaves->dec=0;
-            zwaves->envs=zwaves->envclk=zwaves->envclklo=zwaves->pos=0;
-            zwaves->freq=1781;
-            zwaves->pflag=1;
-            break;
-        case 3022:
-            if(sndinit) Stopsong();
-            break;
-        case 0x02000bb9:
-            if(ed->flag&1) {
-                i=GetDlgItemInt(win,3001,0,0);
-                if(i<0) i=0;
-                if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
-                ed->flag&=-2;
-                ed->init=1;
-                SetDlgItemInt(win,3001,i,0);
-                ed->editsamp=i;
-                goto chgsamp;
-            }
-            break;
-        case 0x02000bbc:
-            if(ed->flag&2) {
-                ed->flag&=-3;
-                zw=ed->zw;
-                j=zw->copy;
-                i=GetDlgItemInt(win,3004,0,0);
-                k=zw->end;
-                if(i<0) i=0;
-                if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
-                zw2=ed->ew.doc->waves+i;
-                if(zw2->copy!=-1) i=j;
-                ed->init=1;
-                SetDlgItemInt(win,3004,i,0);
-                ed->init=0;
-                if(i==j) break;
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                goto chgcopy;
-            }
-            break;
-        case 0x02000bc0:
-            if(ed->flag&16) {
-                ed->flag&=-17;
-                zw=ed->zw;
-                i=GetDlgItemInt(win,3008,0,0);
-                k=zw->end;
-                if(i<0) {
-                    i=0;
-chglen:
-                    SetDlgItemInt(win,3008,i,0);
-                    ed->init=0;
-                    break;
-                }
-                if(i>65536) { i=65536; goto chglen; }
-                b = realloc(zw->buf, (i + 1) << 1);
-                if(!b) {
-                    MessageBox(framewnd,"Not enough memory","Bad error happened",MB_OK);
-                    i=k;
-                    ed->init=1;
-                    goto chglen;
-                } else zw->buf=(short*)b;
-                zw->end=i;
-                for(j=k;j<i;j++) zw->buf[j]=0;
-                if(zw->lopst!=-1) zw->buf[zw->end]=zw->buf[zw->lopst];
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                goto upddisp;
-            }
-            break;
-        case 0x02000bc2:
-            if(ed->flag&32) {
-                ed->flag&=-33;
-                zw=ed->zw;
-                j=i=GetDlgItemInt(win,3010,0,0);
-                if(i<0) i=0;
-                else if(i>=zw->end) i=zw->end-1;
-                if(i!=j) {
-                    ed->init=1;
-                    SetDlgItemInt(win,3010,i,0);
-                    ed->init=0;
-                }
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-                zw->lopst=i;
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            }
-            break;
-        case 0x02000bc4:
-            if(ed->flag&64) {
-                ed->flag&=-65;
-                i=GetDlgItemInt(win,3012,0,0);
-                if(i<0) i=0;
-                else if(i>=ed->ew.doc->numinst) i=ed->ew.doc->numinst-1;
-                else goto nochginst;
-                ed->init=1;
-                SetDlgItemInt(win,3012,i,0);
-                ed->init=0;
-nochginst:
-                ed->editinst=i;
-                Loadeditinst(win,ed);
-            }
-            break;
-        case 0x02000bc6:
-        case 0x02000bc8:
-        case 0x02000bca:
-        case 0x02000bcc:
-            if(ed->flag&128) {
-                ed->flag&=-129;
-                zi=ed->ew.doc->insts+ed->editinst;
-                i=GetDlgItemInt(win,3014,0,0);
-                zi->multlo=i;
-                zi->multhi=i>>8;
-                GetDlgItemText(win,3016,buffer,5);
-                i=strtol(buffer,0,16);
-                zi->sr=i;
-                zi->ad=i>>8;
-                
-                GetDlgItemText(win,3018,buffer,3);
-                
-                zi->gain = (uint8_t) strtol(buffer, 0, 16);
-                
-                zi->samp=GetDlgItemInt(win,3020,0,0);
-                ed->ew.doc->m_modf=1;
-                ed->ew.doc->w_modf=1;
-            }
-            break;
-        case 0x03000bb9:
-            ed->flag|=1;
-            break;
-        case 0x03000bbc:
-            ed->flag|=2;
-            break;
-        case 0x03000bc0:
-            ed->flag|=16;
-            break;
-        case 0x03000bc2:
-            ed->flag|=32;
-            break;
-        case 0x03000bc4:
-            ed->flag|=64;
-            break;
-        case 0x03000bc6:
-        case 0x03000bc8:
-        case 0x03000bca:
-        case 0x03000bcc:
-            ed->flag|=128;
-            break;
-        }
-    }
-    return FALSE;
-}
+// =============================================================================
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
@@ -27165,95 +12795,7 @@ SUPERDLG z3_dlg={
     "",z3dlgproc,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,60,60,1,z3_sd
 };
 
-long CALLBACK overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-    
-    switch(msg)
-    {
-    
-    deflt:
-    default:
-        return DefMDIChildProc(win, msg, wparam, lparam);
-    
-    case WM_CLOSE:
-        
-        if(ed->selflag) Overselectwrite(ed);
-        
-        if(ed->ew.doc->modf==2) goto deflt;
-        
-        if(ed->ov->modf)
-        {
-            wsprintf(buffer,"Confirm modification of area %02X?",ed->ew.param);
-            switch(MessageBox(framewnd,buffer,"Overworld editor",MB_YESNOCANCEL)) {
-            case IDYES:
-                Savemap(ed);
-                goto deflt;
-            case IDCANCEL:
-                break;
-            case IDNO:
-                goto deflt;
-            }
-        }
-        else
-            goto deflt;
-        
-        break;
-    
-    case WM_MDIACTIVATE:
-        
-        if(ed)
-        {
-            HM_MdiActivateData d = HM_GetMdiActivateData(wparam, lparam);
-            
-            if(d.m_activating != win)
-            {
-                break;
-            }
-            
-            activedoc = ed->ew.doc;
-            
-            Setdispwin((DUNGEDIT*) ed);
-        }
-        
-        break;
-    
-    case WM_GETMINMAXINFO:
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_CREATE:
-        
-        if(always)
-        {
-            CREATESTRUCT const * const cs = (CREATESTRUCT*) lparam;
-            
-            MDICREATESTRUCT const * const
-            mdi_cs = (MDICREATESTRUCT*) cs->lpCreateParams;
-            
-            OVEREDIT * const new_ed = (OVEREDIT*) (mdi_cs->lParam);
-            
-            SetWindowLong(win, GWL_USERDATA, (long) new_ed);
-            
-            ShowWindow(win, SW_SHOW);
-            
-            new_ed->dlg = CreateSuperDialog(&overdlg,
-                                            win,
-                                            0,
-                                            0,
-                                            0,
-                                            0,
-                                            (long) new_ed);
-        }
-        
-        break;
-    }
-    
-    return 0;
-}
+// =============================================================================
 
 LRESULT CALLBACK
 sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -27289,21 +12831,29 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_KEYDOWN:
         
-        ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        switch(wparam) {
+        ed = (SAMPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
+        
+        switch(wparam)
+        {
+        
         case VK_DELETE:
-            zw=ed->zw;
-            if(zw->copy!=-1) break;
             
-            if(ed->sell==ed->selr)
+            zw = ed->zw;
+            
+            if(zw->copy != -1)
+                break;
+            
+            if(ed->sell == ed->selr)
             {
                 // \task This logic deletes the whole sample if there is
                 // is not a selected region of width greater than zero.
                 // Is this really intuitive? Seems like a great way to lose
                 // work.
                 
-                zw->end=0;
-                zw->buf=realloc(zw->buf,2);
+                zw->end = 0;
+                
+                zw->buf = (short*) realloc(zw->buf, 2);
+                
                 zw->buf[0]=0;
                 zw->lopst=0;
                 ed->sell=0;
@@ -27357,7 +12907,7 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->flag|=4;
         ed->flag&=-9;
         i=((short)lparam+ed->scroll)*ed->zoom>>16;
-        GetClientRect(win,&rc);
+        rc = HM_GetClientRect(win);
         if(wparam&MK_SHIFT) {
             if(i<ed->sell) ed->flag|=8;
             goto selectmore;
@@ -27376,7 +12926,7 @@ sampdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_MOUSEMOVE:
         ed=(SAMPEDIT*)GetWindowLong(win,GWL_USERDATA);
         if(ed->flag&4) {
-            GetClientRect(win,&rc);
+            rc = HM_GetClientRect(win);
 selectmore:
             rc2=rc;
             Getsampsel(ed,&rc);
@@ -27430,59 +12980,10 @@ selectmore:
     return 0;
 }
 
-long CALLBACK wmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    WMAPEDIT *ed;
-    switch(msg) {
-    case WM_CLOSE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->selflag) Wmapselectwrite(ed);
-        if(ed->modf) {
-            wsprintf(buffer,"Confirm modification of world map %d?",ed->ew.param);
-            switch(MessageBox(framewnd,buffer,"World map editor",MB_YESNOCANCEL)) {
-            case IDYES:
-                Saveworldmap(ed);
-                break;
-            case IDCANCEL:
-                return 1;
-            }
-        }
-        goto deflt;
-        break;
-    case WM_MDIACTIVATE:
-        
-        if((HWND)lparam != win)
-            break;
-        
-        ed = ((WMAPEDIT*)GetWindowLong(win,GWL_USERDATA));
-        activedoc=ed->ew.doc;
-        Setdispwin((DUNGEDIT*)ed);
-        
-        break;
-    
-    case WM_GETMINMAXINFO:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_CREATE:
-        ed=(WMAPEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        ed->dlg=CreateSuperDialog(&wmapdlg,win,0,0,0,0,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
+// =============================================================================
 
-long CALLBACK lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     LMAPEDIT *ed;
     switch(msg) {
@@ -27528,113 +13029,10 @@ deflt:
     return 0;
 }
 
-//dungproc#***************************************
+// =============================================================================
 
-// This is a child frame window, but the "view" is the 'ed' window.
-long CALLBACK dungproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    DUNGEDIT *ed;
-    
-    HWND hc;
-    
-    switch(msg)
-    {
-    
-    case WM_MDIACTIVATE:
-        
-        if((HWND)lparam != win)
-            break;
-        
-        ed = ((DUNGEDIT*) GetWindowLong(win,GWL_USERDATA));
-        
-        activedoc = ed->ew.doc;
-        
-        Setdispwin(ed);
-        
-        goto deflt;
-    
-    case WM_GETMINMAXINFO:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
-        DefMDIChildProc(win,msg,wparam,lparam);
-        
-        if(!ed)
-            goto deflt;
-        
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    
-    case WM_SIZE:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
-        SetWindowPos(ed->dlg,
-                     0,
-                     0,
-                     0,
-                     LOWORD(lparam),
-                     HIWORD(lparam),
-                     SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        
-        goto deflt;
-    
-    case WM_CLOSE:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
-        if(!Closeroom(ed))
-        {
-            ed->ew.doc->ents[ed->ew.param] = 0;
-            
-            DestroyWindow(ed->dlg);
-            Releaseblks(ed->ew.doc,0x79);
-            Releaseblks(ed->ew.doc,0x7a);
-            
-            goto deflt;
-        }
-        
-        break;
-    
-    case WM_DESTROY:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
-        Delgraphwin(ed);
-        free(ed);
-        
-        break;
-    
-    case WM_CREATE:
-        
-        ed = (DUNGEDIT*) (((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        
-        ed->ew.doc->ents[ed->ew.param] = win;
-        
-        CreateSuperDialog(&dungdlg,win,0,0,0,0,(long)ed);
-        
-        hc = GetDlgItem(ed->dlg, ID_DungEditWindow);
-        
-        SetWindowLong(hc, GWL_USERDATA, (long) ed);
-        
-        Updatesize(hc);
-        InvalidateRect(hc, 0, 0);
-        Dungselectchg(ed, hc, 1);
-        
-deflt:
-        
-    default:
-        
-        return DefMDIChildProc(win, msg, wparam, lparam);
-    }
-    
-    return 0;
-}
-
-//dungproc**********************************************
-
-long CALLBACK perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PERSPEDIT*ed;
     switch(msg) {
@@ -27680,1614 +13078,16 @@ deflt:
     return 0;
 }
 
-long CALLBACK texteditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    TEXTEDIT*ed;
-    switch(msg) {
-    case WM_MDIACTIVATE:
-        activedoc=((TEXTEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->t_wnd=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(TEXTEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog(&textdlg,win,0,0,0,0,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
+// =============================================================================
 
-long CALLBACK musbankproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    MUSEDIT *ed;
-    
-    switch(msg)
-    {
-    
-    case WM_MDIACTIVATE:
-        
-        activedoc=((DUNGEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        
-        goto deflt;
-    
-    case WM_GETMINMAXINFO:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        
-        if(!ed)
-            goto deflt;
-        
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    
-    case WM_SIZE:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        
-        goto deflt;
-    
-    case WM_DESTROY:
-        
-        ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->mbanks[ed->ew.param]=0;
-        
-        if(sndinit && ed->ew.doc == sounddoc && !playedsong)
-            zwaves->pflag=0;
-        
-        free(ed);
-        
-        break;
-    case WM_CREATE:
-        
-        ed = (MUSEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog((ed->ew.param==3)?&sampdlg:&musdlg,win,0,0,0,0,(long)ed);
-        
-deflt:
-    default:
-        
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-long CALLBACK overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    SCROLLINFO si;
-    
-    int i = 0; int j = 0; int k = 0; int l = 0;
-    int m = 0; int n = 0; int o = 0; int p = 0;
-    int q = 0; int r = 0;
-    
-    POINT pt;
-    PAINTSTRUCT ps;
-    HDC hdc;
-    HPALETTE oldpal;
-    RECT rc = {0, 0, 0, 0};
-    HMENU menu,menu2;
-    HGDIOBJ oldobj,oldobj2;
-    
-    const static int whirl_ofs[8]={
-        0x16b29,0x16b4b,0x16b6d,0x16b8f,0x16ae5,0x16b07,0x16bb1,0x16bd3
-    };
-    
-    uint16_t * b2 = 0;
-    uint16_t * b3 = 0;
-    uint16_t * b4 = 0;
-    uint16_t * b5 = 0;
-    
-    unsigned char*b6 = 0,*rom = 0;
-    
-    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-    
-    switch(msg)
-    {
-    
-    case WM_SIZE:
-        
-        if(!ed) break;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nMin=0;
-        si.nMax = ( ed->mapsize ? 32 : 16 ) - 1;
-        si.nPage=lparam>>21;
-        ed->mappagev=si.nPage;
-        SetScrollInfo(win,SB_VERT,&si,1);
-        si.nPage=(lparam&65535)>>5;
-        ed->mappageh=si.nPage;
-        SetScrollInfo(win,SB_HORZ,&si,1);
-        ed->mapscrollv=Handlescroll(win,-1,ed->mapscrollv,ed->mappagev,SB_VERT,si.nMax,32);
-        ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,si.nMax,32);
-        
-        break;
-    
-    case WM_MOUSEWHEEL:
-        
-        {
-            HM_MouseWheelData d = HM_GetMouseWheelData(wparam, lparam);
-            
-            unsigned const is_horiz = (d.m_control_key);
-            
-            unsigned which_sb = (is_horiz) ? SB_HORZ : SB_VERT;
-            
-            int const which_scroll = (is_horiz) ? ed->mapscrollh : ed->mapscrollv;
-            int const which_page   = (is_horiz) ? ed->mappageh : ed->mappagev;
-            
-            int * const which_return = (is_horiz) ? &ed->mapscrollh : &ed->mapscrollv;
-            
-            (*which_return) = Handlescroll(win,
-                                           (d.m_distance > 0) ? 0 : 1,
-                                           which_scroll,
-                                           which_page,
-                                           which_sb,
-                                           ed->mapsize ? 32 : 16, 32);
-        }
-        
-        break;
-    
-    case WM_VSCROLL:
-        
-        ed->mapscrollv = Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->mapsize?32:16,32);
-        
-        break;
-    
-    case WM_HSCROLL:
-        
-        ed->mapscrollh = Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->mapsize?32:16,32);
-        
-        break;
-    
-    case WM_RBUTTONDOWN:
-        
-        l=ed->tool;
-        if(l==6 || l==4) break;
-        if(l>2) {
-            menu=CreatePopupMenu();
-            switch(l) {
-            case 3:
-                AppendMenu(menu,MF_STRING,2,"Insert entrance");
-                break;
-            case 5:
-                if(ed->ew.param<0x90)
-                AppendMenu(menu,MF_STRING,3,"Insert sprite");
-                break;
-            case 7:
-                AppendMenu(menu,MF_STRING,5,"Insert exit");
-                break;
-            case 8:
-                AppendMenu(menu,MF_STRING,6,"Insert hole");
-                break;
-            case 9:
-                AppendMenu(menu,MF_STRING,7,"Insert bird location");
-                AppendMenu(menu,MF_STRING,8,"Insert whirlpool");
-                break;
-            case 10:
-                if(ed->ew.param<0x80) AppendMenu(menu,MF_STRING,4,"Insert item");
-                break;
-            }
-            if(ed->selobj!=-1) AppendMenu(menu,MF_STRING,1,"Remove");
-            if(ed->ew.param<0x90 && l==5) {
-                j=0,k=1;
-                for(i=ed->ew.param>>7;i<3;i++,k<<=1) {
-                    if(i==ed->sprset || ed->ecopy[i]!=-1 || i==ed->ecopy[ed->sprset]) continue;
-                    j|=k;
-                }
-                if(j) {
-                    k=1;
-                    menu2=CreatePopupMenu();
-                    for(i=0;i<3;i++) {
-                        if(k&j) AppendMenu(menu2,MF_STRING,i+9,sprset_str[i]);
-                        k<<=1;
-                    }
-                    AppendMenu(menu,MF_STRING|MF_POPUP,(int)menu2,"Use same sprites as");
-                }
-            }
-            if(ed->disp&8) AppendMenu(menu,MF_STRING,12,"Clear overlay");
-            GetCursorPos(&pt);
-            k=TrackPopupMenu(menu,TPM_RETURNCMD|TPM_LEFTBUTTON|TPM_LEFTALIGN|TPM_TOPALIGN|TPM_NONOTIFY,pt.x,pt.y,0,win,0);
-            DestroyMenu(menu);
-            i=(lparam&65535)+(ed->mapscrollh<<5);
-            j=(lparam>>16)+(ed->mapscrollv<<5);
-            rom=ed->ew.doc->rom;
-            switch(k) {
-            case 1:
-                Overselchg(ed,win);
-                switch(l) {
-                case 3:
-                    ((short*)(rom + 0xdb96f))[ed->selobj]=-1;
-                    break;
-                case 5:
-                    b6=ed->ebuf[ed->sprset];
-                    ed->esize[ed->sprset]-=3;
-                    memcpy(b6+ed->selobj,b6+ed->selobj+3,ed->esize[ed->sprset]-ed->selobj);
-                    ed->ebuf[ed->sprset]=realloc(b6,ed->esize[ed->sprset]);
-                    ed->e_modf[ed->sprset]=1;
-                    ed->ov->modf=1;
-                    break;
-                case 7:
-                    rom[0x15e28 + ed->selobj]=255;
-                    ((short*)(rom + 0x15d8a))[ed->selobj]=-1;
-                    break;
-                case 8:
-                    ((short*)(rom + 0xdb826))[ed->selobj]=-1;
-                    break;
-                case 9:
-                    ((short*)(rom + 0x16ae5))[ed->selobj]=-1;
-                    break;
-                case 10:
-                    ed->ssize-=3;
-                    b6=ed->sbuf;
-                    memcpy(b6+ed->selobj,b6+ed->selobj+3,ed->ssize-ed->selobj);
-                    ed->sbuf=realloc(b6,ed->ssize);
-                    ed->ov->modf=1;
-                    break;
-                }
-                ed->selobj=-1;
-                break;
-            case 2:
-                for(m=0;m<129;m++)
-                {
-                    if( is16b_neg1_i(rom + 0xdb96f, m) )
-                    {
-                        Overselchg(ed,win);
-                        ((short*)(rom + 0xdb96f))[m]=ed->ew.param;
-                        ((short*)(rom + 0xdba71))[m]=((j<<3)&0x1f80)+((i>>3)&0x7e);
-                        rom[0xdbb73 + m]=0;
-                        ed->selobj=m;
-                        ed->objx=i&0xfff0;
-                        ed->objy=j&0xfff0;
-                        Overselchg(ed,win);
-                        return 0;
-                    }
-                }
-                MessageBox(framewnd,"Can't add anymore entrances.","Bad error happened",MB_OK);
-                break;
-            case 3:
-                m=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,0);
-                Overselchg(ed,win);
-                if(m==-1) break;
-                if(ed->selobj==-1) ed->selobj=ed->esize[ed->sprset];
-                ed->esize[ed->sprset]+=3;
-                b6=ed->ebuf[ed->sprset]=realloc(ed->ebuf[ed->sprset],ed->esize[ed->sprset]);
-                memmove(b6+ed->selobj+3,b6+ed->selobj,ed->esize[ed->sprset]-ed->selobj-3);
-                b6[ed->selobj]=j>>4;
-                b6[ed->selobj+1]=i>>4;
-                b6[ed->selobj+2]=m;
-                ed->e_modf[ed->sprset]=1;
-                ed->ov->modf=1;
-                ed->objx=i&0xfff0;
-                ed->objy=j&0xfff0;
-                Overselchg(ed,win);
-                break;
-            case 4:
-                Overselchg(ed,win);
-                b6=ed->sbuf=realloc(ed->sbuf,ed->ssize+=3);
-                if(ed->selobj==-1) ed->selobj=ed->ssize-3;
-                memmove(b6+ed->selobj+3,b6+ed->selobj,ed->ssize-ed->selobj-3);
-                *(short*)(b6+ed->selobj)=((i>>3)&0x7e)+((j<<3)&0x1f80);
-                ed->objx=i&0xfff0;
-                ed->objy=j&0xfff0;
-                b6[ed->selobj+2]=0;
-                ed->ov->modf=1;
-                Overselchg(ed,win);
-                break;
-            
-            case 5: // add exit command?
-                
-                for(n = 0; n < 79; n++)
-                    if(rom[0x15e28 + n] == 255)
-                    {
-                        rom[0x15e28 + n] = ed->ew.param;
-                        
-                        ((short*) (rom + 0x15d8a))[n] = 0;
-addexit:
-                        
-                        l = i - 128;
-                        m = j - 112;
-                        q = ed->mapsize ? 1024 : 512;
-                        
-                        if(l < 0)
-                            l = 0;
-                        
-                        if(l > q - 256)
-                            l = q - 256;
-                        
-                        if(m < 0)
-                            m = 0;
-                        
-                        if(m > q - 224)
-                            m = q - 224;
-                        
-                        l += (ed->ew.param & 7) << 9;
-                        m += (ed->ew.param & 56) << 6;
-                        
-                        Overselchg(ed,win);
-                        
-                        ed->selobj = n;
-                        ed->objx = i;
-                        ed->objy=j;
-                        i += (ed->ew.param & 7) << 9;
-                        j += (ed->ew.param & 56) << 6;
-                        o = ((l & 0xfff0) >> 3) + ((m & 0xfff0) << 3);
-                        
-                        if(k == 5)
-                        {
-                            ((short*)(rom + 0x160ef))[n]=i;
-                            ((short*)(rom + 0x16051))[n]=j;
-                            ((short*)(rom + 0x15fb3))[n]=l;
-                            ((short*)(rom + 0x15f15))[n]=m;
-                            ((short*)(rom + 0x1622b))[n]=l+128;
-                            ((short*)(rom + 0x1618d))[n]=m+112;
-                        }
-                    else
-                    {
-                        ((short*)(rom + 0x16b8f))[n]=i;
-                        ((short*)(rom + 0x16b6d))[n]=j;
-                        ((short*)(rom + 0x16b4b))[n]=l;
-                        ((short*)(rom + 0x16b29))[n]=m;
-                        ((short*)(rom + 0x16bd3))[n]=l+128;
-                        ((short*)(rom + 0x16bb1))[n]=m+112;
-                    }
-                    Overselchg(ed,win);
-                    return 0;
-                }
-                MessageBox(framewnd,"You can't add anymore exits.","Bad error happened",MB_OK);
-                break;
-            case 6:
-                
-                for(n=0;n<19;n++)
-                    if( is16b_neg1_i(rom + 0xdb826, n) )
-                    {
-                        Overselchg(ed,win);
-                        ((short*)(rom + 0xdb826))[n]=ed->ew.param;
-                        ((short*)(rom + 0xdb800))[n]=((j<<3)&0x1f80)+((i>>3)&0x7e) - 0x400;
-                        rom[0xdb84c + n]=0;
-                        ed->selobj=n;
-                        ed->objx=i&0xfff0;
-                        ed->objy=j&0xfff0;
-                        Overselchg(ed,win);
-                        return 0;
-                    }
-                
-                MessageBox(framewnd,"You can't add anymore holes.","Bad error happened",MB_OK);
-                break;
-            case 7:
-                
-                for(n=0;n<9;n++)
-                    if( is16b_neg1_i(rom + 0x16ae5, n) )
-                    {
-                        ((short*)(rom + 0x16ae5))[n]=ed->ew.param;
-                        goto addexit;
-                    }
-                
-                MessageBox(framewnd,"You can't add anymore bird locations.","Bad error happened",MB_OK);
-                break;
-            case 8:
-                
-                for(n=9;n<17;n++)
-                {
-                    if( is16b_neg1_i(rom + 0x16ae5, n) )
-                    {
-                        ((short*)(rom + 0x16ae5))[n]=ed->ew.param;
-                        ((short*)(rom + 0x16ce6))[n]=0;
-                        goto addexit;
-                    }
-                }
-                
-                MessageBox(framewnd,"You can't add anymore whirlpools.","Bad error happened",MB_OK);
-                break;
-            case 9: case 10: case 11:
-                
-                i = ed->sprset;
-                
-                if(ed->ecopy[i] == -1)
-                    free(ed->ebuf[i]);
-                
-                k-=9;
-                ed->ebuf[i]=ed->ebuf[k];
-                ed->esize[i]=ed->esize[k];
-                ed->e_modf[i]=1;
-                if(k>i) { i=k; k=ed->sprset; }
-                ed->ecopy[i]=k;
-                ed->ecopy[k]=-1;
-                InvalidateRect(win,0,0);
-            }
-        } else {
-            if(ed->disp&8) {
-                l=(lparam>>20)+(ed->mapscrollv<<1);
-                k=((lparam&65535)>>4)+(ed->mapscrollh<<1);
-                if(ed->mapsize) q=63; else q=31;
-                if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ovlmap[(ed->disp&1)?((k&31)+((l&31)<<5) + 0x1000):k+(l<<6)],0);
-            } else {
-                l=(lparam>>21)+ed->mapscrollv;
-                k=((lparam&65535)>>5)+ed->mapscrollh;
-                if(ed->mapsize) q=31; else q=15;
-                if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ov->buf[k+(l<<5)],0);
-            }
-        }
-        break;
-    case WM_GETDLGCODE:
-        return DLGC_WANTCHARS;
-    case WM_CHAR:
-        
-        if(wparam==26) {overdlgproc(GetParent(win),WM_COMMAND,3014,0);break;}
-        i=ed->selobj;
-        
-        if(i == -1)
-            break;
-        
-        rom=ed->ew.doc->rom;
-        switch(ed->tool) {
-        case 3:
-            j=rom[0xdbb73 + i];
-            break;
-        case 5:
-            m=ed->sprset;
-            b6=ed->ebuf[m];
-            j=b6[i+2];
-            break;
-        case 7:
-            j=((unsigned short*)(rom + 0x15d8a))[i];
-            break;
-        case 8:
-            j=rom[0xdb84c + i];
-            break;
-        case 9:
-            if(i>8) j=((unsigned short*)(rom + 0x16ce6))[i];
-            else j=i;
-            break;
-        case 10:
-            j=ed->sbuf[i+2];
-            if(j>=128) j=(j>>1)-41;
-            if(j==26) ((short*)(rom + 0x16dc5))[ed->ew.param]=0;
-            break;
-        default:
-            return 0;
-        }
-        Overselchg(ed,win);
-        if(wparam>=64) wparam&=0xdf;
-        switch(wparam) {
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-            j<<=4;
-            j+=wparam-'0';
-            goto updent;
-        case 'A':
-        case 'B':
-        case 'C':
-        case 'D':
-        case 'E':
-        case 'F':
-            j<<=4;
-            j+=wparam-'A'+10;
-            goto updent;
-        case 'N':
-            k=-1;
-            goto updadd;
-        case 'M':
-            k=1;
-            goto updadd;
-        case 'J':
-            k=-16;
-            goto updadd;
-        case 'K':
-            k=16;
-updadd:
-            j+=k;
-updent:
-            switch(ed->tool) {
-            case 3:
-                rom[0xdbb73 + i]=j;
-                ed->ew.doc->modf=1;
-                break;
-            case 5:
-                Overselchg(ed,win);
-                b6[i+2]=j;
-                ed->ov->modf=1;
-                ed->e_modf[ed->sprset]=1;
-                break;
-            case 7:
-                ((unsigned short*)(rom + 0x15d8a))[i]=j;
-                ed->ew.doc->modf=1;
-                break;
-            case 8:
-                rom[0xdb84c + i]=j;
-                break;
-            case 9:
-                if(i>8) rom[0x16cec + i*2]=j;
-                else {
-                    j--;
-                    j&=15;
-                    if(j>8) break;
-                    for(k=0;k<8;k++) {
-                        l=((short*)(rom+whirl_ofs[k]))[i];
-                        ((short*)(rom+whirl_ofs[k]))[i]=((short*)(rom+whirl_ofs[k]))[j];
-                        ((short*)(rom+whirl_ofs[k]))[j]=l;
-                    }
-                    l=rom[0x16bf5 + i];
-                    rom[0x16bf5 + i]=rom[0x16bf5 + j];
-                    rom[0x16bf5 + j]=l;
-                    l=rom[0x16c17 + i];
-                    rom[0x16c17 + i]=rom[0x16c17 + j];
-                    rom[0x16c17 + j]=l;
-                    Overselchg(ed,win);
-                    ed->selobj=j;
-                }
-                break;
-            case 10:
-                if(j>27) j-=28;
-                if(j<0) j+=28;
-                if(j==26) {
-                    if(((short*)(rom + 0x16dc5))[ed->ew.param]) if(k) j+=k; else return 0;
-                    else ((short*)(rom + 0x16dc5))[ed->ew.param]=*(short*)(ed->sbuf+i);
-                }
-                if(j>22) j=(j+41)<<1;
-                ed->sbuf[i+2]=j;
-            }
-            Overselchg(ed,win);
-        }
-        break;
-    case WM_LBUTTONDBLCLK:
-        
-        if(ed->selobj==-1) break;
-        switch(ed->tool) {
-        case 3:
-            SendMessage(ed->ew.doc->editwin,4000,0x30000 + ed->ew.doc->rom[0xdbb73 + ed->selobj],0);
-            break;
-        case 5:
-            m=ed->sprset;
-            b6=ed->ebuf[m];
-            j=b6[ed->selobj+2];
-            i=ShowDialog(hinstance,(LPSTR)IDD_DIALOG9,framewnd,choosesprite,j);
-            if(i==-1) break;
-            n=ed->mapscrollh<<5;
-            o=ed->mapscrollv<<5;
-            ed->ov->modf=1;
-            ed->e_modf[ed->sprset]=1;
-            rc.left=ed->objx-n;
-            rc.top=ed->objy-o;
-            wsprintf(buffer,"%02X-%s",j,sprname[j]);
-            Getstringobjsize(buffer,&rc);
-            InvalidateRect(win,&rc,0);
-            wsprintf(buffer,"%02X-%s",i,sprname[i]);
-            Getstringobjsize(buffer,&rc);
-            InvalidateRect(win,&rc,0);
-            b6[ed->selobj+2]=i;
-            break;
-        case 7:
-            oved=ed;
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG10,framewnd,editexit,0);
-            break;
-        case 9:
-            oved=ed;
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG12,framewnd,editwhirl,0);
-            break;
-        }
-        break;
-    
-    case WM_LBUTTONDOWN:
-        
-        if(ed->tool == 4)
-        {
-            l = ( ( (lparam >> 21) + ed->mapscrollv ) << 8)
-              | ( ( ( ( (short) lparam) >> 5) + ed->mapscrollh ) << 2)
-              | 0x7e2000;
-            
-            wsprintf(buffer,"Position %04X,%04X:\n%06X %06X\n%06X %06X",
-                     ((short)lparam) + (ed->mapscrollh << 5) + ((ed->ew.param & 7) << 9),
-                     (lparam >> 16) + (ed->mapscrollv << 5) + ((ed->ew.param & 56) << 6),
-                     l,
-                     l +    2,
-                     l + 0x80,
-                     l + 0x82);
-            
-            MessageBox(framewnd,buffer,"Address calculator",MB_OK);
-            
-            break;
-        }
-        if(ed->dtool) break;
-        if(ed->tool!=1 && ed->selflag) {
-            Overselectwrite(ed);
-            Getselectionrect(ed,&rc);
-            InvalidateRect(win,&rc,0);
-        }
-        ed->dtool=ed->tool+1;
-        if(ed->tool!=6) SetCapture(win);
-        SetFocus(win);
-        goto mousemove;
-    
-    mousemove:
-    case WM_MOUSEMOVE:
-        
-        {
-            HWND const par = GetParent(win);
-            
-            RECT const par_rect = HM_GetWindowRect(par);
-            
-            HM_MouseMoveData const d =
-            HM_GetMouseMoveData(win, wparam, lparam);
-            
-            POINT const rel_pos =
-            {
-                d.m_screen_pos.x - par_rect.left,
-                d.m_screen_pos.y - par_rect.top
-            };
-            
-            LPARAM const new_lp = MAKELPARAM(rel_pos.x, rel_pos.y);
-            
-            PostMessage(GetParent(win), msg, wparam, new_lp);
-        }
-        
-        if(!ed->dtool)
-        {
-            break;
-        }
-        
-        n=ed->mapscrollh<<5;
-        o=ed->mapscrollv<<5;
-        l=(lparam>>16)+o;
-        k=((short)lparam)+n;
-        if(ed->mapsize) q=0x3ff; else q=0x1ff;
-        if(k>q) k=q-1;
-        if(l>q) l=q-1;
-        if(k<0) k=0;
-        if(l<0) l=0;
-        switch(ed->dtool) {
-        case 1:
-            if(ed->disp&8) {
-                k>>=4;
-                l>>=4;
-                rc.left=(k<<4)-n;
-                rc.right=rc.left+17;
-                rc.top=(l<<4)-o;
-                rc.bottom=rc.top+17;
-                InvalidateRect(win,&rc,0);
-                if(ed->disp&1) {
-                    ed->ovlmap[(k&31)+((l&31)<<5) + 0x1000]=ed->selblk;
-                    rc.left=(k^16<<4)-n;
-                    rc.right=rc.left+17;
-                    InvalidateRect(win,&rc,0);
-                    rc.top=(l^16<<4)-o;
-                    rc.bottom=rc.top+17;
-                    InvalidateRect(win,&rc,0);
-                    rc.left=(k<<4)-n;
-                    rc.right=rc.left+17;
-                    InvalidateRect(win,&rc,0);
-                } else ed->ovlmap[k+(l<<6)]=ed->selblk;
-                ed->ovlmodf=1;
-                ed->ov->modf=1;
-                break;
-            }
-            if(msg==WM_LBUTTONDOWN) {
-                memcpy(ed->undobuf,ed->ov->buf,0x800);
-                ed->undomodf=ed->ov->modf;
-            }
-            k>>=5;
-            l>>=5;
-            ed->ov->buf[k+(l<<5)]=ed->selblk;
-            rc.left=(k<<5)-n;
-            rc.right=rc.left+32;
-            rc.top=(l<<5)-o;
-            rc.bottom=rc.top+32;
-            InvalidateRect(win,&rc,0);
-            if((ed->ew.param==136) && k>=8 && l<8) {
-                rc.left-=256;
-                rc.right-=256;
-                InvalidateRect(win,&rc,0);
-            } else if(ed->ew.param==128 && k>=8 && l>=8 && l<16) {
-                rc.top-=256;
-                rc.bottom-=256;
-                InvalidateRect(win,&rc,0);
-            }
-            ed->ov->modf=1;
-            break;
-        case 2:
-        case 3:
-            k>>=5;
-            l>>=5;
-            if(msg==WM_LBUTTONDOWN) {
-                if(ed->selflag) if(k>=ed->rectleft && k<ed->rectright && l>=ed->recttop && l<ed->rectbot) {
-                    ed->selx=k;
-                    ed->sely=l;
-                } else {
-                    Overselectwrite(ed);
-                    Getselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    goto newsel;
-                } else newsel: ed->rectleft=ed->rectright=k,ed->recttop=ed->rectbot=l;
-            } else {
-                if(ed->selflag) {
-                    if(k==ed->selx && l==ed->sely) break;
-                    Getselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    ed->rectleft+=k-ed->selx;
-                    ed->rectright+=k-ed->selx;
-                    ed->recttop+=l-ed->sely;
-                    ed->rectbot+=l-ed->sely;
-                    ed->selx=k;
-                    ed->sely=l;
-                } else {
-                    if(k>=ed->rectleft) k++;
-                    if(l>=ed->recttop) l++;
-                    if(ed->rectright==k && ed->rectbot==l) break;
-                    Getselectionrect(ed,&rc);
-                    InvalidateRect(win,&rc,0);
-                    ed->rectright=k,ed->rectbot=l;
-                }
-                Getselectionrect(ed,&rc);
-                InvalidateRect(win,&rc,0);
-            }
-            break;
-        case 4: case 6: case 8: case 9: case 10: case 11:
-            rom=ed->ew.doc->rom;
-            if(ed->disp&4) {
-                if(msg==WM_LBUTTONDOWN) {
-                    Overselchg(ed,win);
-                    switch(ed->tool) {
-                    case 3:
-                        b4 = (uint16_t*) (rom + 0xdb96f);
-                        b5 = (uint16_t*) (rom + 0xdba71);
-                        i=128;
-                        m=0;
-searchtile:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        for(;i>=0;i--) {
-                            if(b4[i]==ed->ew.param) {
-                                j=b5[i]+m;
-                                if(((j&0x7e)<<3)==k && ((j&0x1f80)>>3)==l) {
-                                    ed->objx=k;
-                                    ed->objy=l;
-foundobj:
-                                    ed->selx=k;
-                                    ed->sely=l;
-                                    ed->selobj=i;
-                                    Overselchg(ed,win);
-                                    return 0;
-                                }
-                            }
-                        }
-                        break;
-                    case 5:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        m=ed->sprset;
-                        b6=ed->ebuf[ed->sprset];
-                        for(i=ed->esize[m]-3;i>=0;i-=3) {
-                            rc.left=b6[i+1]<<4;
-                            rc.top=b6[i]<<4;
-                            Getstringobjsize(Getoverstring(ed,5,i),&rc);
-                            if(k>=rc.left && l>=rc.top && k<rc.right && l<rc.bottom) {
-                                ed->selobj=i;
-                                ed->selx=k;
-                                ed->sely=l;
-                                
-                                ed->objx = (short) rc.left;
-                                ed->objy = (short) rc.top;
-                                
-                                rc.left-=n;
-                                rc.top-=o;
-                                rc.right-=n;
-                                rc.bottom-=o;
-                                InvalidateRect(win,&rc,0);
-                                return 0;
-                            }
-                        }
-                        break;
-                    case 7:
-                        b4=(uint16_t*)(rom + 0x16051);
-                        b5=(uint16_t*)(rom + 0x160ef);
-                        j=k+((ed->ew.param&7)<<9);
-                        m=l+((ed->ew.param&56)<<6);
-                        for(i=78;i>=0;i--) {
-                            if(rom[0x15e28 + i]==ed->ew.param) {
-                                if(j>=b5[i] && j<b5[i]+16 && m>=b4[i] && m<b4[i]+16) {
-                                    ed->objx=b5[i]-j+k;
-                                    ed->objy=b4[i]-m+l;
-                                    goto foundobj;
-                                }
-                            }
-                        }
-                        break;
-                    case 8:
-                        
-                        b4 = (uint16_t*) (rom + 0xdb826);
-                        b5 = (uint16_t*) (rom + 0xdb800);
-                        i=18;
-                        m=0x400;
-                        goto searchtile;
-                    case 9:
-                        
-                        b4 = (uint16_t*) (rom + 0x16b8f);
-                        b5 = (uint16_t*) (rom + 0x16b6d);
-                        
-                        j=k+((ed->ew.param&7)<<9);
-                        m=l+((ed->ew.param&56)<<6);
-                        for(i=16;i>=0;i--) {
-                            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param) {
-                                if(j>=b4[i] && j<b4[i]+16 && m>=b5[i] && m<b5[i]+16) {
-                                    ed->objx=b4[i]-j+k;
-                                    ed->objy=b5[i]-m+l;
-                                    goto foundobj;
-                                }
-                            }
-                        }
-                        break;
-                    case 10:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        m=ed->sprset;
-                        b6=ed->sbuf;
-                        for(i=ed->ssize-3;i>=0;i-=3) {
-                            j=*(short*)(b6+i);
-                            rc.left=(j&0x7e)<<3;
-                            rc.top=(j&0x1f80)>>3;
-                            
-                            if(k>=rc.left && k<rc.left+16 && l>=rc.top && l<rc.top+16)
-                            {
-                                ed->objx = (short) rc.left;
-                                ed->objy = (short) rc.top;
-                                ed->ov->modf=1;
-                                goto foundobj;
-                            }
-                        }
-                        break;
-                    }
-                    ed->selobj=-1;
-                    ed->dtool=0;
-                    ReleaseCapture();
-                } else {
-                    switch(ed->tool) {
-                    case 3:
-                        b5=(uint16_t*)(ed->ew.doc->rom + 0xdba71);
-                        m=0;
-movetile:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        if(k==ed->selx && l==ed->sely) return 0;
-                        rc.left=ed->objx-n;
-                        rc.top=ed->objy-o;
-                        Getstringobjsize("00",&rc);
-                        InvalidateRect(win,&rc,0);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        
-                        b5[ed->selobj] = ((ed->objy << 3) | (ed->objx >> 3)) - m;
-                        
-                        ed->selx=k;
-                        rc.left=k-n;
-                        ed->sely=l;
-                        rc.top=l-o;
-                        Getstringobjsize("00",&rc);
-                        InvalidateRect(win,&rc,0);
-                        break;
-                    case 5:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        if(k==ed->selx && l==ed->sely) return 0;
-                        m=ed->sprset;
-                        b6=ed->ebuf[ed->sprset];
-                        rc.left=ed->objx-n;
-                        rc.top=ed->objy-o;
-                        Getstringobjsize(Getoverstring(ed,5,ed->selobj),&rc);
-                        InvalidateRect(win,&rc,0);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        b6[ed->selobj]=ed->objy>>4;
-                        b6[ed->selobj+1]=ed->objx>>4;
-                        rc.right+=k-ed->selx;
-                        rc.bottom+=l-ed->sely;
-                        rc.left=ed->objx-n;
-                        rc.top=ed->objy-o;
-                        ed->selx=k;
-                        ed->sely=l;
-                        InvalidateRect(win,&rc,0);
-                        ed->e_modf[m]=1;
-                        ed->ov->modf=1;
-                        break;
-                    case 7:
-                        Overselchg(ed,win);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        changeposition(rom,0x160ef,0x16051,0x15fb3,0x15f15,0x1622b,0x1618d,k-ed->selx,l-ed->sely,0x15e77,ed->ew.param,ed->selobj,ed->mapsize?768:256,0x16367,0x16405);
-                        ed->selx=k;
-                        ed->sely=l;
-                        Overselchg(ed,win);
-                        break;
-                    case 8:
-                        b5 = (uint16_t*)(ed->ew.doc->rom + 0xdb800);
-                        m=0x400;
-                        goto movetile;
-                    case 9:
-                        Overselchg(ed,win);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        changeposition(rom,0x16b8f,0x16b6d,0x16b4b,0x16b29,0x16bd3,0x16bb1,k-ed->selx,l-ed->sely,0x16b07,ed->ew.param,ed->selobj,ed->mapsize?768:256,0,0);
-                        ed->selx=k;
-                        ed->sely=l;
-                        Overselchg(ed,win);
-                        break;
-                    case 10:
-                        k&=0xfff0;
-                        l&=0xfff0;
-                        if(k==ed->selx && l==ed->sely) return 0;
-                        Overselchg(ed,win);
-                        ed->objx+=k-ed->selx;
-                        ed->objy+=l-ed->sely;
-                        i=ed->selobj;
-                        j=*(short*)(ed->sbuf+i)=(ed->objx>>3)+(ed->objy<<3);
-                        if(ed->sbuf[i+2]==0x86 && ed->ew.param<0x80) ((short*)(rom + 0x16dc5))[ed->ew.param]=j;
-                        ed->selx=k;
-                        ed->sely=l;
-                        Overselchg(ed,win);
-                        break;
-                    }
-                    ed->ew.doc->modf=1;
-                }
-            }
-            break;
-        case 7:
-            ReleaseCapture();
-            if(!copybuf) {
-                MessageBox(framewnd,"You must copy before you can paste.","Bad error happened",MB_OK);
-                ed->dtool=0;
-                break;
-            }
-            k>>=5;
-            l>>=5;
-            ed->rectleft=k;
-            ed->recttop=l;
-            ed->rectright=k+copy_w;
-            ed->rectbot=l+copy_h;
-            ed->stselx=-1;
-            ed->stsely=-1;
-            q=copy_w*copy_h<<1;
-            ed->selbuf=malloc(q);
-            ed->selflag=1;
-            memcpy(ed->selbuf,copybuf,q);
-            Getselectionrect(ed,&rc);
-            InvalidateRect(win,&rc,0);
-            ed->dtool=0;
-            ed->ov->modf=1;
-        }
-        break;
-    
-    case WM_LBUTTONUP:
-        
-        if(ed->dtool > 1 && ed->dtool < 4)
-        {
-            Getselectionrect(ed, &rc);
-            
-            InvalidateRect(win, &rc, 0);
-            
-            if(ed->rectleft < ed->rectright)
-            {
-                i = ed->rectleft;
-                j = ed->rectright;
-            }
-            else
-            {
-                i = ed->rectright;
-                j = ed->rectleft;
-            }
-            
-            if(ed->recttop < ed->rectbot)
-            {
-                k = ed->recttop;
-                l = ed->rectbot;
-            }
-            else
-            {
-                k = ed->rectbot;
-                l = ed->recttop;
-            }
-            
-            if(ed->dtool == 3)
-            {
-                ed->undomodf=ed->ov->modf;
-                memcpy(ed->undobuf,ed->ov->buf,0x800);
-                
-                for(m = i; m < j; m++)
-                    for(n = k; n < l; n++)
-                        ed->ov->buf[m + (n << 5)] = ed->selblk;
-                
-                ed->ov->modf = 1;
-            }
-            else if(!ed->selflag)
-            {
-                ed->rectleft = i;
-                ed->rectright = j;
-                ed->recttop = k;
-                ed->rectbot = l;
-                ed->selflag = 1;
-                ed->stselx = i;
-                ed->stsely = k;
-                j-=i;
-                l-=k;
-                l<<=5;
-                i+=k<<5;
-                n=0;
-                b4=ed->ov->buf;
-                ed->selbuf=malloc((ed->rectright-ed->rectleft)*(ed->rectbot-ed->recttop)<<1);
-                for(o=0;o<l;o+=32) for(m=0;m<j;m++) ed->selbuf[n++]=b4[m+i+o];
-            };
-        }
-        
-        if(ed->dtool)
-            ReleaseCapture();
-        
-        ed->dtool=0;
-        
-        break;
-    
-    case WM_PAINT:
-        
-        hdc=BeginPaint(win,&ps);
-        oldpal=SelectPalette(hdc,ed->hpal,1);
-        RealizePalette(hdc);
-        k=((ps.rcPaint.right+31)&0xffffffe0);
-        l=((ps.rcPaint.bottom+31)&0xffffffe0);
-        n=ed->mapscrollh<<5;
-        o=ed->mapscrollv<<5;
-        if(ed->dtool==2 || ed->dtool==3 || ed->selflag) Getselectionrect(ed,&rc);
-        b4=ed->ov->buf;
-        if(ed->ew.param==128) p=8; else if(ed->ew.param==136) p=0x20; else p=0x10;
-        oldobj=SelectObject(hdc,white_pen);
-        if(ed->mapsize) q=0x400; else q=0x200;
-        for(j=ps.rcPaint.top&0xffffffe0;j<l;j+=32) {
-            if(j+o>=q) break;
-            i=ps.rcPaint.left&0xffffffe0;
-            b2=b4+ed->mapscrollh+(i>>5)+j+o;
-            
-            if(p == 0x20)
-                if(j + o < 256)
-                {
-                    b3 = b2 + 8;
-                    b5 = b4 + j + o;
-                }
-                else
-                {
-                    p = 16;
-                    goto bgchange;
-                }
-            else
-            {
-                
-bgchange:
-                b5 = b4 + 0x400 + ( (j + o) >> 1);
-                b3 = b2 + 0x400 - ( (j + o) >> 1);
-                
-                if(b5 >= b4 + 0x500)
-                    b3-=0x100,b5-=0x100;
-            }
-            
-            for(;i<k;i+=32)
-            {
-                if(b3 >= b5 + p)
-                    if(ed->ew.param==128)
-                    {
-                        b3 = b2 + 256;
-                        b5 = b4 + 256 + j + o;
-                    }
-                    else
-                        b3 -= p;
-                
-                if(i + n >= q)
-                    break;
-                
-                m = *b2;
-                
-                if(ed->dtool == 3)
-                {
-                    if(i>=rc.left && i<rc.right && j>=rc.top && j<rc.bottom) m=ed->selblk;
-                }
-                else if(ed->selflag)
-                {
-                    if(i >= rc.left && i < rc.right && j >= rc.top && j < rc.bottom)
-                        m = ed->selbuf
-                        [
-                            ( (i + n) >> 5 )
-                          - ed->rectleft
-                          + ( ( (j + o) >> 5 ) - ed->recttop )
-                          * (ed->rectright - ed->rectleft)
-                        ];
-                }
-                
-                if(ed->disp&8)
-                {
-                    if(ed->disp&1) {
-                        b6=map16ofs+4;
-                        r=(((i+n)&0x1ff)>>4)+(((j+o)&0x1ff)<<1) + 0x1000;
-                        ovlblk[0]=ed->ovlmap[r];
-                        ovlblk[1]=ed->ovlmap[r+1];
-                        ovlblk[2]=ed->ovlmap[r+32];
-                        ovlblk[3]=ed->ovlmap[r+33];
-                        Drawblock32(ed,*b3,0);
-                    } else {
-                        b6=map16ofs;
-                        r = ( (i + n) >> 4 ) + ( (j + o) << 2 );
-                        ovlblk[0]=ed->ovlmap[r];
-                        ovlblk[1]=ed->ovlmap[r+1];
-                        ovlblk[2]=ed->ovlmap[r+64];
-                        ovlblk[3]=ed->ovlmap[r+65];
-                        Drawblock32(ed,m,0);
-                    }
-                } else {
-                if(!(ed->disp&1)) goto noback;
-                if((!ed->layering) || (ed->ew.param==128 && ((b3<b5+16 && b3>=b5+8 && b2<b4+256) || (ed->sprset<2 && b2<b4+512 && b3<b5+8))) ||
-                    ((ed->ew.param==136) && b2<b5+8 && b2<b4+256)) {
-                    Drawblock32(ed,m,0);
-                    Drawblock32(ed,*b3,3);
-                } else if(ed->layering==1) {
-                    Drawblock32(ed,*b3,0);
-                    Drawblock32(ed,m,1);
-                } else noback: Drawblock32(ed,m,0);
-                }
-                Paintblocks(&(ps.rcPaint),hdc,i,j,(DUNGEDIT*)ed);
-                if(ed->disp&8) {
-                    for(m=0;m<4;m++) {
-                        if(!(j+o+(m&2))) continue;
-                        if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-b6[2]]+1))&65536) {
-                            MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
-                            LineTo(hdc,i+blkx[m<<2]+16,j+blky[m<<2]);
-                        }
-                    }
-                    for(m=0;m<4;m++) {
-                        if(!(i+n+(m&1))) continue;
-                        if(((ed->ovlmap[r+b6[m]]+1)^(ed->ovlmap[r+b6[m]-1]+1))&65536) {
-                            MoveToEx(hdc,i+blkx[m<<2],j+blky[m<<2],0);
-                            LineTo(hdc,i+blkx[m<<2],j+blky[m<<2]+16);
-                        }
-                    }
-                }
-                if(ed->disp&2) {
-                    MoveToEx(hdc,i+31,j,0);
-                    LineTo(hdc,i+31,j+31);
-                    LineTo(hdc,i-1,j+31);
-                    if(ed->disp&8) {
-                        MoveToEx(hdc,i,j+16,0);
-                        LineTo(hdc,i+31,j+16);
-                        MoveToEx(hdc,i+16,j,0);
-                        LineTo(hdc,i+16,j+31);
-                    }
-                }
-                b2++;
-                b3++;
-            }
-        }
-        SelectObject(hdc,oldobj);
-        if(rc.right>q-n) rc.right=q-n;
-        if(rc.bottom>q-o) rc.bottom=q-o;
-        if(ed->dtool==2) {
-            if(rc.right>rc.left && rc.bottom>rc.top) FrameRect(hdc,&rc,white_brush);
-        }
-        if(ed->selflag) FrameRect(hdc,&rc,green_brush);
-        if(ed->disp&4) {
-            oldobj2=SelectObject(hdc,trk_font);
-            SetBkMode(hdc,TRANSPARENT);
-            q=ed->mapsize?1024:512;
-            rom=ed->ew.doc->rom;
-            oldobj=0;
-            for(i=0;i<6;i++) {
-                if(tool_ovt[ed->tool]==i) continue;
-                oldobj2=Paintovlocs(hdc,ed,i,n,o,q,rom);
-                if(!oldobj) oldobj=oldobj2;
-            }
-            Paintovlocs(hdc,ed,tool_ovt[ed->tool],n,o,q,rom);
-            if(ed->selobj!=-1) {
-                Getoverstring(ed,ed->tool,ed->selobj);
-                rc.left=ed->objx-n;
-                rc.top=ed->objy-o;
-                Getstringobjsize(buffer,&rc);
-                oldobj2=SelectObject(hdc,green_pen);
-                SelectObject(hdc,black_brush);
-                if(rc.right>q-n) rc.right=q-n;
-                if(rc.bottom>q-o) rc.bottom=q-o;
-                Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
-                Paintspr(hdc,rc.left,rc.top,n,o,q);
-                SelectObject(hdc,oldobj2);
-            }
-            SelectObject(hdc,oldobj);
-        }
-        SelectPalette(hdc,oldpal,1);
-        EndPaint(win,&ps);
-        break;
-    default:
-        return DefWindowProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-long CALLBACK patchproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    PATCHLOAD*ed;
-    switch(msg) {
-    case WM_MDIACTIVATE:
-        activedoc=((PATCHLOAD*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(PATCHLOAD*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->hackwnd=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(PATCHLOAD*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        CreateSuperDialog(&patchdlg,win,0,0,0,0,(long)ed);
-    default:
-deflt:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-void Unloadsongs(FDOC*param)
-{
-    int i,j,k;
-    SONG*s;
-    SONGPART*sp;
-    if(param->m_loaded) {
-        if(sndinit) Stopsong();
-        k=param->numsong[0]+param->numsong[1]+param->numsong[2];
-        for(i=0;i<k;i++) {
-            s=param->songs[i];
-            if(!s) continue;
-            if(!--s->inst) {
-                for(j=0;j<s->numparts;j++) {
-                    sp=s->tbl[j];
-                    if(!--sp->inst) free(sp);
-                }
-                free(s->tbl);
-                free(s);
-            }
-        }
-        free(param->scmd);
-        param->m_loaded=0;
-        free(param->waves);
-        free(param->insts);
-        free(param->sndinsts);
-        free(param->snddat1);
-        free(param->snddat2);
-    }
-}
-
-
-void AddMRU(char *f)
-{
-    int i;
-    
-    for(i=0;i<4;i++)
-    {
-        if(mrulist[i] && !_stricmp(mrulist[i],f))
-        {
-            f = mrulist[i];
-            
-            for( ; i; i--)
-                mrulist[i] = mrulist[i-1];
-            
-            mrulist[0] = f;
-            
-            goto foundmru;
-        }
-    }
-    
-    free(mrulist[3]);
-    
-    for(i = 3; i; i--)
-        mrulist[i] = mrulist[i-1];
-    
-    mrulist[0]=_strdup(f);
-    
-foundmru:
-    
-    cfg_flag |= CFG_MRU_LOADED;
-    
-    cfg_modf = 1;
-}
-
-void UpdMRU(void)
-{
-    int i;
-    
-    for(i=0;i<4;i++)
-    {
-        DeleteMenu(filemenu, ID_MRU1 + i, 0);
-        
-        if(mrulist[i])
-        {
-            if(!mruload)
-                AppendMenu(filemenu,MF_SEPARATOR,0,0);
-            
-            mruload=1;
-            
-            wsprintf(buffer,"%s\tCtrl+Alt+%d",mrulist[i],i+1);
-            
-            AppendMenu(filemenu, MF_STRING, ID_MRU1 + i, buffer);
-        }
-    }
-}
-
-// for copying rooms.
-// Duproom (duplicate room)*************************************
-
-BOOL CALLBACK duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    int i, // source room/map
-        j, // destination room/map
-        k, // switch for map type (dungeon or overworld)
-        l; // max index for each respective type. e.g. we have at most 296 overworld maps.
-    
-    FDOC *doc;
-    
-    switch(msg)
-    {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        
-        // the function apparently
-        // passes in the associated rom file's pointer.
-        doc = (FDOC*) lparam;
-        
-        // Fill in the default button.
-        // otherwise it comes up blank.
-        CheckDlgButton(win,IDC_RADIO1,BST_CHECKED);
-        
-        break;
-    
-    case WM_COMMAND:
-        switch(wparam)
-        {
-        
-        case IDOK: // they picked the OK button
-            
-            doc = (FDOC*) GetWindowLong(win,DWL_USER);
-            
-            i = GetDlgItemInt(win,IDC_EDIT1,0,0); // get the source room/map number
-            
-            j = GetDlgItemInt(win,IDC_EDIT2,0,0); // get the destination room/map number
-            
-            k = IsDlgButtonChecked(win, IDC_RADIO1) == BST_CHECKED; //1 = overworld, 0 = dungeon.
-            
-            // if k = 1 (overworld), l = 160, else l = 296 (dungeon)
-            l = k ? 160 : 296;
-            
-            // "l" looks a lot like the number 1, doesn't it?
-            if(i < 0 || j < 0 || i >= l || j >= l || i == j)
-            {
-                MessageBox(framewnd,
-                           "Please enter two different room numbers in the appropriate range.",
-                           "Bad error happened",
-                           MB_OK);
-                
-                break;
-            }
-            
-            if(k)
-            {
-                //overworld
-                Changesize(doc, 0x50000 + j, i);
-                Changesize(doc, 0x500a0 + j, 160 + i);
-            }
-            else
-                //dungeon
-                Changesize(doc,0x50140 + j,320+i);
-        
-        case IDCANCEL:
-            
-            // kill the dialog, and do nothing.
-            EndDialog(win,0);
-        }
-    }
-    
-    return 0;
-}
-
-//Duproom*************************************************************
-
-//rompropdlg#***************************************************
-
-BOOL CALLBACK rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    FDOC *doc;
-    
-    unsigned char *rom;
-    
-    short i,
-          j,
-          k,
-          l,
-          m,
-          n;
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
-        
-        SetWindowLong(win,DWL_USER,lparam);
-        
-        doc = (FDOC*) lparam;
-        
-        rom = doc->rom;
-        
-        for(i = 21; i >= 0; i--)
-            if(rom[0x7fc0 + i] != 32)
-                break;
-        
-        // Copy the game image's internal title.
-        memcpy(buffer, doc->rom + 0x7fc0, i + 1);
-        
-        buffer[i + 1] = 0;
-        
-        SetDlgItemText(win, IDC_EDIT1, buffer);
-        
-        j = k = l = m = n = 0;
-        
-        // Checking how long it takes us to find an empty pushable block
-        // in the dungeon data.
-        for(i=0;i<0x18c;i+=4)
-            if( get_16_le(rom + 0x271de + i) != -1)
-                j++;
-        
-        // Checking number of entrance markers on overworld.
-        for(i=0;i<129;i++)
-            if( ! is16b_neg1_i(rom + 0xdb96f, i) )
-                k++;
-        
-        // Checking number of exit to overworld markers (in general, these
-        // are used in the ending sequence too to transition to overworld
-        // scenes.
-        for(i=0;i<79;i++)
-            if(rom[0x15e28 + i] != 255)
-                l++;
-        
-        // Checking number of hole markers on overworld.
-        for(i = 0; i < 19; i++)
-            if( ! is16b_neg1_i(rom + 0xdb826, i) )
-                m++;
-        
-        // Checking number of whirlpool markers on overworld.
-        for(i = 0; i < 9; i++)
-        {
-            buffer[768+i] =
-            (
-                is16b_neg1_i(rom + 0x16ae5, i) ? '-'
-                                               : ((char) i + '0')
-            );
-        }
-        
-        buffer[777] = 0;
-        
-        for( ; i < 17; i++)
-            if(((short*)(rom + 0x16ae5))[i]!=-1)
-                n++;
-        
-        i=*(short*)(rom + 0xdde7);
-        
-        wsprintf(buffer,
-                 "Sprites: OV:%d, D:%d, Free:%d\n"
-                 "OV Secrets: %d used, %d free\n"
-                 "Dungeon secrets: %d used, %d free\n"
-                 "Dungeon maps: %d used, %d free\n"
-                 "Graphics: %d used, %d free\n"
-                 "Blocks: %d/99\n"
-                 "Torches: %d/288\n"
-                 "Entrances: %d/129\n"
-                 "Exits: %d/79\n"
-                 "Holes: %d/19\n"
-                 "Bird locations set: %s\n"
-                 "Whirlpools: %d/8\n"
-                 "Expansion size: %d\n"
-                 "D. headers: %d used, %d free",
-                 doc->dungspr - 0x4cb41,
-                 doc->sprend - doc->dungspr - 0x300,
-                 0x4ec9f - doc->sprend,
-                 doc->sctend - 0xdc3f9,
-                 0xdc894 - doc->sctend,
-                 i + 0x2217,
-                 -0x1950 - i,
-                 doc->dmend - 0x57621,
-                 0x57ce0 - doc->dmend,
-                 doc->gfxend - 0x8b800,
-                 0xc4000 - doc->gfxend,
-                 j,
-                 get_16_le(rom + 0x88c1),
-                 k,
-                 l,
-                 m,
-                 buffer+768,
-                 n,
-                 doc->mapexp ? (doc->fsize - doc->mapexp)
-                             : 0,
-                 *(short*) (rom + 0x27780) + 2174,
-                 -*(short*)(rom + 0x27780));
-        
-        SetDlgItemText(win,IDC_STATIC2,buffer);
-        
-        break;
-    
-    case WM_COMMAND:
-        
-        switch(wparam)
-        {
-        
-        case IDOK:
-            
-            if(always)
-            {
-                size_t i = 0;
-                
-                doc = (FDOC*) GetWindowLong(win, DWL_USER);
-                
-                GetDlgItemText(win, IDC_EDIT1, buffer, 22);
-                
-                for(i = strlen(buffer); i < 22; i++)
-                    buffer[i] = 32;
-                
-                memcpy(doc->rom + 0x7fc0, buffer, 22);
-            }
-        
-        case IDCANCEL:
-            
-            EndDialog(win,0);
-        }
-    }
-    
-    return FALSE;
-}
-
-void Updatepals(void)
-{
-    DUNGEDIT*ed=firstgraph;
-    while(ed) {
-        SendMessage(ed->dlg,4002,0,0);
-        ed=(DUNGEDIT*)(ed->nextgraph);
-    }
-}
-
-long CALLBACK trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+LRESULT CALLBACK
+trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT*ed;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_MDIACTIVATE:
         activedoc=((TRACKEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
         goto deflt;
@@ -29318,1544 +13118,9 @@ deflt:
     return 0;
 }
 
-// window procedure for the main frame window
-long CALLBACK frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    CLIENTCREATESTRUCT ccs;
-    
-    OPENFILENAME ofn;
-    
-    HWND hc;
-    
-    FDOC *doc, *doc2;
-    
-    DUNGEDIT *ed;
-    
-    unsigned char *rom;
-    char *m;
-    
-    HANDLE h,h2;
-    MDICREATESTRUCT mdic;
-    
-    SAMPEDIT *sed;
-    ASMHACK *mod;
-    FILETIME tim;
-    
-    int i = 0,
-        j = 0,
-        k = 0,
-        l = 0;
-    
-    DWORD read_size  = 0;
-    DWORD write_size = 0;
-    
-    unsigned char *buf;
-    
-    switch(msg)
-    {
-    
-    case WM_DISPLAYCHANGE:
-        
-        if(always)
-        {
-            HDC const dc = GetDC(framewnd);
-            
-            i = palmode;
-            
-            palmode = 0;
-            
-            if( GetDeviceCaps(dc, RASTERCAPS) & RC_PALETTE )
-                palmode = 1;
-            
-            ReleaseDC(framewnd, dc);
-        }
-        
-        if(palmode > i)
-        {
-            ed = firstgraph;
-            
-            while(ed)
-            {
-                Setpalmode(ed);
-                ed = ed->nextgraph;
-            }
-        }
-        else if(palmode < i)
-        {
-            ed = firstgraph;
-            
-            while(ed)
-            {
-                Setfullmode(ed);
-                ed = ed->nextgraph;
-            }
-        }
-        
-        break;
-    
-    case WM_QUERYNEWPALETTE:
-        if(!dispwnd)
-            break;
-        
-        Setpalette(win,dispwnd->hpal);
-        
-        return 1;
-    
-    case WM_PALETTECHANGED:
-        Updatepals();
-        
-        break;
-    
-/*  case WM_ACTIVATE:
-        if(disppal && (wparam&65535)) {
-            InvalidateRect(dispwnd,0,0);
-//          hc=GetDC(dispwnd);
-//          SelectPalette(hc,disppal,1);
-//          RealizePalette(hc);
-//          ReleaseDC(dispwnd,hc);
-        }
-        break;*/
-    
-    case WM_CREATE:
-        ccs.hWindowMenu=GetSubMenu(GetMenu(win),2);
-        ccs.idFirstChild=3600;
-        clientwnd=CreateWindowEx(0,"MDICLIENT",0,MDIS_ALLCHILDSTYLES|WS_VSCROLL|WS_HSCROLL|WS_CLIPCHILDREN|WS_CHILD|WS_VISIBLE,0,0,0,0,win,(HMENU)3599,hinstance,(LPSTR)&ccs);
-        
-        break;
-    
-    case WM_CLOSE:
-        goto fileexit;
-    
-    case WM_COMMAND:
-        switch(wparam&65535)
-        {
-        
-        case ID_MRU1:
-        case ID_MRU2:
-        case ID_MRU3:
-        case ID_MRU4:
-            wparam = (wparam & 0xffff) - ID_MRU1;
-            
-            if(!mrulist[wparam])
-                break;
-            
-            doc = (FDOC*) malloc(sizeof(FDOC));
-            strcpy(doc->filename,mrulist[wparam]);
-            
-            goto openrom;
-        
-        case ID_Z3_ABOUT:
-            ShowDialog(hinstance,MAKEINTRESOURCE(IDD_DIALOG1),framewnd,aboutfunc,0);
-            
-            break;
-        
-        case ID_Z3_HELP:
-            SetCurrentDirectory(currdir);
-            WinHelp(framewnd,"Z3ED.HLP",HELP_CONTENTS,0);
-            
-            break;
-        
-fileexit:
-        case ID_Z3_EXIT:
-            doc=firstdoc;
-            
-            while(doc)
-            {
-                hc=doc->mdiwin;
-                doc2=doc->next;
-                
-                if(SendMessage(hc,WM_CLOSE,0,0))
-                    return 0;
-                
-                doc=doc2;
-            }
-            
-            PostQuitMessage(0);
-            
-            break;
-        
-        case ID_Z3_SAVEAS:
-            if(!activedoc)
-                break;
-            
-saveas:
-            ofn.lStructSize = sizeof(ofn);
-            ofn.hwndOwner=win;
-            ofn.hInstance=hinstance;
-            ofn.lpstrFilter="SNES roms\0*.SMC;*.SFC\0All files\0*.*\0";
-            ofn.lpstrCustomFilter=0;
-            ofn.nFilterIndex=1;
-            ofn.lpstrFile=activedoc->filename;
-            ofn.nMaxFile=MAX_PATH;
-            ofn.lpstrFileTitle=0;
-            ofn.lpstrInitialDir=0;
-            ofn.lpstrTitle="Save game";
-            ofn.Flags=OFN_OVERWRITEPROMPT|OFN_PATHMUSTEXIST|OFN_HIDEREADONLY;
-            ofn.lpstrDefExt="smc";
-            ofn.lpfnHook=0;
-            
-            if(!GetSaveFileName(&ofn))
-                return 1;
-        
-        case ID_Z3_SAVE:
-            
-            if(!activedoc)
-                break;
-            
-            if(!*activedoc->filename)
-                goto saveas;
-            
-            for(i=0;i<226;i++)
-            {
-                j = activedoc->blks[i].count;
-                
-                if(j != 0)
-                {
-                    activedoc->blks[i].count=1;
-                    Releaseblks(activedoc,i);
-                    Getblocks(activedoc,i);
-                    activedoc->blks[i].count=j;
-                }
-            }
-            
-            for(i=0;i<160;i++)
-            {
-                if(activedoc->overworld[i].win)
-                    Savemap((OVEREDIT*)GetWindowLong(activedoc->overworld[i].win,GWL_USERDATA));
-            }
-            
-            for(i=0;i<168;i++)
-            {
-                if(activedoc->ents[i])
-                    Saveroom((DUNGEDIT*)GetWindowLong(activedoc->ents[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<128;i++)
-            {
-                if(activedoc->pals[i])
-                    Savepal((PALEDIT*)GetWindowLong(activedoc->pals[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<2;i++)
-            {
-                if(activedoc->wmaps[i])
-                    Saveworldmap((WMAPEDIT*)GetWindowLong(activedoc->wmaps[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<14;i++)
-            {
-                if(activedoc->dmaps[i])
-                    Savedungmap((LMAPEDIT*)GetWindowLong(activedoc->dmaps[i],GWL_USERDATA));
-            }
-            
-            for(i=0;i<11;i++)
-            {
-                if(activedoc->tmaps[i])
-                    Savetmap((TMAPEDIT*)GetWindowLong(activedoc->tmaps[i],GWL_USERDATA));
-            }
-            
-            if(activedoc->perspwnd)
-                Savepersp((PERSPEDIT*) GetWindowLong(activedoc->perspwnd,GWL_USERDATA));
-            
-            Savesongs(activedoc);
-            Savetext(activedoc);
-            SaveOverlays(activedoc);
-            
-            if(activedoc->m_modf || activedoc->t_modf || activedoc->o_modf)
-                return 1;
-            
-            rom = activedoc->rom;
-            
-            *(int*)(rom + 0x64118) = activedoc->mapend2;
-            *(int*)(rom + 0x6411c) = activedoc->mapend;
-            *(int*)(rom + 0x17f80) = activedoc->roomend;
-            *(int*)(rom + 0x17f84) = activedoc->roomend2;
-            *(int*)(rom + 0x17f88) = activedoc->roomend3;
-            *(int*)(rom + 0x17f8c) = 0x4445335A;
-            *(int*)(rom + 0x17f90) = 962;
-            *(int*)(rom + 0x17f94) = 3;
-            *(int*)(rom + 0x17f98) = activedoc->gfxend;
-            *(short*)(rom + 0x4c298) = *(int*)(rom + 0x17f9c)=activedoc->dungspr;
-            *(int*)(rom + 0x17fa0) = activedoc->sprend;
-            
-            if(activedoc->nummod)
-            {
-                if(activedoc->p_modf)
-                {
-updatemods:
-                    if(Buildpatches(activedoc))
-                        return 1;
-                }
-                else
-                {
-                    mod = activedoc->modules;
-                    j = activedoc->nummod;
-                    
-                    for(i=0;i<j;i++,mod++)
-                    {
-                        h = CreateFile(mod->filename,GENERIC_READ,0,0,OPEN_EXISTING,0,0);
-                        GetFileTime(h,0,0,&tim);
-                        CloseHandle(h);
-                        
-                        __asm
-                        {
-                            mov eax,tim.dwLowDateTime
-                            mov edx,tim.dwHighDateTime
-                            mov ebx,activedoc
-                            sub eax,[ebx+FDOC.lastbuild]
-                            sbb edx,[ebx+FDOC.lastbuild+4]
-                            jnc updatemods
-                        }
-                        
-                        // if(tim.dwLowDateTime>activedoc->lastbuild.dwLowDateTime || tim.dwHighDateTime>activedoc->lastbuild.dwHighDateTime) goto updatemods;
-                    }
-                }
-            }
-            else
-                Removepatches(activedoc);
-            
-            put_32_le(rom + 0x17fa8, activedoc->sctend);
-            
-            put_16_le(rom + 0x17fac,
-                      (short) (activedoc->dmend - 0x8000) );
-            
-            put_32_le(rom + 0x17fae, activedoc->ovlend);
-            put_32_le(rom + 0x17fb2, activedoc->tmend1);
-            put_32_le(rom + 0x17fb6, activedoc->tmend2);
-            put_32_le(rom + 0x17fba, activedoc->tmend3);
-            put_32_le(rom + 0x17fbe, activedoc->oolend);
-            
-            if(activedoc->mapexp)
-                put_32_le(rom + 0x100000, activedoc->mapexp);
-            
-            h = CreateFile(activedoc->filename,
-                           GENERIC_WRITE,
-                           0,
-                           0,
-                           OPEN_ALWAYS,
-                           FILE_FLAG_SEQUENTIAL_SCAN,
-                           0);
-            
-            if(h == INVALID_HANDLE_VALUE)
-            {
-saveerror:
-                MessageBox(framewnd,"Unable to save","Bad error happened",MB_OK);
-                
-                return 1;
-            }
-            
-            m = strrchr(activedoc->filename,'.');
-            
-            if
-            (
-                ( ! m )
-             || strrchr(activedoc->filename, '\\') > m
-            )
-            {
-                // \task I think the warnings are right. This should
-                // probably be activedoc, not doc.
-                m = doc->filename + strlen(activedoc->filename);
-            }
-            
-            l = *(int*)m;
-            
-            // Appears to attempt to append ".HDM" to the file path.
-            // \task Should probably fix this as it's endianness dependent.
-            *(int*)m=0x444d482e;
-            
-            if(activedoc->nummod)
-            {
-                h2=CreateFile("HMTEMP.DAT",GENERIC_WRITE,0,0,CREATE_ALWAYS,FILE_FLAG_SEQUENTIAL_SCAN,0);
-                
-                if(h2==(HANDLE)-1)
-                {
-                    *(int*)m=l;
-                    CloseHandle(h);
-                    
-                    goto saveerror;
-                }
-                
-                i='HMD0';
-                WriteFile(h2,&i,4,&write_size,0);
-                WriteFile(h2,&(activedoc->nummod),14,&write_size,0);
-                
-                for(i = 0; i < activedoc->numpatch; i++)
-                {
-                    WriteFile(h2,activedoc->patches+i,8,&write_size,0);
-                    
-                    WriteFile(h2,
-                              activedoc->patches[i].pv,
-                              activedoc->patches[i].len,
-                              &write_size,
-                              0);
-                }
-                
-                WriteFile(h2,activedoc->segs,activedoc->numseg<<2,&write_size,0);
-                mod = activedoc->modules;
-                
-                for(i=0;i<activedoc->nummod;i++,mod++)
-                {
-                    j = strlen(mod->filename);
-                    ((int*)buffer)[0] = j;
-                    ((int*)buffer)[1] = activedoc->modules[i].flag;
-                    
-                    WriteFile(h2,buffer,8,&write_size,0);
-                    WriteFile(h2,mod->filename,j,&write_size,0);
-                }
-                
-                CloseHandle(h2);
-                
-                if(!(rom[0x17fa4]&1))
-                {
-                    if(!MoveFile("HMTEMP.DAT",activedoc->filename))
-                    {
-                        if(GetLastError() == ERROR_ALREADY_EXISTS)
-                        {
-                            wsprintf(buffer,"%s exists already. Do you want to overwrite it?",activedoc->filename);
-                            
-                            if(MessageBox(framewnd,buffer,"Gigasoft Hyrule Magic",MB_YESNO)==IDYES)
-                                goto okay;
-                            else
-                            {
-othersaveerror:
-                                *(int*)m=l;
-                                DeleteFile("HMTEMP.DAT");
-                                CloseHandle(h);
-                                
-                                return 1;
-                            }
-                        }
-                        else
-                            goto othersaveerror;
-                    }
-                    
-                    goto okay2;
-                }
-                else
-                {
-okay:
-                    DeleteFile(activedoc->filename);
-                    
-                    if(!MoveFile("HMTEMP.DAT",activedoc->filename))
-                    {
-                        MessageBox(framewnd,"Unable to save hack database","Bad error happened",MB_OK);
-                        
-                        goto othersaveerror;
-                    }
-                }
-okay2:
-                rom[0x17fa4]|=1;
-            }
-            else
-            {
-                if(rom[0x17fa4]&1)
-                    DeleteFile(activedoc->filename);
-                
-                rom[0x17fa4]&=-2;
-            }
-            
-            *(int*)m=l;
-            
-            if(activedoc->withhead)
-            {
-                ZeroMemory(buffer,512);
-                
-                buffer[0] = -128;
-                buffer[8] = -86;
-                buffer[9] = -69;
-                buffer[10] = 4;
-                
-                WriteFile(h,buffer,512,&write_size,0);
-            }
-            
-            WriteFile(h, activedoc->rom, activedoc->fsize, &write_size, 0);
-            
-            SetEndOfFile(h);
-            CloseHandle(h);
-            activedoc->modf=0;
-            SetWindowText(activedoc->mdiwin,activedoc->filename);
-            AddMRU(activedoc->filename);
-            UpdMRU();
-            DrawMenuBar(framewnd);
-            
-            return 0;
-        
-        case ID_Z3_OPEN:
-            
-            // check if the shift key is down for some reason.
-            if(GetKeyState(VK_SHIFT) & 128)
-            {
-                // if there is no active document, stop.
-                if(!activedoc)
-                    break;
-                
-                // If the music data is loaded...
-                if(activedoc->m_loaded)
-                {
-                    // save the songs in the current document.
-                    Savesongs(activedoc);
-                    
-                    // if the music has been modified, get out...
-                    if(activedoc->m_modf)
-                        break;
-                    
-                    Unloadsongs(activedoc);
-                    Loadsongs(activedoc);
-                    
-                    // if the HWND handle for the third music bank is valid.
-                    if(activedoc->mbanks[3])
-                    {
-                        sed = ((SAMPEDIT*)GetWindowLong(activedoc->mbanks[3],GWL_USERDATA));
-                        sed->zw = activedoc->waves + sed->editsamp;
-                    }
-                }
-                
-                // if overlays are loaded
-                if(activedoc->o_loaded)
-                {
-                    // save the overlays of the active rom.
-                    SaveOverlays(activedoc);
-                    
-                    // if the overlays have been modified, exit.
-                    if(activedoc->o_modf)
-                    {
-                        // what this generally means is that the overlays didn't save
-                        // properly
-                        break;
-                    }
-                    
-                    Unloadovl(activedoc);
-                    LoadOverlays(activedoc);
-                }
-                
-                break;
-            }
-            
-            // allocate enough memory for the object.
-            doc = (FDOC*) malloc(sizeof(FDOC));
-            
-            if(!doc) // not enough memory.
-            {
-                MessageBox(framewnd,"No memory at all","Bad error happened",MB_OK);
-                
-                break;
-            }
-            
-            // ofn = open file name
-            ofn.lStructSize = sizeof(ofn);
-            ofn.hwndOwner = win;
-            ofn.hInstance = hinstance;
-            ofn.lpstrFilter = "SNES roms\0*.SMC;*.SFC\0All files\0*.*\0";
-            ofn.lpstrCustomFilter = 0;
-            ofn.nFilterIndex = 1;
-            ofn.lpstrFile = doc->filename;
-            doc->filename[0] = 0;
-            ofn.nMaxFile = MAX_PATH;
-            ofn.lpstrFileTitle = 0;
-            ofn.lpstrInitialDir = 0;
-            ofn.lpstrTitle = "Open game";
-            ofn.Flags = OFN_FILEMUSTEXIST|OFN_HIDEREADONLY;
-            ofn.lpstrDefExt = "smc";
-            ofn.lpfnHook = 0;
-            
-            if(!GetOpenFileName(&ofn))
-            {
-//              i=CommDlgExtendedError();
-//              if(i) {
-//                  wsprintf(buffer,"GUI error. Error: %08X",i);
-//                  MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-//              }
-                free(doc); break;
-            }
-openrom:
-            
-            // handles duplicate files already being open, by checking pointer values.
-            for(doc2 = firstdoc; doc2; doc2 = doc2->next)
-            {
-                if(!_stricmp(doc2->filename,doc->filename))
-                {
-                    free(doc);
-                    SendMessage(clientwnd,WM_MDIACTIVATE,(long)(doc2->mdiwin),0);
-                    
-                    return 0;
-                }
-            }
-            
-            // load the rom file
-            h = CreateFile(doc->filename,GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,0);
-            
-            if(h == INVALID_HANDLE_VALUE)
-            {
-                MessageBox(framewnd,"Unable to open file","Bad error happened",MB_OK);
-                free(doc);
-                
-                break;
-            }
-            
-            // j is the size of the file, passing the handle of the file, 
-            j = GetFileSize(h,0);
-            
-            //read the first four bytes of the file.
-            ReadFile(h,&i,4,&read_size,0);
-            
-            //these first four bytes have to match, apparently. 
-            //kind of primitive error checking...eh?
-            //for the curious, that is SEI, STZ $4200 in hex, backwards.
-            if(i != 0x42009c78)
-            {
-                //move the file's base offset up by 512 bytes if we detect a header.
-                SetFilePointer(h,512,0,0);
-                
-                // the filesize is now regarded as (size - header).
-                j -= 512;
-                
-                // as above, we note there is a header.
-                doc->withhead = 1;
-            }
-            else
-            {
-                // else leave it as is.
-                SetFilePointer(h,0,0,0);
-                
-                // and the file has no header.
-                doc->withhead = 0;
-            }
-            
-            // allocate a rom (buffer) the same size as the file.
-            rom = doc->rom = malloc(j);
-            
-            if(!rom)
-            {
-                MessageBox(framewnd,"Not enough memory.","Bad error happened",MB_OK);
-                CloseHandle(h);
-                free(doc);
-                
-                break;
-            }
-            
-            // set the internal file size variable (in an FDOC)
-            doc->fsize = j;
-            
-            // dump the file into the variable "rom".
-            ReadFile(h, rom, j, &read_size, 0);
-            CloseHandle(h);
-            
-            //this is LDA $2801, BEQ... another primitive file check (as though romhackers 
-            //would never change such things... >_> <_<
-            if( get_32_le(rom + 0x200) != 0xf00128ad)
-            {
-                MessageBox(framewnd,
-                           "Hey! This is not Zelda 3.",
-                           "Bad error happened",
-                           MB_OK);
-error:
-                free(rom);
-                free(doc);
-                
-                break;
-            }
-            
-            // these tell us where certain data structures end.
-            doc->mapend = 0x6410c;
-            doc->mapend2 = 0x5fe5e;
-            doc->roomend = 0xfff4e;
-            doc->roomend2 = 0x5372a;
-            doc->roomend3 = 0x1fff5;
-            doc->dungspr = 0x4d62e;
-            doc->sprend = 0x4ec9f;
-            doc->sctend = 0xdc894;
-            doc->ovlend = 0x271de;
-            doc->dmend = 0x57ce0;
-            doc->tmend1 = 0x66d7a;
-            doc->tmend2 = 0x75d31;
-            doc->oolend = 0x77b64;
-            
-            i = *(int*) (rom + 0x17f8c);
-            
-            if(i == 0x4445335A)
-            {
-                i = *(int*) (rom + 0x17f94);
-                k = *(int*) (rom + 0x17f90);
-            }
-            else
-            {
-                i = 0;
-                k = 0;
-            }
-            
-            if(k == 92)
-            {
-                rom[0x9bad] = 0x7e;
-                *(short*) (rom + 0x9bb2) = 0x229f;
-            }
-            
-            if(i > 3)
-            {
-                vererror_str[90] = ((k & 0xe000) >> 13) + 48;
-                wsprintf(buffer, vererror_str, k >> 16, k & 8191);
-                MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-                
-                goto error;
-            }
-            
-            if( i >= 3 ) if( rom[0x17fa4] & 1 )
-            {
-                // truncate to the last '.' (period) in the filename.
-                m = strrchr(doc->filename, '.');
-                
-                // comment later.
-                if( (!m) || strrchr(doc->filename, '\\') > m)
-                    //go to the end of the filenamme.
-                    m = doc->filename + strlen(doc->filename);
-                
-                l = *(int*)m; // what is the int value there?
-                *(int*)m = 0x444d482e; // set it manually to a HMD0 file.
-                
-                h = CreateFile(doc->filename,
-                               GENERIC_READ,
-                               FILE_SHARE_READ,
-                               0,
-                               OPEN_EXISTING,
-                               FILE_FLAG_SEQUENTIAL_SCAN,
-                               0);
-                
-                if(h == (HANDLE) -1)
-                {
-                    wsprintf(buffer,"A required file, %s, is missing",doc->filename);
-errormsg:
-                    MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
-                    
-                    goto error;
-                }
-                
-                ReadFile(h,&i,4,&read_size,0);
-                
-                if(i != 'HMD0')
-                {
-                    wsprintf(buffer,"%s has an invalid format.",doc->filename);
-                    
-                    goto errormsg;
-                }
-                
-                ReadFile(h,&(doc->nummod),14,&read_size,0);
-                
-                doc->patches = malloc(doc->numpatch*sizeof(PATCH));
-                
-                for(i = 0; i < doc->numpatch; i++)
-                {
-                    // read in the patches
-                    ReadFile(h,doc->patches+i,8,&read_size,0);
-                    doc->patches[i].pv=malloc(doc->patches[i].len);
-                    ReadFile(h,doc->patches[i].pv,doc->patches[i].len,&read_size,0);
-                }
-                
-                ReadFile(h,doc->segs,doc->numseg<<2,&read_size,0);
-                
-                mod = doc->modules = malloc(doc->nummod * sizeof(ASMHACK));
-                
-                for(i = 0; i < doc->nummod; i++, mod++)
-                {
-                    ReadFile(h,doc->modules+i,sizeof(ASMHACK),&read_size,0);
-                    
-                    k = (int) mod->filename;
-                    mod->filename = malloc(k + 1);
-                    
-                    ReadFile(h,mod->filename,k,&read_size,0);
-                    mod->filename[k]=0;
-                }
-                
-                CloseHandle(h);
-                
-                *(int*)m = l;
-            }
-            else
-            {
-nomod:
-                doc->lastbuild.dwLowDateTime=0;
-                doc->lastbuild.dwHighDateTime=0;
-                doc->numseg=doc->numpatch=doc->nummod=0;
-                doc->patches = 0;
-                doc->modules = 0;
-            }
-            else
-            {
-                *(int*) (rom + 0x17fa4) = 0;
-                
-                goto nomod;
-            }
-            
-            // if the file size is larger or equal to...
-            if(j >= 0x100004)
-                // the map expansion value is...
-                doc->mapexp = get_32_le(rom + 0x100000);
-            else
-                // otherwise, there is no expansion.
-                doc->mapexp = 0;
-            
-            i = *(int*) (rom + 0x6411c);
-            
-            // if this has been modified...
-            if(i > 0)
-                // assign the map ending bound.
-                doc->mapend = i;
-            
-            i = *(int*) (rom + 0x64118);
-            
-            if(i > 0)
-                doc->mapend2 = i; // similarly...
-            
-            i = *(int*) (rom + 0x17f80);
-            
-            if(i > 0)
-                doc->roomend = i;
-            
-            i = *(int*) (rom + 0x17f84);
-            
-            if(i > 0)
-                doc->roomend2 = i;
-            
-            i = *(int*) (rom + 0x17f88);
-            
-            if(i > 0)
-                doc->roomend3 = i;
-            
-            i = *(int*) (rom + 0x17f9c);
-            
-            if(i > 0)
-            {
-                doc->dungspr = *(int*) (rom + 0x17f9c);
-                doc->sprend = *(int*) (rom + 0x17fa0);
-            }
-            
-            // bank + HByte + LByte for something...
-            i = romaddr((rom[0x505e] << 16) + (rom[0x513d] << 8) + rom[0x521c]);
-            
-            for(;;)
-            {
-                j = rom[i++];
-                
-                if(j == 0xff)
-                    break;
-                
-                if(j >= 0xe0)
-                {
-                    k = ((j & 3) << 8) + rom[i++];
-                    l = (j & 28) >> 2;
-                }
-                else
-                {
-                    k = j & 31;
-                    l = j >> 5;
-                }
-                
-                switch(l)
-                {
-                case 0:
-                    i += k + 1;
-                    
-                    break;
-                
-                case 1: case 3:
-                    i++;
-                    
-                    break;
-                
-                default:
-                    i += 2;
-                }
-            }
-            
-            doc->gfxend = i;
-            
-            i = *(int*)(rom + 0x17fa8);
-            
-            if(i > 0)
-                doc->sctend = i;
-            
-            i = *(short*)(rom + 0x17fac);
-            
-            if(i != -1)
-                doc->dmend = i + 0x58000;
-            
-            i = *(int*) (rom + 0x17fae);
-            
-            if(i > 0)
-                doc->ovlend = i;
-            
-            i = *(int*) (rom + 0x17fb2);
-            
-            if(i > 0)
-            {
-                doc->tmend1 = i;
-                doc->tmend2 = *(int*) (rom + 0x17fb6);
-                doc->tmend3 = *(short*) (rom + 0x17fba) + 0x60000;
-            }
-            else
-            {
-                buf = malloc(0x100d);
-                
-                memcpy(buf, rom + 0x66359,0xfd);
-                memcpy(buf + 0xfd, rom + 0x661c8,0xe0);
-                memcpy(buf + 0x1dd, rom + 0x6653f,0xfd);
-                memcpy(buf + 0x2da, rom + 0x6668d,0x132);
-                memcpy(buf + 0x40c, rom + 0x65d6d,0x45b);
-                memcpy(buf + 0x867, rom + 0x662a8,0xb1);
-                memcpy(buf + 0x918, rom + 0x66456,0xe9);
-                memcpy(buf + 0xa01, rom + 0x6663c,0x51);
-                memcpy(buf + 0xa52, rom + 0x667bf,0x5bb);
-                memcpy(rom + 0x65d6d, buf, 0x40c);
-                memcpy(rom + 0x66179, buf + 0x40c, 0xc01);
-                
-                *(USHORT*)(rom + 0x64ed0) = 0xdd6c;
-                *(USHORT*)(rom + 0x64e5f) = 0xde6a;
-                *(USHORT*)(rom + 0x654c0) = 0xdf49;
-                *(USHORT*)(rom + 0x65148) = 0xe047;
-                *(USHORT*)(rom + 0x65292) = 0xe0f4;
-                
-                // \task look into these 32-bit constants.
-                *(int*)(rom + 0x137d) = 0xd4bf1b79;
-                *(USHORT*)(rom + 0x1381) = 0x856e;
-                *(int*)(rom + 0x1386) = 0xe5e702e1;
-                *(USHORT*)(rom + 0x138a)=0xe6e7;
-                
-                free(buf);
-                
-                doc->tmend3 = 0x66179;
-            }
-            
-            i = *(int*)(rom + 0x17fbe);
-            
-            if(i > 0)
-                doc->oolend = i;
-            
-            if(doc->mapexp == 0x100004)
-                if(!Changesize(doc,4097,0))
-                    goto error;
-            
-            if(doc->mapexp && doc->mapexp != 0x100080)
-            {
-                MessageBox(framewnd,"This ROM is corrupt.","Bad error happened",MB_OK);
-                goto error;
-            }
-            
-            for(j=0;j<5;j++)
-            {
-                for(i=0;i<64;i++)
-                {
-                    if(rom[0x125ec + i]!=i) Savesprites(doc,sprs[j]+i + 0x10000,0,0);
-                }
-            }
-            
-            mdic.szClass = "ZEDOC";
-            mdic.szTitle = doc->filename;
-            mdic.hOwner = hinstance;
-            mdic.x = mdic.y = mdic.cx=mdic.cy=CW_USEDEFAULT;
-            mdic.style = WS_OVERLAPPEDWINDOW|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
-            mdic.lParam = (long)doc;
-            hc = (HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
-            
-            if(!firstdoc)
-                firstdoc = doc;
-            
-            if(lastdoc)
-                lastdoc->next = doc;
-            
-            doc->prev = lastdoc;
-            doc->next = 0;
-            
-            lastdoc = doc;
-            
-            doc->modf = 0;
-            
-            SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
-            SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
-            
-            doc->mdiwin=hc;
-            
-            for(i=0;i<226;i++)
-                doc->blks[i].count = 0,doc->blks[i].buf = 0;
-            
-            for(i=0;i<160;i++)
-                doc->overworld[i].win = 0, doc->overworld[i].modf = 0;
-            
-            for(i=0;i<168;i++)
-                doc->ents[i] = 0;
-            
-            for(i=0;i<0x128;i++)
-                doc->dungs[i] = 0;
-            
-            for(i=0;i<PALNUM;i++)
-                doc->pals[i] = 0;
-            
-            for(i=0;i<14;i++)
-                doc->dmaps[i] = 0;
-            
-            for(i=0;i<11;i++)
-                doc->tmaps[i] = 0;
-            
-            for(i=0;i<4;i++)
-                doc->mbanks[i] = 0;
-            
-            doc->m_loaded = 0;
-            doc->t_loaded = 0;
-            doc->o_loaded = 0;
-            doc->t_wnd = 0;
-            doc->m_modf = 0;
-            doc->t_modf = 0;
-            doc->o_modf = 0;
-            doc->wmaps[0] = doc->wmaps[1] = 0;
-            doc->perspwnd = 0;
-            doc->hackwnd = 0;
-            doc->p_modf = 0;
-            
-            if(always)
-            {
-                HMENU const menu = GetMenu(framewnd);
-                
-                HMENU const submenu =
-                GetSubMenu(menu,
-                           GetMenuItemCount(menu) == 5 ? 0 : 1);
-                
-                EnableMenuItem(submenu, ID_Z3_SAVE, MF_ENABLED);
-                EnableMenuItem(submenu, ID_Z3_SAVEAS, MF_ENABLED);
-                EnableMenuItem(menu, GetMenuItemCount(menu) == 5 ? 1 : 2,
-                               MF_ENABLED | MF_BYPOSITION);
-            }
-            
-            AddMRU(doc->filename);
-            UpdMRU();
-            
-            DrawMenuBar(framewnd);
-            
-            break;
-        
-        case ID_FILE_SPRNAME:
-            
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG5,framewnd,editsprname,0);
-            
-            break;
-        
-        case ID_WINDOW_MDITILE:
-            SendMessage(clientwnd,WM_MDITILE,0,0);
-            break;
-        
-        case ID_WINDOW_MDICASCADE:
-            SendMessage(clientwnd,WM_MDICASCADE,0,0);
-            
-            break;
-        
-        case ID_WINDOW_MDIARRANGEICONS:
-            SendMessage(clientwnd,WM_MDIICONARRANGE,0,0);
-            
-            break;
-        
-        case ID_OPTION_DEVICE:
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG2,framewnd,seldevproc,0);
-            
-            break;
-        
-        case ID_OPTION_CLOSESOUND:
-            Exitsound();
-            
-            break;
-        
-        case ID_OPTION_CHANNEL1:
-        case ID_OPTION_CHANNEL2:
-        case ID_OPTION_CHANNEL3:
-        case ID_OPTION_CHANNEL4:
-        case ID_OPTION_CHANNEL5:
-        case ID_OPTION_CHANNEL6:
-        case ID_OPTION_CHANNEL7:
-        case ID_OPTION_CHANNEL8:
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                i = 1 << (wparam - ID_OPTION_CHANNEL1);
-                
-                activeflag ^= i;
-                
-                CheckMenuItem
-                (
-                    GetSubMenu
-                    (
-                        GetSubMenu
-                        (
-                            menu,
-                            GetMenuItemCount(menu) == 5 ? 3 : 4
-                        ),
-                        2
-                    ),
-                    wparam,
-                    (activeflag & i) ? MF_CHECKED : MF_UNCHECKED
-                );
-                
-                if((!(activeflag & i)) && sounddev >= 0x20000)
-                    midinoteoff(zchans + ((wparam & 65535) - ID_OPTION_CHANNEL1));
-            }
-            
-            break;
-        
-        case ID_OPTION_SNDINTERP:
-            
-            sndinterp = !sndinterp;
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                CheckMenuItem(GetSubMenu(menu,
-                                         GetMenuItemCount(menu) == 5 ? 3 : 4),
-                                         ID_OPTION_SNDINTERP,
-                                         sndinterp ? MF_CHECKED : MF_UNCHECKED);
-            }
-            
-            break;
-        
-        // \note Unused ID not currently referenced in menus or elsewhere.
-        case ID_OPTION_GBTNT:
-            
-            gbtnt = !gbtnt;
-            
-            if(always)
-            {
-                HMENU menu = GetMenu(framewnd);
-                
-                CheckMenuItem(GetSubMenu(menu,
-                                         GetMenuItemCount(menu) == 5 ? 3 : 4),
-                                         ID_OPTION_GBTNT,
-                                         gbtnt ? MF_CHECKED : MF_UNCHECKED);
-            }
-            
-            break;
-            
-        case ID_Z3_CUT:
-            SendMessage(GetFocus(),WM_CUT,0,0);
-            
-            break;
-            
-        case ID_Z3_COPY:
-            SendMessage(GetFocus(),WM_COPY,0,0);
-            
-            break;
-            
-        case ID_Z3_PASTE:
-            SendMessage(GetFocus(),WM_PASTE,0,0);
-            
-            break;
-            
-        case ID_EDITING_DELOVERITEM:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 128; i++)
-                ((unsigned short*) (rom + 0xdc2f9))[i] = 0xc3f9;
-            
-            *(short*) (rom + 0xdc3f9) = -1;
-            activedoc->sctend=0xdc3fb;
-            
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELDUNGITEM:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x140;i++)
-                ((unsigned short*) (rom + 0xdb69))[i] = 0xdde9;
-            
-            *(short*)(rom + 0xdde9)=-1;
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_DELOVERSPR:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x160;i++)
-                ((unsigned short*) (rom + 0x4c881))[i] = 0xcb41;
-            
-            rom[0x4cb41] = 0xff;
-            
-            memcpy(rom + 0x4cb42,
-                   rom + activedoc->dungspr,
-                   activedoc->sprend - activedoc->dungspr);
-            
-            for(i = 0; i < 0x128; i++)
-            {
-                addle16b_i(rom + 0x4cb42,
-                           i,
-                           (short) (0x4cb42 - activedoc->dungspr) );
-            }
-            
-            activedoc->sprend += 0x4cb42 - activedoc->dungspr;
-            activedoc->dungspr = 0x4cb42;
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELDUNGSPR:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            j = activedoc->dungspr;
-            
-            for(i = 0; i < 0x128; i++)
-            {
-                put_16_le_i(rom + j,
-                            i,
-                            (short) (j + 0x300));
-            }
-            
-            put_16_le(rom + j + 0x300, 0xff00);
-            
-            activedoc->sprend = j + 0x302;
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_DELBLOCKS:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<0x18c;i+=4)
-                *((short*) (rom + 0x271de + i)) = -1;
-            
-            activedoc->modf=1;
-            
-            for(i=0;i<0x128;i++)
-            {
-                if(activedoc->dungs[i])
-                {
-                    hc = GetDlgItem(activedoc->dungs[i], ID_DungEditWindow);
-                    Updatemap((DUNGEDIT*)GetWindowLong(hc,GWL_USERDATA));
-                    InvalidateRect(hc,0,0);
-                }
-            }
-            
-            break;
-        
-        case ID_EDITING_DELTORCH:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            // \task Is this correct? I'm suspicious of writing a 32-bit value
-            // to the rom directly.
-            put_32_le(rom + 0x2736a, u32_neg1);
-            
-            put_16_le(rom + 0x88c1, 4);
-            
-            activedoc->modf = 1;
-            
-            break;
-        
-        case ID_EDITING_DELENT:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 129; i++)
-            {
-                put_16_le_i(rom + 0xdb96f, i, -1);
-            }
-            
-        upddisp:
-            
-            activedoc->modf=1;
-            
-            for(i = 0; i < 160; i++)
-            {
-                if(activedoc->overworld[i].win)
-                {
-                    InvalidateRect(GetDlgItem(GetDlgItem(activedoc->overworld[i].win,2000),3001),0,0);
-                }
-            }
-            
-            break;
-        
-        case ID_EDITING_DELEXIT:
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=0;i<79;i++)
-            {
-                rom[0x15e28 + i] = 255;
-                
-                put_16_le_i(rom + 0x15d8a, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELFLY:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i = 0; i < 9; i++)
-            {
-                put_16_le_i(rom + 0x16ae5, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELWHIRL:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            for(i=9;i<17;i++)
-            {
-                put_16_le_i(rom + 0x16ae5, i, -1);
-            }
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELHOLES:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            memset(rom + 0xdb826,255,19);
-            
-            goto upddisp;
-        
-        case ID_EDITING_DELPITS:
-            
-            if(!activedoc)
-                break;
-            
-            rom = activedoc->rom;
-            
-            memset(rom + 0x190c,255,114);
-            
-            break;
-        
-        case ID_EDIT_ROMPROPERTIES:
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG18,framewnd,rompropdlg,(long)activedoc);
-            
-            break;
-        
-        case ID_EDITING_CLEARDUNGS:
-            
-            for(i=0;i<320;i++)
-            {
-                door_ofs = 6;
-                buf = activedoc->rom+Changesize(activedoc,i+320,8);
-                
-                if(buf)
-                {
-                    *(int*)buf=-65535;
-                    *(int*)(buf+4)=-1;
-                }
-            }
-            
-            activedoc->modf=1;
-            
-            break;
-        
-        case ID_EDITING_REPLACE:
-            
-            // we pass it this program, a pointer to the duplicator dialog, pass framewnd as the 
-            // owner window. duproom is the dialogue handling procedure, and active doc is
-            // a pointer to the currently active rom file.
-            ShowDialog(hinstance, (LPSTR) IDD_DIALOG20, framewnd, duproom, (long) activedoc);
-            
-            break;
-        }
-        
-    default:
-        
-        return DefFrameProc(win,clientwnd,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
+// =============================================================================
 
-long CALLBACK docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
-{
-    FDOC *param;
-    
-    int i;
-    
-    HANDLE h,h2;
-    
-    switch(msg)
-    {
-    case WM_MDIACTIVATE:
-        activedoc=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        
-        goto deflt;
-    
-    case WM_CLOSE:
-        
-        param = (FDOC*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(param->modf || param->m_modf || param->t_modf || param->p_modf)
-            goto save;
-        
-        for(i = 0; i < 160; i++)
-        {
-            if(param->overworld[i].modf)
-                goto save;
-        }
-        
-        for(i = 0; i < 2; i++)
-        {
-            if(param->wmaps[i] && ((WMAPEDIT*) (GetWindowLong(param->wmaps[i], GWL_USERDATA)))->modf)
-                goto save;
-        }
-        
-        for(i=0;i<168;i++) {
-            if(param->ents[i] && ((DUNGEDIT*)(GetWindowLong(param->ents[i],GWL_USERDATA)))->modf) goto save;
-        }
-        
-        for(i=0;i<PALNUM;i++) {
-            if(param->pals[i] && ((PALEDIT*)(GetWindowLong(param->pals[i],GWL_USERDATA)))->modf) goto save;
-        }
-        
-        for(i=0;i<14;i++) {
-            if(param->dmaps[i] && ((LMAPEDIT*)(GetWindowLong(param->dmaps[i],GWL_USERDATA)))->modf) goto save;
-        }
-        
-        for(i=0;i<11;i++) {
-            if(param->tmaps[i] && ((TMAPEDIT*)(GetWindowLong(param->tmaps[i],GWL_USERDATA)))->modf) goto save;
-        }
-        
-        if(param->perspwnd && ((PERSPEDIT*)(GetWindowLong(param->perspwnd,GWL_USERDATA)))->modf) goto save;
-        goto dontsave;
-save:
-        wsprintf(buffer,"Do you want to save the changes to %s?",param->filename);
-        i=MessageBox(framewnd,buffer,"Gigasoft Hyrule Magic",MB_YESNOCANCEL);
-        if(i==IDYES) if(SendMessage(framewnd,WM_COMMAND,ID_Z3_SAVE,0)) break;
-        if(i==IDCANCEL) return 1;
-dontsave:
-        DestroyWindow(GetDlgItem(win,2000));
-        SendMessage(clientwnd,WM_MDIDESTROY,(long)win,0);
-        activedoc=0;
-        param->modf=2;
-        for(i=0;i<160;i++)
-        {
-            if(param->overworld[i].win) SendMessage(param->overworld[i].win,WM_CLOSE,0,0);
-        }
-        
-        for(i=0;i<168;i++)
-        {
-            if(param->ents[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->ents[i],0);
-        }
-        
-        for(i=0;i<4;i++)
-        {
-            if(param->mbanks[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->mbanks[i],0);
-        }
-        
-        for(i=0;i<PALNUM;i++)
-        {
-            if(param->pals[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->pals[i],0);
-        }
-        
-        for(i=0;i<2;i++)
-        {
-            if(param->wmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->wmaps[i],0);
-        }
-        
-        for(i=0;i<14;i++)
-        {
-            if(param->dmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->dmaps[i],0);
-        }
-        
-        for(i=0;i<11;i++)
-        {
-            if(param->tmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->tmaps[i],0);
-        }
-        
-        if(param->perspwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->perspwnd,0);
-        if(param->hackwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->hackwnd,0);
-        if(param->m_loaded) {
-            for(i=0;i<param->srnum;i++)
-                if(param->sr[i].editor) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->sr[i].editor,0);
-        }
-        if(param->t_wnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->t_wnd,0);
-        if(param->perspwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->perspwnd,0);
-        if(param->prev) param->prev->next=param->next;
-        else firstdoc=param->next;
-        if(param->next) param->next->prev=param->prev;
-        else lastdoc=param->prev;
-        h2=GetMenu(framewnd);
-        h=GetSubMenu(h2,GetMenuItemCount(h2)==5?0:1);
-        i=firstdoc?MF_ENABLED:MF_GRAYED;
-        EnableMenuItem(h,ID_Z3_SAVE,i);
-        EnableMenuItem(h,ID_Z3_SAVEAS,i);
-        EnableMenuItem(h2,GetMenuItemCount(h2)==5?1:2,i|MF_BYPOSITION);
-        DrawMenuBar(framewnd);
-        if(sounddoc==param) {
-            if(sndinit) {
-//              EnterCriticalSection(&cs_song);
-                Stopsong();
-//              LeaveCriticalSection(&cs_song);
-            } else sounddoc=0;
-        }
-        free(param->rom);
-        Unloadsongs(param);
-        Unloadovl(param);
-        if(param->t_loaded) {
-            for(i=0;i<param->t_number;i++) free(param->tbuf[i]);
-            free(param->tbuf);
-        }
-        free(param);
-        return 0;
-    case WM_GETMINMAXINFO:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!param) break;
-        return SendMessage(param->editwin,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(param->editwin,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_CREATE:
-        param=(FDOC*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)param);
-        ShowWindow(win,SW_SHOW);
-        param->editwin=CreateSuperDialog(&z3_dlg,win,0,0,0,0,(long)param);
-    default:
-deflt:
-        
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
-int
+BOOL
 Loadsprnames(char   const * const p_buffer,
              size_t         const p_size)
 {
@@ -30876,7 +13141,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         
         name_len = p_buffer[j];
@@ -30889,7 +13154,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         else if(name_len == 0)
         {
@@ -30899,7 +13164,7 @@ Loadsprnames(char   const * const p_buffer,
                        "Bad error happened",
                        MB_OK);
             
-            return 1;
+            return FALSE;
         }
         
         j += 1;
@@ -30913,7 +13178,7 @@ Loadsprnames(char   const * const p_buffer,
                        MB_OK);
             
             // indicate that we had a problem.
-            return 1;
+            return FALSE;
         }
         
         memcpy(sprname[i],
@@ -30926,13 +13191,214 @@ Loadsprnames(char   const * const p_buffer,
         j += name_len;
     }
     
-    return 0;
+    return TRUE;
 }
+
+// =============================================================================
+
+BOOL
+ValidateAltSpriteNamesFile(HM_FileStat const * const p_s)
+{
+    unsigned i = 0;
+    
+    char const * b = p_s->m_contents;
+    
+    // -----------------------------
+    
+    if(p_s->m_file_size < (256 * 9) )
+    {
+        return FALSE;
+    }
+    
+    // The purpose of this loop is to check that all characters in the file
+    // are printable / displayable. It also verifies that each name
+    // actually contains a null terminator. This limits the names to
+    // 8 characters for a well-formed file that passes validation.
+    for
+    (
+        i = 0;
+        i < 256;
+        i += 1, b += 9
+    )
+    {
+        BOOL found_null = FALSE;
+        
+        unsigned j = 0;
+        
+        // -----------------------------
+        
+        for(j = 0; j < 9; j += 1)
+        {
+            if(b[j] == '\0')
+            {
+                found_null = TRUE;
+                
+                continue;
+            }
+            
+            if( ! isprint( b[j] ) )
+            {
+                return FALSE;
+            }
+        }
+        
+        if( ! found_null )
+        {
+            return FALSE;
+        }
+    }
+    
+    return TRUE;
+}
+
+// =============================================================================
+
+// Creates an example alternate spr names file that should fail validation
+// because it has nonprintable characters (even though they wouldn't be
+// picked up by the copying mechanism, this is a bit of an overzealous
+// check, but it's really hypothetical anyway as we've not seen one of these
+// alternate format sprite names files out in the wild. The program also
+// doesn't seem to have any leftover code to generate one of its own, too.
+void
+CreateBadAltSprNamesFile(void)
+{
+    FILE *f = fopen("altsprname_good.DAT", "wb");
+    
+    int i = 0;
+    
+    for(i = 0; i < 256; i += 1)
+    {
+        char text_buf[0x100] = { 0 };
+        
+        sprintf(text_buf, "spr%02x", i);
+        
+        text_buf[6] = 0x01;
+        text_buf[7] = 0x02;
+        text_buf[8] = 0x03;
+        
+        fwrite(text_buf, 1, 9, f);
+    }
+    
+    fclose(f);
+}
+
+// =============================================================================
+
+// Creates an example alternate spr names file that should pass validation.
+void
+CreateGoodAltSprNamesFile(void)
+{
+    FILE *f = fopen("altsprname_good.DAT", "wb");
+    
+    int i = 0;
+    
+    for(i = 0; i < 256; i += 1)
+    {
+        char text_buf[0x100] = { 0 };
+        
+        sprintf(text_buf, "spr%02x", i);
+        
+        text_buf[8] = 0x00;
+        
+        fwrite(text_buf, 1, 9, f);
+    }
+    
+    fclose(f);
+}
+
+// =============================================================================
+
+// \note Alternative method of loading sprite names
+// Slightly different format, probably dates to an earlier time in the
+// development of Hyrule Magic. In practice limits each sprite name to 8
+// characters. Overlord sprites are coerced into using rather uninformative
+// names in this scheme too.
+BOOL
+LoadAltSpriteNamesFile(HM_FileStat const * const p_s)
+{
+     char const * b = p_s->m_contents;
+     
+     int i = 0;
+     
+     // -----------------------------
+     
+     if( ValidateAltSpriteNamesFile(p_s) == FALSE )
+     {
+         return FALSE;
+     }
+     
+     for(i = 0; i < 256; i++, b += 9)
+     {
+         strcpy(sprname[i], b);
+     }
+     
+     // Give overlord sprites generic as hell names.
+     for(i = 0; i < 28; i++)
+     {
+         sprintf(sprname[i + 256], "S%02X", i);
+     }
+     
+     return TRUE;
+}
+
+// =============================================================================
+
+BOOL
+LoadStdSpriteNamesFile(HM_FileStat const * const p_s)
+{
+    if(p_s->m_file_size < 5)
+    {
+        return FALSE;
+    }
+    else
+    {
+        DWORD const size_alleged = ldle32b((uint8_t *) p_s->m_contents + 1);
+        
+        // Claims to have more data than we read out.
+        if( size_alleged > (p_s->m_file_size - 5) )
+        {
+            return FALSE;
+        }
+        else
+        {
+            return Loadsprnames(&p_s->m_contents[5],
+                                size_alleged);
+        }
+    }
+}
+
+// =============================================================================
+
+BOOL
+LoadSpriteNamesFile(void)
+{
+    BOOL result = FALSE;
+    
+    HM_FileStat s = HM_LoadFileContents("sprname.dat");
+    
+    // -----------------------------
+    
+    if( s.m_valid_file )
+    {
+        if(s.m_contents[0])
+        {
+            result = LoadAltSpriteNamesFile(&s);
+        }
+        else
+        {
+            result = LoadStdSpriteNamesFile(&s);
+        }
+    }
+    
+    HM_FreeFileStat(&s);
+        
+    return result;
+}
+
+// =============================================================================
 
 int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 {
-    WNDCLASS wc;
-    
     HMENU hmenu;
     
     HANDLE h,h2;
@@ -30967,161 +13433,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     // set the global instance variable to this program.
     hinstance=hinst;
     
-    wc.style=0;
-    wc.lpfnWndProc=frameproc;
-    wc.cbClsExtra=0;
-    wc.cbWndExtra=0;
-    wc.hInstance=hinst;
-    wc.hIcon=LoadIcon(hinstance,MAKEINTRESOURCE(IDI_ICON1));
-    wc.hCursor = normal_cursor = LoadCursor(0,IDC_ARROW);
-    wc.hbrBackground=0;
-    wc.lpszMenuName=0;
-    wc.lpszClassName="ZEFRAME";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=docproc;
-    wc.lpszClassName="ZEDOC";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=overproc;
-    wc.lpszClassName="ZEOVER";
-    RegisterClass(&wc);
-    
-    // dungeon dialogue editing.
-    wc.lpfnWndProc=dungproc;
-    wc.lpszClassName="ZEDUNGEON";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=musbankproc;
-    wc.lpszClassName="MUSBANK";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackeditproc;
-    wc.lpszClassName="TRACKEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspproc;
-    wc.lpszClassName="PERSPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=patchproc;
-    wc.lpszClassName="PATCHLOAD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=texteditproc;
-    wc.lpszClassName="ZTXTEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=wmapproc;
-    wc.lpszClassName="WORLDMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapproc;
-    wc.lpszClassName="LEVELMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=tmapproc;
-    wc.lpszClassName="TILEMAP";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=blksel16proc;
-    wc.lpszClassName="BLKSEL16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blkedit32proc;
-    wc.lpszClassName="BLKEDIT32";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel8proc;
-    wc.lpszClassName="BLKSEL8";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=blkedit16proc;
-    wc.lpszClassName="BLKEDIT16";
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=(HBRUSH)(COLOR_APPWORKSPACE+1);
-    wc.lpfnWndProc=blkedit8proc;
-    wc.lpszClassName="BLKEDIT8";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=overmapproc;
-    wc.lpszClassName="OVERWORLD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel32proc;
-    wc.lpszClassName="BLKSEL32";
-    RegisterClass(&wc);
-    
-    wc.hCursor=0;
-    wc.lpfnWndProc=dungmapproc;
-    wc.lpszClassName="DUNGEON";
-    RegisterClass(&wc);
-    
-    wc.hCursor = normal_cursor;
-    wc.lpfnWndProc=wmapdispproc;
-    wc.lpszClassName="WMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dungselproc;
-    wc.lpszClassName="DUNGSEL";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=tmapdispproc;
-    wc.lpszClassName="TMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blk16search;
-    wc.lpszClassName="SEARCH16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=palselproc;
-    wc.lpszClassName="PALSELECT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapdispproc;
-    wc.lpszClassName="LMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dpceditproc;
-    wc.lpszClassName="DPCEDIT";
-    RegisterClass(&wc);
-    
-    wc.style=CS_HREDRAW|CS_VREDRAW;
-    wc.lpfnWndProc=palproc;
-    wc.lpszClassName="PALEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapblksproc;
-    wc.lpszClassName="LMAPBLKS";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackerproc;
-    wc.lpszClassName="TRAX0R";
-    wc.style=0;
-    wc.hbrBackground=white_brush;
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=black_brush;
-    wc.lpfnWndProc=sampdispproc;
-    wc.lpszClassName="SAMPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspdispproc;
-    wc.lpszClassName="PERSPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=superdlgproc;
-    wc.lpszClassName="SUPERDLG";
-    wc.hbrBackground=(HBRUSH)(wver?COLOR_WINDOW+1:COLOR_BTNFACE+1);
-    wc.cbWndExtra=12;
-    RegisterClass(&wc);
-    
-    // all the windows classes have been registered.
+    HM_RegisterClasses(hinst);
     
     //  postmsgfunc=&PostMessage;
     //  wsprintf(buffer,"%08X",hinstance);
@@ -31162,7 +13474,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     null_pen  = (HPEN) GetStockObject(NULL_PEN);
     white_pen = (HPEN) GetStockObject(WHITE_PEN);
-    blue_pen  = (HPEN) CreatePen(PS_SOLID,0,0xff0000);
+    
+    blue_pen  = (HPEN) CreatePen(PS_SOLID, 0, 0xff0000);
+    
+    black_pen = (HPEN) GetStockObject(BLACK_PEN);
     
     for(i=0;i<8;i++)
         shade_brush[i]=CreateSolidBrush(i * 0x1f1f1f);
@@ -31185,7 +13500,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
 #if 0
     trk_font = GetStockObject(ANSI_FIXED_FONT);
 #else
-    trk_font = CreateFont(0, 0,
+    trk_font = CreateFont(16, 0,
                           0, 0,
                           0,
                           FALSE, FALSE, FALSE,
@@ -31256,7 +13571,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             // Number of bytes that are supposed to be in this configuration
             // section.
-            section_size = get_32_le(cfg_desc + 1);
+            section_size = ldle32b(cfg_desc + 1);
             
             if(section_size == 0)
             {
@@ -31273,7 +13588,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                 // Number of bytes able to be read from the section.
                 DWORD n = 0;
                 
-                int spr_load_error = 0;
+                BOOL spr_loaded = FALSE;
                 
                 unsigned char *section_data = 0;
                 
@@ -31302,10 +13617,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     // Use an array of sprite names that has been directly
                     // inlined in the config file.
-                    spr_load_error = Loadsprnames((char const *) section_data,
-                                                  section_size);
+                    spr_loaded = Loadsprnames((char const *) section_data,
+                                              section_size);
                     
-                    if(spr_load_error == 0)
+                    if(spr_loaded)
                     {
                         l |= CFG_SPRNAMES_LOADED;
                     }
@@ -31372,7 +13687,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     
                     if(section_size >= 2)
                     {
-                        soundvol = get_16_le(section_data);
+                        soundvol = ldle16b(section_data);
                         
                         l |= CFG_SNDVOL_LOADED;
                     }
@@ -31439,18 +13754,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     UpdMRU();
     
-    if( !(l & CFG_SPRNAMES_LOADED) )
+    if( ! (l & CFG_SPRNAMES_LOADED) )
     {
-        h = CreateFile("SPRNAME.DAT",
-                       GENERIC_READ,
-                       FILE_SHARE_READ,
-                       0,
-                       OPEN_EXISTING,
-                       0,
-                       0);
-        
-        if(h == INVALID_HANDLE_VALUE)
-        defaultnames:
+        if( LoadSpriteNamesFile() == FALSE )
         {
             HRSRC const
             spr_names_resource = FindResource(0,
@@ -31479,81 +13785,36 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             FreeResource(spr_names_resource);
         }
-        else
-        {
-            DWORD bytes_read = 0;
-            
-            ReadFile(h, buffer, 1, &bytes_read, 0);
-            
-            if(buffer[0])
-            {
-                // \task This looks both experimental and potentially buggy.
-                
-                b = (unsigned char*) malloc(0x1800);
-                
-                *b = *buffer;
-                
-                ReadFile(h, b + 1, 0x17ff, &bytes_read, 0);
-                
-                for(i = 0; i < 256; i++)
-                {
-                    strcpy(sprname[i], (char const *) b);
-                    
-                    b += 9;
-                }
-                
-                for(i = 0; i < 28; i++)
-                    wsprintf(sprname[i + 256], "S%02X", i);
-                
-                b -= 0x1800;
-                
-                free(b);
-                
-                i = 0;
-            }
-            else
-            {
-                uint8_t desc_buffer[4];
-                
-                char * spr_names = 0;
-                
-                DWORD num_read     = 0;
-                DWORD size_actual  = 0;
-                DWORD size_alleged = 0;
-                
-                // -----------------------------
-                
-                ReadFile(h, desc_buffer, 4, &num_read, 0);
-                
-                size_alleged = get_32_le(desc_buffer);
-                
-                spr_names = (char*) calloc(1, size_alleged);
-                
-                ReadFile(h, spr_names, size_alleged, &size_actual, 0);
-                
-                if(size_actual == size_alleged)
-                {
-                    i = Loadsprnames(spr_names, size_actual);
-                }
-                
-                free(spr_names);
-            }
-            
-            CloseHandle(h);
-            
-            if(i)
-            {
-                goto defaultnames;
-            }
-        }
     }
+    
+    entrance_names = LoadTextFileResource(IDR_ENTRANCE_NAMES);
+    area_names = LoadTextFileResource(IDR_AREA_NAMES);
     
     GetCurrentDirectory(MAX_PATH, currdir);
     
     debug_window = CreateNotificationWindow(framewnd);
+    debug_box    = CreateNotificationBox(framewnd);
     
     while(GetMessage(&msg,0,0,0))
     {
+        if(debug_box && (msg.hwnd == debug_box) )
+        {
+            if(msg.message == WM_LBUTTONDOWN && ! always)
+            {
+                HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
+                
+                char class_name[0x200];
+                
+                GetClassName(below, class_name, 0x200);
+                
+                msg.hwnd = below;
+                
+                DispatchMessage(&msg);
+                
+                continue;
+            }
+        }
+        
         if(msg.message == WM_MOUSEWHEEL)
         {
             POINT pt;
@@ -31589,7 +13850,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             b2 = b = (unsigned char*) malloc(j + 5);
             *b2=0;
             
-            put_32_le(b2 + 1, j);
+            stle32b(b2 + 1, j);
             
             b2 += 5;
             
@@ -31634,7 +13895,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             b2[0] = 1;
             
-            put_32_le(b2 + 1, j + 1);
+            stle32b(b2 + 1, j + 1);
             
             // Write how many MRU entries follow. Note that this could be
             // zero, in which case the overall written out section is only
@@ -31672,9 +13933,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             desc[0] = 2;
             
-            put_32_le(desc + 1, 2);
+            stle32b(desc + 1, 2);
             
-            put_16_le(section, soundvol);
+            stle16b(section, soundvol);
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             WriteFile(h, section, 2, &write_bytes, 0);
@@ -31690,20 +13951,20 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
             
             desc[0] = 3;
             
-            put_32_le(desc + 1, 100);
+            stle32b(desc + 1, 100);
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             
             for(i = 0; i < MIDI_ARR_WORDS; i += 1)
             {
-                put_16_le(entry, midi_inst[i]);
+                stle16b(entry, midi_inst[i]);
                 
                 WriteFile(h, entry, 2, &write_bytes, 0);
             }
             
             for(i = 0; i < MIDI_ARR_WORDS; i += 1)
             {
-                put_16_le(entry, midi_trans[i]);
+                stle16b(entry, midi_trans[i]);
                 
                 WriteFile(h, entry, 2, &write_bytes, 0);
             }
@@ -31713,7 +13974,7 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
         {
             desc[0] = 4;
             
-            put_32_le(desc + 1, strlen(asmpath) );
+            stle32b(desc + 1, strlen(asmpath) );
             
             WriteFile(h, desc, 5, &write_bytes, 0);
             WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);

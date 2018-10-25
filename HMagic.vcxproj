@@ -56,7 +56,7 @@
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <MinimalRebuild>true</MinimalRebuild>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BrowseInformation>true</BrowseInformation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
     </ClCompile>
@@ -78,7 +78,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;Winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winmm.lib;comctl32.lib;msimg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -89,7 +89,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <Optimization>MaxSpeed</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -108,17 +108,74 @@
     <Link>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;Winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AsmPatchFrame.c" />
+    <ClCompile Include="AudioFrame.c" />
+    <ClCompile Include="AudioLogic.c" />
+    <ClCompile Include="ChooseObject.c" />
+    <ClCompile Include="DocumentFrame.c" />
+    <ClCompile Include="DungeonDlg.c" />
+    <ClCompile Include="DungeonFrame.c" />
+    <ClCompile Include="DungeonLogic.c" />
+    <ClCompile Include="DungeonMap.c" />
+    <ClCompile Include="DungonHeader.c" />
+    <ClCompile Include="DuplicateRoomDlg.c" />
+    <ClCompile Include="EditExitDlg.c" />
+    <ClCompile Include="EditWhirlpoolDlg.c" />
+    <ClCompile Include="HMagicConfigDlg.c" />
+    <ClCompile Include="HMagicFrame.c" />
+    <ClCompile Include="HMagicLogic.c" />
+    <ClCompile Include="HMagicUtility.c" />
+    <ClCompile Include="Map16_SearchDlg.c" />
+    <ClCompile Include="OverworldDlg.c" />
+    <ClCompile Include="OverworldEdit.c" />
+    <ClCompile Include="OverworldFrame.c" />
+    <ClCompile Include="OverworldMap.c" />
+    <ClCompile Include="PaletteEdit.c" />
+    <ClCompile Include="PaletteFrame.c" />
+    <ClCompile Include="PaletteSelector.c" />
+    <ClCompile Include="RomProperties.c" />
+    <ClCompile Include="SampleEditDlg.c" />
+    <ClCompile Include="ScreenEditorLogic.c" />
+    <ClCompile Include="SoundDevSelectDlg.c" />
+    <ClCompile Include="SuperDlg.c" />
+    <ClCompile Include="TextDlg.c" />
+    <ClCompile Include="TextFrame.c" />
+    <ClCompile Include="TextLogic.c" />
+    <ClCompile Include="WindowClasses.c" />
+    <ClCompile Include="WorldMapDisplay.c" />
+    <ClCompile Include="WorldMapDlg.c" />
+    <ClCompile Include="WorldMapFrame.c" />
+    <ClCompile Include="WorldMapLogic.c" />
+    <ClCompile Include="Wrappers.c" />
     <ClCompile Include="z3ed.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level1</WarningLevel>
     </ClCompile>
+    <ClCompile Include="Zelda3_Dialog.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AudioLogic.h" />
+    <ClInclude Include="Callbacks.h" />
+    <ClInclude Include="DungeonEnum.h" />
+    <ClInclude Include="DungeonLogic.h" />
+    <ClInclude Include="GdiObjects.h" />
+    <ClInclude Include="HMagicEnum.h" />
+    <ClInclude Include="HMagicLogic.h" />
+    <ClInclude Include="HMagicUtility.h" />
+    <ClInclude Include="OverworldEdit.h" />
+    <ClInclude Include="OverworldEnum.h" />
+    <ClInclude Include="PaletteEdit.h" />
+    <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="ScreenEditorLogic.h" />
     <ClInclude Include="structs.h" />
+    <ClInclude Include="TextEnum.h" />
+    <ClInclude Include="TextLogic.h" />
+    <ClInclude Include="WorldMapLogic.h" />
+    <ClInclude Include="Wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico" />
@@ -129,6 +186,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="text_resources\area_names.txt" />
+    <None Include="text_resources\entrance_names.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

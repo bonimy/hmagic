@@ -1,0 +1,163 @@
+Lost Woods Northwest
+Lost Woods Northeast
+Lumberjack Estate
+Tower of Hera Northwest
+Tower of Hera Northeast
+Death Mountain Bridge Northwest (LW)
+Death Mountain Bridge Northeast (LW)
+Turtle Rock (LW)
+Lost Woods Southwest
+Lost Woods Southeast
+Death Mountain Gateway
+Tower of Hera Southwest
+Tower of Hera Southeast
+Mountain Bridge Northwest (LW)
+Mountain Bridge Northeast (LW)
+Zora Falls Outskirts
+Lost Woods Outskirts
+Kakariko Psychics Unlimited
+Nothern Pond
+Sanctuary Grounds
+Graveyard
+South Bend
+Coven of Commerce
+Zora Ridge
+Kakariko Northwest
+Kakariko Northeast
+West Woods (LW)
+Hyrule Castle Northwest
+Hyrule Castle Northeast
+Castle East Bridge
+Eastern Ruins Northwest
+Eastern Ruins Northeast
+Kakariko Southwest
+Kakariko Southeast
+Smithy Estate
+Hyrule Castle Southwest
+Hyrule Castle Southeast
+Moundlands (LW)
+Eastern Ruins Southwest
+Eastern Ruins Southeast
+Kakariko Maze
+Kakariko South Annex
+Haunted Grove
+Uncle's Estate West
+Uncle's Estate East
+Eastern Ruins Bridge
+Eastern Ruins Ridge
+Eastern Cul-de-sac
+Desert of Mystery Northwest
+Desert of Mystery Northeast
+Haunted Terrace
+Hyrule Wetlands Northwest
+Hyrule Wetlands Northeast
+Lake Hylia Northwest
+Lake Hylia Northeast
+Frosty Caves
+Desert of Mystery Southwest
+Desert of Mystery Southeast
+Via of Mystery
+Watergate Grounds
+Hyrule Wetlands Terrace
+Lake Hylia Southwest
+Lake Hylia Southeast
+Octorock Nesting Grounds
+Skull Woods Northwest
+Skull Woods Northeast
+Eastern Skull Clearing
+Ganon's Tower Northwest
+Ganon's Tower Northeast
+Death Mountain Bridge Northwest (DW)
+Death Mountain Bridge Northeast (DW)
+Turtle Rock (DW)
+Skull Woods Southwest
+Skull Woods Southeast
+Bungie Cave Fun Zone
+Ganon's Tower Southwest
+Ganon's Tower Southeast
+Death Mountain Bridge Southwest (DW)
+Death Mountain Bridge Southeast (DW)
+Falls of Ill Omen
+Skull Woods Outskirts
+Village of Outcasts Psychics Unlimited
+Northern Pond (Evil Edition)
+Unctuary Grounds
+Garden of Very Bad Things
+South Bend (DW)
+Riverside Commerce
+Ridge of Ill Omen
+Village of Outcasts Northwest
+Village of Outcasts Northeast
+West Woods (DW)
+Pyramid of Power Northwest
+Pyramid of Power Northeast
+Pyramid East Non-bridge
+Maze of Darkness Northwest
+Maze of Darkness Northeast
+Village of Outcasts Southwest
+Village of Outcasts Southwest
+Gossip Shop
+Pyramid of Power Southwest
+Pyramid of Power Southeast
+Moundlands (DW)
+Maze of Darkness Southwest
+Maze of Darkness Southeast  
+Digging Game Field
+Archery Shop Grounds
+Depressing Grove
+Bomb Shop Grounds West
+Bomp Shop Grounds
+Hammer Time Bridge
+Terrace of Darkness
+Cul-de-sac of Darkness
+Swamp of Evil Northwest
+Swamp of Evil Northeast
+Depressing Terrace
+Wilted Wetlands Northwest
+Wilted Wetlands Northeast
+Lake Dielia Northwest
+Lake Dielia Northeast
+Info Hub
+Swamp of Evil Southwest
+Swamp of Evil Southeast
+Via To Nowhere
+Swamp Palace Grounds
+Wilted Terrace
+Lake Dielia Southwest
+Lake Dielia Southeast
+A Terrible Vacation Spot
+Master Grove / Under Hyrule Bridge
+Zora Falls Northwest
+Zora Falls Northeast
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Triforce Room / Curtain Overlay
+Zora Falls Southwest
+Zora Falls Southeast
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Triforce Room / Curtain Overlay (2?)
+Master Grove / Under Hyrule Bridge (2?)
+Birds' Eye Woods Underlay
+Death Mountain Panorama (DW)
+Lost Woods Mist Overlay
+Unused Originally
+Unused Originally
+Unused Originally
+Unused Originally
+Lava Flow Underlay
+Lost Woods Mist Overlay (2?)
+Lost Woods Tree Cover Overlay
+Rain Overlay
+Unused
+
+

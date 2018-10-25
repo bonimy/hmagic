@@ -13,10 +13,172 @@
       <UniqueIdentifier>{9533aaf5-1597-4a63-8498-6d8be28c07d0}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="Source Files\Dungeon">
+      <UniqueIdentifier>{f2927367-4d0a-4a4a-8cd8-27ee57c25a5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Dungeon">
+      <UniqueIdentifier>{396b39a9-803a-4cc8-964b-6a33fb281617}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\General">
+      <UniqueIdentifier>{4004e306-2cf4-4403-b46f-faf456ebae03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Palette">
+      <UniqueIdentifier>{ebc2c0db-d173-4a91-af9b-7d0da47ef26d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Palette">
+      <UniqueIdentifier>{0210680b-1104-4d60-a0fe-94c1b11b9948}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Overworld">
+      <UniqueIdentifier>{959f21f3-a601-4368-86a2-e3ddb71fcc9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Overworld">
+      <UniqueIdentifier>{ca0b16c5-4e9d-4998-ab64-8ef8c7cdcb3a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\World Map">
+      <UniqueIdentifier>{d1ea3d90-19ef-4438-aa8b-390ed2ff1d6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\World Map">
+      <UniqueIdentifier>{58cf0cac-dac6-4170-b976-ad641d1d821e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Text">
+      <UniqueIdentifier>{69311a16-0edf-426b-ae12-2a126aee6436}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Text">
+      <UniqueIdentifier>{075436c0-d378-4417-ad89-50c35a892a05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ScreenEditors">
+      <UniqueIdentifier>{04c462b1-f565-4fdc-97a1-74049127cb14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Audio">
+      <UniqueIdentifier>{f5b74ea8-f24d-4a6c-aeaf-78bf54d4fe35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Audio">
+      <UniqueIdentifier>{7430f52d-ff48-462a-97b2-29ad77e7c39d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonMap.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="ChooseObject.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="Wrappers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonDlg.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="DungonHeader.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowClasses.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PaletteFrame.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="PaletteEdit.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="PaletteSelector.c">
+      <Filter>Source Files\Palette</Filter>
+    </ClCompile>
+    <ClCompile Include="DocumentFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RomProperties.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldMap.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldEdit.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonFrame.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldFrame.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapDisplay.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapLogic.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapDlg.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="WorldMapFrame.c">
+      <Filter>Source Files\World Map</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonLogic.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="TextLogic.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16_SearchDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Zelda3_Dialog.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenEditorLogic.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextDlg.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicLogic.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextFrame.c">
+      <Filter>Source Files\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicConfigDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicUtility.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AsmPatchFrame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DuplicateRoomDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SoundDevSelectDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioLogic.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="SuperDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SampleEditDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="EditExitDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="EditWhirlpoolDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioFrame.c">
+      <Filter>Source Files\Audio</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -25,6 +187,57 @@
     </ClInclude>
     <ClInclude Include="structs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonEnum.h">
+      <Filter>Header Files\Dungeon</Filter>
+    </ClInclude>
+    <ClInclude Include="Callbacks.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="prototypes.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="Wrappers.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="GdiObjects.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
+    <ClInclude Include="PaletteEdit.h">
+      <Filter>Header Files\Palette</Filter>
+    </ClInclude>
+    <ClInclude Include="OverworldEdit.h">
+      <Filter>Header Files\Overworld</Filter>
+    </ClInclude>
+    <ClInclude Include="OverworldEnum.h">
+      <Filter>Header Files\Overworld</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldMapLogic.h">
+      <Filter>Header Files\World Map</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonLogic.h">
+      <Filter>Header Files\Dungeon</Filter>
+    </ClInclude>
+    <ClInclude Include="TextEnum.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="TextLogic.h">
+      <Filter>Header Files\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenEditorLogic.h">
+      <Filter>Header Files\ScreenEditors</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicLogic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicEnum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HMagicUtility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioLogic.h">
+      <Filter>Header Files\Audio</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -40,5 +253,13 @@
       <Filter>Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="sprname.dat" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="text_resources\entrance_names.txt">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="text_resources\area_names.txt">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

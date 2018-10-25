@@ -8,7 +8,6 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
-
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -45,39 +44,107 @@ CAPTION "Graphic schemes"
 FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     LTEXT           "Main blockset:",IDC_STATIC,7,7,49,9
-    EDITTEXT        3000,61,7,21,12,ES_AUTOHSCROLL
-    EDITTEXT        3004,7,22,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3005,29,22,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3006,51,22,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3007,73,22,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3008,7,36,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3009,29,36,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3010,51,36,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3011,73,36,19,12,ES_AUTOHSCROLL
+    CONTROL         "",3000,"NumEdit",WS_TABSTOP,61,7,21,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3004,"NumEdit",WS_TABSTOP,7,22,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3005,"NumEdit",WS_TABSTOP,29,22,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3006,"NumEdit",WS_TABSTOP,51,22,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3007,"NumEdit",WS_TABSTOP,73,22,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3008,"NumEdit",WS_TABSTOP,7,36,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3009,"NumEdit",WS_TABSTOP,29,36,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3010,"NumEdit",WS_TABSTOP,51,36,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3011,"NumEdit",WS_TABSTOP,73,36,19,12,WS_EX_CLIENTEDGE
     LTEXT           "Room blockset:",IDC_STATIC,7,54,49,9
-    EDITTEXT        3001,61,54,21,12,ES_AUTOHSCROLL
-    EDITTEXT        3012,7,70,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3013,29,70,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3014,51,70,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3015,73,70,19,12,ES_AUTOHSCROLL
+    CONTROL         "",3001,"NumEdit",WS_TABSTOP,61,54,21,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3012,"NumEdit",WS_TABSTOP,7,70,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3013,"NumEdit",WS_TABSTOP,29,70,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3014,"NumEdit",WS_TABSTOP,51,70,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3015,"NumEdit",WS_TABSTOP,73,70,19,12,WS_EX_CLIENTEDGE
     CONTROL         "",IDC_CUSTOM3,"BLKSEL8",WS_VSCROLL | WS_TABSTOP,101,7,122,123,WS_EX_CLIENTEDGE
     LTEXT           "Spr. blockset:",IDC_STATIC,7,87,49,9
-    EDITTEXT        3002,61,87,21,12,ES_AUTOHSCROLL
-    EDITTEXT        3016,7,102,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3017,29,102,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3018,51,102,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3019,73,102,19,12,ES_AUTOHSCROLL
+    CONTROL         "",3002,"NumEdit",WS_TABSTOP,61,87,21,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3016,"NumEdit",WS_TABSTOP,7,102,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3017,"NumEdit",WS_TABSTOP,29,102,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3018,"NumEdit",WS_TABSTOP,51,102,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3019,"NumEdit",WS_TABSTOP,73,102,19,12,WS_EX_CLIENTEDGE
     LTEXT           "Palette:",IDC_STATIC,7,122,49,9
-    EDITTEXT        3003,61,122,21,12,ES_AUTOHSCROLL
-    EDITTEXT        3020,7,137,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3021,29,137,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3022,51,137,19,12,ES_AUTOHSCROLL
-    EDITTEXT        3023,73,137,19,12,ES_AUTOHSCROLL
+    CONTROL         "",3003,"NumEdit",WS_TABSTOP,61,122,21,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3020,"NumEdit",WS_TABSTOP,7,137,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3021,"NumEdit",WS_TABSTOP,29,137,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3022,"NumEdit",WS_TABSTOP,51,137,19,12,WS_EX_CLIENTEDGE
+    CONTROL         "",3023,"NumEdit",WS_TABSTOP,73,137,19,12,WS_EX_CLIENTEDGE
     LTEXT           "Pal:",IDC_STATIC,185,138,21,12
-    EDITTEXT        IDC_EDIT1,209,136,14,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_EDIT1,"NumEdit",WS_TABSTOP,209,136,14,14,WS_EX_CLIENTEDGE
 END
 
 #endif    // English resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_HEADER, DIALOG
+    BEGIN
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_HEADER DIALOGEX 0, 0, 136, 221
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_CAPTION | WS_SYSMENU
+CAPTION "Room properties"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,86,207,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,1,207,50,14
+    LTEXT           "Effect:",IDC_STATIC,7,7,20,10
+    LTEXT           "Tag1:",IDC_STATIC,7,26,20,10
+    LTEXT           "Tag2:",IDC_STATIC,7,49,20,10
+    LTEXT           "Hole/Warp",IDC_STATIC4,7,78,53,11
+    EDITTEXT        IDC_EDIT4,61,78,33,12,ES_AUTOHSCROLL
+    LTEXT           "Plane",IDC_STATIC3,105,65,25,11
+    EDITTEXT        IDC_EDIT6,98,78,33,12,ES_AUTOHSCROLL
+    LTEXT           "Room",IDC_STATIC2,67,65,25,11
+    LTEXT           "Staircase 1",IDC_STATIC5,7,94,53,11
+    EDITTEXT        IDC_EDIT7,61,94,33,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT15,98,94,33,12,ES_AUTOHSCROLL
+    LTEXT           "Staircase 2",IDC_STATIC6,7,108,53,11
+    EDITTEXT        IDC_EDIT16,61,108,33,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT17,98,108,33,12,ES_AUTOHSCROLL
+    LTEXT           "St 3/Door 1",IDC_STATIC7,7,124,53,11
+    EDITTEXT        IDC_EDIT18,61,124,33,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT19,98,124,33,12,ES_AUTOHSCROLL
+    LTEXT           "St 4/Door 2",IDC_STATIC8,7,138,53,11
+    EDITTEXT        IDC_EDIT20,61,138,33,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT21,98,138,33,12,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBO1,33,7,103,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO2,33,25,103,102,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO3,33,47,103,102,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Telepathic message:",IDC_STATIC,7,153,37,19
+    CONTROL         "",IDC_TELEPATH_EDIT,"NumEdit",WS_TABSTOP,51,156,36,13,WS_EX_CLIENTEDGE
+    PUSHBUTTON      "",IDC_BUTTON1,98,157,13,11,BS_BITMAP
+    PUSHBUTTON      "",IDC_BUTTON3,113,157,13,11,BS_BITMAP
+    CONTROL         "Pits that hurt the player",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,174,87,12
+END
+
+#endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
@@ -113,7 +180,7 @@ END
 //
 
 IDD_DEBUG_DLG DIALOGEX 0, 0, 361, 58
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_CAPTION | WS_SYSMENU
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_CAPTION
 EXSTYLE WS_EX_TOPMOST | WS_EX_TOOLWINDOW
 CAPTION "Debug"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
@@ -126,6 +193,15 @@ BEGIN
     LTEXT           "",IDC_STATIC6,68,38,286,13,WS_BORDER
 END
 
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RCDATA
+//
+IDR_SPRNAMES            RCDATA                  "sprname.dat"
+IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
+IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -554,43 +630,6 @@ BEGIN
     EDITTEXT        IDC_EDIT1,83,5,29,12,ES_AUTOHSCROLL | NOT WS_VISIBLE
 END
 
-IDD_HEADER DIALOG 0, 0, 142, 209
-STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Room properties"
-FONT 8, "MS Sans Serif"
-BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,85,188,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,7,188,50,14
-    LTEXT           "Effect:",IDC_STATIC,7,7,20,10
-    LTEXT           "Tag1:",IDC_STATIC,7,26,20,10
-    LTEXT           "Tag2:",IDC_STATIC,7,49,20,10
-    LTEXT           "Hole/Warp",IDC_STATIC4,7,78,53,11
-    EDITTEXT        IDC_EDIT4,61,78,33,12,ES_AUTOHSCROLL
-    LTEXT           "Plane",IDC_STATIC3,105,65,25,11
-    EDITTEXT        IDC_EDIT6,98,78,33,12,ES_AUTOHSCROLL
-    LTEXT           "Room",IDC_STATIC2,67,65,25,11
-    LTEXT           "Staircase 1",IDC_STATIC5,7,94,53,11
-    EDITTEXT        IDC_EDIT7,61,94,33,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT15,98,94,33,12,ES_AUTOHSCROLL
-    LTEXT           "Staircase 2",IDC_STATIC6,7,108,53,11
-    EDITTEXT        IDC_EDIT16,61,108,33,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT17,98,108,33,12,ES_AUTOHSCROLL
-    LTEXT           "St 3/Door 1",IDC_STATIC7,7,124,53,11
-    EDITTEXT        IDC_EDIT18,61,124,33,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT19,98,124,33,12,ES_AUTOHSCROLL
-    LTEXT           "St 4/Door 2",IDC_STATIC8,7,138,53,11
-    EDITTEXT        IDC_EDIT20,61,138,33,12,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT21,98,138,33,12,ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBO1,32,7,103,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_COMBO2,32,25,103,102,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_COMBO3,32,46,103,102,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Telepathic message:",IDC_STATIC,7,153,37,19
-    EDITTEXT        IDC_EDIT1,51,156,36,13,ES_AUTOHSCROLL
-    PUSHBUTTON      "",IDC_BUTTON1,98,157,13,11,BS_BITMAP
-    PUSHBUTTON      "",IDC_BUTTON3,113,157,13,11,BS_BITMAP
-    CONTROL         "Pits that hurt the player",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,174,87,12
-END
-
 IDD_DIALOG16 DIALOGEX 0, 0, 252, 175
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Graphic editor"
@@ -699,6 +738,7 @@ BEGIN
     LTEXT           "The following bad errors happened during execution of FSNASM:",IDC_STATIC,7,7,172,18
     EDITTEXT        IDC_EDIT1,8,28,172,87,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
 END
+
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -811,8 +851,7 @@ END
 
 2 TEXTINCLUDE 
 BEGIN
-    "#include ""afxres.h""\r\n"
-    "\0"
+    "#include ""afxres.h""\0"
 END
 
 3 TEXTINCLUDE 
@@ -822,14 +861,6 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// RCDATA
-//
-
-IDR_SPRNAMES            RCDATA                  "sprname.dat"
 
 /////////////////////////////////////////////////////////////////////////////
 //

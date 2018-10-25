@@ -1,9 +1,37 @@
 
-#if !defined HYRULE_MAGIC_STRUCTS_HEADER_GUARD
+#if !defined HMAGIC_STRUCTS_HEADER_GUARD
 
-    #define HYRULE_MAGIC_STRUCTS_HEADER_GUARD
+    #define HMAGIC_STRUCTS_HEADER_GUARD
 
+    #define OEMRESOURCE
+
+    // 'nonstandard extension used : non-constant aggregate initializer'
+    // This warning is not really relevant since major vendors support this
+    // extension and C99 eliminates it completely whenever MS gets around to
+    // supporting it.
+    #pragma warning(disable:4204)
+
+    // There are just too many of these warnings to address at the moment
+    // having to deal with truncation from int to short or char. They should
+    // Get tackled eventually (and carefully).
+    // \task Do this at some point.
+#if 1
+    #pragma warning(disable:4242)
+    #pragma warning(disable:4244)
+#endif
+
+    #pragma warning(push, 0)
+
+    #include <windows.h>
     #include <stdint.h>
+    #include <commctrl.h>
+    #include <mmsystem.h>
+    #include <math.h>
+
+    #pragma warning(pop)
+
+
+    #include "resource.h"
 
 // =============================================================================
 
@@ -247,9 +275,18 @@ typedef struct
     EDITWIN ew;
     HWND dlg;
     unsigned short flag,init,editsamp;
-    int width,height,pageh,pagev,zoom,scroll,page,sell,selr;
+    int width,height,pageh,pagev,zoom,scroll,page;
+    
+    /// Left hand sample selection point
+    int sell;
+    
+    /// Right hand sample selection point
+    int selr;
+    
     int editinst;
-    ZWAVE*zw;
+    
+    ZWAVE *zw;
+    
 } SAMPEDIT;
 
 typedef struct
@@ -352,12 +389,17 @@ typedef struct
     unsigned char *tbuf;
     
     // the header's size.
-    short hsize;
+    int hsize;
     
     // the header buffer.
     unsigned char hbuf[14];
     
     int map_vscroll_delta;
+    
+    /// A buffer for all pixels of the map
+    uint8_t map_bits[512 * 512];
+    
+    RECT m_selected_obj_rect;
     
 } DUNGEDIT;
 
@@ -708,10 +750,52 @@ typedef struct
 
 // =============================================================================
 
+typedef
+struct
+{
+    unsigned torches;
+    unsigned torch_count;
+        
+} dungeon_offsets_ty;
+
+typedef
+struct
+{
+    unsigned dummy;
+    
+} overworld_offsets_ty;
+
+typedef
+struct
+{
+    dungeon_offsets_ty dungeon;
+    
+    overworld_offsets_ty overworld;
+
+} offsets_ty;
+
+// =============================================================================
+
+extern offsets_ty offsets;
+
+// =============================================================================
+
+typedef uint8_t * rom_ty;
+typedef uint8_t const * rom_cty;
+
+// =============================================================================
+
+/// A convenience type for when we need a buffer larger enough to do common
+/// types of C string manipulation (sprintf, MessageBox, etc).
+typedef char text_buf_ty[0x200];
+
+// =============================================================================
+
 extern SDCREATE *firstdlg, *lastdlg;
 
 extern FDOC *mark_doc;
 extern FDOC *firstdoc, *lastdoc, *activedoc;
+extern FDOC *sounddoc;
 
 extern DUNGEDIT * dispwnd;
 
@@ -750,74 +834,71 @@ extern SUPERDLG overdlg,
                 patchdlg,
                 z3_dlg;
 
+// The handle to the program
+extern HINSTANCE hinstance;
 
-// =============================================================================
+extern HWND framewnd, clientwnd;
 
-typedef
-struct
-{
-    BOOL m_control_down;
+extern short dm_x;
+extern short dm_k;
 
-    POINT m_rel_pos;
-    POINT m_screen_pos;
-    
-} HM_MouseMoveData;
+extern uint16_t *dm_rd;
+extern uint16_t *dm_wr;
+extern uint16_t *dm_buf;
+extern uint16_t *dm_tmp;
 
-// =============================================================================
+extern unsigned char dm_l, dm_dl;
 
-/// For use with mouse button down / up messages, click, hover messages, and 
-typedef
-struct
-{
-    /// Full copy of all the flags just for reference.
-    unsigned m_flags;
-    
-    /// Is the shift key down?
-    BOOL m_shift_key;
-    
-    /// Is the control key down?
-    BOOL m_control_key;
-    
-    /// Is the ALT key down?
-    BOOL m_alt_key;
-    
-    POINT m_rel_pos;
-    POINT m_screen_pos;
-    
-} HM_MouseData;
+extern const char obj3_h[248];
+extern const char obj3_m[248];
+extern const char obj3_w[248];
 
-// =============================================================================
+extern const unsigned char obj3_t[248];
 
-typedef
-struct
-{
-    signed int m_distance;
-    
-    /// Full copy of all the flags just for reference.
-    unsigned m_flags;
-    
-    /// Is the shift key down?
-    BOOL m_shift_key;
-    
-    /// Is the control key down?
-    BOOL m_control_key;
+extern char const * cur_sec;
 
-    /// Is the ALT key down?
-    BOOL m_alt_key;
+extern HWND debug_window;
 
-    POINT m_screen_pos;
+extern int wver;
 
-} HM_MouseWheelData;
+extern int const always;
 
-// =============================================================================
+extern const short bg3blkofs[4];
 
-typedef
-struct
-{
-    HWND m_deactivating;
-    HWND m_activating;
-}
-HM_MdiActivateData;
+extern int palhalf[8];
+
+extern HDC objdc;
+
+extern RECT const empty_rect;
+
+extern DUNGEDIT * dunged;
+
+extern uint8_t drawbuf[0x400];
+
+extern uint16_t *dm_buf;
+
+extern char const * mus_str[];
+
+extern char const * level_str[];
+
+extern int door_ofs;
+
+extern uint16_t const u16_neg1;
+
+extern uint32_t const u32_neg1;
+
+extern int sndinit;
+
+extern const uint8_t map16ofs[];
+
+extern char sprname[0x11c][16];
+
+extern int issplit;
+
+extern int mouse_x;
+extern int mouse_y;
+
+extern int palmode;
 
 // =============================================================================
 
