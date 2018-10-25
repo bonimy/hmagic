@@ -91,6 +91,7 @@
 #include "TextLogic.h"
 
 #include "AudioLogic.h"
+#include "SampleEnum.h"
 
 // \task Probably will move this once the worldmap super dialog procedure gets
 // its own file.
@@ -12710,7 +12711,7 @@ SD_ENTRY text_sd[]={
 SD_ENTRY samp_sd[]={
     {"STATIC","Edit:",0,48,60,20,3000,WS_VISIBLE|WS_CHILD,0,0},
     {"EDIT","",64,48,40,20,3001,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"SAMPEDIT","",0,96,0,0,3002,WS_VISIBLE|WS_CHILD|WS_HSCROLL|WS_TABSTOP,WS_EX_CLIENTEDGE,10},
+    {"SAMPEDIT","",0,96,0,0, ID_Samp_Display, WS_VISIBLE|WS_CHILD|WS_HSCROLL|WS_TABSTOP,WS_EX_CLIENTEDGE,10},
     {"BUTTON","Copy of:",0,72,60,20,3003,WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
     {"EDIT","",64,72,40,20,3004,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
     {"BUTTON","Copy",110,48,50,20,3005,WS_VISIBLE|WS_CHILD,0,0},

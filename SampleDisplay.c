@@ -28,6 +28,7 @@
                           HWND       const p_win)
     {
         int i = 0;
+        int l = 0;
         
         RECT rc;
         
@@ -45,7 +46,6 @@
         {
             int j = 0;
             int k = 0;
-            int l = 0;
             
             // -----------------------------
 
@@ -106,6 +106,10 @@ SampleDisplay_UnmetPrereqs(MSG    const p_packed_msg,
         return (NULL == p_edit_structure);
     
     case WM_GETDLGCODE:
+    case WM_NCCREATE:
+    case WM_NCDESTROY:
+    case WM_CREATE:
+    case WM_DESTROY:
         
         return FALSE;
     }

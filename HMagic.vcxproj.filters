@@ -242,6 +242,9 @@
     <ClInclude Include="AudioLogic.h">
       <Filter>Header Files\Audio</Filter>
     </ClInclude>
+    <ClInclude Include="SampleEnum.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">

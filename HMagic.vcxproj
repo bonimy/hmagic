@@ -171,6 +171,7 @@
     <ClInclude Include="PaletteEdit.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SampleEnum.h" />
     <ClInclude Include="ScreenEditorLogic.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="TextEnum.h" />

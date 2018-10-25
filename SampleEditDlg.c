@@ -3,6 +3,7 @@
     #include "prototypes.h"
 
     #include "AudioLogic.h"
+    #include "SampleEnum.h"
 
 // =============================================================================
 
@@ -55,10 +56,14 @@ sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     switch(msg) {
     case WM_INITDIALOG:
+        
         SetWindowLong(win,DWL_USER,lparam);
+        
         ed=(SAMPEDIT*)lparam;
         ed->dlg=win;
+        
         if(!ed->ew.doc->m_loaded) Loadsongs(ed->ew.doc);
+        
         ed->init=1;
         ed->editsamp=0;
         ed->editinst=0;
@@ -66,7 +71,11 @@ sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->scroll=0;
         ed->flag=0;
         SetDlgItemInt(win,3001,0,0);
-        SetWindowLong(GetDlgItem(win,3002),GWL_USERDATA,(int)ed);
+        
+        SetWindowLongPtr(GetDlgItem(win, ID_Samp_Display),
+                         GWLP_USERDATA,
+                         (LONG_PTR) ed);
+        
         SetDlgItemInt(win,3012,0,0);
         Loadeditinst(win,ed);
 chgsamp:
@@ -104,7 +113,9 @@ upddisp:
         ed->init=0;
         if(ed->sell>=zw->end) ed->sell=ed->selr=0;
         if(ed->selr>=zw->end) ed->selr=zw->end;
-        hc=GetDlgItem(win,3002);
+        
+        hc = GetDlgItem(win, ID_Samp_Display);
+        
         Updatesize(hc);
         InvalidateRect(hc,0,1);
         break;
