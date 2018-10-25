@@ -70,7 +70,7 @@ sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->zoom=65536;
         ed->scroll=0;
         ed->flag=0;
-        SetDlgItemInt(win,3001,0,0);
+        SetDlgItemInt(win, ID_Samp_SampleIndexEdit, 0, 0);
         
         SetWindowLongPtr(GetDlgItem(win, ID_Samp_Display),
                          GWLP_USERDATA,
@@ -83,20 +83,33 @@ chgsamp:
         zw=ed->ew.doc->waves+i;
         ed->zw=zw;
 updcopy:
-        if(zw->copy!=-1) {
-            CheckDlgButton(win,3003,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_SHOW);
-            SetDlgItemInt(win,3004,zw->copy,0);
+        
+        if(zw->copy != -1)
+        {
+            CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_CHECKED);
+            
+            ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
+                       SW_SHOW);
+            
+            SetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, zw->copy, 0);
+            
             EnableWindow(GetDlgItem(win,3006),0);
             EnableWindow(GetDlgItem(win,3008),0);
-        } else {
-            CheckDlgButton(win,3003,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3004),SW_HIDE);
+        }
+        else
+        {
+            CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
+            
+            ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
+                       SW_HIDE);
+            
             EnableWindow(GetDlgItem(win,3006),1);
             EnableWindow(GetDlgItem(win,3008),1);
         }
+        
         SetDlgItemInt(win,3008,zw->end,0);
         SetDlgItemInt(win,3010,zw->lopst,0);
+        
         if(zw->lflag)
         {
             CheckDlgButton(win,3009,BST_CHECKED);
@@ -107,21 +120,27 @@ updcopy:
             CheckDlgButton(win,3009,BST_UNCHECKED);
             ShowWindow(GetDlgItem(win,3010),SW_HIDE);
         }
+        
         ed->sell=0;
         ed->selr=0;
 upddisp:
+        
         ed->init=0;
+        
         if(ed->sell>=zw->end) ed->sell=ed->selr=0;
+        
         if(ed->selr>=zw->end) ed->selr=zw->end;
         
         hc = GetDlgItem(win, ID_Samp_Display);
         
         Updatesize(hc);
         InvalidateRect(hc,0,1);
+        
         break;
+    
     case WM_COMMAND:
         
-        ed=(SAMPEDIT*)GetWindowLong(win,DWL_USER);
+        ed = (SAMPEDIT*)GetWindowLong(win,DWL_USER);
         
         if(ed->init)
             break;
@@ -129,15 +148,19 @@ upddisp:
         switch(wparam)
         {
         
-        case 3003:
-            zw=ed->zw;
-            if(zw->copy!=-1) {
+        case ID_Samp_SampleIsCopyCheckBox:
+            
+            zw = ed->zw;
+            
+            if(zw->copy!=-1)
+            {
                 zw->copy=-1;
                 zw->end=zw->lflag=0;
                 
                 zw->buf = (short*) calloc(1, sizeof(short));
                 
-                ShowWindow(GetDlgItem(win,3004),SW_HIDE);
+                ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
+                           SW_HIDE);
             }
             else
             {
@@ -147,7 +170,7 @@ upddisp:
                     if(zw2->copy==-1 && i!=ed->editsamp) goto chgcopy;
                     zw2++;
                 }
-                CheckDlgButton(win,3003,BST_UNCHECKED);
+                CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
 chgcopy:
                 zw->copy=i;
                 free(zw->buf);
@@ -343,31 +366,54 @@ foundall:
         case 3022:
             if(sndinit) Stopsong();
             break;
-        case 0x02000bb9:
-            if(ed->flag&1) {
-                i=GetDlgItemInt(win,3001,0,0);
-                if(i<0) i=0;
-                if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
-                ed->flag&=-2;
-                ed->init=1;
-                SetDlgItemInt(win,3001,i,0);
-                ed->editsamp=i;
+
+        case (EN_KILLFOCUS << 16) | ID_Samp_SampleIndexEdit:
+            
+            if(ed->flag & 1)
+            {
+                i=GetDlgItemInt(win, ID_Samp_SampleIndexEdit, 0, 0);
+                
+                if(i < 0)
+                    i = 0;
+                
+                if(i >= ed->ew.doc->numwave)
+                    i = ed->ew.doc->numwave-1;
+                
+                ed->flag &= -2;
+                ed->init = 1;
+                
+                SetDlgItemInt(win, ID_Samp_SampleIndexEdit, i, 0);
+                
+                ed->editsamp = i;
+                
                 goto chgsamp;
             }
+            
             break;
-        case 0x02000bbc:
-            if(ed->flag&2) {
+        
+        case (EN_KILLFOCUS << 16) | ID_Samp_SampleCopyOfIndexEdit:
+            
+            if(ed->flag & 2)
+            {
                 ed->flag&=-3;
                 zw=ed->zw;
                 j=zw->copy;
-                i=GetDlgItemInt(win,3004,0,0);
+                
+                i=GetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, 0, 0);
+                
                 k=zw->end;
+                
                 if(i<0) i=0;
                 if(i>=ed->ew.doc->numwave) i=ed->ew.doc->numwave-1;
+                
                 zw2=ed->ew.doc->waves+i;
+                
                 if(zw2->copy!=-1) i=j;
+                
                 ed->init=1;
-                SetDlgItemInt(win,3004,i,0);
+                
+                SetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, i, 0);
+                
                 ed->init=0;
                 if(i==j) break;
                 ed->ew.doc->m_modf=1;
@@ -464,26 +510,42 @@ nochginst:
                 ed->ew.doc->w_modf=1;
             }
             break;
-        case 0x03000bb9:
-            ed->flag|=1;
+        
+        case (EN_CHANGE << 16) | ID_Samp_SampleIndexEdit:
+            
+            ed->flag |= 1;
+            
             break;
-        case 0x03000bbc:
-            ed->flag|=2;
+        
+        case (EN_CHANGE << 16) | ID_Samp_SampleCopyOfIndexEdit:
+            
+            ed->flag |= 2;
+            
             break;
+        
         case 0x03000bc0:
+            
             ed->flag|=16;
+            
             break;
+        
         case 0x03000bc2:
+            
             ed->flag|=32;
+            
             break;
+        
         case 0x03000bc4:
+            
             ed->flag|=64;
+            
             break;
+        
         case 0x03000bc6:
         case 0x03000bc8:
         case 0x03000bca:
         case 0x03000bcc:
-            ed->flag|=128;
+            ed->flag |= 128;
             break;
         }
     }
