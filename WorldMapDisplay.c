@@ -276,12 +276,24 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     RECT rc = {0,0,0,0};
     
     POINT pt;
-    switch(msg) {
+    switch(msg)
+    {
+    
     case WM_GETDLGCODE:
+        
         return DLGC_WANTCHARS;
+    
     case WM_CHAR:
-        if(wparam==26) wmapdlgproc(GetParent(win),WM_COMMAND,3007,0);
+        
+        if(wparam == 26)
+        {
+            // Ctrl-Z
+            // Undo, apparently? 
+            wmapdlgproc(GetParent(win),WM_COMMAND,3007,0);
+        }
+        
         break;
+    
     case WM_SIZE:
         ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
         if(!ed) break;

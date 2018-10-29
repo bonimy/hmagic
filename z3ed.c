@@ -12,6 +12,9 @@
 
 /**
 
+    \task Sample editor crashes if you paste in a region that is past the
+    end of the sample.
+
     \task Would like to have the text of markers on the overworld map not be clipped
     by the background region (the grey area outside of which we paint)
 
@@ -12714,8 +12717,8 @@ SD_ENTRY samp_sd[]={
     {"SAMPEDIT","",0,96,0,0, ID_Samp_Display, WS_VISIBLE|WS_CHILD|WS_HSCROLL|WS_TABSTOP,WS_EX_CLIENTEDGE,10},
     {"BUTTON","Copy of:",0,72,60,20, ID_Samp_SampleIsCopyCheckBox, WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
     {"NumEdit","",64,72,40,20, ID_Samp_SampleCopyOfIndexEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Copy",110,48,50,20,3005,WS_VISIBLE|WS_CHILD,0,0},
-    {"BUTTON","Paste",110,72,50,20,3006,WS_VISIBLE|WS_CHILD,0,0},
+    {"BUTTON","Copy",110,48,50,20, ID_Samp_CopyToClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
+    {"BUTTON","Paste",110,72,50,20, ID_Samp_PasteFromClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
     {"STATIC","Length:",170,48,60,20,3007,WS_VISIBLE|WS_CHILD,0,0},
     {"EDIT","",234,48,60,20,3008,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
     {"BUTTON","Loop:",170,72,60,20,3009,WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},

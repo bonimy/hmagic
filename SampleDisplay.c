@@ -11,6 +11,10 @@
     // For wrapper of GetClientRect()
     #include "Wrappers.h"
 
+    // To interface to the sample edit dialog (which is the parent to this
+    // control.
+    #include "SampleEnum.h"
+
 // =============================================================================
 
     void
@@ -20,6 +24,53 @@
         rc->left  = (ed->sell << 16) / ed->zoom     - ed->scroll;
         rc->right = (ed->selr << 16) / ed->zoom + 1 - ed->scroll;
     }
+
+// =============================================================================
+
+    void
+    SampleDisplay_OnChar(SAMPEDIT * const p_ed,
+                         MSG        const p_packed_msg)
+    {
+        HWND const win = p_packed_msg.hwnd;
+        
+        WPARAM const wp = p_packed_msg.wParam;
+        
+        // -----------------------------
+        
+        switch(wp)
+        {
+        
+        // Ctrl-A
+        case 1:
+            p_ed->sell = 0;
+            p_ed->selr = p_ed->zw->end;
+            
+            InvalidateRect(win, 0, 1);
+            
+            break;
+        
+        // Ctrl-C
+        case 3:
+            
+            sampdlgproc(p_ed->dlg,
+                        WM_COMMAND,
+                        ID_Samp_CopyToClipboardButton,
+                        0);
+            
+            break;
+        
+        // Ctrl-V
+        case 22:
+            
+            sampdlgproc(p_ed->dlg,
+                        WM_COMMAND,
+                        ID_Samp_PasteFromClipboardButton,
+                        0);
+            
+            break;
+        }
+    }
+
 
 // =============================================================================
 
@@ -232,26 +283,8 @@ SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
     
     case WM_CHAR:
         
-        switch(p_lp)
-        {
-        
-        case 1:
-            ed->sell=0;
-            ed->selr=ed->zw->end;
-            InvalidateRect(p_win,0,1);
-            
-            break;
-        
-        case 3:
-            sampdlgproc(ed->dlg, WM_COMMAND, 3005, 0);
-            
-            break;
-        
-        case 22:
-            sampdlgproc(ed->dlg, WM_COMMAND, 3006, 0);
-            
-            break;
-        }
+        SampleDisplay_OnChar(ed,
+                             packed_msg);
         
         break;
     

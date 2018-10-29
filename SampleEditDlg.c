@@ -93,7 +93,7 @@ updcopy:
             
             SetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, zw->copy, 0);
             
-            EnableWindow(GetDlgItem(win,3006),0);
+            EnableWindow(GetDlgItem(win, ID_Samp_PasteFromClipboardButton), 0);
             EnableWindow(GetDlgItem(win,3008),0);
         }
         else
@@ -103,7 +103,7 @@ updcopy:
             ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
                        SW_HIDE);
             
-            EnableWindow(GetDlgItem(win,3006),1);
+            EnableWindow(GetDlgItem(win, ID_Samp_PasteFromClipboardButton), 1);
             EnableWindow(GetDlgItem(win,3008),1);
         }
         
@@ -186,7 +186,7 @@ chgcopy:
             
             goto updcopy;
         
-        case 3005:
+        case ID_Samp_CopyToClipboardButton:
             
             zw = ed->zw;
             
@@ -198,26 +198,39 @@ chgcopy:
             
             hgl=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,44+i);
             b=GlobalLock(hgl);
-            memcpy(b,wavehdr,40);
+            
+            memcpy(b, wavehdr, 40);
+            
             *(int*)(b+4)=36+i;
             *(int*)(b+40)=i;
+            
             memcpy(b+44,zw->buf+j,i);
             GlobalUnlock(hgl);
             OpenClipboard(0);
             EmptyClipboard();
+            
             SetClipboardData(CF_WAVE,hgl);
             CloseClipboard();
+            
             break;
-        case 3006:
+        
+        case ID_Samp_PasteFromClipboardButton:
+            
             OpenClipboard(0);
-            hgl=GetClipboardData(CF_WAVE);
-            if(!hgl) {
+            
+            hgl = GetClipboardData(CF_WAVE);
+            
+            if(!hgl)
+            {
                 MessageBox(framewnd,"Nothing is on the clipboard.","Bad error happened",MB_OK);
                 CloseClipboard();
                 break;
             }
-            b=GlobalLock(hgl);
-            if((*(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157) {
+            
+            b = GlobalLock(hgl);
+            
+            if( (*(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157)
+            {
 error:
                 MessageBox(framewnd,"This is not a wave.","Bad error happened",MB_OK);
 noclip:
