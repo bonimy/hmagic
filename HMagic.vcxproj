@@ -140,6 +140,7 @@
     <ClCompile Include="RomProperties.c" />
     <ClCompile Include="SampleDisplay.c" />
     <ClCompile Include="SampleEditDlg.c" />
+    <ClCompile Include="SampleEditLogic.c" />
     <ClCompile Include="ScreenEditorLogic.c" />
     <ClCompile Include="SoundDevSelectDlg.c" />
     <ClCompile Include="SuperDlg.c" />
@@ -171,6 +172,7 @@
     <ClInclude Include="PaletteEdit.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SampleEditLogic.h" />
     <ClInclude Include="SampleEnum.h" />
     <ClInclude Include="ScreenEditorLogic.h" />
     <ClInclude Include="structs.h" />

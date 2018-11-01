@@ -15,6 +15,9 @@
     // control.
     #include "SampleEnum.h"
 
+    // For copy / paste functionality.
+    #include "SampleEditLogic.h"
+
 // =============================================================================
 
     void
@@ -41,7 +44,9 @@
         {
         
         // Ctrl-A
+        // "Select All"
         case 1:
+            
             p_ed->sell = 0;
             p_ed->selr = p_ed->zw->end;
             
@@ -50,16 +55,15 @@
             break;
         
         // Ctrl-C
+        // "Copy Selected Region"
         case 3:
             
-            sampdlgproc(p_ed->dlg,
-                        WM_COMMAND,
-                        ID_Samp_CopyToClipboardButton,
-                        0);
+            SampleEdit_CopyToClipboard(p_ed);
             
             break;
         
         // Ctrl-V
+        // "Paste"
         case 22:
             
             sampdlgproc(p_ed->dlg,
@@ -270,9 +274,12 @@ SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
             
             ed->selr=ed->sell;
             ed->init=1;
-            SetDlgItemInt(ed->dlg,3008,zw->end,0);
-            SetDlgItemInt(ed->dlg,3010,zw->lopst,0);
+            
+            SetDlgItemInt(ed->dlg, ID_Samp_SampleLengthEdit, zw->end, 0);
+            SetDlgItemInt(ed->dlg, ID_Samp_LoopPointEdit, zw->lopst,0);
+            
             InvalidateRect(p_win,0,1);
+            
             ed->init=0;
             ed->ew.doc->m_modf=1;
             ed->ew.doc->w_modf=1;

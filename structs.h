@@ -746,6 +746,37 @@ typedef struct
     
 } ZCHANNEL;
 
+    typedef
+    struct
+    {
+        int8_t m_chunk_id[4];
+        
+        uint32_t m_chunk_size;
+        
+        int8_t m_format[4];
+        
+        int8_t m_subchunk_1_id[4];
+        
+        uint32_t m_subchunk_1_size;
+        
+        uint16_t m_audio_format;
+        uint16_t m_num_channels;
+        
+        uint32_t m_sample_rate;
+        
+        uint32_t m_byte_rate;
+        
+        uint16_t m_block_align;
+        uint16_t m_bits_per_sample;
+        
+        int8_t m_subchunk_2_id[4];
+        
+        uint32_t m_subchunk_2_size;
+        
+        int8_t m_data[1];
+        
+    } HM_WaveFileData;
+
 #pragma pack(pop)
 
 // =============================================================================

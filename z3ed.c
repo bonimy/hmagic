@@ -11,10 +11,7 @@
 // for Epoch 2 into the repo.
 
 /**
-
-    \task Sample editor crashes if you paste in a region that is past the
-    end of the sample.
-
+    
     \task Would like to have the text of markers on the overworld map not be clipped
     by the background region (the grey area outside of which we paint)
 
@@ -4152,12 +4149,17 @@ tryagain:
             y[1]=g;
         }
     }
-    if(sed) {
-        SetDlgItemInt(sed->dlg,3008,sed->zw->end,0);
-        SetDlgItemInt(sed->dlg,3010,sed->zw->lopst,0);
-        InvalidateRect(GetDlgItem(sed->dlg,3002),0,1);
+    
+    if(sed)
+    {
+        SetDlgItemInt(sed->dlg, ID_Samp_SampleLengthEdit, sed->zw->end,0);
+        SetDlgItemInt(sed->dlg, ID_Samp_LoopPointEdit, sed->zw->lopst,0);
+        
+        InvalidateRect( GetDlgItem(sed->dlg, ID_Samp_Display), 0, 1);
     }
-    zw=doc->waves;
+    
+    zw = doc->waves;
+    
     for(i=0;i<doc->numwave;i++,zw++) if(zw->copy!=-1) {
             wtbl[i<<1]=wtbl[zw->copy<<1];
             wtbl[(i<<1)+1]=(zw->lopst>>4)*9+wtbl[i<<1];
@@ -12719,10 +12721,10 @@ SD_ENTRY samp_sd[]={
     {"NumEdit","",64,72,40,20, ID_Samp_SampleCopyOfIndexEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
     {"BUTTON","Copy",110,48,50,20, ID_Samp_CopyToClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
     {"BUTTON","Paste",110,72,50,20, ID_Samp_PasteFromClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
-    {"STATIC","Length:",170,48,60,20,3007,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",234,48,60,20,3008,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Loop:",170,72,60,20,3009,WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
-    {"EDIT","",234,72,40,20,3010,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Length:",170,48,60,20, ID_Samp_LengthLabel, WS_VISIBLE|WS_CHILD,0,0},
+    {"NumEdit","",234,48,60,20, ID_Samp_SampleLengthEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
+    {"BUTTON","Loop:",170,72,60,20, ID_Samp_LoopCheckBox, WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
+    {"EDIT","",234,72,40,20, ID_Samp_LoopPointEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
     {"STATIC","Ed.Inst:",0,0,40,20,3011,WS_VISIBLE|WS_CHILD,0,0},
     {"EDIT","",44,0,40,20,3012,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
     {"STATIC","Freq:",90,0,40,20,3013,WS_VISIBLE|WS_CHILD,0,0},

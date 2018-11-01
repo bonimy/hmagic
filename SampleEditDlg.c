@@ -4,11 +4,14 @@
 
     #include "AudioLogic.h"
     #include "SampleEnum.h"
+    
+    // For copy and paste, currently.
+    #include "SampleEditLogic.h"
 
 // =============================================================================
 
 void
-Loadeditinst(HWND             const win,
+Loadeditinst(HWND             const p_win,
              SAMPEDIT const * const ed)
 {
     text_buf_ty text_buf = { 0 };
@@ -16,51 +19,128 @@ Loadeditinst(HWND             const win,
     ZINST*zi;
     zi=ed->ew.doc->insts+ed->editinst;
     
-    SetDlgItemInt(win, 3014, (zi->multhi << 8) + zi->multlo, 0);
+    SetDlgItemInt(p_win, 3014, (zi->multhi << 8) + zi->multlo, 0);
     
     wsprintf(text_buf,
              "%04X",
              (zi->ad << 8) + zi->sr);
     
-    SetDlgItemText(win, 3016, text_buf);
+    SetDlgItemText(p_win, 3016, text_buf);
     
     wsprintf(text_buf,
              "%02X",
              zi->gain);
     
-    SetDlgItemText(win, 3018, text_buf);
+    SetDlgItemText(p_win, 3018, text_buf);
     
-    SetDlgItemInt(win, 3020, zi->samp, 0);
+    SetDlgItemInt(p_win, 3020, zi->samp, 0);
 }
 
 // =============================================================================
 
-BOOL CALLBACK
-sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+    static void
+    SampleEditDlg_UpdateDisplay(SAMPEDIT * const p_ed,
+                                HWND       const p_win)
+    {
+        ZWAVE const * const zw = p_ed->zw;
+        
+        HWND const disp = GetDlgItem(p_win, ID_Samp_Display);
+        
+        // -----------------------------
+        
+        p_ed->init = 0;
+        
+        if(p_ed->sell >= zw->end)
+        {
+            p_ed->sell = p_ed->selr = 0;
+        }
+        
+        if(p_ed->selr >= zw->end)
+        {
+            p_ed->selr = zw->end;
+        }
+        
+        Updatesize(disp);
+        
+        InvalidateRect(disp, 0, 1);
+    }
+
+// =============================================================================
+
+    static void
+    SampleEditDlg_UpdateCopy(SAMPEDIT * const p_ed,
+                             HWND       const p_win)
+    {
+        ZWAVE const * const zw = p_ed->zw;
+        
+        HWND const copy_edit_ctl = GetDlgItem
+        (
+            p_win,
+            ID_Samp_SampleCopyOfIndexEdit
+        );
+        
+        // -----------------------------
+        
+        if(zw->copy != -1)
+        {
+            CheckDlgButton(p_win, ID_Samp_SampleIsCopyCheckBox, BST_CHECKED);
+            
+            ShowWindow(copy_edit_ctl, SW_SHOW);
+            
+            SetDlgItemInt(p_win, ID_Samp_SampleCopyOfIndexEdit, zw->copy, 0);
+            
+            EnableWindow(GetDlgItem(p_win, ID_Samp_PasteFromClipboardButton), 0);
+            EnableWindow(GetDlgItem(p_win, ID_Samp_SampleLengthEdit),0);
+        }
+        else
+        {
+            CheckDlgButton(p_win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
+            
+            ShowWindow(copy_edit_ctl, SW_HIDE);
+            
+            EnableWindow(GetDlgItem(p_win, ID_Samp_PasteFromClipboardButton), 1);
+            EnableWindow(GetDlgItem(p_win, ID_Samp_SampleLengthEdit), 1);
+        }
+        
+        SetDlgItemInt(p_win, ID_Samp_SampleLengthEdit, zw->end, 0);
+        SetDlgItemInt(p_win, ID_Samp_LoopPointEdit,zw->lopst, 0);
+        
+        if(zw->lflag)
+        {
+            CheckDlgButton(p_win, ID_Samp_LoopCheckBox, BST_CHECKED);
+            ShowWindow(GetDlgItem(p_win, ID_Samp_LoopPointEdit), SW_SHOW);
+        }
+        else
+        {
+            CheckDlgButton(p_win, ID_Samp_LoopCheckBox, BST_UNCHECKED);
+            ShowWindow(GetDlgItem(p_win, ID_Samp_LoopPointEdit), SW_HIDE);
+        }
+        
+        p_ed->sell = 0;
+        p_ed->selr = 0;
+        
+        SampleEditDlg_UpdateDisplay(p_ed, p_win);
+    }
+
+// =============================================================================
+
+extern BOOL CALLBACK
+sampdlgproc(HWND p_win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     SAMPEDIT*ed;
-    HWND hc;
-    HGLOBAL hgl;
-    char*b,*dat;
+    char*b;
     int i = 0, j = 0, k = 0;
     
     ZWAVE*zw,*zw2;
     ZINST*zi;
-    WAVEFORMATEX*wfx;
-    
-    const static int wavehdr[] =
-    {
-        0x46464952,0,0x45564157,0x20746d66,16,0x10001,
-        11025,22050,0x100002,0x61746164
-    };
     
     switch(msg) {
     case WM_INITDIALOG:
         
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLong(p_win, DWL_USER, lparam);
         
         ed=(SAMPEDIT*)lparam;
-        ed->dlg=win;
+        ed->dlg= p_win;
         
         if(!ed->ew.doc->m_loaded) Loadsongs(ed->ew.doc);
         
@@ -70,77 +150,27 @@ sampdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->zoom=65536;
         ed->scroll=0;
         ed->flag=0;
-        SetDlgItemInt(win, ID_Samp_SampleIndexEdit, 0, 0);
+        SetDlgItemInt(p_win, ID_Samp_SampleIndexEdit, 0, 0);
         
-        SetWindowLongPtr(GetDlgItem(win, ID_Samp_Display),
+        SetWindowLongPtr(GetDlgItem(p_win, ID_Samp_Display),
                          GWLP_USERDATA,
                          (LONG_PTR) ed);
         
-        SetDlgItemInt(win,3012,0,0);
-        Loadeditinst(win,ed);
+        SetDlgItemInt(p_win, 3012,0,0);
+        Loadeditinst(p_win, ed);
 chgsamp:
+        
         i=ed->editsamp;
         zw=ed->ew.doc->waves+i;
         ed->zw=zw;
-updcopy:
         
-        if(zw->copy != -1)
-        {
-            CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_CHECKED);
-            
-            ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
-                       SW_SHOW);
-            
-            SetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, zw->copy, 0);
-            
-            EnableWindow(GetDlgItem(win, ID_Samp_PasteFromClipboardButton), 0);
-            EnableWindow(GetDlgItem(win,3008),0);
-        }
-        else
-        {
-            CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
-            
-            ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
-                       SW_HIDE);
-            
-            EnableWindow(GetDlgItem(win, ID_Samp_PasteFromClipboardButton), 1);
-            EnableWindow(GetDlgItem(win,3008),1);
-        }
-        
-        SetDlgItemInt(win,3008,zw->end,0);
-        SetDlgItemInt(win,3010,zw->lopst,0);
-        
-        if(zw->lflag)
-        {
-            CheckDlgButton(win,3009,BST_CHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-        }
-        else
-        {
-            CheckDlgButton(win,3009,BST_UNCHECKED);
-            ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-        }
-        
-        ed->sell=0;
-        ed->selr=0;
-upddisp:
-        
-        ed->init=0;
-        
-        if(ed->sell>=zw->end) ed->sell=ed->selr=0;
-        
-        if(ed->selr>=zw->end) ed->selr=zw->end;
-        
-        hc = GetDlgItem(win, ID_Samp_Display);
-        
-        Updatesize(hc);
-        InvalidateRect(hc,0,1);
+        SampleEditDlg_UpdateCopy(ed, p_win);
         
         break;
     
     case WM_COMMAND:
         
-        ed = (SAMPEDIT*)GetWindowLong(win,DWL_USER);
+        ed = (SAMPEDIT*) GetWindowLong(p_win, DWL_USER);
         
         if(ed->init)
             break;
@@ -159,7 +189,7 @@ upddisp:
                 
                 zw->buf = (short*) calloc(1, sizeof(short));
                 
-                ShowWindow(GetDlgItem(win, ID_Samp_SampleCopyOfIndexEdit),
+                ShowWindow(GetDlgItem(p_win, ID_Samp_SampleCopyOfIndexEdit),
                            SW_HIDE);
             }
             else
@@ -170,7 +200,7 @@ upddisp:
                     if(zw2->copy==-1 && i!=ed->editsamp) goto chgcopy;
                     zw2++;
                 }
-                CheckDlgButton(win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
+                CheckDlgButton(p_win, ID_Samp_SampleIsCopyCheckBox, BST_UNCHECKED);
 chgcopy:
                 zw->copy=i;
                 free(zw->buf);
@@ -184,185 +214,70 @@ chgcopy:
                 memcpy(zw->buf, zw2->buf, i);
             }
             
-            goto updcopy;
+            SampleEditDlg_UpdateCopy(ed, p_win);
+
+            break;
         
         case ID_Samp_CopyToClipboardButton:
             
-            zw = ed->zw;
-            
-            i = (ed->selr - ed->sell) << 1;
-            j = ed->sell;
-            
-            if(i == 0)
-                i = zw->end << 1, j = 0;
-            
-            hgl=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,44+i);
-            b=GlobalLock(hgl);
-            
-            memcpy(b, wavehdr, 40);
-            
-            *(int*)(b+4)=36+i;
-            *(int*)(b+40)=i;
-            
-            memcpy(b+44,zw->buf+j,i);
-            GlobalUnlock(hgl);
-            OpenClipboard(0);
-            EmptyClipboard();
-            
-            SetClipboardData(CF_WAVE,hgl);
-            CloseClipboard();
+            SampleEdit_CopyToClipboard(ed);
             
             break;
         
         case ID_Samp_PasteFromClipboardButton:
             
-            OpenClipboard(0);
-            
-            hgl = GetClipboardData(CF_WAVE);
-            
-            if(!hgl)
+            if( SampleEdit_PasteFromClipboard(ed) == FALSE )
             {
-                MessageBox(framewnd,"Nothing is on the clipboard.","Bad error happened",MB_OK);
-                CloseClipboard();
                 break;
             }
             
-            b = GlobalLock(hgl);
-            
-            if( (*(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157)
+            if( ! ed->zw->lflag)
             {
-error:
-                MessageBox(framewnd,"This is not a wave.","Bad error happened",MB_OK);
-noclip:
-                GlobalUnlock(hgl);
-                CloseClipboard();
-                break;
+                CheckDlgButton(p_win, ID_Samp_LoopCheckBox, BST_UNCHECKED);
+                ShowWindow(GetDlgItem(p_win, ID_Samp_LoopPointEdit), SW_HIDE);
             }
             
-            j = *(int*) (b + 4);
-            b += 8;
-            dat = 0;
-            wfx = 0;
+            SetDlgItemInt(p_win, ID_Samp_SampleLengthEdit, zw->end, 0);
+            SetDlgItemInt(p_win, ID_Samp_LoopPointEdit, zw->lopst, 0);
             
-            for(i = 4; i < j;)
-            {
-                switch(*(int*)(b+i))
-                {
-                
-                case 0x20746d66:
-                    wfx = (WAVEFORMATEX*) (b + i + 8);
-                    
-                    break;
-                
-                case 0x61746164:
-                    dat = b + i + 8;
-                    
-                    k = *(int*)(b + i + 4);
-                    
-                    if(wfx)
-                        goto foundall;
-                    
-                    break;
-                }
-                
-                i += 8 + *(int*) ( b + i + 4);
-            }
-            if((!wfx)||!dat) goto error;
-foundall:
-            if(wfx->wFormatTag!=1) {
-                MessageBox(framewnd,"The wave is not PCM","Bad error happened",MB_OK);
-                goto noclip;
-            }
-            if(wfx->nChannels!=1) {
-                MessageBox(framewnd,"Only mono is allowed.","Bad error happened",MB_OK);
-                goto noclip;
-            }
+            SampleEditDlg_UpdateDisplay(ed, p_win);
             
-            if(wfx->wBitsPerSample == 16)
-                k >>= 1;
+            break;
+        
+        case ID_Samp_LoopCheckBox:
             
-            // \task Fixing a bug around here when you paste beyond the range
-            // of the current sample.
             zw = ed->zw;
             
-            zw->end += k - (ed->selr - ed->sell);
-            
-            if(k > (ed->selr - ed->sell) )
+            if( ! zw->lflag )
             {
-                // Resize the sample buffer if the size of the data being
-                // pasted in exceeds the size of the currently selected
-                // region.
-                zw->buf = (short*) realloc(zw->buf, (zw->end + 1) << 1);
+                zw->lflag = 1;
+                
+                ShowWindow(GetDlgItem(p_win, ID_Samp_LoopPointEdit), SW_SHOW);
+                
+                zw->buf[zw->end]=zw->buf[zw->lopst];
             }
-            
-            // Move the part of the sample that is to the right of the selection
-            // region in such a way that there is just enough room to copy
-            // the new data in.
-            memmove(zw->buf + ed->sell + k,
-                    zw->buf + ed->selr,
-                    (zw->end - k - ed->sell) << 1);
-            
-            if(k < (ed->selr - ed->sell) )
-            {
-                // Shrink the sample buffer if the pasted in data is smaller
-                // than the selection region.
-                zw->buf = (short*) realloc(zw->buf, ( (zw->end + 1) << 1 ) );
-            }
-            
-            if(zw->lopst >= ed->selr)
-                zw->lopst += ed->sell + k - ed->selr;
-            
-            if(zw->lopst >= zw->end)
-                zw->lflag = 0, zw->lopst = 0;
-            
-            if(zw->lflag)
-                zw->buf[zw->end] = zw->buf[zw->lopst];
-            
-            ed->selr = ed->sell + k;
-            
-            if(wfx->wBitsPerSample == 16)
-                memcpy(zw->buf+ed->sell,dat,k<<1);
             else
             {
-                j = ed->sell;
+                zw->lflag = 0;
                 
-                for(i = 0; i < k; i++)
-                    zw->buf[j++] = ( (dat[i] - 128) << 8 );
-            }
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            GlobalUnlock(hgl);
-            CloseClipboard();
-            Modifywaves(ed->ew.doc,ed->editsamp);
-            ed->init=1;
-            if(!zw->lflag) {
-                CheckDlgButton(win,3009,BST_UNCHECKED);
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
-            }
-            SetDlgItemInt(win,3008,zw->end,0);
-            SetDlgItemInt(win,3010,zw->lopst,0);
-            goto upddisp;
-        case 3009:
-            zw=ed->zw;
-            if(!zw->lflag) {
-                zw->lflag=1;
-                ShowWindow(GetDlgItem(win,3010),SW_SHOW);
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            } else {
-                zw->lflag=0;
-                ShowWindow(GetDlgItem(win,3010),SW_HIDE);
+                ShowWindow(GetDlgItem(p_win, ID_Samp_LoopPointEdit), SW_HIDE);
             }
             Modifywaves(ed->ew.doc,ed->editsamp);
             ed->ew.doc->m_modf=1;
             ed->ew.doc->w_modf=1;
             break;
         case 3021:
+            
             if(sounddev>=0x20000) {
                 MessageBox(framewnd,"A wave device must be selected","Bad error happened",MB_OK);
                 break;
             }
-            if(sndinit) Stopsong();
-            else Initsound();
+            
+            if(sndinit)
+                Stopsong();
+            else
+                Initsound();
+            
             playedsong=0;
             sounddoc=ed->ew.doc;
             globvol=65535;
@@ -382,9 +297,9 @@ foundall:
 
         case (EN_KILLFOCUS << 16) | ID_Samp_SampleIndexEdit:
             
-            if(ed->flag & 1)
+            if(ed->flag & Samp_Index_Changed)
             {
-                i=GetDlgItemInt(win, ID_Samp_SampleIndexEdit, 0, 0);
+                i = GetDlgItemInt(p_win, ID_Samp_SampleIndexEdit, 0, 0);
                 
                 if(i < 0)
                     i = 0;
@@ -392,10 +307,10 @@ foundall:
                 if(i >= ed->ew.doc->numwave)
                     i = ed->ew.doc->numwave-1;
                 
-                ed->flag &= -2;
+                ed->flag &= ~(Samp_Index_Changed);
                 ed->init = 1;
                 
-                SetDlgItemInt(win, ID_Samp_SampleIndexEdit, i, 0);
+                SetDlgItemInt(p_win, ID_Samp_SampleIndexEdit, i, 0);
                 
                 ed->editsamp = i;
                 
@@ -406,13 +321,15 @@ foundall:
         
         case (EN_KILLFOCUS << 16) | ID_Samp_SampleCopyOfIndexEdit:
             
-            if(ed->flag & 2)
+            if(ed->flag & Samp_CopyIndex_Changed)
             {
-                ed->flag&=-3;
-                zw=ed->zw;
-                j=zw->copy;
+                ed->flag &= ~(Samp_CopyIndex_Changed);
                 
-                i=GetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, 0, 0);
+                zw = ed->zw;
+                
+                j = zw->copy;
+                
+                i = GetDlgItemInt(p_win, ID_Samp_SampleCopyOfIndexEdit, 0, 0);
                 
                 k=zw->end;
                 
@@ -425,7 +342,7 @@ foundall:
                 
                 ed->init=1;
                 
-                SetDlgItemInt(win, ID_Samp_SampleCopyOfIndexEdit, i, 0);
+                SetDlgItemInt(p_win, ID_Samp_SampleCopyOfIndexEdit, i, 0);
                 
                 ed->init=0;
                 if(i==j) break;
@@ -433,17 +350,21 @@ foundall:
                 ed->ew.doc->w_modf=1;
                 goto chgcopy;
             }
+            
             break;
-        case 0x02000bc0:
-            if(ed->flag&16) {
+        
+        case (EN_KILLFOCUS << 16) | ID_Samp_SampleLengthEdit:
+            
+            if(ed->flag & 16)
+            {
                 ed->flag&=-17;
                 zw=ed->zw;
-                i=GetDlgItemInt(win,3008,0,0);
+                i=GetDlgItemInt(p_win, ID_Samp_SampleLengthEdit, 0, 0);
                 k=zw->end;
                 if(i<0) {
                     i=0;
 chglen:
-                    SetDlgItemInt(win,3008,i,0);
+                    SetDlgItemInt(p_win, ID_Samp_SampleLengthEdit, i, 0);
                     ed->init=0;
                     break;
                 }
@@ -460,19 +381,22 @@ chglen:
                 if(zw->lopst!=-1) zw->buf[zw->end]=zw->buf[zw->lopst];
                 ed->ew.doc->m_modf=1;
                 ed->ew.doc->w_modf=1;
-                goto upddisp;
+                
+                SampleEditDlg_UpdateDisplay(ed, p_win);
             }
+            
             break;
+        
         case 0x02000bc2:
             if(ed->flag&32) {
                 ed->flag&=-33;
                 zw=ed->zw;
-                j=i=GetDlgItemInt(win,3010,0,0);
+                j=i=GetDlgItemInt(p_win, ID_Samp_LoopPointEdit, 0, 0);
                 if(i<0) i=0;
                 else if(i>=zw->end) i=zw->end-1;
                 if(i!=j) {
                     ed->init=1;
-                    SetDlgItemInt(win,3010,i,0);
+                    SetDlgItemInt(p_win, ID_Samp_LoopPointEdit, i, 0);
                     ed->init=0;
                 }
                 ed->ew.doc->m_modf=1;
@@ -484,16 +408,16 @@ chglen:
         case 0x02000bc4:
             if(ed->flag&64) {
                 ed->flag&=-65;
-                i=GetDlgItemInt(win,3012,0,0);
+                i=GetDlgItemInt(p_win, 3012, 0,0);
                 if(i<0) i=0;
                 else if(i>=ed->ew.doc->numinst) i=ed->ew.doc->numinst-1;
                 else goto nochginst;
                 ed->init=1;
-                SetDlgItemInt(win,3012,i,0);
+                SetDlgItemInt(p_win, 3012, i, 0);
                 ed->init=0;
 nochginst:
                 ed->editinst=i;
-                Loadeditinst(win,ed);
+                Loadeditinst(p_win, ed);
             }
             break;
         case 0x02000bc6:
@@ -506,19 +430,19 @@ nochginst:
                 
                 ed->flag&=-129;
                 zi=ed->ew.doc->insts+ed->editinst;
-                i=GetDlgItemInt(win,3014,0,0);
+                i=GetDlgItemInt(p_win, 3014, 0,0);
                 zi->multlo=i;
                 zi->multhi=i>>8;
-                GetDlgItemText(win,3016, text_buf, 5);
+                GetDlgItemText(p_win, 3016, text_buf, 5);
                 i=strtol(text_buf, 0, 16);
                 zi->sr=i;
                 zi->ad=i>>8;
                 
-                GetDlgItemText(win, 3018, text_buf, 3);
+                GetDlgItemText(p_win, 3018, text_buf, 3);
                 
                 zi->gain = (uint8_t) strtol(text_buf, 0, 16);
                 
-                zi->samp=GetDlgItemInt(win,3020,0,0);
+                zi->samp=GetDlgItemInt(p_win, 3020,0,0);
                 ed->ew.doc->m_modf=1;
                 ed->ew.doc->w_modf=1;
             }
@@ -526,17 +450,17 @@ nochginst:
         
         case (EN_CHANGE << 16) | ID_Samp_SampleIndexEdit:
             
-            ed->flag |= 1;
+            ed->flag |= Samp_Index_Changed;
             
             break;
         
         case (EN_CHANGE << 16) | ID_Samp_SampleCopyOfIndexEdit:
             
-            ed->flag |= 2;
+            ed->flag |= Samp_CopyIndex_Changed;
             
             break;
         
-        case 0x03000bc0:
+        case (EN_CHANGE << 16) | ID_Samp_SampleLengthEdit:
             
             ed->flag|=16;
             
