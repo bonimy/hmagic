@@ -81,6 +81,8 @@
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"
 
+#include "MetatileLogic.h"
+
 #include "DungeonEnum.h"
 #include "DungeonLogic.h"
 
@@ -92,6 +94,8 @@
 
 #include "AudioLogic.h"
 #include "SampleEnum.h"
+
+#include "TrackerLogic.h"
 
 // \task Probably will move this once the worldmap super dialog procedure gets
 // its own file.
@@ -132,8 +136,6 @@ int mouse_y;
 int wver;
 
 int palmode=0;
-int mark_sr;
-int mark_start,mark_end,mark_first,mark_last;
 
 int door_ofs = 0;
 int issplit = 0;
@@ -1505,7 +1507,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     else
         k = ((int*) p)[1], l = ((int*) p)[0];
     
-    dt = (void*) p;
+    dt = (DLGTEMPLATE*) p;
     
     p += 11;
     l |= DS_3DLOOK;
@@ -11079,26 +11081,6 @@ chgloc:
     return 0;
 }
 
-// =============================================================================
-
-void Updateblk32disp(BLOCKEDIT32 *ed, int num)
-{
-    int k,p=num<<2;
-    unsigned short *o;
-    RECT rc;
-    rc.left=blkx[p];
-    rc.right=rc.left+16;
-    rc.top=blky[p];
-    rc.bottom=rc.top+16;
-    o=(unsigned short*)(ed->bs.ed->ew.doc->rom + 0x78000 + (ed->blks[num]<<3));
-    for(k=0;k<4;k++) {
-        Drawblock(ed->bs.ed,blkx[p],blky[p],o[k],0);
-        p++;
-    }
-    Paintblocks(&rc,objdc,0,0,(DUNGEDIT*)(ed->bs.ed));
-    StretchBlt(ed->bufdc,(num&1)*ed->w>>1,(num&2)*ed->h>>2,ed->w>>1,ed->h>>1,objdc,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SRCCOPY);
-}
-
 void Updateblk16disp(BLOCKEDIT16 *ed, int num)
 {
     RECT rc;
@@ -11982,355 +11964,6 @@ blksel16proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return 0;
 }
 
-BOOL CALLBACK editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    OVEREDIT*oe;
-    BLOCKEDIT32*ed;
-    BLOCKSEL16*bs;
-    HWND hc,hc2;
-    HDC hdc;
-    
-    RECT rc;
-    FDOC*doc;
-    int i,j;
-    short*l;
-    unsigned char*rom;
-    switch(msg) {
-    case WM_QUERYNEWPALETTE:
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
-        Setpalette(win,ed->bs.ed->hpal);
-        return 1;
-    case WM_PALETTECHANGED:
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
-        break;
-    case WM_INITDIALOG:
-        ed = (BLOCKEDIT32*) malloc(sizeof(BLOCKEDIT32));
-        bs=&(ed->bs);
-        oe=bs->ed=(OVEREDIT*)lparam;
-        Getblock32(oe->ew.doc->rom,oe->selblk,ed->blks);
-        bs->scroll=0;
-        bs->sel=0;
-        hc=GetDlgItem(win,IDC_CUSTOM2);
-        SetWindowLong(win,GWL_USERDATA,(int)ed);
-        SetWindowLong(hc,GWL_USERDATA,(int)ed);
-        Updatesize(hc);
-        hc=GetDlgItem(win,IDC_CUSTOM1);
-        rc = HM_GetClientRect(hc);
-        ed->w=rc.right;
-        ed->h=rc.bottom;
-        hdc=GetDC(win);
-        ed->bufdc=CreateCompatibleDC(hdc);
-        ed->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
-        ReleaseDC(win,hdc);
-        SelectObject(ed->bufdc,ed->bufbmp);
-        SelectPalette(ed->bufdc,ed->bs.ed->hpal,1);
-        
-        if(always)
-        {
-            HPALETTE const oldpal = SelectPalette(objdc, ed->bs.ed->hpal, 1);
-            
-            for(i = 0; i < 4; i++)
-                Updateblk32disp(ed,i);
-            
-            SelectPalette(objdc, oldpal, 1);
-        }
-        
-        SetWindowLong(hc, GWL_USERDATA, (int) ed);
-        
-        wparam = 0;
-    
-    // \task Is the fallthrough here intentional?
-    
-    case 4000:
-        SetDlgItemInt(win,IDC_EDIT1,wparam,0);
-        break;
-    case WM_DESTROY:
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
-        DeleteDC(ed->bufdc);
-        DeleteObject(ed->bufbmp);
-        free(ed);
-        break;
-    
-    case 4001:
-        
-        ed = (BLOCKEDIT32*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(always)
-        {
-            HPALETTE const oldpal = SelectPalette(objdc, ed->bs.ed->hpal, 1);
-            
-            for(i = 0; i < 4; i++)
-                Updateblk32disp(ed, i);
-            
-            SelectPalette(objdc, oldpal, 1);
-        }
-        
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
-        
-        break;
-    
-    case WM_COMMAND:
-        switch(wparam) {
-        case IDC_EDIT1|(EN_CHANGE<<16):
-            bs=(BLOCKSEL16*)GetWindowLong(win,GWL_USERDATA);
-            SetBS16(bs,GetDlgItemInt(win,IDC_EDIT1,0,0),GetDlgItem(win,IDC_CUSTOM2));
-            break;
-        case IDOK:
-            ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
-            oe=ed->bs.ed;
-            doc=oe->ew.doc;
-            rom=doc->rom;
-            i=oe->selblk;
-            j=(i>>2)*6;
-            l=ed->blks;
-            switch(i&3) {
-            case 0:
-                rom[0x18000 + j] = (l[0] & 0xff);
-                rom[0x18004 + j] = (rom[0x18004 + j] & 15) + ((l[0] >> 4) & 240);
-                rom[0x1b400 + j] = (l[1] & 0xff);
-                rom[0x1b404 + j] = (rom[0x1b404 + j]&15)+((l[1]>>4)&240);
-                rom[0x20000 + j] = (l[2] & 0xff);
-                rom[0x20004 + j] = (rom[0x20004 + j]&15)+((l[2]>>4)&240);
-                rom[0x23400 + j] = (l[3] & 0xff);
-                rom[0x23404 + j] = (rom[0x23404 + j]&15)+((l[3]>>4)&240);
-                break;
-            case 1:
-                rom[0x18001 + j] = (l[0] & 0xff);
-                rom[0x18004 + j] = (rom[0x18004 + j]&240)+(l[0]>>8);
-                rom[0x1b401 + j] = (l[1] & 0xff);
-                rom[0x1b404 + j] = (rom[0x1b404 + j]&240)+(l[1]>>8);
-                rom[0x20001 + j] = (l[2] & 0xff);
-                rom[0x20004 + j] = (rom[0x20004 + j]&240)+(l[2]>>8);
-                rom[0x23401 + j] = (l[3] & 0xff);
-                rom[0x23404 + j] = (rom[0x23404 + j]&240)+(l[3]>>8);
-                break;
-            case 2:
-                rom[0x18002 + j] = (l[0] & 0xff);
-                rom[0x18005 + j] = (rom[0x18005 + j]&15)+((l[0]>>4)&240);
-                rom[0x1b402 + j] = (l[1] & 0xff);
-                rom[0x1b405 + j] = (rom[0x1b405 + j]&15)+((l[1]>>4)&240);
-                rom[0x20002 + j] = (l[2] & 0xff);
-                rom[0x20005 + j] = (rom[0x20005 + j]&15)+((l[2]>>4)&240);
-                rom[0x23402 + j] = (l[3] & 0xff);
-                rom[0x23405 + j] = (rom[0x23405 +j]&15)+((l[3]>>4)&240);
-                break; 
-            case 3:
-                rom[0x18003 + j] = (l[0] & 0xff);
-                rom[0x18005 + j] = (rom[0x18005 + j]&240)+(l[0]>>8);
-                rom[0x1b403 + j] = (l[1] & 0xff);
-                rom[0x1b405 + j] = (rom[0x1b405 + j] & 240) + (l[1] >> 8);
-                rom[0x20003 + j] = (l[2] & 0xff);
-                rom[0x20005 + j] = (rom[0x20005 + j] & 240) + (l[2] >> 8);
-                rom[0x23403 + j] = (l[3] & 0xff);
-                rom[0x23405 + j] = (rom[0x23405 + j] & 240) + (l[3] >> 8);
-                break;
-            }
-            
-            for(i=0;i<160;i++)
-            {
-                hc2 = doc->overworld[i].win;
-                
-                if(hc2 != 0)
-                {
-                    hc2=GetDlgItem(hc2,2000);
-                    hc=GetDlgItem(hc2,3000);
-                    InvalidateRect(hc,0,0);
-                    hc=GetDlgItem(hc2,3001);
-                    InvalidateRect(hc,0,0);
-                }
-            }
-            
-            doc->modf=1;
-        
-        case IDCANCEL:
-            EndDialog(win,0);
-            break;
-        }
-    }
-    return FALSE;
-}
-
-LRESULT CALLBACK
-blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    PAINTSTRUCT ps;
-    HDC hdc;
-    int i,j,m;
-    OVEREDIT*ed;
-    RECT rc,rc2;
-    HBRUSH oldbrush;
-    HPALETTE oldpal;
-    SCROLLINFO si;
-    switch(msg)
-    {
-    
-    case WM_SIZE:
-        
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(!ed) break;
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_RANGE|SIF_PAGE;
-        si.nPage=lparam>>21;
-        si.nMin=0;
-        
-        si.nMax = ed->schflag ? ( (ed->schnum + 3) >> 2) : 0x8aa;
-        
-        SetScrollInfo(win,SB_VERT,&si,1);
-        
-        ed->sel_page=si.nPage;
-        
-        ed->sel_scroll = Handlescroll(win,
-                                      -1,
-                                      ed->sel_scroll,
-                                      ed->sel_page,
-                                      SB_VERT,
-                                      ed->schflag ? ( (ed->schnum + 3) >> 2) : 0x8aa, 32);
-        
-        break;
-    
-    case WM_MOUSEWHEEL:
-        
-        {
-            HM_MouseWheelData const d = HM_GetMouseWheelData(wparam, lparam);
-            
-            unsigned scroll_type = SB_LINEUP;
-            
-            WPARAM fake_wp;
-            
-            ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-            
-            if(d.m_distance > 0)
-            {
-                // wheel moving up or left
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEUP;
-                }
-                else
-                {
-                    scroll_type = SB_LINEUP;
-                }
-            }
-            else
-            {
-                if(d.m_control_key)
-                {
-                    scroll_type = SB_PAGEDOWN;
-                }
-                else
-                {
-                    scroll_type = SB_LINEDOWN;
-                }
-            }
-            
-            fake_wp =  MAKEWPARAM(scroll_type, 0);
-            
-            ed->sel_scroll = Handlescroll(win,
-                                          fake_wp,
-                                          ed->sel_scroll,
-                                          ed->sel_page,
-                                          SB_VERT,
-                                          ed->schflag ? ( (ed->schnum + 3) >> 2) : 0x8aa, 32);
-        }
-        
-        break;
-    
-    case WM_VSCROLL:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        ed->sel_scroll = Handlescroll(win,
-                                      wparam,
-                                      ed->sel_scroll,
-                                      ed->sel_page,
-                                      SB_VERT,
-                                      ed->schflag ? ( (ed->schnum + 3) >> 2) : 0x8aa, 32);
-        
-        break;
-    
-    case WM_LBUTTONDOWN:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
-        rc = HM_GetClientRect(win);
-        i=(rc.right>>1)-64;
-        j=lparam&65535;
-        
-        if(j < i || j >= rc.right - i)
-            break;
-        
-        m = ( (ed->sel_scroll + (lparam >> 21) ) << 2) + ( (j - i) >> 5);
-        
-        if(m<0 || m>=(ed->schflag?ed->schnum:0x22a8)) break;
-        if(ed->schflag) m=ed->schbuf[m];
-        SetDlgItemInt(ed->dlg,3005,m,0);
-        break;
-    case WM_LBUTTONDBLCLK:
-        ShowDialog(hinstance,(LPSTR)IDD_DIALOG7,framewnd,editblock32,GetWindowLong(win,GWL_USERDATA));
-        break;
-    case WM_PAINT:
-        
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
-        
-        if(!ed)
-            break;
-        
-        hdc = BeginPaint(win, &ps);
-        
-        oldpal = SelectPalette(hdc, ed->hpal, 1);
-        
-        RealizePalette(hdc);
-        rc = HM_GetClientRect(win);
-        
-        j = ((ps.rcPaint.bottom + 31) >> 5) << 2;
-        
-        oldbrush=SelectObject(hdc,white_pen);
-        
-        for(i = (ps.rcPaint.top >> 5) << 2; i < j; i++)
-        {
-            m = i + (ed->sel_scroll << 2);
-            
-            if(m >= (ed->schflag ? ed->schnum : 0x22a8))
-                break;
-            
-            rc2.top = (i >> 2) << 5;
-            rc2.left = (rc.right >> 1) - 64 + ((i & 3) << 5);
-            
-            if(rc2.top < ps.rcPaint.top - 31 || rc2.left < ps.rcPaint.left - 31 || rc2.left >= ps.rcPaint.right || rc2.top >= ps.rcPaint.bottom)
-                continue;
-            
-            Drawblock32(ed,ed->schflag?ed->schbuf[m]:m,0);
-            Paintblocks(&(ps.rcPaint),hdc,rc2.left,rc2.top,(DUNGEDIT*)ed);
-            
-            if(m == ed->sel_select)
-            {
-                rc2.bottom = rc2.top + 32;
-                rc2.right = rc2.left+32;
-                FrameRect(hdc, &rc2, green_brush);
-            }
-            else if(ed->disp & 2)
-            {
-                MoveToEx(hdc, rc2.left + 31, rc2.top, 0);
-                LineTo(hdc, rc2.left + 31, rc2.top + 31);
-                LineTo(hdc, rc2.left - 1, rc2.top + 31);
-            }
-        }
-        
-        SelectObject(hdc,oldbrush);
-        SelectPalette(hdc,oldpal,1);
-        
-        EndPaint(win,&ps);
-        
-        break;
-    
-    default:
-        
-        return DefWindowProc(win, msg, wparam, lparam);
-    }
-    
-    return 0;
-}
-
 // =============================================================================
 
 BOOL CALLBACK
@@ -12438,63 +12071,6 @@ Updatesprites(void)
 }
 
 // =============================================================================
-
-BOOL CALLBACK
-trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    TRACKEDIT*ed;
-    FDOC*doc;
-    SCMD*sc;
-    short*l;
-    int i,j,k,m,n,o;
-    HWND hc;
-    
-    (void) wparam;
-    
-    // -----------------------------
-    
-    switch(msg)
-    {
-    case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
-        ed=(TRACKEDIT*)lparam;
-        ed->dlg=win;
-        doc=ed->ew.doc;
-        sc=doc->scmd;
-        i=0;
-        k=0;
-        l=0;
-        m=ed->ew.param&65535;
-        o=ed->ew.param>>16;
-        ed->ew.param=m;
-        n=-1;
-        for(j=doc->sr[m].first;j!=-1;j=sc[j].next) {
-            if(i==k) k+=64,l=realloc(l,k*sizeof(SCMD));
-            if(j==o) n=i;
-            if(doc==mark_doc && m==mark_sr) {
-                if(j==mark_first) mark_start=i;
-                if(j==mark_last) mark_end=i;
-            }
-            l[i++]=j;
-        }
-        ed->debugflag=0;
-        ed->tbl=l;
-        ed->len=i;
-        ed->sel=n;
-        ed->csel=-1;
-        ed->withcapt=0;
-        SetDlgItemInt(win,3001,doc->sr[m].bank,0);
-        hc=GetDlgItem(win,3000);
-        SetWindowLong(hc,GWL_USERDATA,lparam);
-        Updatesize(hc);
-        break;
-    case 3001|(EN_CHANGE<<16):
-        ed=(TRACKEDIT*)GetWindowLong(win,DWL_USER);
-        ed->ew.doc->sr[ed->ew.param].bank=GetDlgItemInt(win,3001,0,0);
-        break;
-    }
-    return FALSE;
-}
 
 SD_ENTRY over_sd[] = 
 {
@@ -12713,32 +12289,6 @@ SD_ENTRY text_sd[]={
     {"BUTTON","Edit dictionary",130,20,120,0, 3004, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12}
 };
 
-SD_ENTRY samp_sd[]={
-    {"STATIC","Edit:",0,48,60,20, ID_Samp_SampleIndexStatic, WS_VISIBLE|WS_CHILD,0,0},
-    {"NumEdit","",64,48,40,20, ID_Samp_SampleIndexEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"SAMPEDIT","",0,96,0,0, ID_Samp_Display, WS_VISIBLE|WS_CHILD|WS_HSCROLL|WS_TABSTOP,WS_EX_CLIENTEDGE,10},
-    {"BUTTON","Copy of:",0,72,60,20, ID_Samp_SampleIsCopyCheckBox, WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
-    {"NumEdit","",64,72,40,20, ID_Samp_SampleCopyOfIndexEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Copy",110,48,50,20, ID_Samp_CopyToClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
-    {"BUTTON","Paste",110,72,50,20, ID_Samp_PasteFromClipboardButton, WS_VISIBLE|WS_CHILD,0,0},
-    {"STATIC","Length:",170,48,60,20, ID_Samp_LengthLabel, WS_VISIBLE|WS_CHILD,0,0},
-    {"NumEdit","",234,48,60,20, ID_Samp_SampleLengthEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Loop:",170,72,60,20, ID_Samp_LoopCheckBox, WS_VISIBLE|WS_CHILD|BS_AUTOCHECKBOX,0,0},
-    {"EDIT","",234,72,40,20, ID_Samp_LoopPointEdit, WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Ed.Inst:",0,0,40,20,3011,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",44,0,40,20,3012,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Freq:",90,0,40,20,3013,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",134,0,40,20,3014,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"STATIC","ADSR:",180,0,40,20,3015,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",224,0,40,20,3016,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Gain:",0,24,40,20,3017,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",44,24,40,20,3018,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Samp:",90,24,40,20,3019,WS_VISIBLE|WS_CHILD,0,0},
-    {"EDIT","",134,24,40,20,3020,WS_VISIBLE|WS_CHILD|WS_TABSTOP,WS_EX_CLIENTEDGE,0},
-    {"BUTTON","Play",180,24,36,20,3021,WS_VISIBLE|WS_CHILD,0,0},
-    {"BUTTON","Stop",220,24,36,20,3022,WS_VISIBLE|WS_CHILD,0,0}
-};
-
 SD_ENTRY patch_sd[]={
     {"LISTBOX","",0,20,100,70,3000,WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
     {"STATIC","Loaded modules:",0,0,0,0,3001,WS_VISIBLE|WS_CHILD,0,0},
@@ -12800,144 +12350,6 @@ SD_ENTRY z3_sd[]={
 SUPERDLG z3_dlg={
     "",z3dlgproc,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,60,60,1,z3_sd
 };
-
-// =============================================================================
-
-LRESULT CALLBACK
-lmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    LMAPEDIT *ed;
-    switch(msg) {
-    case WM_CLOSE:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->modf) {
-            wsprintf(buffer,"Confirm modification of %s palace?",level_str[ed->ew.param+1]);
-            switch(MessageBox(framewnd,buffer,"Level map editor",MB_YESNOCANCEL)) {
-            case IDYES:
-                Savedungmap(ed);
-                break;
-            case IDCANCEL:
-                return 1;
-            }
-        }
-        goto deflt;
-        break;
-    case WM_MDIACTIVATE:
-        if((HWND)lparam!=win) break;
-        ed=((LMAPEDIT*)GetWindowLong(win,GWL_USERDATA));
-        activedoc=ed->ew.doc;
-        Setdispwin((DUNGEDIT*)ed);
-        break;
-    case WM_GETMINMAXINFO:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_CREATE:
-        ed=(LMAPEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        ed->dlg=CreateSuperDialog(&lmapdlg,win,0,0,256,256,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    
-    return 0;
-}
-
-// =============================================================================
-
-LRESULT CALLBACK
-perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    PERSPEDIT*ed;
-    switch(msg) {
-    case WM_CLOSE:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        if(ed->modf) {
-            switch(MessageBox(framewnd,"Confirm modification of 3D objects?","3D object editor",MB_YESNOCANCEL)) {
-            case IDYES:
-                Savepersp(ed);
-                break;
-            case IDCANCEL:
-                return 1;
-            }
-        }
-        goto deflt;
-        break;
-    case WM_MDIACTIVATE:
-        activedoc=((PERSPEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->perspwnd=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(PERSPEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        ed->dlg=CreateSuperDialog(&perspdlg,win,0,0,100,100,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
-
-// =============================================================================
-
-LRESULT CALLBACK
-trackeditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    TRACKEDIT*ed;
-    
-    switch(msg)
-    {
-    
-    case WM_MDIACTIVATE:
-        activedoc=((TRACKEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
-        goto deflt;
-    case WM_GETMINMAXINFO:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_DESTROY:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
-        ed->ew.doc->sr[ed->ew.param].editor=0;
-        free(ed);
-        break;
-    case WM_CREATE:
-        ed=(TRACKEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        SetWindowLong(win,GWL_USERDATA,(long)ed);
-        ShowWindow(win,SW_SHOW);
-        ed->ew.doc->sr[ed->ew.param&65535].editor=win;
-        CreateSuperDialog(&trackdlg,win,0,0,0,0,(long)ed);
-deflt:
-    default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
-    }
-    return 0;
-}
 
 // =============================================================================
 
