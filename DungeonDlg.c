@@ -215,7 +215,8 @@ void FixEntScroll(FDOC*doc,int j)
     const static unsigned char hfl[4]={0xd0,0xb0};
     const static unsigned char vfl[4]={0x8a,0x86};
     
-    k=((short*)(rom+(j>=0x85?0x15a64:0x14813)))[j];
+    k = ldle16b_i(rom + (j >= 0x85 ? 0x15a64 : 0x14813),
+                  j);
     
     win = doc->dungs[k];
     
@@ -626,37 +627,72 @@ Closeroom(DUNGEDIT * const ed)
 void Savedungsecret(FDOC*doc,int num,unsigned char*buf,int size)
 {
     int i,j,k;
+    
     int adr[0x140];
-    unsigned char*rom=doc->rom;
-    for(i=0;i<0x140;i++)
-        adr[i]=0x10000 + ((short*)(rom + 0xdb69))[i];
-    j=adr[num];
-    k=adr[num+1];
+    
+    unsigned char * rom = doc->rom;
+    
+    uint16_t * const secret_base = (uint16_t*) (rom + 0xdb69);
+    
+    // -----------------------------
+    
+    for(i = 0; i < 0x140; i++)
+    {
+        adr[i] = 0x10000 + ldle16h_i(secret_base, i);
+    }
+    
+    j = adr[num];
+    k = adr[num+1];
     
     if( is16b_neg1(rom + j) )
     {
-        if(!size) return;
-        j+=size+2;
-        adr[num]+=2;
-    } else {
-        if(!size) {
-            if(j>0xdde9) {
-                j-=2;
-                adr[num]-=2;
-            }
-        } else j+=size;
+        if(!size)
+            return;
+        
+        j += size + 2;
+        
+        adr[num] += 2;
     }
-    if(*(short*)(rom+k)!=-1) k-=2;
-    if(adr[0x13f]-k+j>0xe6b0) {
+    else
+    {
+        if(!size)
+        {
+            if(j>0xdde9)
+            {
+                j -= 2;
+                
+                adr[num] -= 2;
+            }
+        }
+        else
+            j += size;
+    }
+    
+    if( ldle16b(rom + k) != -1)
+    {
+        k -= 2;
+    }
+    
+    if(adr[0x13f] - k + j > 0xe6b0)
+    {
         MessageBox(framewnd,"Not enough space for secret items","Bad error happened",MB_OK);
+        
         return;
     }
-    memmove(rom+j,rom+k,adr[0x13f]+2-k);
-    if(size) memcpy(rom+adr[num],buf,size);
-    if(j==k) return;
-    ((short*)(rom + 0xdb69))[num]=adr[num];
-    for(i=num+1;i<0x140;i++) {
-        ((short*)(rom + 0xdb69))[i]=adr[i]+j-k;
+    
+    memmove(rom + j, rom + k, adr[0x13f] + 2 - k);
+    
+    if(size)
+        memcpy(rom + adr[num], buf, size);
+    
+    if(j == k)
+        return;
+    
+    stle16h_i(secret_base, num, adr[num]);
+    
+    for(i = num + 1; i < 0x140; i++)
+    {
+        stle16h_i(secret_base, i, adr[i] + j - k);
     }
 }
 

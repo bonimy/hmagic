@@ -606,44 +606,70 @@ Updatesong(void)
                     l=zch->pos;
                     j=zch->loop;
 nexttime:
-                    if(l==-1) {
+                    
+                    if(l == -1)
+                    {
                         j--;
+                        
                         if(j<=0) goto endnote;
-                        l=zch->lopst;
+                        
+                        l = zch->lopst;
+                        
                         goto nexttime;
                     }
-                    sc=sounddoc->scmd+l;
-                    if(sc->cmd!=0xc8) {
-                        if(sc->cmd==0xef) {
-                            l=*(short*)&(sc->p1);
+                    
+                    sc = sounddoc->scmd+l;
+                    
+                    if(sc->cmd != 0xc8)
+                    {
+                        if(sc->cmd == 0xef)
+                        {
+                            l = *(short*) &(sc->p1);
+                            
                             goto nexttime;
                         }
-                        if(sc->cmd>=0xe0) {
+                        
+                        if(sc->cmd >= 0xe0)
+                        {
                             l=sc->next;
+                            
                             goto nexttime;
                         }
 endnote:
-                        if(sounddev<0x20000) zw->envs=3;
-                        else midinoteoff(zch);
+                        if(sounddev < 0x20000)
+                            zw->envs = 3;
+                        else
+                            midinoteoff(zch);
                     }
                 }
             }
-            if(zch->volt) {
+            
+            if(zch->volt)
+            {
                 zch->volt--;
-                zch->vol+=zch->vold;
-                volflag|=chf;
+                zch->vol += zch->vold;
+                
+                volflag |= chf;
             }
-            if(zch->pant) {
+            
+            if(zch->pant)
+            {
                 zch->pant--;
                 zch->pan+=zch->pand;
+                
                 volflag|=chf;
             }
             
-            if(pbflag&chf)
+            if(pbflag & chf)
             {
-                if(!zch->pbt) {
+                if(!zch->pbt)
+                {
                     if(!zch->pbtim) zch->pbtim++;
-                    if(pbstatflag&chf) pbflag&=~chf; else {
+                    
+                    if(pbstatflag&chf)
+                        pbflag&=~chf;
+                    else
+                    {
                         zch->pbt=zch->pbtim+1;
                         
                         // What is the significance of this constant?
@@ -669,20 +695,29 @@ endnote:
                         }
                         pbstatflag|=chf;
                     }
-                } else if(pbstatflag&chf) {
+                }
+                else if(pbstatflag&chf)
+                {
                     if(sounddev<0x20000)
                         zch->freq+=zch->fdlt;
-                    else zch->midpb+=zch->midpbdlt;
+                    else
+                        zch->midpb+=zch->midpbdlt;
+                    
                     fqflag|=chf;
                 }
                 zch->pbt--;
             }
-            if(zch->vibt) {
+            
+            if(zch->vibt)
+            {
                 zch->vibt--;
                 zch->vibdep+=zch->vibdlt;
             }
+            
             zch->vibcnt+=zch->vibspd;
+            
             if(zch->vibdlt) fqflag|=chf;
+            
             if(!zch->tim) {
 again:
                 if(zch->pos==-1) {zch->playing=0;continue;}
@@ -931,7 +966,7 @@ nonote:;
                         volflag|=chf;
                         break;
                     case 239:
-                        if(*(unsigned short*)&(sc->p1)>=sounddoc->m_size) break;
+                        if(*(unsigned short*)&(sc->p1) >= sounddoc->m_size) break;
                         zch->callpos=zch->pos;
                         zch->lopst=zch->pos=*(unsigned short*)&(sc->p1);
                         if(zch->pos>=sounddoc->m_size) zch->playing=0,zch->pos=zch->lopst=0;

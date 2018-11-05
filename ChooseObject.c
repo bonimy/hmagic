@@ -490,7 +490,8 @@ int GetBTOfs(DPCEDIT*ed)
     else if(ed->bs.sel>=0x1c0)
         return ed->bs.sel + 0x715d9;
     else
-        return ed->bs.sel + 0x70eea + ((short*)(ed->bs.ed->ew.doc->rom + 0x71000))[((DUNGEDIT*)(ed->bs.ed))->gfxnum];
+        return ed->bs.sel + 0x70eea
+             + ((short*)(ed->bs.ed->ew.doc->rom + 0x71000))[((DUNGEDIT*)(ed->bs.ed))->gfxnum];
 }
 
 // "Dungeon piece" editor. Guess this edits dungeon objects.
