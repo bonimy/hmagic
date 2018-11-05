@@ -55,6 +55,12 @@
     <Filter Include="Header Files\Audio">
       <UniqueIdentifier>{7430f52d-ff48-462a-97b2-29ad77e7c39d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\CG">
+      <UniqueIdentifier>{27991fd2-24f4-4994-a599-3c2e714da32b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Level Map">
+      <UniqueIdentifier>{d72b4565-6d04-489b-a64b-aff1fae792b4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -186,6 +192,27 @@
     <ClCompile Include="SampleEditLogic.c">
       <Filter>Source Files\Audio</Filter>
     </ClCompile>
+    <ClCompile Include="TrackEditFrame.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackEditDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackerLogic.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="PerspectiveFrame.c">
+      <Filter>Source Files\CG</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapFrame.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Map32Selector.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="MetatileLogic.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -250,6 +277,12 @@
     </ClInclude>
     <ClInclude Include="SampleEditLogic.h">
       <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackerLogic.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="MetatileLogic.h">
+      <Filter>Header Files\Overworld</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

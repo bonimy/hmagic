@@ -765,10 +765,14 @@ invalobj:
             if( is16b_neg1(rom + 0xe96e + l) )
                 break;
         
-        if(l!=0x1f8) {
-            for(k=0;k<0x1f8;k+=3) {
-                n=*(short*)(rom + 0xe96e + l);
-                if(n==ed->mapnum) {
+        if(l!=0x1f8)
+        {
+            for(k=0;k<0x1f8;k+=3)
+            {
+                n = ldle16b(rom + 0xe96e + l);
+                
+                if(n == ed->mapnum)
+                {
                     if(ed->chestloc[m++]>map-ed->buf) {
                         if(l<k)
                             MoveMemory(rom + 0xe96e + l, rom + 0xe96e + l + 3,

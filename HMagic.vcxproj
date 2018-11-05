@@ -129,7 +129,10 @@
     <ClCompile Include="HMagicFrame.c" />
     <ClCompile Include="HMagicLogic.c" />
     <ClCompile Include="HMagicUtility.c" />
+    <ClCompile Include="LevelMapFrame.c" />
     <ClCompile Include="Map16_SearchDlg.c" />
+    <ClCompile Include="Map32Selector.c" />
+    <ClCompile Include="MetatileLogic.c" />
     <ClCompile Include="OverworldDlg.c" />
     <ClCompile Include="OverworldEdit.c" />
     <ClCompile Include="OverworldFrame.c" />
@@ -137,6 +140,7 @@
     <ClCompile Include="PaletteEdit.c" />
     <ClCompile Include="PaletteFrame.c" />
     <ClCompile Include="PaletteSelector.c" />
+    <ClCompile Include="PerspectiveFrame.c" />
     <ClCompile Include="RomProperties.c" />
     <ClCompile Include="SampleDisplay.c" />
     <ClCompile Include="SampleEditDlg.c" />
@@ -147,6 +151,9 @@
     <ClCompile Include="TextDlg.c" />
     <ClCompile Include="TextFrame.c" />
     <ClCompile Include="TextLogic.c" />
+    <ClCompile Include="TrackEditDlg.c" />
+    <ClCompile Include="TrackEditFrame.c" />
+    <ClCompile Include="TrackerLogic.c" />
     <ClCompile Include="WindowClasses.c" />
     <ClCompile Include="WorldMapDisplay.c" />
     <ClCompile Include="WorldMapDlg.c" />
@@ -167,6 +174,7 @@
     <ClInclude Include="HMagicEnum.h" />
     <ClInclude Include="HMagicLogic.h" />
     <ClInclude Include="HMagicUtility.h" />
+    <ClInclude Include="MetatileLogic.h" />
     <ClInclude Include="OverworldEdit.h" />
     <ClInclude Include="OverworldEnum.h" />
     <ClInclude Include="PaletteEdit.h" />
@@ -178,6 +186,7 @@
     <ClInclude Include="structs.h" />
     <ClInclude Include="TextEnum.h" />
     <ClInclude Include="TextLogic.h" />
+    <ClInclude Include="TrackerLogic.h" />
     <ClInclude Include="WorldMapLogic.h" />
     <ClInclude Include="Wrappers.h" />
   </ItemGroup>

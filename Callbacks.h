@@ -105,6 +105,9 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(SampleDisplayProc);
 
     HM_DeclareDlgProc(sampdlgproc);
+    
+    // Tracker Dialog procedure.
+    HM_DeclareDlgProc(trackdlgproc);
 
     HM_DeclareWndProc(trackeditproc);
     HM_DeclareWndProc(trackerproc);

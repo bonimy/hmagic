@@ -1,6 +1,8 @@
 ﻿
     #include "structs.h"
 
+    #include "Wrappers.h"
+
     // For Modifywaves()
     #include "AudioLogic.h"
 
@@ -103,8 +105,245 @@
         OpenClipboard(0);
         EmptyClipboard();
         
+        /*
+            \author MathOnNapkins (of this comment block, anyway)
+            
+            \note One may ask why sephiroth3 wanted to copy wave file data
+            in this fashion, when he could have just copied the raw PCM data.
+            In other words, this seems a bit overwrought to achieve the desired
+            goal, however we must consider that they may have had a pet
+            application they liked to use that allowed copy and paste in this
+            fashion. Audacity, for example, may accept this sort of data from
+            the clipboard, but I don't konw that off hand.
+            
+            In the current year (2018) I have not encountered any applications
+            that seem to accept this type of data from the clipboard, but that
+            is to some degree from a lack of seeking any out. Office
+            applications and WordPad don't seem to accept this data though.
+        */
+        
         SetClipboardData(CF_WAVE, hgl);
         CloseClipboard();
+    }
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        /**
+            Just indicates whether the clipboard is open and whether we need
+            to close it upon exit.
+        */
+        BOOL m_cb_open;
+        
+        /// Handle to global data block that the clipboard owns and manages.
+        HGLOBAL m_hgl;
+        
+        /// Length of the data on the clipboard
+        size_t m_cb_data_len;
+        
+        /**
+            Pointer to raw data on the clipboard. If this is not NULL, it
+            should be assumed that the data has been "locked" from m_hgl,
+            and therefore will need to be unlocked when we're done with it.
+        */
+        char const * m_data;
+        
+        /*
+            Aliased verison of m_data with a structure type.
+        */
+        HM_WaveFileData const * m_wav_data;
+
+        
+    } SampleEdit_PasteContext;
+
+// =============================================================================
+
+    BOOL
+    SampleEdit_ValidatePasteData
+    (
+        SampleEdit_PasteContext * const p_c
+    )
+    {
+        HM_WaveFileData const * w = NULL;
+        
+        size_t internal_size_2 = 0;
+        
+        // -----------------------------
+        
+        p_c->m_cb_open     = FALSE;
+        p_c->m_hgl         = INVALID_HANDLE_VALUE;
+        p_c->m_cb_data_len = 0;
+        p_c->m_data        = NULL;
+        p_c->m_wav_data    = NULL;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        p_c->m_cb_open = OpenClipboard(0);
+        
+        if(p_c->m_cb_open == FALSE )
+        {
+            MessageBox
+            (
+                framewnd,
+                "Could not open clipboard for paste operation",
+                "Error",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        p_c->m_hgl = GetClipboardData(CF_WAVE);
+        
+        if( ! p_c->m_hgl )
+        {
+            MessageBox
+            (
+                framewnd,
+                "Nothing is on the clipboard.",
+                "Bad error happened",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        p_c->m_cb_data_len = GlobalSize(p_c->m_hgl);
+        
+        if( p_c->m_cb_data_len < sizeof(HM_WaveFileData) )
+        {
+            MessageBox
+            (
+                framewnd,
+                ("The data stream in the clipboard is too small to be WAV "
+                "formatted audio data"),
+                "Error",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        p_c->m_data = (char const *) GlobalLock(p_c->m_hgl);
+        
+        if(p_c->m_data == NULL)
+        {
+            MessageBox
+            (
+                framewnd,
+                "Failed to acquire a pointer to clipboard data",
+                "Error",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        w = p_c->m_wav_data = (HM_WaveFileData const *) p_c->m_data;
+        
+        internal_size_2 = (w->m_subchunk_2_size + sizeof(HM_WaveFileData) );
+
+        if
+        (
+            // The eight bytes account for the two 32-bit values at the
+            // start of the WAV file.
+            (w->m_chunk_size + 8) > p_c->m_cb_data_len
+         || (internal_size_2 > p_c->m_cb_data_len)
+        )
+        {
+            MessageBox
+            (
+                framewnd,
+                "The internally reported size of the WAV data exceeds the "
+                "size of the buffer provided by the clipboard",
+                "Error",
+                MB_OK
+            );
+
+            return FALSE;
+        }
+        
+        if
+        (
+            ! HM_CheckEmbeddedStr(w->m_chunk_id, "RIFF")
+         || ! HM_CheckEmbeddedStr(w->m_format,   "WAVE")
+         || ! HM_CheckEmbeddedStr(w->m_subchunk_1_id, "fmt ")
+         || ! HM_CheckEmbeddedStr(w->m_subchunk_2_id, "data")
+        )
+        {
+            MessageBox
+            (
+                framewnd,
+                "This is not a wave.",
+                "Bad error happened",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        if(w->m_audio_format != 1)
+        {
+            MessageBox
+            (
+                framewnd,
+                "The wave is not PCM",
+                "Bad error happened",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        if(w->m_num_channels != 1)
+        {
+            MessageBox
+            (
+                framewnd,
+                "Only mono is allowed.",
+                "Bad error happened",
+                MB_OK
+            );
+            
+            return FALSE;
+        }
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
+    static void
+    SampleEdit_CleanupPasteContext
+    (
+        SampleEdit_PasteContext * const p_c
+    )
+    {
+        if(p_c->m_data)
+        {
+            GlobalUnlock(p_c->m_hgl);
+        }
+        
+        if(p_c->m_data)
+        {
+            p_c->m_data = NULL;
+        }
+        
+        if(p_c->m_wav_data)
+        {
+            p_c->m_wav_data = NULL;
+        }
+        
+        if(p_c->m_cb_open)
+        {
+            CloseClipboard();
+            
+            p_c->m_cb_open = FALSE;
+        }
+        
+        p_c->m_cb_data_len = 0;
     }
 
 // =============================================================================
@@ -116,96 +355,33 @@
         int j = 0;
         int k = 0;
         
-        char const * b   = NULL;
         char const * dat = NULL;
-        
-        HGLOBAL hgl = INVALID_HANDLE_VALUE;
-        
-        WAVEFORMATEX * wfx = NULL;
         
         ZWAVE * const zw = p_ed->zw;
         
+        SampleEdit_PasteContext c;
+        
+        BOOL is_valid = SampleEdit_ValidatePasteData(&c);
+        
         // -----------------------------
         
-        OpenClipboard(0);
-        
-        hgl = GetClipboardData(CF_WAVE);
-        
-        if(!hgl)
+        if(is_valid == FALSE)
         {
-            MessageBox(framewnd,"Nothing is on the clipboard.","Bad error happened",MB_OK);
-            CloseClipboard();
-            
+            SampleEdit_CleanupPasteContext(&c);
+
             return FALSE;
         }
         
-        b = (char*) GlobalLock(hgl);
+        j = (c.m_wav_data->m_chunk_size + 4);
         
-        if( ( *(int*)b!=0x46464952) || *(int*)(b+8)!=0x45564157)
-        {
-error:
-            MessageBox(framewnd,"This is not a wave.","Bad error happened",MB_OK);
-noclip:
-            GlobalUnlock(hgl);
-            CloseClipboard();
-            
-            return FALSE;
-        }
+        k = c.m_wav_data->m_subchunk_2_size;
         
-        j = *(int*) (b + 4);
-        b += 8;
-        dat = 0;
-        wfx = 0;
-        
-        for(i = 4; i < j;)
-        {
-            switch(*(int*)(b+i))
-            {
-            
-            case 0x20746d66:
-                wfx = (WAVEFORMATEX*) (b + i + 8);
-                
-                break;
-            
-            case 0x61746164:
-                dat = b + i + 8;
-                
-                k = *(int*)(b + i + 4);
-                
-                if(wfx)
-                    goto foundall;
-                
-                break;
-            }
-            
-            i += 8 + *(int*) ( b + i + 4);
-        }
-        
-        if( ( ! wfx) || ! dat )
-        {
-            goto error;
-        }
-        
-foundall:
-        
-        if(wfx->wFormatTag != 1)
-        {
-            MessageBox(framewnd,"The wave is not PCM","Bad error happened",MB_OK);
-            goto noclip;
-        }
-        
-        if(wfx->nChannels != 1)
-        {
-            MessageBox(framewnd,"Only mono is allowed.","Bad error happened",MB_OK);
-            goto noclip;
-        }
-        
-        if(wfx->wBitsPerSample == 16)
+        if(c.m_wav_data->m_bits_per_sample == 16)
         {
             k >>= 1;
         }
         
-        if(p_ed->sell > zw->end)
+        if( (p_ed->sell > zw->end) || (p_ed->selr > zw->end) )
         {
             p_ed->sell = zw->end;
             p_ed->selr = zw->end;
@@ -236,17 +412,25 @@ foundall:
         }
         
         if(zw->lopst >= p_ed->selr)
+        {
             zw->lopst += p_ed->sell + k - p_ed->selr;
+        }
         
         if(zw->lopst >= zw->end)
+        {
             zw->lflag = 0, zw->lopst = 0;
+        }
         
         if(zw->lflag)
+        {
             zw->buf[zw->end] = zw->buf[zw->lopst];
+        }
         
         p_ed->selr = p_ed->sell + k;
         
-        if(wfx->wBitsPerSample == 16)
+        dat = (const char *) c.m_wav_data->m_data;
+        
+        if(c.m_wav_data->m_bits_per_sample == 16)
         {
             memcpy(zw->buf + p_ed->sell,
                    dat,
@@ -265,8 +449,7 @@ foundall:
         p_ed->ew.doc->m_modf = 1;
         p_ed->ew.doc->w_modf = 1;
         
-        GlobalUnlock(hgl);
-        CloseClipboard();
+        SampleEdit_CleanupPasteContext(&c);
         
         Modifywaves(p_ed->ew.doc,
                     p_ed->editsamp);

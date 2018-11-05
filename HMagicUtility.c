@@ -252,13 +252,32 @@ stle16b(uint8_t * const p_arr,
 
 // =============================================================================
 
-void
-stle16b_i(uint8_t * const p_arr,
-          size_t    const p_index,
-          uint16_t  const p_val)
-{
-    stle16b(p_arr + (p_index * 2), p_val);
-}
+    // "Store little endian 16-bit value using a byte pointer, offset by an
+    // index before dereferencing"
+    void
+    stle16b_i(uint8_t * const p_arr,
+              size_t    const p_index,
+              uint16_t  const p_val)
+    {
+        stle16b(p_arr + (p_index * 2), p_val);
+    }
+
+// =============================================================================
+
+    // "Store little endian 16-bit value using a halfword pointer, offset
+    // "by an index before dereferencing"
+    void
+    stle16h_i(uint16_t * const p_arr,
+              size_t     const p_index,
+              uint16_t   const p_val)
+    {
+        // byte indexed alias.
+        uint8_t * const p_arr_b = (uint8_t*) (p_arr + p_index);
+        
+        // -----------------------------
+        
+        stle16b(p_arr_b, p_val);
+    }
 
 // =============================================================================
 

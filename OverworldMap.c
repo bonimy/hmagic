@@ -69,9 +69,11 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     text_buf_ty text_buf = { 0 };
     
     int i,j,k,m;
-    uint16_t const * b2;
-    uint16_t const * b3;
-    unsigned char*b6;
+    
+    uint16_t const * b2 = NULL;
+    uint16_t const * b3 = NULL;
+    
+    unsigned char * b6;
     
     HGDIOBJ oldobj = 0;
     
@@ -119,24 +121,27 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 1:
         
-        b2=(ed->ew.doc->rom + 0xdb96f);
-        b3=(ed->ew.doc->rom + 0xdba71);
+        b2 = (uint16_t*) (ed->ew.doc->rom + 0xdb96f);
+        b3 = (uint16_t*) (ed->ew.doc->rom + 0xdba71);
         
         // Entrances
         oldobj = SelectObject(hdc, yellow_brush);
         
-        for(i=0;i<129;i++)
+        for(i = 0; i < 129; i++)
         {
             
             if(ed->tool==3 && i==ed->selobj)
                 continue;
             
-            if(b2[i]==ed->ew.param)
+            if( ldle16h_i(b2, i) == ed->ew.param)
             {
-                j=b3[i];
+                j = ldle16h_i(b3, i);
+                
                 rc.left=((j&0x7e)<<3)-n;
                 rc.top=((j&0x1f80)>>3)-o;
+                
                 Drawdot(hdc,&rc,q,n,o);
+                
                 wsprintf(text_buf,"%02X",rom[0xdbb73 + i]);
                 
                 PaintSprName(hdc,
@@ -151,21 +156,28 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 2:
         
-        b2=(rom + 0x160ef);
-        b3=(rom + 0x16051);
+        b2 = (uint16_t*) (rom + 0x160ef);
+        b3 = (uint16_t*) (rom + 0x16051);
         
         // Exits
         oldobj = SelectObject(hdc, white_brush);
         
-        for(i=0;i<79;i++) {
-            if(ed->tool==7 && i==ed->selobj) continue;
-            if(rom[0x15e28 + i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
+        for(i = 0; i < 79; i++)
+        {
+            if(ed->tool==7 && i==ed->selobj)
+                continue;
+            
+            if(rom[0x15e28 + i] == ed->ew.param)
+            {
+                j = ldle16h_i(b2, i);
+                k = ldle16h_i(b3, i);
+                
+                j -= ((ed->ew.param&7)<<9);
+                k -= ((ed->ew.param&56)<<6);
+                
                 rc.left=j-n;
                 rc.top=k-o;
+                
                 Drawdot(hdc,&rc,q,n,o);
                 
                 wsprintf(text_buf,
@@ -187,8 +199,8 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 3:
         
-        b2 = (ed->ew.doc->rom + 0xdb826);
-        b3 = (ed->ew.doc->rom + 0xdb800);
+        b2 = (uint16_t*) (ed->ew.doc->rom + 0xdb826);
+        b3 = (uint16_t*) (ed->ew.doc->rom + 0xdb800);
         
         // Holes
         oldobj = SelectObject(hdc, black_brush);
@@ -200,10 +212,12 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
             
             if(b2[i] == ed->ew.param)
             {
-                j=b3[i];
-                j+=0x400;
+                j  = ldle16h_i(b3, i);
+                j += 0x400;
+                
                 rc.left=((j&0x7e)<<3)-n;
                 rc.top=((j&0x1f80)>>3)-o;
+                
                 Drawdot(hdc,&rc,q,n,o);
                 
                 wsprintf(text_buf,
@@ -259,8 +273,8 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 5:
         
-        b2 = (rom + 0x16b8f);
-        b3 = (rom + 0x16b6d);
+        b2 = (uint16_t*) (rom + 0x16b8f);
+        b3 = (uint16_t*) (rom + 0x16b6d);
         
         // Bird ("Fly-{N}") locations.
         oldobj = SelectObject(hdc, blue_brush);

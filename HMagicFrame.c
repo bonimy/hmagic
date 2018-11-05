@@ -953,9 +953,7 @@ error:
             doc->tmend2 = 0x75d31;
             doc->oolend = 0x77b64;
             
-            i = *(int*) (rom + 0x17f8c);
-            
-            if(i == 0x4445335A)
+            if( HM_CheckEmbeddedStr(rom + 0x17f8c, "Z3ED") )
             {
                 i = *(int*) (rom + 0x17f94);
                 k = *(int*) (rom + 0x17f90);

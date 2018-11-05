@@ -68,7 +68,7 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 
                 memcpy(b+130,rom+l + 0x78000,k-l);
                 
-                *(short*)(b+128)=k-l+2;
+                *(short*)(b + 128) = k-l+2;
                 
                 Makeasciistring(doc, b, b + 128, 128);
                 
