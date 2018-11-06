@@ -1,7 +1,7 @@
 
-#if ! defined HMAGIC_TRACKER_LOGIC_HEADER_GUARD
+#if ! defined HMAGIC_TILEMAP_LOGIC_HEADER_GUARD
 
-    #define HMAGIC_TRACKER_LOGIC_HEADER_GUARD
+#define HMAGIC_TILEMAP_LOGIC_HEADER_GUARD
 
 // =============================================================================
 
@@ -9,22 +9,17 @@
 
 // =============================================================================
 
-    extern int mark_sr;
-
-    extern int mark_start;
-    extern int mark_end;
-    extern int mark_first;
-    extern int mark_last;
-
-    extern char op_len[32];
+    extern int tmap_ofs[];
 
 // =============================================================================
 
-    extern short
-    AllocScmd(FDOC*doc);
+    extern void
+    Updtmap(TMAPEDIT * const ed);
 
-    extern short
-    Getblocktime(FDOC *doc, short num, short prevtime);
+// =============================================================================
+
+    extern void
+    Savetmap(TMAPEDIT * const ed);
 
 // =============================================================================
 

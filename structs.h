@@ -894,6 +894,13 @@ extern int wver;
 
 extern int const always;
 
+extern uint8_t const u8_neg1;
+
+extern uint16_t const u16_neg1;
+
+extern uint32_t const u32_neg1;
+
+
 extern const short bg3blkofs[4];
 
 extern int palhalf[8];
@@ -907,10 +914,6 @@ extern DUNGEDIT * dunged;
 extern uint8_t drawbuf[0x400];
 
 extern uint16_t *dm_buf;
-
-extern char const * mus_str[];
-
-extern char const * level_str[];
 
 extern int door_ofs;
 
@@ -930,6 +933,10 @@ extern int mouse_x;
 extern int mouse_y;
 
 extern int palmode;
+
+extern unsigned char masktab[16];
+
+TEXTMETRIC textmetric;
 
 // =============================================================================
 

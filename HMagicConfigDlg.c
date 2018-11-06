@@ -6,6 +6,7 @@
     #include "HMagicLogic.h"
 
     #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
     #include "OverworldEnum.h"
     #include "OverworldEdit.h"

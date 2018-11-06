@@ -1,26 +1,30 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "Wrappers.h"
-#include "Callbacks.h"
+    #include "Wrappers.h"
+    #include "Callbacks.h"
 
-#include "HMagicEnum.h"
-#include "HMagicLogic.h"
-#include "HMagicUtility.h"
+    #include "HMagicEnum.h"
+    #include "HMagicLogic.h"
+    #include "HMagicUtility.h"
 
-#include "OverworldEdit.h"
+    #include "OverworldEdit.h"
 
-#include "DungeonEnum.h"
-#include "DungeonLogic.h"
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
-#include "PaletteEdit.h"
+    #include "PaletteEdit.h"
 
-#include "TextLogic.h"
+    #include "TextLogic.h"
 
-#include "AudioLogic.h"
+    #include "AudioLogic.h"
 
-#include "WorldMapLogic.h"
+    #include "WorldMapLogic.h"
+
+    #include "TileMapLogic.h"
+
+    #include "PatchLogic.h"
 
 // =============================================================================
 
@@ -571,7 +575,9 @@ updatemods:
                 }
             }
             else
+            {
                 Removepatches(activedoc);
+            }
             
             stle32b(rom + 0x17fa8, activedoc->sctend);
             

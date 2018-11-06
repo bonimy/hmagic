@@ -112,6 +112,8 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(trackeditproc);
     HM_DeclareWndProc(trackerproc);
 
+    HM_DeclareDlgProc(musdlgproc);
+
     HM_DeclareWndProc(musbankproc);
 
 // =============================================================================
@@ -141,6 +143,8 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(lmapdispproc);
     HM_DeclareWndProc(lmapblksproc);
 
+    HM_DeclareDlgProc(lmapdlgproc);
+    
     HM_DeclareWndProc(lmapproc);
 
 // =============================================================================
@@ -152,6 +156,8 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     
     HM_DeclareWndProc(tmapdispproc);
     
+    HM_DeclareDlgProc(tmapdlgproc);
+
     HM_DeclareWndProc(tmapproc);
 
 // =============================================================================
@@ -159,11 +165,21 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     // 3D object-related procedures
     HM_DeclareWndProc(perspdispproc);
 
+    HM_DeclareDlgProc(perspdlgproc);
+
     HM_DeclareWndProc(perspproc);
 
 // =============================================================================
 
+    // CHR (graphics) related procedures
+    HM_DeclareDlgProc(blockdlgproc);
+
+// =============================================================================
+
     // ASM-related procedures.
+
+    HM_DeclareDlgProc(patchdlgproc);
+
     HM_DeclareWndProc(patchproc);
 
 // =============================================================================
@@ -185,6 +201,8 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareDlgProc(duproom);
    
     HM_DeclareDlgProc(rompropdlg);
+
+    HM_DeclareDlgProc(errorsproc);
 
 // =============================================================================
 

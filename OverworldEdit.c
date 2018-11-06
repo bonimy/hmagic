@@ -1,9 +1,11 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "prototypes.h"
+    #include "prototypes.h"
 
-#include "OverworldEdit.h"
+    #include "HMagicUtility.h"
+
+    #include "OverworldEdit.h"
 
 // =============================================================================
 
@@ -512,6 +514,66 @@ getbgmap(OVEREDIT * const ed,
     }
     
     return c;
+}
+
+// =============================================================================
+
+extern int
+Savesecrets(FDOC          * const doc,
+            int             const num,
+            uint8_t const * const buf,
+            int             const size)
+{
+    int i,j,k;
+    int adr[128];
+    unsigned char*rom=doc->rom;
+    for(i=0;i<128;i++)
+        adr[i]=0xe0000 + ((short*)(rom + 0xdc2f9))[i];
+    k=doc->sctend;
+    if(rom[0x125ec + (num&63)]!=(num&63)) {
+        j=(num&64)?doc->sctend:adr[64];
+        for(i=num&63;i<64;i++) {
+            if(rom[0x125ec + i]!=i) continue;
+            j=adr[i+(num&64)];
+            if(*(short*)(rom+j)!=-1) j-=2;
+            break;
+        }
+        ((short*)(rom + 0xdc2f9))[num]=adr[num]=j;
+    } else j=adr[num];
+    for(i=num+1;i<128;i++) {
+        if(rom[0x125ec + (i&63)]!=(i&63)) continue;
+        k=adr[i];
+        break;
+    }
+    
+    if( is16b_neg1(rom + j) )
+    {
+        if(!size) return 0;
+        if(k>j) k-=2;
+        j+=size+2;
+        adr[num]+=2;
+    } else {
+        if(!size) {
+            if(j>0xdc3f9) {
+                j-=2;
+                adr[num]-=2;
+            }
+        } else j+=size;
+        if(*(short*)(rom+k)!=-1) k-=2;
+    }
+    if(doc->sctend-k+j>0xdc894) {
+        MessageBox(framewnd,"Not enough space for secret items","Bad error happened",MB_OK);
+        return 1;
+    }
+    memmove(rom+j,rom+k,doc->sctend-k);
+    if(size) memcpy(rom+adr[num],buf,size);
+    if(j==k) return 0;
+    ((short*)(rom + 0xdc2f9))[num]=adr[num];
+    doc->sctend+=j-k;
+    for(i=num+1;i<128;i++) {
+        ((short*)(rom + 0xdc2f9))[i]=adr[i]+j-k;
+    }
+    return 0;
 }
 
 // =============================================================================

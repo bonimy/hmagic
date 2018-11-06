@@ -1,17 +1,19 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "Callbacks.h"
-#include "GdiObjects.h"
+    #include "Callbacks.h"
+    #include "GdiObjects.h"
 
-#include "OverworldEdit.h"
+    #include "OverworldEdit.h"
 
-#include "DungeonEnum.h"
-#include "DungeonLogic.h"
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
-// For the names of the various editable misc screens.
-#include "ScreenEditorLogic.h"
+    // For the names of the various editable misc screens.
+    #include "ScreenEditorLogic.h"
+
+    #include "LevelMapLogic.h"
 
 BOOL CALLBACK
 z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)

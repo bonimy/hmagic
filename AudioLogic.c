@@ -2,6 +2,8 @@
     #include "structs.h"
     #include "prototypes.h"
 
+    #include "GdiObjects.h"
+
     #include "Callbacks.h"
 
     #include "HMagicLogic.h"
@@ -78,6 +80,8 @@
 
     int wnumbufs = 0;
 
+    int exitsound=0;
+
     int const freqvals[13] =
     {
         0x157,0x16c,0x181,0x198,0x1b0,0x1ca,0x1e5,0x202,0x221,
@@ -104,6 +108,52 @@
     WAVEHDR * wbufs = 0;
 
     HWAVEOUT hwo = 0;
+
+// =============================================================================
+
+const char * mus_str[] =
+{
+    "Same",
+    "None",
+    "Title",
+    "World map",
+    "Beginning",
+    "Rabbit",
+    "Forest",
+    "Intro",
+    "Town",
+    "Warp",
+    "Dark world",
+    "Master swd",
+    "File select",
+    "Soldier",
+    "Mountain",
+    "Shop",
+    "Fanfare",
+    "Castle",
+    "Palace",
+    "Cave",
+    "Clear",
+    "Church",
+    "Boss",
+    "Dungeon",
+    "Psychic",
+    "Secret way",
+    "Rescue",
+    "Crystal",
+    "Fountain",
+    "Pyramid",
+    "Kill Agah",
+    "Ganon room",
+    "Last boss",
+    "Triforce",
+    "Ending",
+    "Staff",
+    "Stop",
+    "Fade out",
+    "Lower vol",
+    "Normal vol"
+};
 
 // =============================================================================
 
@@ -1096,6 +1146,213 @@ Playsong(FDOC * const doc,
     sounddoc=doc;
     Playpatt();
 //  LeaveCriticalSection(&cs_song);
+}
+
+
+// =============================================================================
+
+void
+Modifywaves(FDOC * const doc,
+            int    const es)
+{
+    int i,j;
+    ZWAVE*zw=doc->waves,*zw2=zw+es;
+    j=doc->numwave;
+    for(i=0;i<j;i++) {
+        if(zw->copy==es) {
+            if(zw->end!=zw2->end)
+            {
+                zw->end = zw2->end;
+                
+                zw->buf = (short*) realloc(zw->buf,
+                                           zw->end << 1);
+            }
+            memcpy(zw->buf,zw2->buf,zw->end<<1);
+            if(zw->lopst>=zw->end) zw->lflag=0;
+            if(zw->lflag) zw->buf[zw->end]=zw->buf[zw->lopst];
+        }
+        zw++;
+    }
+}
+
+// =============================================================================
+
+void
+Playpatt(void)
+{
+    int i;
+    ZCHANNEL*zch=zchans;
+    SONGPART*sp;
+    sp=playedsong->tbl[playedpatt];
+    for(i=0;i<8;i++) zch->playing=1,zch->tim=1,zch->loop=0,(zch++)->pos=sp->tbl[i];
+}
+
+// =============================================================================
+
+void
+midinoteoff(ZCHANNEL * const zch)
+{
+    if(zch->midnote!=0xff)
+    {
+        HMIDIOUT const hmo = (HMIDIOUT) hwo;
+        
+        midiOutShortMsg(hmo,
+                        (0x80 + zch->midch) | (zch->midnote << 8) | 0x400000);
+        
+        if(zch->midnote & 0xff00)
+            midiOutShortMsg(hmo,
+                            (0x80 + zch->midch) | (zch->midnote & 0xff00) | 0x400000);
+    }
+    
+    zch->midnote = 0xff;
+}
+
+// =============================================================================
+
+void
+Stopsong(void)
+{
+    int i;
+    ZMIXWAVE*zw=zwaves;
+    sounddoc=0;
+    if(sounddev<0x20000)
+    for(i=0;i<8;i++) (zw++)->pflag=0;
+    else for(i=0;i<8;i++) midinoteoff(zchans+i);
+}
+
+// =============================================================================
+
+void CALLBACK
+midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+{
+    (void) timerid, msg, inst, p1, p2;
+    
+    if(exitsound)
+    {
+//      if(exitsound==1) {
+//          timeKillEvent(midi_timer);
+//          exitsound=2;
+//          SetEvent(wave_end);
+//      }
+        return;
+    }
+    Updatesong();
+}
+
+// =============================================================================
+
+void CALLBACK
+midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
+{
+    (void) win, msg, timerid, systime;
+    
+    if(exitsound)
+        return;
+    
+    Updatesong();
+}
+
+
+// =============================================================================
+
+int CALLBACK
+soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+{
+    int r;
+    
+    (void) bah, inst, p2;
+    
+    switch(msg) {
+    case WOM_DONE:
+        r=((WAVEHDR*)p1)->dwUser;
+        if(exitsound) {
+            if(exitsound==1) {
+                exitsound=2;
+                if(wave_end) SetEvent(wave_end);
+            }
+            return 0;
+        }
+        wcurbuf=r;
+        if(r==wcurbuf) {
+            while(wbufs[wcurbuf].dwFlags&WHDR_DONE) {
+                Mixbuffer();
+                wbufs[wcurbuf].dwFlags&=~WHDR_DONE;
+                waveOutWrite(hwo,wbufs+wcurbuf,sizeof(WAVEHDR));
+                wcurbuf=wcurbuf+1;
+                if(wcurbuf==wnumbufs) wcurbuf=0;
+            }
+        }
+    }
+    
+    return 0;
+}
+
+int CALLBACK soundfunc(LPVOID param)
+{
+    MSG msg;
+    
+    (void) param;
+    
+    while(GetMessage(&msg,0,0,0)) {
+        switch(msg.message) {
+        case MM_WOM_DONE:
+            soundproc(0,WOM_DONE,0,msg.lParam,0);
+            break;
+        }
+    }
+    return 0;
+}
+
+void
+Exitsound(void)
+{
+    int n;
+    
+    WAVEHDR*wh;
+    
+    if(!sndinit) return;
+    exitsound=1;
+    
+    if(sounddev < 0x20000)
+    {
+        SetCursor(wait_cursor);
+        if(soundthr) {
+            WaitForSingleObject(wave_end,INFINITE);
+        } else {
+            while(WaitForSingleObject(wave_end,50)==WAIT_TIMEOUT);
+        }
+        SetCursor(normal_cursor);
+        waveOutReset(hwo);
+        wh=wbufs;
+        for(n=0;n<wnumbufs;n++,wh++) waveOutUnprepareHeader(hwo,wh,sizeof(WAVEHDR));
+        waveOutClose(hwo);
+        CloseHandle(wave_end);
+        free(wbufs);
+        free(wdata);
+        free(mixbuf);
+    }
+    else
+    {
+        if(wver)
+        {
+            KillTimer(framewnd,midi_timer);
+        }
+        else
+        {
+            timeKillEvent(midi_timer);
+            timeEndPeriod(miditimeres);
+        }
+        
+        for(n = 0; n < 8; n++)
+            midinoteoff(zchans+n);
+        
+        midiOutClose((HMIDIOUT) hwo);
+    }
+    
+    // DeleteCriticalSection(&cs_song);
+    exitsound=0;
+    sndinit=0;
+    soundthr=0;
 }
 
 // =============================================================================
