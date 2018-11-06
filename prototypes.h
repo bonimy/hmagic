@@ -85,10 +85,6 @@ Handlescroll(HWND win,
              int size2);
 
 char const *
-Getsprstring(DUNGEDIT const * const ed,
-             int              const i);
-
-char const *
 Getsecretstring(uint8_t const * const rom,
                 int             const i);
 

@@ -7,7 +7,23 @@
 
 // =============================================================================
 
-void Updateblk32disp(BLOCKEDIT32 *ed, int num)
+void
+Updateblk16disp(BLOCKEDIT16 *ed, int num)
+{
+    RECT rc;
+    rc.left=blkx[num];
+    rc.right=rc.left+8;
+    rc.top=blky[num];
+    rc.bottom=rc.top+8;
+    Drawblock(ed->bs.ed,blkx[num],blky[num],ed->blks[num],0);
+    Paintblocks(&rc,objdc,0,0,(DUNGEDIT*)(ed->bs.ed));
+    StretchBlt(ed->bufdc,(num&1)*ed->w>>1,(num&2)*ed->h>>2,ed->w>>1,ed->h>>1,objdc,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SRCCOPY);
+}
+
+// =============================================================================
+
+void
+Updateblk32disp(BLOCKEDIT32 *ed, int num)
 {
     int k,p=num<<2;
     unsigned short *o;

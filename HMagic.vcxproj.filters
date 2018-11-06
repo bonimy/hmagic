@@ -213,6 +213,9 @@
     <ClCompile Include="MetatileLogic.c">
       <Filter>Source Files\Overworld</Filter>
     </ClCompile>
+    <ClCompile Include="Map16Selector.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">

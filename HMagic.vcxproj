@@ -130,6 +130,7 @@
     <ClCompile Include="HMagicLogic.c" />
     <ClCompile Include="HMagicUtility.c" />
     <ClCompile Include="LevelMapFrame.c" />
+    <ClCompile Include="Map16Selector.c" />
     <ClCompile Include="Map16_SearchDlg.c" />
     <ClCompile Include="Map32Selector.c" />
     <ClCompile Include="MetatileLogic.c" />

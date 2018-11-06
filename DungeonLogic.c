@@ -13,6 +13,23 @@ HM_TextResource entrance_names;
 
 // =============================================================================
 
+char const *
+Getsprstring(DUNGEDIT const * const ed,
+             int              const i)
+{
+    int j = ed->ebuf[i+2];
+    
+    if(ed->ebuf[i + 1] >= 224)
+        j += 256;
+    
+    if(j >= 0x11c)
+        return "Crash";
+    
+    return sprname[j];
+}
+
+// =============================================================================
+
 void
 fill4x2(uint8_t  const * const rom,
         uint16_t       * const nbuf,
