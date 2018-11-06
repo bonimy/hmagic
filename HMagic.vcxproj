@@ -142,6 +142,7 @@
     <ClCompile Include="LevelMapLogic.c" />
     <ClCompile Include="Map16Selector.c" />
     <ClCompile Include="Map16_Edit.c" />
+    <ClCompile Include="Map16_Finder.c" />
     <ClCompile Include="Map16_SearchDlg.c" />
     <ClCompile Include="Map32Selector.c" />
     <ClCompile Include="Map32_Edit.c" />
@@ -180,7 +181,7 @@
     <ClCompile Include="TrackEditDlg.c" />
     <ClCompile Include="TrackEditFrame.c" />
     <ClCompile Include="TrackerLogic.c" />
-    <ClCompile Include="TrackerSth.c" />
+    <ClCompile Include="Tracker.c" />
     <ClCompile Include="WindowClasses.c" />
     <ClCompile Include="WorldMapDisplay.c" />
     <ClCompile Include="WorldMapDlg.c" />

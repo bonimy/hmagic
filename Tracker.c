@@ -13,6 +13,12 @@
 
 // =============================================================================
 
+/**
+    \file   Contains the tracker window control itself.
+*/
+
+// =============================================================================
+
 static char
 *note_str[12] = {"C ","C#","D ","D#","E ","F ","F#","G ","G#","A ","A#","B "};
 
@@ -63,7 +69,10 @@ void Trackchgsel(HWND win,RECT*rc,TRACKEDIT*ed)
     InvalidateRect(win,rc,1);
 }
 
-LRESULT CALLBACK
+// =============================================================================
+
+
+extern LRESULT CALLBACK
 trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     TRACKEDIT *ed, *ed2;

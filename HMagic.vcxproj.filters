@@ -288,9 +288,6 @@
     <ClCompile Include="Map32_Edit.c">
       <Filter>Source Files\Overworld</Filter>
     </ClCompile>
-    <ClCompile Include="TrackerSth.c">
-      <Filter>Source Files\Audio</Filter>
-    </ClCompile>
     <ClCompile Include="Map16_Edit.c">
       <Filter>Source Files\Overworld</Filter>
     </ClCompile>
@@ -317,6 +314,12 @@
     </ClCompile>
     <ClCompile Include="PatchLogic.c">
       <Filter>Source Files\ASM</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16_Finder.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Tracker.c">
+      <Filter>Source Files\Audio</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
