@@ -1,11 +1,12 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "GdiObjects.h"
+    #include "GdiObjects.h"
 
+    #include "HMagicEnum.h"
     #include "HMagicUtility.h"
 
-#include "prototypes.h"
+    #include "prototypes.h"
 
     #include "OverworldEdit.h"
 
@@ -176,7 +177,8 @@ updflag:
                 
                 if(hc2 != 0)
                 {
-                    hc2=GetDlgItem(hc2,2000);
+                    hc2 = GetDlgItem(hc2, ID_SuperDlg);
+                    
                     hc=GetDlgItem(hc2,3000);
                     InvalidateRect(hc,0,0);
                     hc=GetDlgItem(hc2,3001);

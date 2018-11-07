@@ -7,6 +7,12 @@
 
     #include "Wrappers.h"
 
+    #include "HMagicEnum.h"
+
+    #include "DungeonEnum.h"
+
+    #include "OverworldEnum.h"
+
 // =============================================================================
 
 void
@@ -417,11 +423,14 @@ endsave3:
                 
                 if(hc)
                 {
-                    hc2 = GetDlgItem(hc, 2000);
-                    hc = GetDlgItem(hc2, 3000);
-                    InvalidateRect(hc,0,0);
+                    hc2 = GetDlgItem(hc, ID_SuperDlg);
                     
-                    hc = GetDlgItem(hc2,3001);
+                    hc = GetDlgItem(hc2, SD_Over_Map32_Selector);
+                    
+                    InvalidateRect(hc, 0, 0);
+                    
+                    hc = GetDlgItem(hc2, SD_Over_Display);
+                    
                     InvalidateRect(hc, 0, 0);
                 }
             }
@@ -432,8 +441,8 @@ endsave3:
                 
                 if(hc)
                 {
-                    hc2 = GetDlgItem(hc, 2000);
-                    hc = GetDlgItem(hc2, 3011);
+                    hc2 = GetDlgItem(hc, ID_SuperDlg);
+                    hc = GetDlgItem(hc2, ID_DungEditWindow);
                     InvalidateRect(hc, 0, 0);
                 }
             }
@@ -444,7 +453,7 @@ endsave3:
                 
                 if(hc)
                 {
-                    hc2 = GetDlgItem(hc, 2000);
+                    hc2 = GetDlgItem(hc, ID_SuperDlg);
                     hc = GetDlgItem(hc2, 3000);
                     InvalidateRect(hc, 0, 0);
                     
@@ -462,7 +471,7 @@ endsave2:
                 
                 if(hc)
                 {
-                    hc2 = GetDlgItem(hc, 2000);
+                    hc2 = GetDlgItem(hc, ID_SuperDlg);
                     hc = GetDlgItem(hc2, 3000);
                     
                     InvalidateRect(hc, 0, 0);
@@ -472,15 +481,20 @@ endsave2:
                     SendMessage(hc, 4001, 0, 0);
                 }
             }
-nowmap:
+            
+        nowmap:
+            
             doc->modf = 1;
+            
             free(b2);
-            EndDialog(win,1);
+            
+            EndDialog(win, 1);
             
             break;
         
         case IDCANCEL:
-            EndDialog(win,0);
+            
+            EndDialog(win, 0);
         }
     }
     return 0;

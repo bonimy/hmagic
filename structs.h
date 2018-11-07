@@ -169,7 +169,9 @@ typedef struct tagFDOC
     ZOVER overworld[160]; // 160 Overworld maps
     
     HWND dungs[0x128]; // 0x128 dungeon maps (296)
-    HWND ents[0xa8]; // entrances
+    
+    /// Windows that correspond to dungeon entrances.
+    HWND ents[0xa8];
     
     short m_loaded,m_size,m_free,m_modf; // ???
     

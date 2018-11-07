@@ -36,7 +36,7 @@ CreateSuperDialog(SUPERDLG *dlgtemp,
                         w,
                         h,
                         owner,
-                        (HMENU) ID_SUPERDLG,
+                        (HMENU) ID_SuperDlg,
                         hinstance,
                         (void*) sdc);
     

@@ -7,6 +7,8 @@
 
     #include "Wrappers.h"
 
+    #include "HMagicEnum.h"
+
     #include "AudioLogic.h"
 
     #include "TrackerLogic.h"
@@ -253,11 +255,15 @@ modfrow:
                 
                 if(mark_doc)
                 {
+                    // Frame window, if it exists.
                     HWND w = mark_doc->sr[mark_sr].editor;
                     
                     if(w)
                     {
-                        HWND sw = GetDlgItem(GetDlgItem(w, 2000), 3000);
+                        HWND const dlg = GetDlgItem(w, ID_SuperDlg);
+                        
+                        HWND sw = GetDlgItem(dlg, 3000);
+                        
                         rc = HM_GetClientRect(sw);
                         Trackchgsel(sw, &rc,
                                     (TRACKEDIT*) GetWindowLongPtr(sw, GWLP_USERDATA));
@@ -297,25 +303,38 @@ modfrow:
             }
             mark_doc->m_modf=1;
             oldobj=mark_doc->sr[mark_sr].editor;
-            if(oldobj) {
-                oldobj=GetDlgItem(GetDlgItem(oldobj,2000),3000);
-                InvalidateRect(oldobj,0,1);
-                Updatesize(oldobj);
-                ed2=(TRACKEDIT*)GetWindowLong(oldobj,GWL_USERDATA);
+            
+            if(oldobj)
+            {
+                HWND const dlg = GetDlgItem(oldobj, ID_SuperDlg);
+                
+                HWND const control = GetDlgItem(dlg, 3000);
+                
+                InvalidateRect(control, 0, 1);
+                
+                Updatesize(control);
+                
+                ed2 = (TRACKEDIT*) GetWindowLong(control, GWL_USERDATA);
                 
                 CopyMemory(ed2->tbl + mark_start,
                            ed2->tbl + mark_end + 1,
                            (ed2->len - mark_end - 1) << 1);
                 
-                ed2->tbl=realloc(ed2->tbl,(ed2->len+=mark_start-1-mark_end)<<1);
+                ed2->tbl=realloc(ed2->tbl,
+                                 (ed2->len += mark_start-1-mark_end) << 1);
             }
+            
             sc=mark_doc->scmd;
+            
             if(ed->sel)
                 sc[i=ed->tbl[ed->sel-1]].next=mark_first; else i=-1,mark_doc->sr[ed->ew.param].first=mark_first;
+            
             if(ed->sel<ed->len)
                 sc[j=ed->tbl[ed->sel]].prev=mark_last; else j=-1;
+            
             if(sc[mark_first].prev!=-1) sc[sc[mark_first].prev].next=sc[mark_last].next;
             else mark_doc->sr[mark_sr].first=sc[mark_last].next;
+            
             if(sc[mark_first].next!=-1) sc[sc[mark_last].next].prev=sc[mark_first].prev;
             sc[mark_first].prev=i;
             sc[mark_last].next=j;

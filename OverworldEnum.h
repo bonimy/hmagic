@@ -5,12 +5,13 @@
 
 // =============================================================================
 
+    #include "HMagicEnum.h"
+
+// =============================================================================
+
     enum
     {
-        SD_GenericFirst = 3000,
-        SD_OverFirst = 3000,
-        
-        SD_Over_Map32_Selector = SD_OverFirst,
+        SD_Over_Map32_Selector = ID_SuperDlg_FirstChild,
         SD_Over_Display,
         SD_OverGrid32CheckBox = 3012,
         
@@ -27,7 +28,7 @@
         SD_OverWindowFocus,
         SD_OverAfterLast,
         
-        SD_OverNumControls = (SD_OverAfterLast - SD_OverFirst),
+        SD_OverNumControls = (SD_OverAfterLast - ID_SuperDlg_FirstChild),
     };
 
     enum

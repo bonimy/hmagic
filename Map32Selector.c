@@ -1,11 +1,13 @@
 
     #include "structs.h"
 
+    #include "prototypes.h"
+
     #include "Wrappers.h"
 
     #include "GdiObjects.h"
 
-    #include "prototypes.h"
+    #include "HMagicEnum.h"
 
     #include "OverworldEdit.h"
 
@@ -166,7 +168,8 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 
                 if(hc2 != 0)
                 {
-                    hc2=GetDlgItem(hc2,2000);
+                    hc2 = GetDlgItem(hc2, ID_SuperDlg);
+                    
                     hc=GetDlgItem(hc2,3000);
                     InvalidateRect(hc,0,0);
                     hc=GetDlgItem(hc2,3001);

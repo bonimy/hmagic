@@ -1608,7 +1608,7 @@ nomod:
                             GetDlgItem
                             (
                                 activedoc->overworld[i].win,
-                                ID_SUPERDLG
+                                ID_SuperDlg
                             ),
                             SD_Over_Display
                         ),

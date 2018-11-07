@@ -3,6 +3,7 @@
     
     #include "prototypes.h"
 
+    #include "HMagicEnum.h"
     #include "HMagicLogic.h"
 
     #include "DungeonEnum.h"
@@ -21,16 +22,22 @@ Updatesprites(void)
     OVEREDIT*oe;
     DUNGEDIT*ed;
     RECT rc;
+    
     int i,j,k,m;
+    
     unsigned char*l;
-    for(doc=firstdoc;doc;doc=doc->next) {
-        for(i=0;i<144;i++) {
+    
+    for(doc=firstdoc;doc;doc=doc->next)
+    {
+        for(i=0;i<144;i++)
+        {
             win=doc->overworld[i].win;
             if(win)
             {
                 text_buf_ty text_buf;
                 
-                win=GetDlgItem(GetDlgItem(win,2000),3001);
+                win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), 3001);
+                
                 oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
                 
                 if( ! (oe->disp & SD_OverShowMarkers) )
@@ -72,10 +79,14 @@ Updatesprites(void)
                 }
             }
         }
-        for(i=0;i<0xa8;i++) {
+        
+        for(i=0;i<0xa8;i++)
+        {
             win=doc->ents[i];
-            if(win) {
-                win=GetDlgItem(GetDlgItem(win,2000), ID_DungEditWindow);
+            
+            if(win)
+            {
+                win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), ID_DungEditWindow);
                 ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
                 
                 if( ! (ed->disp & SD_OverShowMarkers) )

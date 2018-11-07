@@ -5,12 +5,14 @@
 
 // =============================================================================
 
+    #include "HMagicEnum.h"
+
+// =============================================================================
+
 /// IDs for controls used in the dungeon superdialog.
 enum
 {
-    ID_DungDlgFirst   = 3000,
-    
-    ID_DungRoomNumber = ID_DungDlgFirst,
+    ID_DungRoomNumber = ID_SuperDlg_FirstChild,
     ID_DungStatic1,
     ID_DungEntrRoomNumber,
     ID_DungStatic2,
@@ -86,7 +88,7 @@ enum
     // Should be considered an invalid entry.
     ID_DungDlgAfterLast,
     
-    ID_DungNumControls = (ID_DungDlgAfterLast - ID_DungDlgFirst)
+    ID_DungNumControls = (ID_DungDlgAfterLast - ID_SuperDlg_FirstChild)
 };
 
 // =============================================================================

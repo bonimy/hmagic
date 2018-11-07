@@ -5,12 +5,14 @@
 
 // =============================================================================
 
+    #include "HMagicEnum.h"
+
+// =============================================================================
+
     /// IDs for controls used in the dungeon superdialog.
     enum
     {
-        ID_Samp_First = 3000,
-        
-        ID_Samp_SampleIndexStatic = ID_Samp_First,
+        ID_Samp_SampleIndexStatic = ID_SuperDlg_FirstChild,
         ID_Samp_SampleIndexEdit,
         ID_Samp_Display,
         ID_Samp_SampleIsCopyCheckBox,

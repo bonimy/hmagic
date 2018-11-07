@@ -46,12 +46,12 @@
             pitfalls in that approach.
             
         */
-        ID_SUPERDLG = 2000,
+        ID_SuperDlg = 2000,
         
-        ID_SUPERDLG_FIRST_CHILD = 3000,
-        ID_SUPERDLG_LAST_CHILD  = 3999,
+        ID_SuperDlg_FirstChild = 3000,
+        ID_SuperDlg_LastChild  = 3999,
         
-        ID_SUPERDLG_UNKNOWN = 4000,
+        ID_SuperDlg_Unknown = 4000,
     };
 
 // =============================================================================

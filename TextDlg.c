@@ -1,15 +1,16 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "HMagicUtility.h"
+    #include "HMagicUtility.h"
 
-#include "TextLogic.h"
+    #include "TextEnum.h"
+    #include "TextLogic.h"
 
 // =============================================================================
 
 BOOL CALLBACK
-textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
+textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     text_buf_ty text_buf = { 0 };
     
@@ -27,6 +28,8 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     HWND hc;
     
+    // -----------------------------
+    
     switch(msg)
     {
     
@@ -36,7 +39,7 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         ed = (TEXTEDIT*) lparam;
         
-        CheckDlgButton(win, 3003, BST_CHECKED);
+        CheckDlgButton(win, ID_TextEditTextRadio, BST_CHECKED);
         
         ed->dlg = win;
         ed->num = 0;
@@ -50,7 +53,7 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
     updstrings:
         
-        hc = GetDlgItem(win,3000);
+        hc = GetDlgItem(win, ID_TextEntriesListControl);
         
         b = (char*) malloc(256);
         
@@ -66,7 +69,9 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             {
                 k = ldle16b_i(rom + 0x74705, i);
                 
-                memcpy(b+130,rom+l + 0x78000,k-l);
+                memcpy(b + 130,
+                       rom + l + 0x78000,
+                       k - l);
                 
                 *(short*)(b + 128) = k-l+2;
                 
@@ -113,7 +118,7 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         switch(wparam)
         {
         
-        case 3000 | (LBN_DBLCLK << 16):
+        case ID_TextEntriesListControl | (LBN_DBLCLK << 16):
             
             i = SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
             
@@ -134,21 +139,21 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                     Makeasciistring(doc, b, doc->tbuf[i], 2048);
                 }
                 
-                SetDlgItemText(win, 3001, b);
+                SetDlgItemText(win, ID_TextEditWindow, b);
                 
                 free(b);
             }
             else
             {
-                SetDlgItemText(win, 3001, 0);
+                SetDlgItemText(win, ID_TextEditWindow, 0);
             }
             
             break;
         
-        case 3002:
+        case ID_TextSetTextButton:
             
             i = SendDlgItemMessage(win,
-                                   3000,
+                                   ID_TextEntriesListControl,
                                    LB_GETCURSEL,
                                    0,
                                    0);
@@ -157,11 +162,11 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             {
                 b = malloc(2048);
                 
-                GetDlgItemText(win, 3001, b, 2048);
+                GetDlgItemText(win, ID_TextEditWindow, b, 2048);
                 
                 c = Makezeldastring(doc, b);
                 
-                hc = GetDlgItem(win, 3000);
+                hc = GetDlgItem(win, ID_TextEntriesListControl);
                 
                 if(c)
                 {
@@ -214,7 +219,7 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 {
                     i = text_error - b;
                     
-                    hc = GetDlgItem(win, 3001);
+                    hc = GetDlgItem(win, ID_TextEditWindow);
                     
                     SendMessage(hc, EM_SETSEL, i, i);
                     
@@ -232,19 +237,27 @@ textdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             
             break;
         
-        case 3003:
+        case ID_TextEditTextRadio:
             
             ed->num = 0;
             
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
+            SendDlgItemMessage(win,
+                               ID_TextEntriesListControl,
+                               LB_RESETCONTENT,
+                               0,
+                               0);
             
             goto updstrings;
         
-        case 3004:
+        case ID_TextEditDictionaryRadio:
             
             ed->num = 1;
             
-            SendDlgItemMessage(win, 3000, LB_RESETCONTENT, 0, 0);
+            SendDlgItemMessage(win,
+                               ID_TextEntriesListControl,
+                               LB_RESETCONTENT,
+                               0,
+                               0);
             
             goto updstrings;
         }

@@ -5,11 +5,13 @@
 
 // =============================================================================
 
+    #include "HMagicEnum.h"
+
+// =============================================================================
+
     enum
     {
-        ID_Patch_First = 3000,
-
-        ID_Patch_ModulesListBox = ID_Patch_First,
+        ID_Patch_ModulesListBox = ID_SuperDlg_FirstChild,
         ID_Patch_ModulesLabel,
         ID_Patch_AddModuleButton,
         ID_Patch_RemoveModuleButton,
