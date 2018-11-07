@@ -3689,26 +3689,13 @@ BOOL CALLBACK getnumber(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     } else if(wparam==IDCANCEL) EndDialog(win,-1);
     return FALSE;
 }
+
 int __stdcall askinteger(int max,char*caption,char*text)
 {
     (void) caption, text;
     
     return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
 }
-
-static char const * screen_text[] = {
-    "Title screen",
-    "Naming screen",
-    "Player select",
-    "Copy screen",
-    "Erase screen",
-    "Map screen",
-    "Load list",
-    "Load screen",
-    "Erase list",
-    "Copy list",
-    "Destination list"
-};
 
 // =============================================================================
 
@@ -4628,22 +4615,10 @@ SD_ENTRY text_sd[]={
     {"BUTTON","Edit dictionary",130,20,120,0, 3004, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12}
 };
 
-SD_ENTRY patch_sd[]={
-    {"LISTBOX","",0,20,100,70,3000,WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
-    {"STATIC","Loaded modules:",0,0,0,0,3001,WS_VISIBLE|WS_CHILD,0,0},
-    {"BUTTON","Add",80,20,0,20,3002,WS_VISIBLE|WS_CHILD,0,3},
-    {"BUTTON","Remove",80,44,0,20,3003,WS_VISIBLE|WS_CHILD,0,3},
-    {"BUTTON","Build",80,68,0,20,3004,WS_VISIBLE|WS_CHILD,0,3}
-};
-
 // =============================================================================
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
-};
-
-SUPERDLG dungdlg = {
-    "",dungdlgproc,WS_CHILD|WS_VISIBLE, 600, 200, ID_DungNumControls, dung_sd
 };
 
 SUPERDLG textdlg={
@@ -4676,18 +4651,6 @@ SUPERDLG tmapdlg={
 
 SUPERDLG perspdlg={
     "",perspdlgproc,WS_CHILD|WS_VISIBLE,200,200,8,persp_sd
-};
-
-SUPERDLG patchdlg={
-    "",patchdlgproc,WS_CHILD|WS_VISIBLE,200,200,5,patch_sd
-};
-
-SD_ENTRY z3_sd[]={
-    {WC_TREEVIEW,"",0,0,0,0,3000,WS_VISIBLE|WS_TABSTOP|WS_BORDER|WS_CHILD|TVS_HASBUTTONS|TVS_LINESATROOT|TVS_HASLINES|TVS_SHOWSELALWAYS|TVS_DISABLEDRAGDROP,WS_EX_CLIENTEDGE,10},
-};
-
-SUPERDLG z3_dlg={
-    "",z3dlgproc,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,60,60,1,z3_sd
 };
 
 // =============================================================================

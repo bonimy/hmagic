@@ -407,6 +407,9 @@
     <ClInclude Include="PatchLogic.h">
       <Filter>Header Files\ASM</Filter>
     </ClInclude>
+    <ClInclude Include="PatchEnum.h">
+      <Filter>Header Files\ASM</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">

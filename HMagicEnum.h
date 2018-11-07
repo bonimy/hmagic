@@ -24,6 +24,35 @@
         ID_MRU3,
         ID_MRU4
     };
+    
+    enum
+    {
+        /**
+            \note 
+            \author MathOnNapkins
+            
+            This program creates numerous child frame windows (children of the
+            main frame). These frames are what are commonly thought of as
+            MDI child windows, and they defer their actual presentation logic,
+            for the most part, to child windows within them. In Hyrule Magic,
+            these child windows are called "Super Dialogs".
+            
+            One might ask why they have such a name, and the answer, I believe,
+            is that unlike the typical dialog templates that the resource editor
+            can produce, Super Dialogs as implemented in this program can be
+            easily embedded as children of any window. This is not to say that
+            the normal dialog templates produced by Visual Studio *can not* be
+            embedded in other windows; moreso that there are more potential
+            pitfalls in that approach.
+            
+        */
+        ID_SUPERDLG = 2000,
+        
+        ID_SUPERDLG_FIRST_CHILD = 3000,
+        ID_SUPERDLG_LAST_CHILD  = 3999,
+        
+        ID_SUPERDLG_UNKNOWN = 4000,
+    };
 
 // =============================================================================
 

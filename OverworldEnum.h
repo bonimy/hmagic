@@ -10,6 +10,8 @@
         SD_GenericFirst = 3000,
         SD_OverFirst = 3000,
         
+        SD_Over_Map32_Selector = SD_OverFirst,
+        SD_Over_Display,
         SD_OverGrid32CheckBox = 3012,
         
         // \task Fill in others.

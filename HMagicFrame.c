@@ -9,6 +9,7 @@
     #include "HMagicLogic.h"
     #include "HMagicUtility.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
     #include "DungeonEnum.h"
@@ -1239,11 +1240,14 @@ nomod:
                 goto error;
             }
             
-            for(j=0;j<5;j++)
+            for(j = 0; j < 5; j++)
             {
-                for(i=0;i<64;i++)
+                for(i = 0; i < 64; i++)
                 {
-                    if(rom[0x125ec + i]!=i) Savesprites(doc,sprs[j]+i + 0x10000,0,0);
+                    if(rom[0x125ec + i] != i)
+                    {
+                        Savesprites(doc, sprs[j] + i + 0x10000, 0 , 0);
+                    }
                 }
             }
             
@@ -1463,6 +1467,7 @@ nomod:
             break;
         
         case ID_EDITING_DELDUNGITEM:
+            
             if(!activedoc)
                 break;
             
@@ -1596,7 +1601,20 @@ nomod:
             {
                 if(activedoc->overworld[i].win)
                 {
-                    InvalidateRect(GetDlgItem(GetDlgItem(activedoc->overworld[i].win,2000),3001),0,0);
+                    InvalidateRect
+                    (
+                        GetDlgItem
+                        (
+                            GetDlgItem
+                            (
+                                activedoc->overworld[i].win,
+                                ID_SUPERDLG
+                            ),
+                            SD_Over_Display
+                        ),
+                        0,
+                        0
+                    );
                 }
             }
             

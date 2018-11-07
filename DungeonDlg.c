@@ -197,6 +197,19 @@ SD_ENTRY dung_sd[]={
 
 // =============================================================================
 
+SUPERDLG dungdlg =
+{
+    "",
+    dungdlgproc,
+    WS_CHILD|WS_VISIBLE,
+    600,
+    200,
+    ID_DungNumControls,
+    dung_sd
+};
+
+// =============================================================================
+
     /// IDs of dialog controls to hide if the user elects to edit an overlay
     /// or layout.
     unsigned const overlay_hide[] =
