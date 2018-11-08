@@ -1,8 +1,10 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "AudioLogic.h"
+    #include "AudioLogic.h"
+
+    #include "HMagicEnum.h"
 
 // =============================================================================
 
@@ -71,8 +73,10 @@ save:
     
 dontsave:
     
-    DestroyWindow(GetDlgItem(win,2000));
-    SendMessage(clientwnd,WM_MDIDESTROY,(long)win,0);
+    DestroyWindow( GetDlgItem(win, ID_SuperDlg) );
+    
+    SendMessage(clientwnd, WM_MDIDESTROY, (WPARAM) win, 0);
+    
     activedoc=0;
     param->modf=2;
     for(i=0;i<160;i++)

@@ -1,4 +1,7 @@
 
+    // For sprintf
+    #include <stdio.h>
+
     #include "structs.h"
 
     #include "Callbacks.h"
@@ -104,8 +107,13 @@ const static char* chest_str[] =
 
 // =============================================================================
 
+/// For code golf
 typedef uint8_t * rom_ty;
+
+/// For code golf
 typedef uint8_t const * rom_cty;
+
+// =============================================================================
 
 uint8_t *
 DungEdit_GetRom(DUNGEDIT const * const p_ed)
@@ -740,7 +748,6 @@ PaintDungeonBlocks(RECT             const clip_r,
     HBITMAP const mem_bm = CreateCompatibleBitmap(p_dc,
                                                   512,
                                                   512);
-    
     
     // -----------------------------
     
@@ -1496,7 +1503,9 @@ struct
     RGBQUAD m_colors[256];
 }
 HM_BitmapInfo;
- 
+
+// =============================================================================
+
 void
 DungeonMap_PaintMarkers(DUNGEDIT const * const p_ed,
                         HDC              const p_dc,
@@ -1672,7 +1681,7 @@ void
 DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                    HWND       const p_win)
 {
-    uint8_t const * const rom = p_ed->ew.doc->rom;
+    rom_cty const rom = p_ed->ew.doc->rom;
     
     RECT cr = HM_GetClientRect(p_win);
     
@@ -1816,7 +1825,7 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
             if
             (
                 (p_ed->selchk != SD_DungSprLayerSelected)
-            && (p_ed->selchk != SD_DungItemLayerSelected)
+             && (p_ed->selchk != SD_DungItemLayerSelected)
             )
             {
                 BOOL r = 0;
@@ -1853,16 +1862,16 @@ DungeonMap_OnPaint(DUNGEDIT * const p_ed,
                 bf.AlphaFormat = 0;
                 
                 r = AlphaBlend(dc,
-                              rc.left,
-                              rc.top,
-                              width,
-                              height,
-                              other_dc,
-                              0,
-                              0, 
-                              width,
-                              height,
-                              bf);
+                               rc.left,
+                               rc.top,
+                               width,
+                               height,
+                               other_dc,
+                               0,
+                               0, 
+                               width,
+                               height,
+                               bf);
                 
                 SelectObject(other_dc, old_pen);
                 SelectObject(other_dc, old_br);
@@ -2249,7 +2258,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
                 
                 if(p_ed->selchk == SD_DungTorchLayerSelected)
                 {
-
+                    
 #if 1
                     torch_ty t = GetTorch(p_ed);
                     
@@ -2557,7 +2566,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             // More specifically, alters the vram address associated with
             // it.
             p_ed->sbuf[p_ed->selobj - 1] ^= 32;
-
+            
             p_ed->modf = 1;
             
             Dungselectchg(p_ed, w, 1);
@@ -2640,7 +2649,6 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             Dungselectchg(p_ed, w, 1);
             
             return 0;
-
         
         case ',':
             
@@ -2681,7 +2689,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == j)
                 break;
             
-            // Make the object to the start of the loading order
+            // Move the object to the start of the loading order
             // on this layer.
             
             i = ldle24b(p_ed->buf + p_ed->selobj);
@@ -2708,7 +2716,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             if(p_ed->selobj == p_ed->chkofs[p_ed->selchk + 1] - 5)
                 break;
             
-            // Make the object to the end of the loading order
+            // Push the object to the end of the loading order
             // on this layer.
             
             i = ldle24b(p_ed->buf + p_ed->selobj);
@@ -2823,7 +2831,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
                         // Note that if it is a big chest (0xFB) we will set the MSBit.
                         stle16b(rom + 0xe96e + l,
                                 p_ed->mapnum
-                              | ( (p_ed->buf[p_ed->selobj + 2] == 0xfb)
+                              | ( (p_ed->buf[p_ed->selobj + 2] == 0xfb )
                               ? 0x8000 : 0) );
                         
                         // Give it a default value of zero (sword + blue shield)
@@ -2843,7 +2851,7 @@ DungeonMap_OnChar(DUNGEDIT * const p_ed,
             }
         }
     }
-    else if(p_ed->selchk & 1)
+    else
     {
         int i = 0;
         int j = 0;
@@ -4367,7 +4375,7 @@ DungeonMapProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
     // of the dungeon dialog
     
     MSG const packed_msg = HM_PackMessage(p_win, p_msg, p_wp, p_lp);
-
+    
     DUNGEDIT * const ed = DungeonMap_GetEditData(p_win);
     
     // -----------------------------
@@ -4396,7 +4404,7 @@ DungeonMapProc(HWND p_win, UINT p_msg, WPARAM p_wp, LPARAM p_lp)
     case WM_MOUSEMOVE:
         
         DungeonMap_OnMouseMove(ed, packed_msg);
-
+        
         break;
     
     case WM_LBUTTONDOWN:

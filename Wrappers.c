@@ -571,4 +571,26 @@ hm_strndup(char const * const p_str,
 
 // =============================================================================
 
+    /**
+        Returns TRUE if the second parameter is found at the location
+        pointed to by the first parameter.
+    */
+    BOOL
+    HM_CheckEmbeddedStr(void const * const p_buffer,
+                        char const * const p_string)
+    {
+        char const * const buf = (char const *) p_buffer;
+        
+        size_t const len = strlen(p_string);
+        
+        int r = strncmp(buf, p_string, len);
+        
+        // -----------------------------
+        
+        // The standard C function above returns zero only in the case of an
+        // exact match.
+        return (r == 0);
+    }
+
+// =============================================================================
 

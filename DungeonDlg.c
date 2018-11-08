@@ -1,19 +1,23 @@
 
-// For ease of compiling.
-#include "structs.h"
+    // For printf()
+    #include <stdio.h>
 
-#include "GdiObjects.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "prototypes.h"
+    #include "GdiObjects.h"
 
-#include "Wrappers.h"
-#include "Callbacks.h"
+    #include "Wrappers.h"
+    #include "Callbacks.h"
 
-#include "HMagicUtility.h"
+    #include "HMagicUtility.h"
 
-#include "DungeonEnum.h"
-#include "DungeonLogic.h"
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
+    #include "AudioLogic.h"
+
+    #include "LevelMapLogic.h"
 
 // =============================================================================
 
@@ -126,6 +130,86 @@
 
 // =============================================================================
 
+SD_ENTRY dung_sd[]={
+    {"STATIC","",0,0,60,20, ID_DungRoomNumber, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Room:",4,72,40,52, ID_DungStatic1, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",54,72,30,52, ID_DungEntrRoomNumber, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","Y:",4,48,15,28, ID_DungStatic2, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",29,48,40,28, ID_DungEntrYCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","X:",4,24,15,4, ID_DungStatic3, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",29,24,40,4, ID_DungEntrXCoord, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","Y scroll:",79,48,40,28, ID_DungStatic4, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",129,48,40,28, ID_DungEntrYScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","X scroll:",79,24,40,4, ID_DungStatic5, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",129,24,40,4, ID_DungEntrXScroll, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","CX:",173,24,20,4, ID_DungStatic17, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",193,24,40,4, ID_DungEntrCameraX, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","CY:",239,24,20,4, ID_DungStatic18, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",259,24,40,4, ID_DungEntrCameraY, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"BUTTON","More",301,24,36,4, ID_DungEntrProps, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"STATIC","Blockset:",104,72,45,52, ID_DungStatic8, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"NumEdit","",154,72,40,52, ID_DungEntrTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,12},
+    {"STATIC","Music:",204,72,40,52, ID_DungStatic9, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"COMBOBOX","",254,72,80,-44, ID_DungEntrSong, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
+    {"STATIC","Dungeon:",204,48,48,28, ID_DungStatic10, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"COMBOBOX","",254,48,80,-88, ID_DungEntrPalaceID, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,12},
+    {"DUNGEON","",0,50,0,90, ID_DungEditWindow, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_VSCROLL|WS_HSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,10},
+    {"STATIC","",344,86,74,4, ID_DungDetailText, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","",60,0,20,20, ID_DungLeftArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",85,0,20,20, ID_DungRightArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",110,0,20,20, ID_DungUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",135,0,20,20, ID_DungDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Jump",160,0,40,20, ID_DungChangeRoom, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Floor 1:",204,0,55,20, ID_DungStatic6, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",264,0,30,20, ID_DungFloor1, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Floor 2:",204,24,55,20, ID_DungStatic7, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",264,24,30,20, ID_DungFloor2, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Blockset:",298,0,55,20, ID_DungStatic13, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",360,0,30,20, ID_DungTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","EnemyBlk:",395,0,55,20, ID_DungStatic16, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",450,0,30,20, ID_DungSprTileSet, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Palette:",298,24,55,20, ID_DungStatic14, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",360,24,30,20, ID_DungPalette, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Collision:",395,24,50,20, ID_DungStatic15, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"COMBOBOX","",450,24,90,120, ID_DungCollSettings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
+    {"BUTTON","Exit",550,24,40,24, ID_DungExit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"STATIC","Layout:",0,24,40,20, ID_DungStatic11, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","More",490,0,30,24, ID_DungEditHeader, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"NumEdit","",40,24,30,20, ID_DungLayout, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","BG2:",75,24,30,20, ID_DungStatic12, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"COMBOBOX","",105,24,95,100, ID_DungBG2Settings, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
+    {"BUTTON","Starting location",0,86,340,0, ID_DungStartLocGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
+    {"BUTTON","BG1",430,48,40,36, ID_DungShowBG1, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","BG2",430,34,40,22, ID_DungShowBG2, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Spr",430,20,40,8, ID_DungShowSprites, BS_AUTOCHECKBOX|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Frm1",430,72,40,52, ID_DungAnimateButton, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Display",425,86,50,0, ID_DungDispGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
+    {"BUTTON","1",485,64,40,52, ID_DungObjLayer1, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|WS_GROUP,0,12},
+    {"BUTTON","2",485,48,40,36, ID_DungObjLayer2, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","3",485,32,40,20, ID_DungObjLayer3, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Sprite",485,16,50,4, ID_DungSprLayer, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Item",525,64,40,52, ID_DungItemLayer, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Block",525,48,50,36, ID_DungBlockLayer, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Torch",525,32,50,20, ID_DungTorchLayer, BS_AUTORADIOBUTTON|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,12},
+    {"BUTTON","Edit",480,86,100,0, ID_DungEditGroupBox, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_GROUPBOX,0,12},
+    {"BUTTON","Sort spr",524,0,60,20, ID_DungSortSprites, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0}
+};
+
+// =============================================================================
+
+SUPERDLG dungdlg =
+{
+    "",
+    dungdlgproc,
+    WS_CHILD|WS_VISIBLE,
+    600,
+    200,
+    ID_DungNumControls,
+    dung_sd
+};
+
+// =============================================================================
+
     /// IDs of dialog controls to hide if the user elects to edit an overlay
     /// or layout.
     unsigned const overlay_hide[] =
@@ -215,7 +299,8 @@ void FixEntScroll(FDOC*doc,int j)
     const static unsigned char hfl[4]={0xd0,0xb0};
     const static unsigned char vfl[4]={0x8a,0x86};
     
-    k=((short*)(rom+(j>=0x85?0x15a64:0x14813)))[j];
+    k = ldle16b_i(rom + (j >= 0x85 ? 0x15a64 : 0x14813),
+                  j);
     
     win = doc->dungs[k];
     
@@ -626,37 +711,72 @@ Closeroom(DUNGEDIT * const ed)
 void Savedungsecret(FDOC*doc,int num,unsigned char*buf,int size)
 {
     int i,j,k;
+    
     int adr[0x140];
-    unsigned char*rom=doc->rom;
-    for(i=0;i<0x140;i++)
-        adr[i]=0x10000 + ((short*)(rom + 0xdb69))[i];
-    j=adr[num];
-    k=adr[num+1];
+    
+    unsigned char * rom = doc->rom;
+    
+    uint16_t * const secret_base = (uint16_t*) (rom + 0xdb69);
+    
+    // -----------------------------
+    
+    for(i = 0; i < 0x140; i++)
+    {
+        adr[i] = 0x10000 + ldle16h_i(secret_base, i);
+    }
+    
+    j = adr[num];
+    k = adr[num+1];
     
     if( is16b_neg1(rom + j) )
     {
-        if(!size) return;
-        j+=size+2;
-        adr[num]+=2;
-    } else {
-        if(!size) {
-            if(j>0xdde9) {
-                j-=2;
-                adr[num]-=2;
-            }
-        } else j+=size;
+        if(!size)
+            return;
+        
+        j += size + 2;
+        
+        adr[num] += 2;
     }
-    if(*(short*)(rom+k)!=-1) k-=2;
-    if(adr[0x13f]-k+j>0xe6b0) {
+    else
+    {
+        if(!size)
+        {
+            if(j>0xdde9)
+            {
+                j -= 2;
+                
+                adr[num] -= 2;
+            }
+        }
+        else
+            j += size;
+    }
+    
+    if( ldle16b(rom + k) != -1)
+    {
+        k -= 2;
+    }
+    
+    if(adr[0x13f] - k + j > 0xe6b0)
+    {
         MessageBox(framewnd,"Not enough space for secret items","Bad error happened",MB_OK);
+        
         return;
     }
-    memmove(rom+j,rom+k,adr[0x13f]+2-k);
-    if(size) memcpy(rom+adr[num],buf,size);
-    if(j==k) return;
-    ((short*)(rom + 0xdb69))[num]=adr[num];
-    for(i=num+1;i<0x140;i++) {
-        ((short*)(rom + 0xdb69))[i]=adr[i]+j-k;
+    
+    memmove(rom + j, rom + k, adr[0x13f] + 2 - k);
+    
+    if(size)
+        memcpy(rom + adr[num], buf, size);
+    
+    if(j == k)
+        return;
+    
+    stle16h_i(secret_base, num, adr[num]);
+    
+    for(i = num + 1; i < 0x140; i++)
+    {
+        stle16h_i(secret_base, i, adr[i] + j - k);
     }
 }
 
@@ -778,20 +898,16 @@ Saveroom(DUNGEDIT * const ed)
             }
         }
         
-        // \task Is this a bug? The second expression just tests for
-        // equality but doesn't change any part of memory.
-        // \note Update: This appears to maybe be checking whether
-        // the user has cleared all the torches. This has the effect
-        // of changing the immediate operand of a CPX command (number of bytes
-        // worth of torch data) and checking whether there is valid torch
-        // data in the first two entries. Effectively if there are two
-        // 0xffff words in the torch data and the operand of the instruction
+        // \note This has the effect of changing the immediate operand of a
+        // CPX command (number of bytes worth of torch data) and checking whether
+        // there is valid torch data in the first two entries. Effectively if there
+        // are two 0xffff words in the torch data and the operand of the instruction
         // is 4, it means no room can load torch data.
         if(!k)
         {
             k = 4;
             
-            stle16b(torches, u32_neg1);
+            stle32b(torches, u32_neg1);
         }
         
         stle16b(torch_count, k);

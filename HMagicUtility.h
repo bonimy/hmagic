@@ -53,6 +53,11 @@
               uint16_t  const p_val);
 
     void
+    stle16h_i(uint16_t * const p_arr,
+              size_t     const p_index,
+              uint16_t   const p_val);
+    
+    void
     stle24b(uint8_t * const p_arr,
             uint32_t  const p_value);
 

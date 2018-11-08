@@ -1,26 +1,31 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "Wrappers.h"
-#include "Callbacks.h"
+    #include "Wrappers.h"
+    #include "Callbacks.h"
 
-#include "HMagicEnum.h"
-#include "HMagicLogic.h"
-#include "HMagicUtility.h"
+    #include "HMagicEnum.h"
+    #include "HMagicLogic.h"
+    #include "HMagicUtility.h"
 
-#include "OverworldEdit.h"
+    #include "OverworldEnum.h"
+    #include "OverworldEdit.h"
 
-#include "DungeonEnum.h"
-#include "DungeonLogic.h"
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
-#include "PaletteEdit.h"
+    #include "PaletteEdit.h"
 
-#include "TextLogic.h"
+    #include "TextLogic.h"
 
-#include "AudioLogic.h"
+    #include "AudioLogic.h"
 
-#include "WorldMapLogic.h"
+    #include "WorldMapLogic.h"
+
+    #include "TileMapLogic.h"
+
+    #include "PatchLogic.h"
 
 // =============================================================================
 
@@ -571,7 +576,9 @@ updatemods:
                 }
             }
             else
+            {
                 Removepatches(activedoc);
+            }
             
             stle32b(rom + 0x17fa8, activedoc->sctend);
             
@@ -953,9 +960,7 @@ error:
             doc->tmend2 = 0x75d31;
             doc->oolend = 0x77b64;
             
-            i = *(int*) (rom + 0x17f8c);
-            
-            if(i == 0x4445335A)
+            if( HM_CheckEmbeddedStr(rom + 0x17f8c, "Z3ED") )
             {
                 i = *(int*) (rom + 0x17f94);
                 k = *(int*) (rom + 0x17f90);
@@ -1235,11 +1240,14 @@ nomod:
                 goto error;
             }
             
-            for(j=0;j<5;j++)
+            for(j = 0; j < 5; j++)
             {
-                for(i=0;i<64;i++)
+                for(i = 0; i < 64; i++)
                 {
-                    if(rom[0x125ec + i]!=i) Savesprites(doc,sprs[j]+i + 0x10000,0,0);
+                    if(rom[0x125ec + i] != i)
+                    {
+                        Savesprites(doc, sprs[j] + i + 0x10000, 0 , 0);
+                    }
                 }
             }
             
@@ -1459,6 +1467,7 @@ nomod:
             break;
         
         case ID_EDITING_DELDUNGITEM:
+            
             if(!activedoc)
                 break;
             
@@ -1592,7 +1601,20 @@ nomod:
             {
                 if(activedoc->overworld[i].win)
                 {
-                    InvalidateRect(GetDlgItem(GetDlgItem(activedoc->overworld[i].win,2000),3001),0,0);
+                    InvalidateRect
+                    (
+                        GetDlgItem
+                        (
+                            GetDlgItem
+                            (
+                                activedoc->overworld[i].win,
+                                ID_SuperDlg
+                            ),
+                            SD_Over_Display
+                        ),
+                        0,
+                        0
+                    );
                 }
             }
             

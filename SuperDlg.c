@@ -1,6 +1,8 @@
 
     #include "structs.h"
 
+    #include "HMagicEnum.h"
+
 // =============================================================================
 
 HWND
@@ -12,15 +14,32 @@ CreateSuperDialog(SUPERDLG *dlgtemp,
                   int h,
                   LPARAM lparam)
 {
-    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
+    SDCREATE * const sdc =
+    (SDCREATE*) calloc(1, sizeof(SDCREATE));
     
     HWND hc;
+    
+    // -----------------------------
+    
     sdc->dlgtemp = dlgtemp;
     sdc->owner = owner;
     sdc->lparam = lparam;
     sdc->w = w;
     sdc->h = h;
-    hc=CreateWindowEx(0,"SUPERDLG",dlgtemp->title,dlgtemp->style,x,y,w,h,owner,(HMENU)2000,hinstance,(void*)sdc);
+    
+    hc = CreateWindowEx(0,
+                        "SUPERDLG",
+                        dlgtemp->title,
+                        dlgtemp->style,
+                        x,
+                        y,
+                        w,
+                        h,
+                        owner,
+                        (HMENU) ID_SuperDlg,
+                        hinstance,
+                        (void*) sdc);
+    
     return hc;
 }
 
@@ -31,8 +50,9 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j,k,l,m,w,h;
     
-    SDCREATE *sdc;
-    SD_ENTRY *sde;
+    SDCREATE * sdc = (SDCREATE*) GetWindowLongPtr(win, GWLP_USERDATA);
+    
+    SD_ENTRY * sde;
     
     HWND hc;
     
@@ -43,21 +63,22 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         goto deflt;
     
     case WM_GETMINMAXINFO:
-        sdc=(SDCREATE*)GetWindowLong(win,GWL_USERDATA);
         
         if(sdc)
         {
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.x=sdc->dlgtemp->minw;
-            ((LPMINMAXINFO)lparam)->ptMinTrackSize.y=sdc->dlgtemp->minh;
+            ((LPMINMAXINFO)lparam)->ptMinTrackSize.x = sdc->dlgtemp->minw;
+            ((LPMINMAXINFO)lparam)->ptMinTrackSize.y = sdc->dlgtemp->minh;
         }
         
         return 0;
     
     case WM_CREATE:
         
-        SetWindowLong(win,
-                      GWL_USERDATA,
-                      (long)(sdc=((CREATESTRUCT*)lparam)->lpCreateParams));
+        sdc = (SDCREATE*) ( ( (CREATESTRUCT*) lparam)->lpCreateParams); 
+        
+        SetWindowLongPtr(win,
+                         GWLP_USERDATA,
+                         (LONG_PTR) sdc);
         
         sde = sdc->dlgtemp->sde;
         
@@ -83,7 +104,21 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             else
                 m = sde[i].h;
             
-            hc = CreateWindowEx(sde[i].exstyle,sde[i].cname,sde[i].caption,sde[i].style,j,k,l,m,win,(HMENU)(sde[i].id),hinstance,0);
+            hc = CreateWindowEx
+            (
+                sde[i].exstyle,
+                sde[i].cname,
+                sde[i].caption,
+                sde[i].style,
+                j,
+                k,
+                l,
+                m,
+                win,
+                (HMENU)(sde[i].id),
+                hinstance,
+                0
+            );
             
             SendMessage(hc,
                         WM_SETFONT,
@@ -102,13 +137,12 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         lastdlg = sdc;
         
-        sdc->dlgtemp->proc(win,WM_INITDIALOG,0,sdc->lparam);
+        sdc->dlgtemp->proc(win, WM_INITDIALOG, 0, sdc->lparam);
         
         return 0;
     
     case WM_SIZE:
         
-        sdc = (SDCREATE*) GetWindowLong(win,GWL_USERDATA);
         sde = sdc->dlgtemp->sde;
         
         w = LOWORD(lparam);
@@ -148,7 +182,7 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_DESTROY:
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
+        
         sdc->dlgtemp->proc(win, msg, wparam, lparam);
         
         if(sdc->next)
@@ -161,25 +195,24 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         else
             firstdlg = sdc->next;
         
-        free((SDCREATE*)sdc);
-        SetWindowLong(win,GWL_USERDATA,0);
+        free(sdc);
+        
+        SetWindowLongPtr(win, GWLP_USERDATA,0);
         
         break;
         
     default:
         
-        sdc = (SDCREATE*) GetWindowLong(win, GWL_USERDATA);
-        
         if(!sdc)
             goto deflt;
         
-        SetWindowLong(win, DWL_MSGRESULT, 0);
+        SetWindowLongPtr(win, DWLP_MSGRESULT, 0);
         
         if( !sdc->dlgtemp->proc(win,msg,wparam,lparam) )
 deflt:
             return DefWindowProc(win,msg,wparam,lparam);
         else
-            return GetWindowLong(win,DWL_MSGRESULT);
+            return GetWindowLongPtr(win, DWLP_MSGRESULT);
     }
     
     return 0;

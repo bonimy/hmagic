@@ -85,10 +85,6 @@ Handlescroll(HWND win,
              int size2);
 
 char const *
-Getsprstring(DUNGEDIT const * const ed,
-             int              const i);
-
-char const *
 Getsecretstring(uint8_t const * const rom,
                 int             const i);
 
@@ -208,12 +204,6 @@ Uncompress(uint8_t const *       src,
            int             const p_big_endian);
 
 
-int
-Savesecrets(FDOC          * const doc,
-            int             const num,
-            uint8_t const * const buf,
-            int             const size);
-
 uint8_t *
 Compress(uint8_t const * const src,
          int             const oldsize,
@@ -237,30 +227,15 @@ Editwin(FDOC       * const doc,
         LPARAM       const param,
         int          const size);
 
-int
-Fixscrollpos(unsigned char*rom,
-             int x,int y,
-             int sx,int sy,
-             int cx,int cy,
-             int dp,
-             int m,int l,
-             int door1,int door2);
-
 // \task These belong in a *Logic.h header flie
 void
 Savedungmap(LMAPEDIT*ed);
-void
-Savetmap(TMAPEDIT*ed);
 void
 Savepersp(PERSPEDIT*ed);
 void
 Savesongs(FDOC *doc);
 void
 SaveOverlays(FDOC * const doc);
-int
-Buildpatches(FDOC * const doc);
-void
-Removepatches(FDOC * const doc);
 void
 Updatesprites(void);
 

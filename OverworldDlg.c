@@ -1,4 +1,7 @@
 
+    // For sprintf()
+    #include <stdio.h>
+
 #include "structs.h"
 #include "prototypes.h"
 
@@ -10,6 +13,60 @@
 
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"
+
+// =============================================================================
+
+SD_ENTRY over_sd[] = 
+{
+    {"BLKSEL32","",152,70,0,0,3000,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    {"OVERWORLD","",0,92,160,0,3001,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_HSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,10},
+    {"BUTTON","Draw",0,0,60,20,3002,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_GROUP|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Select",64,0,60,20,3003,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Rectangle",128,0,60,20,3004,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Frame 1",192,0,60,20,3008,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Entrance",64,72,60,20,3013,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Copy",408,48,40,20,3021,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Paste",448,48,40,20,3022,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Warp Swch",335,0,60,20,3028,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Undo",0,48,60,20,3014,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Addr.Calc",64,48,60,20,3015,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Sprite",320,72,60,20,3016,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Background",128,48,80,20,3011,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Grid",208,48,50,20, SD_OverGrid32CheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Markers",258,48,70,20,3019,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Overlay",328,48,70,20, SD_OverOverlayChkBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Exit",0,72,60,20,3023,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Properties",256,0,60,20,3024,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Hole",128,72,60,20,3025,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Transport",192,72,60,20,3026,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Item",256,72,60,20,3027,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","",400,0,20,20,3029,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",425,0,20,20,3030,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",450,0,20,20, SD_OverUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",475,0,20,20, SD_OverDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"COMBOBOX","",329,24,70,80,3020,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
+    {"EDIT","0",56,0,0,20,3005,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,3},
+    {"STATIC","GFX#:",0,24,40,20,3006,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",50,24,30,20,3007,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Palette:",90,24,40,20,3009,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",130,24,30,20,3010,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Spr GFX#:",165,24,55,20,3017,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",220,24,30,20,3018,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Spr pal:",255,24,45,20, SD_OverSprTileSetStatic, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",300,24,25,20, SD_OverSprTileSetEditCtl, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"BUTTON","Search",56,20,0,20, SD_OverMapSearchBtn, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BUTTON","Search2",56,42,0,20, SD_OverAdjustSearchBtn, WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
+    {"BLKSEL16","",152,70,0,0, SD_OverMap16_Selector, WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    
+    // For testing window focus
+    {"STATIC", "Window Focus: ",
+     250, 20,
+     0, 20,
+     SD_OverWindowFocus,
+     WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,
+     0,
+     3},
+};
 
 // =============================================================================
 
@@ -214,16 +271,16 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             // Determines whether the up/down/left/right arrows are grayed out or not.
             EnableWindow(GetDlgItem(win, 3029), j & 7);
             EnableWindow(GetDlgItem(win, 3030), (j + (ed->mapsize ? 2 : 1)) & 7);
-            EnableWindow(GetDlgItem(win, 3031), j & 56);
-            EnableWindow(GetDlgItem(win, 3032), (j + (ed->mapsize ? 16 : 8)) & 56);
+            EnableWindow(GetDlgItem(win, SD_OverUpArrow), j & 0x38);
+            EnableWindow(GetDlgItem(win, SD_OverDownArrow), (j + (ed->mapsize ? 16 : 8)) & 0x38);
         }
         else
         {
             //Disable the directional arrows if it's an overlay or special area.
             EnableWindow(GetDlgItem(win, 3029), 0);
             EnableWindow(GetDlgItem(win, 3030), 0);
-            EnableWindow(GetDlgItem(win, 3031), 0);
-            EnableWindow(GetDlgItem(win, 3032), 0);
+            EnableWindow(GetDlgItem(win, SD_OverUpArrow), 0);
+            EnableWindow(GetDlgItem(win, SD_OverDownArrow), 0);
         }
         
         //Tell the window to set an appropriate graphic for each arrow button.
@@ -396,7 +453,9 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             ed->ovlenb = loadoverovl(ed->ew.doc,ed->ovlmap,j);
             
             if(ed->ew.doc->o_loaded == 2)
-                EnableWindow(GetDlgItem(win, 3037), 0);
+            {
+                EnableWindow( GetDlgItem(win, SD_OverOverlayChkBox), 0);
+            }
         }
         
         ed->ovlmodf = 0;
@@ -434,8 +493,8 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         ed->bs.scroll = 0;
         ed->bs.sel = 0;
         
-        hc = GetDlgItem(win, 3038);
-        SetWindowLong(hc,GWL_USERDATA,(int)&(ed->bs));
+        hc = GetDlgItem(win, SD_OverMap16_Selector);
+        SetWindowLong(hc, GWL_USERDATA, (int)&(ed->bs));
         Updatesize(hc);
         
         CheckDlgButton(win,3003,BST_CHECKED);
@@ -514,14 +573,14 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         if(j >= 0x80)
         {
             ShowWindow(GetDlgItem(win,3027),SW_HIDE);
-            ShowWindow(GetDlgItem(win,3037),SW_HIDE);
+            ShowWindow(GetDlgItem(win, SD_OverOverlayChkBox), SW_HIDE);
         }
         
         EnableWindow(GetDlgItem(win,3018),j<0x80);
-        EnableWindow(GetDlgItem(win,3034),j<0x80);
+        EnableWindow( GetDlgItem(win, SD_OverSprTileSetEditCtl), j < 0x80);
         
         SetDlgItemInt(win,3018,ed->sprgfx[ed->sprset],0);
-        SetDlgItemInt(win,3034,ed->sprpal[ed->sprset],0);
+        SetDlgItemInt(win, SD_OverSprTileSetEditCtl, ed->sprpal[ed->sprset], 0);
         
         Addgraphwin((DUNGEDIT*)ed,1);
         
@@ -577,7 +636,9 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 {
                     ed->selblk = i;
                     
-                    SetBS16(&(ed->bs), i, GetDlgItem(win, 3038));
+                    SetBS16(&(ed->bs),
+                            i,
+                            GetDlgItem(win, SD_OverMap16_Selector));
                 }
             }
             else
@@ -679,14 +740,16 @@ updmap:
             
             goto updscrn;
         
-        case 3037:
+        case SD_OverOverlayChkBox:
             
             ed->selblk = 0;
             ed->disp &= -9;
-            ed->disp |= IsDlgButtonChecked(win, 3037) << 3;
+            ed->disp |= IsDlgButtonChecked(win, SD_OverOverlayChkBox) << 3;
             
             ShowWindow(GetDlgItem(win,3000),(ed->disp&8)?SW_HIDE:SW_SHOW);
-            ShowWindow(GetDlgItem(win,3038),(ed->disp&8)?SW_SHOW:SW_HIDE);
+            
+            ShowWindow(GetDlgItem(win, SD_OverMap16_Selector),
+                       (ed->disp & 8) ? SW_SHOW : SW_HIDE);
             
             goto updmap;
         
@@ -792,13 +855,13 @@ updsprgfx:
             
             break;
         
-        case 3034 | (EN_CHANGE << 16):
+        case SD_OverSprTileSetEditCtl | (EN_CHANGE << 16):
             
             if(ed->ew.param > 0x7f)
                 break;
             
             rom = ed->ew.doc->rom;
-            m = GetDlgItemInt(win, 3034, 0, 0);
+            m = GetDlgItemInt(win, SD_OverSprTileSetEditCtl, 0, 0);
             
             if(ed->ew.param >= 0x40)
                 n = 2;
@@ -809,7 +872,7 @@ updsprgfx:
             {
                 if(m > 79 || m < 0)
                 {
-                    SetDlgItemInt(win, 3034, 79, 0);
+                    SetDlgItemInt(win, SD_OverSprTileSetEditCtl, 79, 0);
                     break;
                 }
                 
@@ -872,7 +935,7 @@ updsprpal:
             loadovermap(ed->ov->buf + 1024, getbgmap(ed,ed->ew.param,n), 1, ed->ew.doc->rom);
             
             SetDlgItemInt(win,3018,ed->sprgfx[(ed->ew.param>=0x40)?2:n],0);
-            SetDlgItemInt(win,3034,ed->sprpal[(ed->ew.param>=0x40)?2:n],0);
+            SetDlgItemInt(win, SD_OverSprTileSetEditCtl, ed->sprpal[(ed->ew.param>=0x40)?2:n],0);
             
             m = ed->sprgfx[n];
             
@@ -954,8 +1017,8 @@ updsprpal:
         
         case 3029:
         case 3030:
-        case 3031:
-        case 3032:
+        case SD_OverUpArrow:
+        case SD_OverDownArrow:
             
             ov = ed->ew.doc->overworld;
             j = ed->ew.param;
@@ -1000,12 +1063,12 @@ overlaunch:
             
             break;
         
-        case 3035:
+        case SD_OverMapSearchBtn:
             
             if(ed->schflag)
             {
                 SetWindowText((HWND)lparam,"Search");
-                ShowWindow(GetDlgItem(win,3036),SW_HIDE);
+                ShowWindow(GetDlgItem(win, SD_OverAdjustSearchBtn), SW_HIDE);
                 
                 ed->schflag=0;
                 free(ed->schbuf);
@@ -1129,7 +1192,7 @@ contsch:;
                     }
 schok:
                     
-                    if(wparam == 3036)
+                    if(wparam == SD_OverAdjustSearchBtn)
                     {
                         j = m = 0;
                         
@@ -1157,10 +1220,10 @@ sc2done:
                     ed->schnum = k;
                     SetCursor(normal_cursor);
                     
-                    if(wparam == 3035)
+                    if(wparam == SD_OverMapSearchBtn)
                     {
                         SetWindowText((HWND)lparam, "Show all");
-                        ShowWindow(GetDlgItem(win,3036), SW_SHOW);
+                        ShowWindow(GetDlgItem(win, SD_OverAdjustSearchBtn), SW_SHOW);
                     }
 updsel32:
                     hc = GetDlgItem(win, 3000);
@@ -1171,7 +1234,7 @@ updsel32:
             
             break;
         
-        case 3036:
+        case SD_OverAdjustSearchBtn:
             
             b4 = ed->schbuf;
             goto search2;

@@ -1,8 +1,119 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    
+    #include "prototypes.h"
 
-#include "HMagicLogic.h"
+    #include "HMagicEnum.h"
+    #include "HMagicLogic.h"
+
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
+
+    #include "OverworldEnum.h"
+    #include "OverworldEdit.h"
+
+// =============================================================================
+
+void
+Updatesprites(void)
+{
+    FDOC *doc;
+    HWND win;
+    OVEREDIT*oe;
+    DUNGEDIT*ed;
+    RECT rc;
+    
+    int i,j,k,m;
+    
+    unsigned char*l;
+    
+    for(doc=firstdoc;doc;doc=doc->next)
+    {
+        for(i=0;i<144;i++)
+        {
+            win=doc->overworld[i].win;
+            if(win)
+            {
+                text_buf_ty text_buf;
+                
+                win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), 3001);
+                
+                oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+                
+                if( ! (oe->disp & SD_OverShowMarkers) )
+                    continue;
+                
+                k=oe->esize[oe->sprset];
+                l=oe->ebuf[oe->sprset];
+                
+                for(j=0;j<k;j++)
+                {
+                    rc.left=(l[j+1]<<4)-(oe->mapscrollh<<5);
+                    rc.top=(l[j]<<4)-(oe->mapscrollv<<5);
+                    
+                    GetOverString(oe, 5, j, text_buf);
+                    
+                    Getstringobjsize(text_buf, &rc);
+                    
+                    InvalidateRect(win,&rc,0);
+                }
+                
+                if(i < 128)
+                {
+                    k=oe->ssize;
+                    l=oe->sbuf;
+                    
+                    for(j=0;j<k;j++)
+                    {
+                        m=*(short*)(l+j);
+                        
+                        rc.left=((m&0x7e)<<3)-(oe->mapscrollh<<5);
+                        rc.top=((m&0x1f80)>>3)-(oe->mapscrollv<<5);
+                        
+                        GetOverString(oe, 10, j, text_buf);
+                        
+                        Getstringobjsize(text_buf, &rc);
+                        
+                        InvalidateRect(win,&rc,0);
+                    }
+                }
+            }
+        }
+        
+        for(i=0;i<0xa8;i++)
+        {
+            win=doc->ents[i];
+            
+            if(win)
+            {
+                win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), ID_DungEditWindow);
+                ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
+                
+                if( ! (ed->disp & SD_OverShowMarkers) )
+                    break;
+                
+                k=ed->esize;
+                l=ed->ebuf;
+                
+                for(j=1;j<k;j++) {
+                    rc.left=((l[j+1]&31)<<4)-(ed->mapscrollh<<5);
+                    rc.top=((l[j]&31)<<4)-(ed->mapscrollv<<5);
+                    Getstringobjsize(Getsprstring(ed,j),&rc);
+                    InvalidateRect(win,&rc,0);
+                }
+                k=ed->ssize;
+                l=ed->sbuf;
+                for(j=0;j<k;j++) {
+                    m=*(short*)(l+j);
+                    rc.left=((m&0x7e)<<2)-(ed->mapscrollh<<5);
+                    rc.top=((m&0x1f80)>>4)-(ed->mapscrollv<<5);
+                    Getstringobjsize(Getsecretstring(doc->rom,l[j+2]),&rc);
+                    InvalidateRect(win,&rc,0);
+                }
+            }
+        }
+    }
+}
 
 // =============================================================================
 

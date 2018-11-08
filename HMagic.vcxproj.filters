@@ -55,6 +55,36 @@
     <Filter Include="Header Files\Audio">
       <UniqueIdentifier>{7430f52d-ff48-462a-97b2-29ad77e7c39d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\CG">
+      <UniqueIdentifier>{27991fd2-24f4-4994-a599-3c2e714da32b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Level Map">
+      <UniqueIdentifier>{d72b4565-6d04-489b-a64b-aff1fae792b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\LevelMap">
+      <UniqueIdentifier>{015b4dc1-c607-48cc-9c3c-901e7abc7ca2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TileMap">
+      <UniqueIdentifier>{038a7cd4-ae6d-4d55-96f3-5e15899f3d75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\TileMap">
+      <UniqueIdentifier>{0c1be90c-b0b0-4f11-8a77-dba728c42fb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ASM">
+      <UniqueIdentifier>{db967dbe-a087-4c29-9d52-de40d3e94078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Graphics">
+      <UniqueIdentifier>{453411eb-317d-4046-88bc-06472c41a3b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CG">
+      <UniqueIdentifier>{b6290e24-6515-4b00-a613-0fc0847826d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Graphics">
+      <UniqueIdentifier>{0f260b6c-831e-4ebf-ad4d-46fa49cb0cb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\ASM">
+      <UniqueIdentifier>{31b0dc9d-3b66-4747-a0f6-108fcc72dad5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -132,9 +162,6 @@
     <ClCompile Include="Zelda3_Dialog.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ScreenEditorLogic.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TextDlg.c">
       <Filter>Source Files\Text</Filter>
     </ClCompile>
@@ -178,6 +205,120 @@
       <Filter>Source Files\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="AudioFrame.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="SampleDisplay.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="SampleEditLogic.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackEditFrame.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackEditDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="TrackerLogic.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="PerspectiveFrame.c">
+      <Filter>Source Files\CG</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapFrame.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Map32Selector.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="MetatileLogic.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16Selector.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapDlg.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapDisplay.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapLogic.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="LevelMapBlocks.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="TileMapDisplay.c">
+      <Filter>Source Files\TileMap</Filter>
+    </ClCompile>
+    <ClCompile Include="TileMapLogic.c">
+      <Filter>Source Files\TileMap</Filter>
+    </ClCompile>
+    <ClCompile Include="TileMapDlg.c">
+      <Filter>Source Files\TileMap</Filter>
+    </ClCompile>
+    <ClCompile Include="TileMapFrame.c">
+      <Filter>Source Files\TileMap</Filter>
+    </ClCompile>
+    <ClCompile Include="AboutDlg.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PatchDlg.c">
+      <Filter>Source Files\ASM</Filter>
+    </ClCompile>
+    <ClCompile Include="MusicDlg.c">
+      <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="PerspectiveDlg.c">
+      <Filter>Source Files\CG</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockDlg.c">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Map8Selector.c">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Map8_Edit.c">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="ErrorsDlg.c">
+      <Filter>Source Files\ASM</Filter>
+    </ClCompile>
+    <ClCompile Include="Map32_Edit.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16_Edit.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="PerspectiveDisplay.c">
+      <Filter>Source Files\CG</Filter>
+    </ClCompile>
+    <ClCompile Include="PerspectiveLogic.c">
+      <Filter>Source Files\CG</Filter>
+    </ClCompile>
+    <ClCompile Include="OverworldPropsDlg.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicSchemesDlg.c">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="BossLocationsDlg.c">
+      <Filter>Source Files\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenEditorLogic.c">
+      <Filter>Source Files\Level Map</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicsLogic.c">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="PatchLogic.c">
+      <Filter>Source Files\ASM</Filter>
+    </ClCompile>
+    <ClCompile Include="Map16_Finder.c">
+      <Filter>Source Files\Overworld</Filter>
+    </ClCompile>
+    <ClCompile Include="Tracker.c">
       <Filter>Source Files\Audio</Filter>
     </ClCompile>
   </ItemGroup>
@@ -238,6 +379,36 @@
     </ClInclude>
     <ClInclude Include="AudioLogic.h">
       <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="SampleEnum.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="SampleEditLogic.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="TrackerLogic.h">
+      <Filter>Header Files\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="MetatileLogic.h">
+      <Filter>Header Files\Overworld</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelMapLogic.h">
+      <Filter>Header Files\LevelMap</Filter>
+    </ClInclude>
+    <ClInclude Include="TileMapLogic.h">
+      <Filter>Header Files\TileMap</Filter>
+    </ClInclude>
+    <ClInclude Include="PerspectiveLogic.h">
+      <Filter>Header Files\CG</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsLogic.h">
+      <Filter>Header Files\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="PatchLogic.h">
+      <Filter>Header Files\ASM</Filter>
+    </ClInclude>
+    <ClInclude Include="PatchEnum.h">
+      <Filter>Header Files\ASM</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

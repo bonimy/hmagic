@@ -11,7 +11,7 @@
 
 // =============================================================================
 
-    HM_TextResource entrance_names;
+    extern HM_TextResource entrance_names;
 
 // =============================================================================
 
@@ -24,6 +24,10 @@
     void
     LoadHeader(DUNGEDIT * const ed,
                int        const map);
+
+    char const *
+    Getsprstring(DUNGEDIT const * const ed,
+                 int              const i);
 
 // =============================================================================
 

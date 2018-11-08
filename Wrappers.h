@@ -196,6 +196,10 @@ struct
     hm_strndup(char const * const p_str,
                size_t             p_len);
 
+    BOOL
+    HM_CheckEmbeddedStr(void const * const p_buffer,
+                        char const * const p_string);
+
     int __stdcall
     askinteger(int max, char *caption, char *text);
 

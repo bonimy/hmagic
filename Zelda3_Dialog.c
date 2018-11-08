@@ -1,17 +1,32 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "Callbacks.h"
-#include "GdiObjects.h"
+    #include "Callbacks.h"
+    #include "GdiObjects.h"
 
-#include "OverworldEdit.h"
+    #include "OverworldEdit.h"
 
-#include "DungeonEnum.h"
-#include "DungeonLogic.h"
+    #include "DungeonEnum.h"
+    #include "DungeonLogic.h"
 
-// For the names of the various editable misc screens.
-#include "ScreenEditorLogic.h"
+    // For the names of the various editable misc screens.
+    #include "ScreenEditorLogic.h"
+
+    #include "LevelMapLogic.h"
+
+
+// =============================================================================
+
+SD_ENTRY z3_sd[]={
+    {WC_TREEVIEW,"",0,0,0,0,3000,WS_VISIBLE|WS_TABSTOP|WS_BORDER|WS_CHILD|TVS_HASBUTTONS|TVS_LINESATROOT|TVS_HASLINES|TVS_SHOWSELALWAYS|TVS_DISABLEDRAGDROP,WS_EX_CLIENTEDGE,10},
+};
+
+SUPERDLG z3_dlg={
+    "",z3dlgproc,WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,60,60,1,z3_sd
+};
+
+// =============================================================================
 
 BOOL CALLBACK
 z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -231,9 +246,13 @@ z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
         break;
     case WM_NOTIFY:
-        switch(wparam) {
+        switch(wparam)
+        {
+        
         case 3000:
-            switch(((NMHDR*)lparam)->code) {
+            switch(((NMHDR*)lparam)->code)
+            {
+            
             case NM_DBLCLK:
                 GetWindowRect(((NMHDR*)lparam)->hwndFrom,&rc);
                 
@@ -257,9 +276,10 @@ z3dlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 open_edt:
                 
                 doc = (FDOC*)GetWindowLong(win,DWL_USER);
+                
                 j = lp & 0xffff;
                 
-                switch(lp>>16)
+                switch(lp >> 16)
                 {
 
                     // double clicked on an overworld area
@@ -484,9 +504,13 @@ open_edt:
                 }
             }
         }
+        
         break;
+    
     case 4000:
-        lp=wparam;
+        
+        lp = wparam;
+        
         goto open_edt;
     }
     return FALSE;

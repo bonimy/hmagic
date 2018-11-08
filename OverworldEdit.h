@@ -79,6 +79,12 @@
              int        const b);
 
 
+    extern int
+    Savesecrets(FDOC          * const doc,
+                int             const num,
+                uint8_t const * const buf,
+                int             const size);
+
 // =============================================================================
 
 #endif

@@ -150,7 +150,7 @@ Wmapselchg(WMAPEDIT const * const ed,
         if((ed->tool==4 && ed2->tool!=4) || (ed->tool!=4 && 
             (ed2->marknum!=ed->marknum || ed2->tool==4))) return;
         
-        win2=GetDlgItem(ed2->dlg,3000);
+        win2 = GetDlgItem(ed2->dlg, 3000);
         
         rc.right-=a;
         rc.bottom-=b;

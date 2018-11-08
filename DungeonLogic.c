@@ -13,6 +13,23 @@ HM_TextResource entrance_names;
 
 // =============================================================================
 
+char const *
+Getsprstring(DUNGEDIT const * const ed,
+             int              const i)
+{
+    int j = ed->ebuf[i+2];
+    
+    if(ed->ebuf[i + 1] >= 224)
+        j += 256;
+    
+    if(j >= 0x11c)
+        return "Crash";
+    
+    return sprname[j];
+}
+
+// =============================================================================
+
 void
 fill4x2(uint8_t  const * const rom,
         uint16_t       * const nbuf,
@@ -493,7 +510,8 @@ const char obj3_m[248]={
     0,0,0,0,0,0,0,0
 };
 
-const unsigned char obj3_t[248]={
+const unsigned char obj3_t[248]=
+{
     0,2,2,1,1,1,1,1,1,97,65,65,97,97,65,65,
     97,97,65,65,97,97,65,65,97,97,65,65,97,97,65,65,
     97,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -764,10 +782,14 @@ invalobj:
             if( is16b_neg1(rom + 0xe96e + l) )
                 break;
         
-        if(l!=0x1f8) {
-            for(k=0;k<0x1f8;k+=3) {
-                n=*(short*)(rom + 0xe96e + l);
-                if(n==ed->mapnum) {
+        if(l!=0x1f8)
+        {
+            for(k=0;k<0x1f8;k+=3)
+            {
+                n = ldle16b(rom + 0xe96e + l);
+                
+                if(n == ed->mapnum)
+                {
                     if(ed->chestloc[m++]>map-ed->buf) {
                         if(l<k)
                             MoveMemory(rom + 0xe96e + l, rom + 0xe96e + l + 3,

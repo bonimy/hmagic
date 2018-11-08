@@ -69,6 +69,10 @@ struct
     void
     UpdMRU(void);
 
+    extern void
+    ProcessMessage(MSG * msg);
+
+
 // =============================================================================
 
 #endif

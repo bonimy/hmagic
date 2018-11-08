@@ -5,10 +5,6 @@
 
     #define OEMRESOURCE
 
-    // This is legacy code, and I don't want to bother using the MS-specific
-    // extensions to the standard library at this time.
-    #define _CRT_SECURE_NO_WARNINGS
-
     // 'nonstandard extension used : non-constant aggregate initializer'
     // This warning is not really relevant since major vendors support this
     // extension and C99 eliminates it completely whenever MS gets around to
@@ -27,7 +23,6 @@
     #pragma warning(push, 0)
 
     #include <windows.h>
-    #include <stdio.h>
     #include <stdint.h>
     #include <commctrl.h>
     #include <mmsystem.h>
@@ -174,7 +169,9 @@ typedef struct tagFDOC
     ZOVER overworld[160]; // 160 Overworld maps
     
     HWND dungs[0x128]; // 0x128 dungeon maps (296)
-    HWND ents[0xa8]; // entrances
+    
+    /// Windows that correspond to dungeon entrances.
+    HWND ents[0xa8];
     
     short m_loaded,m_size,m_free,m_modf; // ???
     
@@ -751,6 +748,37 @@ typedef struct
     
 } ZCHANNEL;
 
+    typedef
+    struct
+    {
+        int8_t m_chunk_id[4];
+        
+        uint32_t m_chunk_size;
+        
+        int8_t m_format[4];
+        
+        int8_t m_subchunk_1_id[4];
+        
+        uint32_t m_subchunk_1_size;
+        
+        uint16_t m_audio_format;
+        uint16_t m_num_channels;
+        
+        uint32_t m_sample_rate;
+        
+        uint32_t m_byte_rate;
+        
+        uint16_t m_block_align;
+        uint16_t m_bits_per_sample;
+        
+        int8_t m_subchunk_2_id[4];
+        
+        uint32_t m_subchunk_2_size;
+        
+        int8_t m_data[1];
+        
+    } HM_WaveFileData;
+
 #pragma pack(pop)
 
 // =============================================================================
@@ -868,6 +896,13 @@ extern int wver;
 
 extern int const always;
 
+extern uint8_t const u8_neg1;
+
+extern uint16_t const u16_neg1;
+
+extern uint32_t const u32_neg1;
+
+
 extern const short bg3blkofs[4];
 
 extern int palhalf[8];
@@ -881,10 +916,6 @@ extern DUNGEDIT * dunged;
 extern uint8_t drawbuf[0x400];
 
 extern uint16_t *dm_buf;
-
-extern char const * mus_str[];
-
-extern char const * level_str[];
 
 extern int door_ofs;
 
@@ -904,6 +935,10 @@ extern int mouse_x;
 extern int mouse_y;
 
 extern int palmode;
+
+extern unsigned char masktab[16];
+
+TEXTMETRIC textmetric;
 
 // =============================================================================
 
