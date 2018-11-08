@@ -66,6 +66,12 @@
 // =============================================================================
 
     void
+    Initsound(void);
+
+    void
+    Exitsound(void);
+
+    void
     Mixbuffer(void);
 
     int CALLBACK
@@ -90,6 +96,9 @@
     void
     Modifywaves(FDOC * const doc,
                 int    const es);
+
+    void
+    midinoteoff(ZCHANNEL * const zch);
 
 // =============================================================================
 

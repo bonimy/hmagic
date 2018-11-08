@@ -262,12 +262,6 @@ Buildpatches(FDOC * const doc);
 void
 Removepatches(FDOC * const doc);
 void
-Initsound(void);
-void
-Exitsound(void);
-void
-midinoteoff(ZCHANNEL * const zch);
-void
 Updatesprites(void);
 
 void
