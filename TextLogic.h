@@ -37,6 +37,18 @@
     extern int
     AsciiTextMessage_Init(AsciiTextMessage * const p_msg);
 
+
+    /**
+        Initialize and allocate a structure to fix a size that is known
+        "a priori".
+    */
+    extern int
+    AsciiTextMessage_InitSized
+    (
+        AsciiTextMessage * const p_msg,
+        size_t             const p_size
+    );
+
     extern int
     AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
                                 char               const p_char);

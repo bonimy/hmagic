@@ -17,6 +17,14 @@ const char z_alphabet[] =
     "!?-.,\0>()@£${}\""
     "\0\0\0\0'\0\0\0\0\0\0\0 <\0\0\0\0";
 
+
+enum
+{
+    NUM_Zchars = sizeof(z_alphabet) / sizeof(const char)
+};
+
+// =============================================================================
+
 char const * const tsym_str[] =
 {
     "Up",
@@ -355,6 +363,47 @@ Savetext(FDOC * const doc)
 
 // =============================================================================
 
+// Bidirectional, case insensitive, string comparison of up to n characters
+int
+bi_strnistr(char const * const p_lhs,
+            char const * const p_rhs,
+            size_t       const p_lhs_size,
+            size_t       const p_rhs_size)
+{
+    size_t i = 0;
+    
+    // Take the minimum of the two to avoid buffer overflows.
+    size_t const limit = (p_lhs_size < p_rhs_size)
+                       ? p_lhs_size
+                       : p_rhs_size;
+    
+    // -----------------------------
+    
+    // We are looking for an exact length match in both directions,
+    // in addition to character by character match.
+    if(p_lhs_size != p_rhs_size)
+    {
+        return 0;
+    }
+    
+    for(i = 0; i < limit; i += 1)
+    {
+        char const a = toupper( p_lhs[i] );
+        char const b = toupper( p_rhs[i] );
+        
+        // -----------------------------
+        
+        if(a != b)
+        {
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+
+// =============================================================================
+
 /// Converts ASCII text to the game's custom text format.
 extern void
 Makezeldastring(FDOC             const * const p_doc,
@@ -388,8 +437,15 @@ Makezeldastring(FDOC             const * const p_doc,
                 if
                 (
                     ( tsym_str[l] )
-                 && ( ! tsym_str[l][m] )
-                 && ( ! _strnicmp(abuf + i, tsym_str[l], m) )
+                 && (
+                        bi_strnistr
+                        (
+                            abuf + i,
+                            tsym_str[l],
+                            m,
+                            strlen(tsym_str[l])
+                        )
+                    )
                 )
                 {
                     break;
@@ -405,7 +461,15 @@ Makezeldastring(FDOC             const * const p_doc,
                     if
                     (
                         ( ! tcmd_str[l][m] )
-                     && ( ! _strnicmp(abuf + i, tcmd_str[l], m) )
+                     && (
+                            bi_strnistr
+                            (
+                                abuf + i,
+                                tcmd_str[l],
+                                m,
+                                strlen(tcmd_str[l])
+                            )
+                        )
                     )
                     {
                         break;
@@ -474,25 +538,26 @@ error:
                 
                 // -----------------------------
                 
-                if( (abuf+i)[0] != ' ')
+                if( abuf[i] != ' ')
                 {
 syntaxerror:
                     asprintf(&text_buf,
                              "Syntax error: '%c'",
-                             (abuf+i)[0]);
+                             abuf[i]);
                     
                     goto error;
                 }
                 
                 i += 1;
                 
-                j = (short) strtol(abuf, &n, 16);
+                j = (short) strtol(abuf + i, &n, 16);
                 
                 m = n - (abuf + i);
                 
                 if(m > 2 || m < 1)
                 {
-                    wsprintf(text_buf,"Invalid number");
+                    asprintf(&text_buf,
+                             "Invalid number");
                     
                     goto error;
                 };
@@ -502,7 +567,7 @@ syntaxerror:
                 ZTextMessage_AppendChar(p_zmsg, j);
             }
             
-            if( (abuf + i)[0] != ']')
+            if( abuf[i] != ']')
             {
                 goto syntaxerror;
             }
@@ -516,13 +581,13 @@ syntaxerror:
                 break;
             }
             
-            for(l = 0; l < 0x5f; l++)
+            for(l = 0; l < NUM_Zchars; l++)
             {
                 if(z_alphabet[l] == j)
                     break;
             }
             
-            if(l == 0x5f)
+            if(l == NUM_Zchars)
             {
                 asprintf(&text_buf,
                          "Invalid character '%c'",
@@ -538,173 +603,209 @@ syntaxerror:
 
 // =============================================================================
 
-extern int
-AsciiTextMessage_Init(AsciiTextMessage * const p_msg)
-{
-    if(p_msg->m_text)
+    extern int
+    AsciiTextMessage_Init(AsciiTextMessage * const p_msg)
     {
-        p_msg->m_len = 0;
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
         
-        /// Fill with zeroes, so reset it, essentially.
-        memset(p_msg->m_text, 0, p_msg->m_capacity);
+        if(p_msg->m_text)
+        {
+            p_msg->m_len = 0;
+            
+            /// Fill with zeroes, so reset it, essentially.
+            memset(p_msg->m_text, 0, p_msg->m_capacity + 1);
+        }
+        else
+        {
+            p_msg->m_capacity = 2048;
+            p_msg->m_len      = 0;
+            p_msg->m_text     = (char*) calloc(1, p_msg->m_capacity + 1);
+        }
+        
+        return (p_msg->m_text != NULL);
     }
-    else
-    {
-        p_msg->m_capacity = 2048;
-        p_msg->m_len      = 0;
-        p_msg->m_text     = (char*) calloc(1, p_msg->m_capacity + 1);
-    }
-    
-    return (p_msg->m_text != NULL);
-}
 
 // =============================================================================
 
-extern int
-AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
-                            char               const p_char)
-{
-    int i = p_msg->m_len;
-    
-    // -----------------------------
-    
-    // Check if the buffer needs expanding.
-    if(p_msg->m_len == p_msg->m_capacity)
+    extern int
+    AsciiTextMessage_InitSized
+    (
+        AsciiTextMessage * const p_msg,
+        size_t             const p_size
+    )
     {
-        p_msg->m_text = (char*) recalloc
-        (
-            p_msg->m_text,
-            p_msg->m_capacity + 2048 + 1,
-            p_msg->m_capacity + 1,
-            sizeof(char)
-        );
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
+        
+        if(p_msg->m_text != NULL)
+        {
+            p_msg->m_len = 0;
+            
+            free(p_msg->m_text);
+            
+            p_msg->m_text = NULL;
+        }
+    
+        p_msg->m_capacity = p_size;
+        p_msg->m_len      = p_size;
+        p_msg->m_text     = (char*) calloc(1,
+                                            p_msg->m_capacity + 1);
+        
+        return (p_msg->m_text != NULL);
+    }
+
+// =============================================================================
+
+    extern int
+    AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
+                                char               const p_char)
+    {
+        int i = p_msg->m_len;
+        
+        // -----------------------------
+        
+        // Check if the buffer needs expanding.
+        if(p_msg->m_len == p_msg->m_capacity)
+        {
+            p_msg->m_text = (char*) recalloc
+            (
+                p_msg->m_text,
+                p_msg->m_capacity + 2048 + 1,
+                p_msg->m_capacity + 1,
+                sizeof(char)
+            );
+            
+            if(p_msg->m_text == NULL)
+            {
+                return 0;
+            }
+            
+            p_msg->m_capacity += 2048;
+        }
+        
+        p_msg->m_text[i]     = p_char;
+        p_msg->m_text[i + 1] = '\0';
+        
+        p_msg->m_len += 1;
+        
+        return 1;
+    }
+
+// =============================================================================
+
+    extern void
+    AsciiTextMessage_Free(AsciiTextMessage * const p_msg)
+    {
+        if(p_msg)
+        {
+            if(p_msg->m_text)
+            {
+                free(p_msg->m_text);
+                
+                p_msg->m_text = NULL;
+                
+                p_msg->m_capacity = 0;
+                p_msg->m_len      = 0;
+            }
+        }
+    }
+
+// =============================================================================
+
+    extern int
+    ZTextMessage_Init(ZTextMessage * const p_msg)
+    {
+        p_msg->m_len      = 0;
+        p_msg->m_capacity = TEXT_GROW_SIZE;
+        
+        p_msg->m_text = (uint8_t*) calloc(p_msg->m_capacity,
+                                          sizeof(uint8_t) );
         
         if(p_msg->m_text == NULL)
         {
             return 0;
         }
         
-        p_msg->m_capacity += 2048;
+        return 1;
     }
-    
-    p_msg->m_text[i]     = p_char;
-    p_msg->m_text[i + 1] = '\0';
-    
-    p_msg->m_len += 1;
-    
-    return 1;
-}
 
 // =============================================================================
 
-extern void
-AsciiTextMessage_Free(AsciiTextMessage * const p_msg)
-{
-    if(p_msg)
+    extern void
+    ZTextMessage_AppendChar(ZTextMessage * const p_msg,
+                            uint8_t        const p_char)
     {
-        if(p_msg->m_text)
+        if(p_msg)
         {
-            free(p_msg->m_text);
-            
-            p_msg->m_text = NULL;
-            
-            p_msg->m_capacity = 0;
-            p_msg->m_len      = 0;
-        }
-    }
-}
-
-// =============================================================================
-
-extern int
-ZTextMessage_Init(ZTextMessage * const p_msg)
-{
-    p_msg->m_len      = 0;
-    p_msg->m_capacity = TEXT_GROW_SIZE;
-    
-    p_msg->m_text = (uint8_t*) calloc(p_msg->m_capacity,
-                                      sizeof(uint8_t) );
-    
-    if(p_msg->m_text == NULL)
-    {
-        return 0;
-    }
-    
-    return 1;
-}
-
-// =============================================================================
-
-extern void
-ZTextMessage_AppendChar(ZTextMessage * const p_msg,
-                        uint8_t        const p_char)
-{
-    if(p_msg)
-    {
-        uint16_t const i = p_msg->m_len;
-        
-        // -----------------------------
-        
-        if(p_msg->m_len == p_msg->m_capacity)
-        {
-            uint16_t const old_capacity = p_msg->m_capacity;
+            uint16_t const i = p_msg->m_len;
             
             // -----------------------------
             
-            p_msg->m_capacity += TEXT_GROW_SIZE;
+            if(p_msg->m_len == p_msg->m_capacity)
+            {
+                uint16_t const old_capacity = p_msg->m_capacity;
+                
+                // -----------------------------
+                
+                p_msg->m_capacity += TEXT_GROW_SIZE;
+                
+                p_msg->m_text = (uint8_t*) recalloc
+                (
+                    p_msg->m_text,
+                    p_msg->m_capacity,
+                    old_capacity,
+                    sizeof(uint8_t)
+                );
+            }
             
-            p_msg->m_text = (uint8_t*) recalloc
-            (
-                p_msg->m_text,
-                p_msg->m_capacity,
-                old_capacity,
-                sizeof(uint8_t)
-            );
+            p_msg->m_text[i] = p_char;
+    
+            p_msg->m_len += 1;
         }
-        
-        p_msg->m_text[i] = p_char;
-
-        p_msg->m_len += 1;
     }
-}
 
 // =============================================================================
 
-extern void
-ZTextMessage_AppendStream(ZTextMessage       * const p_msg,
-                          uint8_t      const * const p_data,
-                          uint16_t             const p_len)
-{
-    if(p_msg && p_data && (p_len > 0) )
+    extern void
+    ZTextMessage_AppendStream(ZTextMessage       * const p_msg,
+                              uint8_t      const * const p_data,
+                              uint16_t             const p_len)
     {
-        uint16_t const i       = p_msg->m_len;
-        uint16_t const new_len = (i + p_len);
-        
-        // -----------------------------
-        
-        if(new_len > p_msg->m_capacity)
+        if(p_msg && p_data && (p_len > 0) )
         {
-            uint16_t const new_capacity = new_len + TEXT_GROW_SIZE
-                                        - (new_len % TEXT_GROW_SIZE);  
+            uint16_t const i       = p_msg->m_len;
+            uint16_t const new_len = (i + p_len);
             
-            p_msg->m_text = (uint8_t*) recalloc
-            (
-                p_msg->m_text,
-                new_capacity,
-                p_msg->m_capacity,
-                sizeof(uint8_t)
-            );
+            // -----------------------------
             
-            p_msg->m_capacity = new_capacity;
+            if(new_len > p_msg->m_capacity)
+            {
+                uint16_t const new_capacity = new_len + TEXT_GROW_SIZE
+                                            - (new_len % TEXT_GROW_SIZE);  
+                
+                p_msg->m_text = (uint8_t*) recalloc
+                (
+                    p_msg->m_text,
+                    new_capacity,
+                    p_msg->m_capacity,
+                    sizeof(uint8_t)
+                );
+                
+                p_msg->m_capacity = new_capacity;
+            }
+            
+            memcpy(p_msg->m_text + i,
+                   p_data,
+                   p_len);
+            
+            p_msg->m_len = new_len;
         }
-        
-        memcpy(p_msg->m_text + i,
-               p_data,
-               p_len);
-        
-        p_msg->m_len = new_len;
     }
-}
 
 // =============================================================================
 
@@ -759,7 +860,7 @@ Makeasciistring
         
         z_i += 1;
         
-        if(k < 0x5f)
+        if(k < NUM_Zchars)
         {
             if( ! z_alphabet[k] )
             {

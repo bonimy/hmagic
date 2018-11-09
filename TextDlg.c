@@ -54,7 +54,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
     
     // -----------------------------
     
-    if(i != -1)
+    if(i != LB_ERR)
     {
         HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
         
@@ -66,7 +66,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         // the text requires your self reported buffer size to leave room
         // for one, otherwise you will be missing a character when you
         // read it out.
-        size_t const ted_len = ( GetWindowTextLength(ted_win) + 1);
+        size_t const ted_len = ( GetWindowTextLength(ted_win) + 1 );
         
         ZTextMessage zmsg = { 0 };
         
@@ -74,11 +74,12 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         // -----------------------------
         
-        // \task This sequence has code smell, clean it up.
-        amsg.m_len      = ted_len;
-        amsg.m_capacity = ted_len + 100;
-        amsg.m_text     = (char*) calloc(ted_len + 100, sizeof(char) );
+        AsciiTextMessage_InitSized(&amsg, ted_len + 1);
         
+        // \task This sequence has code smell, it would be nice if
+        // we could directly initialize ascii text message from
+        // a dialog control... maybe. That way we could get the
+        // length correct ahead of time.
         GetDlgItemText(p_win,
                        ID_TextEditWindow,
                        amsg.m_text,
@@ -119,7 +120,9 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 l = ( ldle16b(rom + 0x74703) - 0xc703 ) >> 1;
                 
                 for(j = i + 1; j < l; j++)
+                {
                     ((short*) (rom + 0x74703))[j] += m - k;
+                }
             }
             else
             {

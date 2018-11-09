@@ -247,10 +247,14 @@ typedef struct tagFDOC
     
     short t_loaded,t_number,t_modf,withhead;
     
-    // Array of raw binary text data for each message in the game.
-    // Once correctly loaded, the first two bytes are a 16-bit value that
-    // indicates the length of the buffer, in a way analogous to Pascal
-    // strings.
+    /**
+        Array of zchar (rom-native encoded) messages that make up what
+        many refer to as monologue data. These are extracted from the
+        rom the first time the Monologue editor window is opened.
+
+        Excuse the name for now, this was part of a refactor operation and
+        I don't have a better name at the moment.
+    */
     ZTextMessage * text_bufz;
     
     unsigned short nummod;
