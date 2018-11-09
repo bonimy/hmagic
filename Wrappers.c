@@ -1,4 +1,7 @@
 
+    #include <stdio.h>
+    #include <stdarg.h>
+
     #include "prototypes.h"
 
     #include "Wrappers.h"
@@ -591,6 +594,80 @@ hm_strndup(char const * const p_str,
         // exact match.
         return (r == 0);
     }
+
+// =============================================================================
+
+// Not supported in the C compiler until VS 2013
+#if defined _MSC_VER
+
+#if ! defined __cplusplus
+
+#if _MSC_VER < 1800
+    #define va_copy(d, s) ((d) = (s))
+#endif
+
+#endif
+
+#endif
+
+
+// =============================================================================
+
+extern int
+vasprintf(char       ** const p_buf_out,
+          const char  * const p_fmt,
+          va_list       const p_var_args)
+{
+    va_list ap1;
+    
+    size_t size;
+    
+    char * buf;
+
+    // -----------------------------
+    
+    va_copy(ap1, p_var_args);
+    
+    size = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
+    
+    va_end(ap1);
+    
+    buf = (char*) calloc(1, size);
+
+    if( ! buf )
+    {
+        return -1;
+    }
+
+    (*p_buf_out) = buf;
+
+    return vsnprintf(buf,
+                     size,
+                     p_fmt,
+                     p_var_args);
+}
+
+// =============================================================================
+
+extern int
+asprintf(char       ** const p_buf_out,
+         const char *  const p_fmt,
+         ...)
+{
+    int r;
+    
+    // -----------------------------
+    
+    va_list var_args;
+
+    va_start(var_args, p_fmt);
+    
+    r = vasprintf(p_buf_out, p_fmt, var_args);
+    
+    va_end(var_args);
+
+    return r;
+}
 
 // =============================================================================
 

@@ -1096,15 +1096,13 @@ void RelocateHeaders(HWND win, FDOC *doc, int dest)
         
         return;
     }
-
+    
     rom[0xB5E7] = (char) (cpuHeaderDest >> 16);
-
+    
     doc->headerLocation = romHeaderDest;
-
-    rom[0xB5DD] = (char) (cpuHeaderDest);
-    rom[0xB5DE] = (char) (cpuHeaderDest >> 8);
-    rom[0xB5DF] = (char) (cpuHeaderDest >> 16);
-
+    
+    stle24b(rom + 0xb5dd, cpuHeaderDest);
+    
     for(j = 0; j < 0x250; j += 2, pointerEntry += 14)
     {
         absolute = (  *(int*) (rom + romHeaderLoc + j)  ) & 0xFFFF;
@@ -1733,6 +1731,8 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
 
 //#define ShowDialog DialogBoxParam
 
+// =============================================================================
+
 HWND
 Editwin(FDOC       * const doc,
         char const * const wclass,
@@ -1769,7 +1769,6 @@ Editwin(FDOC       * const doc,
     
     return hc;
 }
-
 
 // =============================================================================
 
@@ -4607,22 +4606,10 @@ SD_ENTRY persp_sd[]={
     {"BUTTON","Del faces",114,24,60,20,3007,WS_VISIBLE|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE,0,0}
 };
 
-SD_ENTRY text_sd[]={
-    {"LISTBOX","",0,0,0,70, 3000, WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
-    {"EDIT","",0,65,0,24, 3001, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|ES_MULTILINE|WS_VSCROLL|ES_AUTOVSCROLL,WS_EX_CLIENTEDGE,14},
-    {"BUTTON","Set",0,20,50,0, 3002, WS_VISIBLE|WS_TABSTOP|WS_CHILD,0,12},
-    {"BUTTON","Edit text",60,20,65,0, 3003, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12},
-    {"BUTTON","Edit dictionary",130,20,120,0, 3004, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12}
-};
-
 // =============================================================================
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
-};
-
-SUPERDLG textdlg={
-    "",textdlgproc,WS_CHILD|WS_VISIBLE,600,200, 5, text_sd
 };
 
 SUPERDLG overdlg={

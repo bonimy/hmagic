@@ -203,4 +203,19 @@ struct
     int __stdcall
     askinteger(int max, char *caption, char *text);
 
+    /**
+        Variadic version of vsprintf that allocates the required buffer
+    */
+    extern int
+    vasprintf(char       ** const p_buf_out,
+              const char  * const p_fmt,
+              va_list       const p_var_args);
+
+    extern int
+    asprintf(char       ** const p_buf_out,
+             const char *  const p_fmt,
+             ...);
+
+
+
 #endif

@@ -1,8 +1,12 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "HMagicUtility.h"
+    #include "Wrappers.h"
+
+    #include "HMagicUtility.h"
+
+    #include "TextLogic.h"
 
 // =============================================================================
 
@@ -27,12 +31,20 @@ char const * const tsym_str[] =
     "3HeartR",
     "4HeartL",
     "4HeartR",
-    0,0,
+    0,
+    0,
     "A",
     "B",
     "X",
     "Y"
 };
+
+enum
+{
+    NUM_Tsym = sizeof(tsym_str) / sizeof(char const *)
+};
+
+// =============================================================================
 
 char const * const tcmd_str[] =
 {
@@ -62,49 +74,57 @@ char const * const tcmd_str[] =
     "Waitkey",
 };
 
+
+enum
+{
+    NUM_CmdStrings = sizeof(tcmd_str) / sizeof(char const *)
+};
+
+// =============================================================================
+
 char const * text_error = 0;
 
+// =============================================================================
+
+    enum
+    {
+        /// Default size of a buffer and the amount by which it increases when
+        /// reallocation is necessary.
+        COUNT_GROW_SIZE = 64,
+        TEXT_GROW_SIZE = 128,
+    };
+    
 // =============================================================================
 
 void
 LoadText(FDOC * const doc)
 {
-    enum
-    {
-        /// Default size of a buffer and the amount by which it increases when
-        /// reallocation is necessary.
-        TEXT_GROW_SIZE = 128,
-        COUNT_GROW_SIZE = 64,
-    };
-    
     int data_pos = 0xe0000;
     
     int msg_count     = 0;
     int max_msg_count = 0x200;
     
-    unsigned char a;
-    
     unsigned char *rom = doc->rom;
     
     // list of pointers for the game's text messages
-    doc->tbuf = (uint8_t**) calloc(max_msg_count, sizeof(uint8_t*) );
+    doc->text_bufz = (ZTextMessage*) calloc(max_msg_count,
+                                            sizeof(ZTextMessage) );
     
     for( ; ; )
     {
-        // current maximum size for the buffer (can change as needed)
-        size_t max_msg_size = TEXT_GROW_SIZE;
-        
-        // the size of the useful data in the message buffer
-        size_t msg_size = 2;
-        
         // buffer for the current message
-        uint8_t * msg = (uint8_t*) calloc(1, TEXT_GROW_SIZE);
+        ZTextMessage msg = { 0 };
         
         // -----------------------------
         
+        ZTextMessage_Init(&msg);
+        
         for( ; ; )
         {
-            a = rom[data_pos];
+            // Current zchar to convert to ascii.
+            uint8_t a = rom[data_pos];
+            
+            // -----------------------------
             
             if(a == 0x80)
             {
@@ -120,30 +140,30 @@ LoadText(FDOC * const doc)
                 
                 return;
             }
-            
             else if(a < 0x67)
             {
                 // if it's a character, just copy verbatim to the destination
                 // buffer.
                 data_pos++;
-                msg[msg_size++] = a;
+                
+                ZTextMessage_AppendChar(&msg, a);
             }
             else if(a >= 0x88)
             {
                 uint8_t const adj_code = (a - 0x88);
                 
                 // use the dictionary to load the characters up
-                uint16_t const l = ldle16b(rom + 0x74703 + (adj_code << 1) );
-                uint16_t const k = ldle16b(rom + 0x74705 + (adj_code << 1) );
+                uint16_t const l = ldle16b_i(rom + 0x74703, adj_code);
+                uint16_t const k = ldle16b_i(rom + 0x74705, adj_code);
                 
-                uint32_t src_addr = romaddr(0xe0000 + k);
+                uint32_t src_addr = romaddr(0xe0000 + l);
                 
                 size_t len = (k - l);
                 size_t i   = 0;
                 
                 for( ; i < len; i += 1)
                 {
-                    msg[msg_size++] = rom[src_addr + i];
+                    ZTextMessage_AppendChar(&msg, rom[src_addr + i]);
                 }
                 
                 data_pos++;
@@ -161,40 +181,29 @@ LoadText(FDOC * const doc)
                 int l = rom[0x7536b + a];
                 
                 while(l--)
-                    msg[msg_size++] = rom[data_pos++];
-            }
-            
-            if(msg_size >= (max_msg_size - 64) )
-            {
-                // if the text data won't fit into the current buffer, reallocate
-                msg = (uint8_t*) recalloc(msg,
-                                          max_msg_size + TEXT_GROW_SIZE,
-                                          max_msg_size,
-                                          sizeof(uint8_t) );
-                
-                max_msg_size += TEXT_GROW_SIZE;
+                {
+                    ZTextMessage_AppendChar(&msg,
+                                            rom[data_pos]);
+                    
+                    data_pos += 1;
+                }
             }
         }
         
-        stle16b(msg, msg_size);
-        
-        msg = (uint8_t*) recalloc(msg,
-                                  msg_size,
-                                  max_msg_size,
-                                  sizeof(uint8_t) );
-        
         if(msg_count == max_msg_count)
         {
-            doc->tbuf = (uint8_t**)
-            recalloc(doc->tbuf,
+            doc->text_bufz = (ZTextMessage*)
+            recalloc(doc->text_bufz,
                      max_msg_count + COUNT_GROW_SIZE,
                      max_msg_count,
-                     sizeof(uint8_t*) );
+                     sizeof(ZTextMessage) );
             
             max_msg_count += COUNT_GROW_SIZE;
         }
         
-        doc->tbuf[msg_count++] = msg;
+        doc->text_bufz[msg_count] = msg;
+        
+        msg_count += 1;
     }
 }
 
@@ -207,10 +216,14 @@ Savetext(FDOC * const doc)
     short l,m,n,o,p,q,r,v,t,u,w;
     
     // \task Can b2 overflow or is this just... fantasy?
-    unsigned char*b, b2[2048];
+    unsigned char b2[2048];
     unsigned char*rom=doc->rom;
     
     size_t write_pos = 0xe0000;
+    
+    ZTextMessage * msg;
+    
+    // -----------------------------
     
     if(!doc->t_modf)
         return;
@@ -219,41 +232,86 @@ Savetext(FDOC * const doc)
     
     w = ( ldle16b(rom + 0x74703) - 0xc705 ) >> 1;
     
-    for(i=0;i<doc->t_number;i++) {
-        b=doc->tbuf[i];
+    for(i=0;i<doc->t_number;i++)
+    {
+        msg = &doc->text_bufz[i];
+        
         m=bd=0;
-        k=*(short*)b;
-        j=2;
-        r=w;
-        for(;j<k;)
+        
+        k = msg->m_len;
+        
+        j = 0;
+        r = w;
+        
+        for( ; j < k; )
         {
-            q=b2[bd++]=b[j++];
-            if(q>=0x67) {
+            q = b2[bd] = msg->m_text[j];
+            
+            bd += 1;
+            j += 1;
+            
+            if(q >= 0x67)
+            {
                 l=rom[0x7536b + q] - 1;
-                while(l--) b2[bd++]=b[j++];
-                m=bd;
+                
+                for
+                (
+                    ;
+                    l--;
+                    bd += 1, j += 1
+                )
+                {
+                    b2[bd] = msg->m_text[j];
+                }
+                
+                m = bd;
             }
-            if(bd>m+1) {
+            
+            if(bd > m + 1)
+            {
                 o=*(short*)(rom + 0x74703);
-                v=255;
-                t=w;
-                for(l=0;l<w;l++) {
-                    n=o;
-                    o=*(short*)(rom + 0x74705 + (l<<1));
-                    p=o-n-bd+m;
-                    if(p>=0) if(!memcmp(rom + 0x78000 + n,b2+m,bd-m)) {
-                        if(p<v) t=l,v=p;
-                        if(!p) {r=t;u=j;break;}
+                
+                v = 255;
+                
+                t = w;
+                
+                for(l = 0; l < w; l++)
+                {
+                    n = o;
+                    o = *(short*)(rom + 0x74705 + (l<<1));
+                    p = o - n - bd + m;
+                    
+                    if(p >= 0)
+                        if( ! memcmp(rom + 0x78000 + n,b2+m,bd-m) )
+                        {
+                            if(p < v)
+                            {
+                                t = l, v = p;
+                            }
+                            
+                            if(!p)
+                            {
+                                r=t;
+                                u=j;
+                                break;
+                            }
                     }
                 }
-                if(t==w || b[j] >= 0x67) {
-                    if(r!=w) {
-                        b2[m]=r + 0x88;
+                
+                if(t==w || msg->m_text[j] >= 0x67)
+                {
+                    if(r != w)
+                    {
+                        b2[m] = r + 0x88;
                         m++;
                         j=u;
-                        bd=m;
-                        r=w;
-                    } else m=bd-1;
+                        bd = m;
+                        r = w;
+                    }
+                    else
+                    {
+                        m = (bd - 1);
+                    }
                 }
             }
         }
@@ -297,190 +355,463 @@ Savetext(FDOC * const doc)
 
 // =============================================================================
 
-uint8_t *
-Makezeldastring(FDOC const * const doc,
-                char       *       buf)
+/// Converts ASCII text to the game's custom text format.
+extern void
+Makezeldastring(FDOC             const * const p_doc,
+                AsciiTextMessage const * const p_amsg,
+                ZTextMessage           * const p_zmsg)
 {
-    text_buf_ty text_buf = { 0 };
+    char * text_buf = NULL;
     
-    uint8_t * b2 = (uint8_t*) malloc(128);
-    char *n;
+    char const * const abuf = p_amsg->m_text;
     
-    int bd = 2, bs = 128;
+    int i = 0;
     
     short j,l,m,k;
     
-    for(;;)
+    // -----------------------------
+    
+    for( ; ; )
     {
-        j = *(buf++);
+        j = abuf[i];
+        
+        i += 1;
         
         // look for a [ character
         if(j == '[')
         {
             // m is the distance to the ] character
-            m = strcspn(buf," ]");
+            m = strcspn(abuf + i, " ]");
             
-            for(l = 0; l < 18; l++)
-                if(tsym_str[l] && (!tsym_str[l][m]) && !_strnicmp(buf,tsym_str[l],m))
-                    break;
-            
-            // the condition l == 18 means it did not find any string in the
-            // special symbol strings list to match this one
-            if(l == 18)
+            for(l = 0; l < NUM_Tsym; l += 1)
             {
-                for(l = 0; l < 24; l++)
-                    if((!tcmd_str[l][m]) && !_strnicmp(buf,tcmd_str[l],m))
-                        break;
-                
-                // if this condition is true it means we didn't find a match in the 
-                // command strings either
-                if(l == 24)
+                if
+                (
+                    ( tsym_str[l] )
+                 && ( ! tsym_str[l][m] )
+                 && ( ! _strnicmp(abuf + i, tsym_str[l], m) )
+                )
                 {
+                    break;
+                }
+            }
+            
+            // Means it did not find any string in the special symbol strings
+            // list to match this one
+            if(l == NUM_Tsym)
+            {
+                for(l = 0; l < NUM_CmdStrings; l += 1)
+                {
+                    if
+                    (
+                        ( ! tcmd_str[l][m] )
+                     && ( ! _strnicmp(abuf + i, tcmd_str[l], m) )
+                    )
+                    {
+                        break;
+                    }
+                }
+                
+                // if this condition is true it means we didn't find a match in
+                // the command strings either
+                if(l == NUM_CmdStrings)
+                {
+                    char * n = NULL;
+                    
+                    // -----------------------------
+                    
                     // strtol converts a string to a long data type
-                    j = (short) strtol(buf, &n, 16);
+                    j = (short) strtol(abuf + i, &n, 16);
                     
                     // k is the distance from the start of the command to the 
-                    k = n - buf;
+                    k = n - (abuf + i);
                     
                     // if the string doesn't match the pattern [XX] fogedda boud it                 
                     if(k > 2 || k < 1)
                     {
-                        buf[m] = 0;
-                        wsprintf(text_buf, "Invalid command \"%s\"", buf);
+                        asprintf(&text_buf,
+                                 "Invalid command \"%s\"",
+                                 abuf + i);
                         
 error:
                         
                         MessageBox(framewnd, text_buf, "Bad error happened", MB_OK);
-                        free(b2);
-                        text_error = buf;
+
+                        ZTextMessage_Free(p_zmsg);
                         
-                        return 0;
+                        text_error = (abuf + i);
+                        
+                        free(text_buf);
+
+                        return;
                     };
                     
                     m = k;
-                    b2[bd++] = (char) j;
+                    
+                    ZTextMessage_AppendChar(p_zmsg, j);
+                    
                     l = 0;
                 }
                 else
-                    b2[bd++] = l + 0x67, l = doc->rom[0x753d2 + l] - 1;
+                {
+                    ZTextMessage_AppendChar(p_zmsg, l + 0x67);
+                    
+                    l = p_doc->rom[0x753d2 + l] - 1;
+                }
             }
             else
-                b2[bd++] = l + 0x4d, l = 0;
+            {
+                ZTextMessage_AppendChar(p_zmsg, l + 0x4d);
+                
+                l = 0;
+            }
             
-            buf += m;
+            i += m;
             
             while(l--)
             {
-                if(*buf!=' ')
+                char * n = NULL;
+                
+                // -----------------------------
+                
+                if( (abuf+i)[0] != ' ')
                 {
 syntaxerror:
-                    wsprintf(text_buf,"Syntax error: '%c'",*buf);
+                    asprintf(&text_buf,
+                             "Syntax error: '%c'",
+                             (abuf+i)[0]);
                     
                     goto error;
                 }
                 
-                buf++;
+                i += 1;
                 
-                j = (short) strtol(buf,&n,16);
-                m = n - buf;
+                j = (short) strtol(abuf, &n, 16);
+                
+                m = n - (abuf + i);
                 
                 if(m > 2 || m < 1)
                 {
                     wsprintf(text_buf,"Invalid number");
+                    
                     goto error;
                 };
                 
-                buf += m;
-                b2[bd++] = (char) j;
+                i += m;
+                
+                ZTextMessage_AppendChar(p_zmsg, j);
             }
             
-            if(*buf!=']')
+            if( (abuf + i)[0] != ']')
+            {
                 goto syntaxerror;
+            }
             
-            buf++;
+            i += 1;
         }
         else
         {
-            if(!j)
+            if( ! j )
+            {
                 break;
+            }
             
             for(l = 0; l < 0x5f; l++)
+            {
                 if(z_alphabet[l] == j)
                     break;
+            }
             
             if(l == 0x5f)
             {
-                wsprintf(text_buf,"Invalid character '%c'",j);
+                asprintf(&text_buf,
+                         "Invalid character '%c'",
+                         j);
+                
                 goto error;
             }
             
-            b2[bd++] = (char) l;
-        }
-        
-        if(bd > bs - 64)
-        {
-            bs += 128;
-            b2 = (uint8_t*) realloc(b2, bs);
+            ZTextMessage_AppendChar(p_zmsg, l);
         }
     }
-    
-    // \task Shouldn't we just structurize this stuff and store the length
-    // as a member? for pete's sake...
-    *(unsigned short*) b2 = bd;
-    
-    return b2;
 }
 
 // =============================================================================
 
-void
-Makeasciistring(FDOC          const * const doc,
-                char                * const buf,
-                unsigned char const * const buf2,
-                int                   const bufsize)
+extern int
+AsciiTextMessage_Init(AsciiTextMessage * const p_msg)
+{
+    if(p_msg->m_text)
+    {
+        p_msg->m_len = 0;
+        
+        /// Fill with zeroes, so reset it, essentially.
+        memset(p_msg->m_text, 0, p_msg->m_capacity);
+    }
+    else
+    {
+        p_msg->m_capacity = 2048;
+        p_msg->m_len      = 0;
+        p_msg->m_text     = (char*) calloc(1, p_msg->m_capacity + 1);
+    }
+    
+    return (p_msg->m_text != NULL);
+}
+
+// =============================================================================
+
+extern int
+AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
+                            char               const p_char)
+{
+    int i = p_msg->m_len;
+    
+    // -----------------------------
+    
+    // Check if the buffer needs expanding.
+    if(p_msg->m_len == p_msg->m_capacity)
+    {
+        p_msg->m_text = (char*) recalloc
+        (
+            p_msg->m_text,
+            p_msg->m_capacity + 2048 + 1,
+            p_msg->m_capacity + 1,
+            sizeof(char)
+        );
+        
+        if(p_msg->m_text == NULL)
+        {
+            return 0;
+        }
+        
+        p_msg->m_capacity += 2048;
+    }
+    
+    p_msg->m_text[i]     = p_char;
+    p_msg->m_text[i + 1] = '\0';
+    
+    p_msg->m_len += 1;
+    
+    return 1;
+}
+
+// =============================================================================
+
+extern void
+AsciiTextMessage_Free(AsciiTextMessage * const p_msg)
+{
+    if(p_msg)
+    {
+        if(p_msg->m_text)
+        {
+            free(p_msg->m_text);
+            
+            p_msg->m_text = NULL;
+            
+            p_msg->m_capacity = 0;
+            p_msg->m_len      = 0;
+        }
+    }
+}
+
+// =============================================================================
+
+extern int
+ZTextMessage_Init(ZTextMessage * const p_msg)
+{
+    p_msg->m_len      = 0;
+    p_msg->m_capacity = TEXT_GROW_SIZE;
+    
+    p_msg->m_text = (uint8_t*) calloc(p_msg->m_capacity,
+                                      sizeof(uint8_t) );
+    
+    if(p_msg->m_text == NULL)
+    {
+        return 0;
+    }
+    
+    return 1;
+}
+
+// =============================================================================
+
+extern void
+ZTextMessage_AppendChar(ZTextMessage * const p_msg,
+                        uint8_t        const p_char)
+{
+    if(p_msg)
+    {
+        uint16_t const i = p_msg->m_len;
+        
+        // -----------------------------
+        
+        if(p_msg->m_len == p_msg->m_capacity)
+        {
+            uint16_t const old_capacity = p_msg->m_capacity;
+            
+            // -----------------------------
+            
+            p_msg->m_capacity += TEXT_GROW_SIZE;
+            
+            p_msg->m_text = (uint8_t*) recalloc
+            (
+                p_msg->m_text,
+                p_msg->m_capacity,
+                old_capacity,
+                sizeof(uint8_t)
+            );
+        }
+        
+        p_msg->m_text[i] = p_char;
+
+        p_msg->m_len += 1;
+    }
+}
+
+// =============================================================================
+
+extern void
+ZTextMessage_AppendStream(ZTextMessage       * const p_msg,
+                          uint8_t      const * const p_data,
+                          uint16_t             const p_len)
+{
+    if(p_msg && p_data && (p_len > 0) )
+    {
+        uint16_t const i       = p_msg->m_len;
+        uint16_t const new_len = (i + p_len);
+        
+        // -----------------------------
+        
+        if(new_len > p_msg->m_capacity)
+        {
+            uint16_t const new_capacity = new_len + TEXT_GROW_SIZE
+                                        - (new_len % TEXT_GROW_SIZE);  
+            
+            p_msg->m_text = (uint8_t*) recalloc
+            (
+                p_msg->m_text,
+                new_capacity,
+                p_msg->m_capacity,
+                sizeof(uint8_t)
+            );
+            
+            p_msg->m_capacity = new_capacity;
+        }
+        
+        memcpy(p_msg->m_text + i,
+               p_data,
+               p_len);
+        
+        p_msg->m_len = new_len;
+    }
+}
+
+// =============================================================================
+
+extern void
+ZTextMessage_Free(ZTextMessage * const p_msg)
+{
+    if(p_msg != NULL)
+    {
+        if(p_msg->m_text)
+        {
+            free(p_msg->m_text);
+            
+            p_msg->m_text = NULL;
+        }
+        
+        p_msg->m_len      = 0;
+        p_msg->m_capacity = 0;
+    }
+}
+
+// =============================================================================
+
+extern void
+Makeasciistring
+(
+    FDOC             const * const doc,
+    ZTextMessage     const * const p_zmsg,
+    AsciiTextMessage       * const p_msg
+)
 {
     text_buf_ty text_buf = { 0 };
     
     int i;
     
-    short j,k,l,m,n;
+    short k,m;
     
-    j = *(short*) buf2;
-    l = 2;
+    uint16_t const zchar_len = p_zmsg->m_len;
+    
+    // Index into the zchar buffer.
+    size_t z_i = 0;
     
     // -----------------------------
     
-    for(i=0;i<bufsize-1;) {
-        if(l>=j) break;
-        k=buf2[l++];
-        if(k<0x5f)
+    AsciiTextMessage_Init(p_msg);
+    
+    for(i = 0; ; )
+    {
+        if(z_i >= zchar_len)
+            break;
+        
+        k = p_zmsg->m_text[z_i];
+        
+        z_i += 1;
+        
+        if(k < 0x5f)
         {
-            if(!z_alphabet[k])
+            if( ! z_alphabet[k] )
             {
-                if(k==0x43) m=wsprintf(text_buf,"...");
-                else m=wsprintf(text_buf,"[%s]",tsym_str[k - 0x4d]);
+                if(k == 0x43)
+                {
+                    m = wsprintf(text_buf,"...");
+                }
+                else
+                {
+                    m = wsprintf(text_buf,
+                                 "[%s]",
+                                 tsym_str[k - 0x4d]);
+                }
+                
                 goto longstring;
             }
             else
             {
-                buf[i++]=z_alphabet[k];
+                AsciiTextMessage_AppendChar(p_msg,
+                                            z_alphabet[k]);
             }
         }
         else if(k >= 0x67 && k < 0x7f)
         {
-            m=wsprintf(text_buf,"[%s",tcmd_str[k - 0x67]);
-            n=doc->rom[0x7536b + k] - 1;
-            while(n--) m+=wsprintf(text_buf+m," %02X",buf2[l++]);
-            text_buf[m++]=']';
-longstring:
+            size_t n = 0;
+            
+            m = wsprintf(text_buf,"[%s",tcmd_str[k - 0x67]);
+            n = doc->rom[0x7536b + k] - 1;
+            
+            while(n--)
+            {
+                m += wsprintf(text_buf + m,
+                              " %02X",
+                              p_zmsg->m_text[z_i]);
+                
+                z_i += 1;
+            }
+            
+            text_buf[m] = ']';
+            
+            m += 1;
+            
+        longstring:
+            
             n = 0;
             
             while(m--)
             {
-                buf[i++] = text_buf[n++];
+                AsciiTextMessage_AppendChar(p_msg,
+                                            text_buf[n]);
                 
-                if(i == bufsize - 1)
-                    break;
+                n += 1;
             }
         }
         else
@@ -490,8 +821,6 @@ longstring:
             goto longstring;
         }
     }
-    
-    buf[i] = 0;
 }
 
 // =============================================================================

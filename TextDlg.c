@@ -1,6 +1,12 @@
 
+    #include <stdio.h>
+
     #include "structs.h"
     #include "prototypes.h"
+
+    #include "Callbacks.h"
+
+    #include "Wrappers.h"
 
     #include "HMagicUtility.h"
 
@@ -9,25 +15,176 @@
 
 // =============================================================================
 
-BOOL CALLBACK
-textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
+SD_ENTRY text_sd[] =
 {
-    text_buf_ty text_buf = { 0 };
+    {"LISTBOX","",0,0,0,70, 3000, WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
+    {"EDIT","",0,65,0,24, 3001, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|ES_MULTILINE|WS_VSCROLL|ES_AUTOVSCROLL,WS_EX_CLIENTEDGE,14},
+    {"BUTTON","Set",0,20,50,0, 3002, WS_VISIBLE|WS_TABSTOP|WS_CHILD,0,12},
+    {"BUTTON","Edit text",60,20,65,0, 3003, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12},
+    {"BUTTON","Edit dictionary",130,20,120,0, 3004, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12}
+};
+
+// =============================================================================
+
+SUPERDLG textdlg =
+{
+    "", TextDlg, WS_CHILD|WS_VISIBLE,600,200, 5, text_sd
+};
+
+// =============================================================================
+
+static void
+TextDlg_SetText(TEXTEDIT * const p_ed,
+                HWND       const p_win)
+{
+    int i = SendDlgItemMessage(p_win,
+                               ID_TextEntriesListControl,
+                               LB_GETCURSEL,
+                               0,
+                               0);
     
+    int j = 0;
+    int k = 0;
+    int l = 0;
+    int m = 0;
+    
+    FDOC * const doc = p_ed->ew.doc;
+    
+    uint8_t * const rom = doc->rom;
+    
+    // -----------------------------
+    
+    if(i != -1)
+    {
+        HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
+        
+        // abbreviation of text edit window.
+        HWND const ted_win = GetDlgItem(p_win, ID_TextEditWindow);
+
+        // Add one for a null terminator, because the API call doesn't
+        // take one into consideration, however the subsequent API to get
+        // the text requires your self reported buffer size to leave room
+        // for one, otherwise you will be missing a character when you
+        // read it out.
+        size_t const ted_len = ( GetWindowTextLength(ted_win) + 1);
+        
+        ZTextMessage zmsg = { 0 };
+        
+        AsciiTextMessage amsg = { 0 };
+        
+        // -----------------------------
+        
+        // \task This sequence has code smell, clean it up.
+        amsg.m_len      = ted_len;
+        amsg.m_capacity = ted_len + 100;
+        amsg.m_text     = (char*) calloc(ted_len + 100, sizeof(char) );
+        
+        GetDlgItemText(p_win,
+                       ID_TextEditWindow,
+                       amsg.m_text,
+                       amsg.m_len);
+        
+        Makezeldastring(doc, &amsg, &zmsg);
+        
+        // \task Lack of a better criterion for now.
+        if(zmsg.m_text != NULL)
+        {
+            char * text_buf = NULL;
+            
+            // -----------------------------
+            
+            if(p_ed->num)
+            {
+                m = zmsg.m_len;
+                
+                j = *(unsigned short*) (rom + 0x77ffe + *(short*)(rom + 0x74703));
+                k = ((unsigned short*) (rom + 0x74705))[i];
+                l = ((unsigned short*) (rom + 0x74703))[i];
+                
+                if(j + m + l - k > 0xc8d9)
+                {
+                    MessageBeep(0);
+                    
+                    ZTextMessage_Free(&zmsg);
+                    AsciiTextMessage_Free(&amsg);
+                    
+                    return;
+                }
+                
+                memcpy(rom + 0x68000 + l + m, rom + 0x68000 + k, j - k);
+                memcpy(rom + 0x68000 + l, zmsg.m_text, m);
+                
+                k -= l;
+                
+                l = ( ldle16b(rom + 0x74703) - 0xc703 ) >> 1;
+                
+                for(j = i + 1; j < l; j++)
+                    ((short*) (rom + 0x74703))[j] += m - k;
+            }
+            else
+            {
+                ZTextMessage_Free( &doc->text_bufz[i] );
+                
+                doc->text_bufz[i] = zmsg;
+            }
+            
+            Makeasciistring(doc, &zmsg, &amsg);
+            
+            asprintf(&text_buf,
+                     "%03d: %s",
+                     i,
+                     amsg.m_text);
+            
+            if(p_ed->num)
+            {
+                ZTextMessage_Free(&zmsg);
+            }
+            
+            SendMessage(hc, LB_DELETESTRING, i, 0);
+            SendMessage(hc, LB_INSERTSTRING, i, (LPARAM) text_buf);
+            SendMessage(hc, LB_SETCURSEL, i, 0);
+            
+            free(text_buf);
+        }
+        else
+        {
+            char * text_buf = NULL;
+            
+            // \task What the hell was this intended to do?
+            i = text_error - text_buf;
+            
+            SendMessage(ted_win, EM_SETSEL, i, i);
+            
+            SetFocus(ted_win);
+            
+            return;
+        }
+        
+        AsciiTextMessage_Free(&amsg);
+        
+        doc->t_modf = 1;
+    }
+}
+
+
+
+// =============================================================================
+
+BOOL CALLBACK
+TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
+{
     TEXTEDIT * ed;
     
     FDOC *doc;
     
-    int i, j, k, l, m;
-    
-    char *b = 0;
-    
-    uint8_t * c = 0;
+    int i, j, k, l;
     
     unsigned char *rom;
     
     HWND hc;
     
+    AsciiTextMessage asc_msg = { 0 } ;
+                
     // -----------------------------
     
     switch(msg)
@@ -35,7 +192,7 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win, DWL_USER, lparam);
+        SetWindowLongPtr(win, DWLP_USER, lparam);
         
         ed = (TEXTEDIT*) lparam;
         
@@ -55,10 +212,18 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         hc = GetDlgItem(win, ID_TextEntriesListControl);
         
-        b = (char*) malloc(256);
-        
         if(ed->num)
         {
+            char * text_buf = NULL;
+            
+            int dict_entry_offset = 0;
+            
+            ZTextMessage zmsg = { 0 };
+            
+            // -----------------------------
+            
+            ZTextMessage_Init(&zmsg);
+            
             rom = doc->rom;
             
             j = ( ldle16b(rom + 0x74703) - 0xc705 ) >> 1;
@@ -69,34 +234,52 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
             {
                 k = ldle16b_i(rom + 0x74705, i);
                 
-                memcpy(b + 130,
-                       rom + l + 0x78000,
-                       k - l);
+                dict_entry_offset = romaddr(0xe0000 + l);
                 
-                *(short*)(b + 128) = k-l+2;
+                ZTextMessage_AppendStream(&zmsg,
+                                          rom + dict_entry_offset,
+                                          k - l);
                 
-                Makeasciistring(doc, b, b + 128, 128);
+                Makeasciistring(doc, &zmsg, &asc_msg);
                 
-                wsprintf(text_buf, "%03d: %s", i, b);
+                asprintf(&text_buf, "%03d: %s", i, asc_msg.m_text);
                 
                 SendMessage(hc, LB_ADDSTRING, 0, (LPARAM) text_buf);
+                
+                ZTextMessage_Free(&zmsg);
+                
+                free(text_buf);
                 
                 l = k;
             }
         }
         else
         {
+            char * text_buf = NULL;
+            
+            // -----------------------------
+            
             for(i = 0; i < doc->t_number; i++)
             {
-                Makeasciistring(doc, b, doc->tbuf[i], 256);
+                size_t dummy_len = 0;
+                int    write_len = 0;
                 
-                wsprintf(text_buf, "%03d: %s", i, b);
+                AsciiTextMessage_Init(&asc_msg);
+                
+                Makeasciistring(doc, &doc->text_bufz[i], &asc_msg);
+                
+                dummy_len = strlen(asc_msg.m_text);
+                
+                write_len = asprintf(&text_buf,
+                                     "%03d: %s",
+                                     i,
+                                     asc_msg.m_text);
                 
                 SendMessage(hc, LB_ADDSTRING, 0, (LPARAM) text_buf);
+                
+                free(text_buf);
             }
         }
-        
-        free(b);
         
         break;
     
@@ -106,7 +289,7 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case WM_COMMAND:
         
-        ed = (TEXTEDIT*) GetWindowLong(win, DWL_USER);
+        ed = (TEXTEDIT*) GetWindowLongPtr(win, DWLP_USER);
         
         if(!ed)
             break;
@@ -124,24 +307,34 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
             
             if(i != -1)
             {
-                b = malloc(2048);
-                
                 if(ed->num)
                 {
-                    k=((short*)(rom + 0x74705))[i];
-                    l=((short*)(rom + 0x74703))[i];
-                    memcpy(b+1026,rom+l + 0x78000,k-l);
-                    *(short*)(b+1024)=k-l+2;
-                    Makeasciistring(doc,b,b+1024,1024);
+                    int dict_entry_offset = 0;
+                    
+                    ZTextMessage zmsg;
+                    
+                    // -----------------------------
+                    
+                    l = ldle16b_i(rom + 0x74703, i);
+                    k = ldle16b_i(rom + 0x74705, i);
+                    
+                    dict_entry_offset = romaddr(0xe0000 + l);
+                    
+                    zmsg.m_len = (k - l);
+                    zmsg.m_text = (uint8_t*) calloc(1, zmsg.m_len + 1);
+                    
+                    memcpy(zmsg.m_text,
+                           rom + dict_entry_offset,
+                           zmsg.m_len);
+                    
+                    Makeasciistring(doc, &zmsg, &asc_msg);
                 }
                 else
                 {
-                    Makeasciistring(doc, b, doc->tbuf[i], 2048);
+                    Makeasciistring(doc, &doc->text_bufz[i], &asc_msg);
                 }
                 
-                SetDlgItemText(win, ID_TextEditWindow, b);
-                
-                free(b);
+                SetDlgItemText(win, ID_TextEditWindow, asc_msg.m_text);
             }
             else
             {
@@ -152,88 +345,7 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         case ID_TextSetTextButton:
             
-            i = SendDlgItemMessage(win,
-                                   ID_TextEntriesListControl,
-                                   LB_GETCURSEL,
-                                   0,
-                                   0);
-            
-            if(i != -1)
-            {
-                b = malloc(2048);
-                
-                GetDlgItemText(win, ID_TextEditWindow, b, 2048);
-                
-                c = Makezeldastring(doc, b);
-                
-                hc = GetDlgItem(win, ID_TextEntriesListControl);
-                
-                if(c)
-                {
-                    if(ed->num)
-                    {
-                        m = (*(short*)c) - 2;
-                        j = *(unsigned short*) (rom + 0x77ffe + *(short*)(rom + 0x74703));
-                        k = ((unsigned short*) (rom + 0x74705))[i];
-                        l = ((unsigned short*) (rom + 0x74703))[i];
-                        
-                        if(j + m + l - k > 0xc8d9)
-                        {
-                            MessageBeep(0);
-                            free(c);
-                            free(b);
-                            
-                            break;
-                        }
-                        
-                        memcpy(rom + 0x68000 + l + m, rom + 0x68000 + k, j - k);
-                        memcpy(rom + 0x68000 + l, c + 2, m);
-                        k -= l;
-                        
-                        l = ( ldle16b(rom + 0x74703) - 0xc703 ) >> 1;
-                        
-                        for(j = i + 1; j < l; j++)
-                            ((short*) (rom + 0x74703))[j] += m - k;
-                    }
-                    else
-                    {
-                        free(doc->tbuf[i]);
-                        doc->tbuf[i] = c;
-                    }
-                    
-                    Makeasciistring(doc,b,c,256);
-                    
-                    wsprintf(text_buf,
-                             "%03d: %s",
-                             i,
-                             b);
-                    
-                    if(ed->num)
-                        free(c);
-                    
-                    SendMessage(hc, LB_DELETESTRING, i, 0);
-                    SendMessage(hc, LB_INSERTSTRING, i, (LPARAM) text_buf);
-                    SendMessage(hc, LB_SETCURSEL, i, 0);
-                }
-                else
-                {
-                    i = text_error - b;
-                    
-                    hc = GetDlgItem(win, ID_TextEditWindow);
-                    
-                    SendMessage(hc, EM_SETSEL, i, i);
-                    
-                    SetFocus(hc);
-                    
-                    free(b);
-                    
-                    break;
-                }
-                
-                free(b);
-                
-                doc->t_modf = 1;
-            }
+            TextDlg_SetText(ed, win);
             
             break;
         
@@ -264,6 +376,8 @@ textdlgproc(HWND const win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         break;
     }
+    
+    AsciiTextMessage_Free(&asc_msg);
     
     return FALSE;
 }

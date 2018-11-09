@@ -94,7 +94,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 // =============================================================================
 
     // Super Dialog procedure.
-    HM_DeclareDlgProc(textdlgproc);
+    HM_DeclareDlgProc(TextDlg);
 
     // Text-related window procedures.
     HM_DeclareWndProc(texteditproc);
