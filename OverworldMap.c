@@ -1504,7 +1504,7 @@ movetile:
                         // ranges.
                         if(always)
                         {
-                            int max_pos = (512 << ed->mapsize) - 0x10;
+                            int max_pos = (512 << (ed->mapsize? 1 : 0) ) - 0x10;
                             
                             if(ed->objx < 0)
                                 ed->objx = 0;

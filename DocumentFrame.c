@@ -143,9 +143,15 @@ dontsave:
     free(param->rom);
     Unloadsongs(param);
     Unloadovl(param);
-    if(param->t_loaded) {
-        for(i=0;i<param->t_number;i++) free(param->tbuf[i]);
-        free(param->tbuf);
+    
+    if(param->t_loaded)
+    {
+        for(i = 0; i < param->t_number; i++)
+        {
+            ZTextMessage_Free( &param->text_bufz[i] );
+        }
+        
+        free(param->text_bufz);
     }
     
     free(param);

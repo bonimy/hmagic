@@ -141,6 +141,50 @@ typedef struct
     int flag;
 } ASMHACK;
 
+// =============================================================================
+
+/// Text message encoded in zchars (native encoding of the rom)
+typedef
+struct
+{
+    /// Length of the message in Z3 natively encoded text.
+    uint16_t m_len;
+    
+    /**
+        The largest number of zchars it can store. Null termination is not
+        a concern for this, as zelda strings have a different code for
+        termination.
+    */
+    uint16_t m_capacity;
+    
+    /// The actual textual data. Consists of a stream of octets within
+    /// specific ranges.
+    uint8_t * m_text;
+    
+} ZTextMessage;
+
+// =============================================================================
+
+/// Ascii encoded text (aka monologue) message
+typedef
+struct
+{
+    /// length of the actual message.
+    size_t m_len;
+    
+    /**
+        The largest number of characters it can store, not including a null
+        terminator.
+    */
+    size_t m_capacity;
+    
+    /// Ascii encoded text
+    char * m_text;
+    
+} AsciiTextMessage;
+
+// =============================================================================
+
 typedef struct tagFDOC
 {
     // FDOC consists of a filename...
@@ -207,7 +251,7 @@ typedef struct tagFDOC
     // Once correctly loaded, the first two bytes are a 16-bit value that
     // indicates the length of the buffer, in a way analogous to Pascal
     // strings.
-    unsigned char **tbuf;
+    ZTextMessage * text_bufz;
     
     unsigned short nummod;
     unsigned short numpatch;
@@ -309,7 +353,11 @@ typedef struct
 {
     EDITWIN ew;
     HWND dlg;
+
+    /// Not used
     short sel;
+    
+    /// 0 if editing normal text, 1 if editing dictionary.
     short num;
 } TEXTEDIT;
 
