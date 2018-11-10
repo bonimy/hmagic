@@ -50,8 +50,18 @@
     );
 
     extern int
-    AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
-                                char               const p_char);
+    AsciiTextMessage_AppendChar
+    (
+        AsciiTextMessage * const p_msg,
+        char               const p_char
+    );
+
+    extern int
+    AsciiTextMessage_AppendString
+    (
+        AsciiTextMessage       * const p_msg,
+        char             const * const p_str
+    );
 
     extern void
     AsciiTextMessage_Free(AsciiTextMessage * const p_msg);

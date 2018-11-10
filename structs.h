@@ -245,7 +245,9 @@ typedef struct tagFDOC
     
     HWND t_wnd;
     
-    short t_loaded,t_number,t_modf,withhead;
+    short t_loaded,t_modf,withhead;
+    
+    size_t t_number;
     
     /**
         Array of zchar (rom-native encoded) messages that make up what
@@ -831,24 +833,107 @@ typedef struct
         
     } HM_WaveFileData;
 
-#pragma pack(pop)
-
 // =============================================================================
 
 typedef
-struct
+struct tag_dungeon_offsets_ty
 {
     unsigned torches;
     unsigned torch_count;
         
 } dungeon_offsets_ty;
 
+// =============================================================================
+
 typedef
-struct
+struct tag_overworld_offsets_ty
 {
     unsigned dummy;
     
 } overworld_offsets_ty;
+
+// =============================================================================
+
+typedef
+struct
+{
+    /// Start of the zchar codes.
+    uint8_t zchar_base;
+    
+    /// One higher than the highest valid zchar code.
+    uint8_t zchar_bound;
+    
+    /// Start of the command codes.
+    uint8_t command_base;
+
+    /// One higher than highest valid command code.
+    uint8_t command_bound;
+    
+    /// Byte that terminates an individual monologue message.
+    uint8_t msg_terminator;
+    
+    /// Code indicating to switch monologue data regions, if any.
+    uint8_t region_switch;
+    
+    /// Start of the dictionary codes
+    uint8_t dict_base;
+    
+    /// One higher than the highest valid dictionary entry code.
+    uint8_t dict_bound;
+    
+    /// The code that indicates that absolute end of the monologue stream.
+    uint8_t abs_terminator;
+    
+} text_codes_ty;
+
+// =============================================================================
+
+typedef
+struct
+{
+    /**
+        The primary CPU bank that the Text module in the rom operates from.
+    */
+    uint8_t bank;
+
+    /// Location of the dictionary for monologue.
+    unsigned dictionary;
+    
+    /**
+        Location of the table that has parameter counts for various monologue
+        commands.
+    */
+    unsigned param_counts;
+    
+    /**
+        The primary region where monologue data is stored. This area is filled
+        up first, then the rest goes in the secondary region. This is
+        a rom address.
+    */
+    unsigned region1;
+
+    /**
+        The upper bound rom address of the primary monologue data region.
+        This address represents the
+    */
+    unsigned region1_bound;
+    
+    /**
+        The rom address of the secondary monologue data region.
+    */
+    unsigned region2;
+    
+    /**
+        Upper bound of the secondary monologue region. There are only
+        two regions in a vanilla rom, that we're aware of.
+    */
+    unsigned region2_bound;
+    
+    text_codes_ty codes;
+    
+} text_offsets_ty;
+
+// =============================================================================
 
 typedef
 struct
@@ -856,6 +941,8 @@ struct
     dungeon_offsets_ty dungeon;
     
     overworld_offsets_ty overworld;
+    
+    text_offsets_ty text;
 
 } offsets_ty;
 
@@ -867,6 +954,10 @@ extern offsets_ty offsets;
 
 typedef uint8_t * rom_ty;
 typedef uint8_t const * rom_cty;
+
+// =============================================================================
+
+#pragma pack(pop)
 
 // =============================================================================
 

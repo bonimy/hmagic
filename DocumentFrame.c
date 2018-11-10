@@ -148,9 +148,11 @@ dontsave:
     
     if(param->t_loaded)
     {
-        for(i = 0; i < param->t_number; i++)
+        size_t m_i = 0;
+        
+        for(m_i = 0; m_i < param->t_number; m_i += 1)
         {
-            ZTextMessage_Free( &param->text_bufz[i] );
+            ZTextMessage_Free( &param->text_bufz[m_i] );
         }
         
         free(param->text_bufz);

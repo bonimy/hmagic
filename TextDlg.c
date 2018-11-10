@@ -52,6 +52,8 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
     
     uint8_t * const rom = doc->rom;
     
+    unsigned const dict_loc = offsets.text.dictionary;
+    
     // -----------------------------
     
     if(i != LB_ERR)
@@ -98,9 +100,9 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             {
                 m = zmsg.m_len;
                 
-                j = *(unsigned short*) (rom + 0x77ffe + *(short*)(rom + 0x74703));
-                k = ((unsigned short*) (rom + 0x74705))[i];
-                l = ((unsigned short*) (rom + 0x74703))[i];
+                j = *(unsigned short*) (rom + 0x77ffe + ldle16b(rom + dict_loc) );
+                l = ((unsigned short*) (rom + dict_loc))[i];
+                k = ((unsigned short*) (rom + dict_loc))[i + 1];
                 
                 if(j + m + l - k > 0xc8d9)
                 {
@@ -117,11 +119,11 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 
                 k -= l;
                 
-                l = ( ldle16b(rom + 0x74703) - 0xc703 ) >> 1;
+                l = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
                 
                 for(j = i + 1; j < l; j++)
                 {
-                    ((short*) (rom + 0x74703))[j] += m - k;
+                    ((short*) (rom + dict_loc))[j] += m - k;
                 }
             }
             else
@@ -187,7 +189,11 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     HWND hc;
     
     AsciiTextMessage asc_msg = { 0 } ;
-                
+    
+    text_offsets_ty const * const to = &offsets.text;
+    
+    unsigned const dict_loc = to->dictionary;
+    
     // -----------------------------
     
     switch(msg)
@@ -229,15 +235,15 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             
             rom = doc->rom;
             
-            j = ( ldle16b(rom + 0x74703) - 0xc705 ) >> 1;
+            j = ( ldle16b(rom + dict_loc) - 0xc705 ) >> 1;
             
-            l = ldle16b(rom + 0x74703);
+            l = ldle16b(rom + dict_loc);
             
             for(i = 0; i < j; i++)
             {
-                k = ldle16b_i(rom + 0x74705, i);
+                k = ldle16b_i(rom + dict_loc, i + 1);
                 
-                dict_entry_offset = romaddr(0xe0000 + l);
+                dict_entry_offset = rom_addr_split(to->bank, l);
                 
                 ZTextMessage_AppendStream(&zmsg,
                                           rom + dict_entry_offset,
@@ -260,22 +266,26 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             char * text_buf = NULL;
             
+            size_t m_i = 0;
+            
             // -----------------------------
             
-            for(i = 0; i < doc->t_number; i++)
+            for(m_i = 0; m_i < doc->t_number; m_i += 1)
             {
                 size_t dummy_len = 0;
                 int    write_len = 0;
                 
                 AsciiTextMessage_Init(&asc_msg);
                 
-                Makeasciistring(doc, &doc->text_bufz[i], &asc_msg);
+                Makeasciistring(doc,
+                                &doc->text_bufz[m_i],
+                                &asc_msg);
                 
                 dummy_len = strlen(asc_msg.m_text);
                 
                 write_len = asprintf(&text_buf,
                                      "%03d: %s",
-                                     i,
+                                     m_i,
                                      asc_msg.m_text);
                 
                 SendMessage(hc, LB_ADDSTRING, 0, (LPARAM) text_buf);
@@ -318,8 +328,8 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                     
                     // -----------------------------
                     
-                    l = ldle16b_i(rom + 0x74703, i);
-                    k = ldle16b_i(rom + 0x74705, i);
+                    l = ldle16b_i(rom + dict_loc, i);
+                    k = ldle16b_i(rom + dict_loc, i + 1);
                     
                     dict_entry_offset = romaddr(0xe0000 + l);
                     

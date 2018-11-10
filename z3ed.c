@@ -109,16 +109,58 @@
     
 // =============================================================================
 
-offsets_ty offsets =
+offsets_ty offsets = { 0 };
+
+// =============================================================================
+
+/// Currently we only support the US rom.
+// \task Eventually the FDOC should have a private copy of this structure
+// so that each rom can load individuated offsets.
+void
+LoadOffsets(void)
 {
-    {
-        0x2736a,
-        0x88c1
-    },
-    {
-        0x33333
-    }
-};
+    dungeon_offsets_ty * const d = &offsets.dungeon;
+    
+    overworld_offsets_ty * const o = &offsets.overworld;
+    
+    text_offsets_ty * const t = &offsets.text;
+    
+    // -----------------------------
+    
+    d->torches     = 0x2736a;
+    d->torch_count = 0x88c1;
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    o->dummy = 0x33333;
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    t->bank          = 0x0e;
+
+    t->dictionary    = 0x74703;
+    t->param_counts  = 0x7536b;
+
+    t->region1       = 0xe0000;
+    t->region1_bound = 0xe8000;
+    t->region2       = 0x75f40;
+    t->region2_bound = 0x77400;
+    
+    t->codes.zchar_base     = 0x00;
+    t->codes.zchar_bound    = 0x67;
+
+    t->codes.command_base   = t->codes.zchar_bound;
+    t->codes.msg_terminator = 0x7f;
+    t->codes.command_bound  = 0x80;
+    
+    t->codes.region_switch  = 0x80;
+
+    t->codes.dict_base      = 0x88;
+    t->codes.dict_bound     = 0xea;
+    
+    t->codes.abs_terminator = 0xff;
+}    
+
 
 // =============================================================================
 
@@ -4937,9 +4979,13 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     unsigned char *b, *b2;
     
+    // -----------------------------
+    
     (void) pinst, cmdline;
     
-    i=GetVersion();
+    i = GetVersion();
+    
+    LoadOffsets();
     
     // Appears to be a check to see if we're running Win32s
     // (32-bit runtime for Windows 3.1)
@@ -4947,8 +4993,8 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     wver = ( (i < 0) && ( (i & 255) == 3) );
     
     // both are globals
-    black_brush=GetStockObject(BLACK_BRUSH);
-    white_brush=GetStockObject(WHITE_BRUSH);
+    black_brush = (HBRUSH) GetStockObject(BLACK_BRUSH);
+    white_brush = (HBRUSH) GetStockObject(WHITE_BRUSH);
     
     InitCommonControls();
     
