@@ -677,6 +677,7 @@ typedef struct
     char *title;
     
     DLGPROC proc;
+    
     int style, minw, minh, numsde;
     
     SD_ENTRY *sde;

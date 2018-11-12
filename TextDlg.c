@@ -17,18 +17,63 @@
 
 SD_ENTRY text_sd[] =
 {
-    {"LISTBOX","",0,0,0,70, 3000, WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
-    {"EDIT","",0,65,0,24, 3001, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS|ES_MULTILINE|WS_VSCROLL|ES_AUTOVSCROLL,WS_EX_CLIENTEDGE,14},
-    {"BUTTON","Set",0,20,50,0, 3002, WS_VISIBLE|WS_TABSTOP|WS_CHILD,0,12},
-    {"BUTTON","Edit text",60,20,65,0, 3003, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12},
-    {"BUTTON","Edit dictionary",130,20,120,0, 3004, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON,0,12}
+    {
+        "LISTBOX",
+        "",
+        0, 0, 0, 90,
+        ID_TextEntriesListControl,
+        WS_VISIBLE | WS_CHILD | LBS_NOTIFY | WS_VSCROLL | WS_CLIPCHILDREN,
+        WS_EX_CLIENTEDGE,
+        10
+    },
+    {
+        "EDIT",
+        "",
+        20, 90, 30, 40,
+        ID_TextEditWindow,
+        WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_BORDER | WS_CLIPSIBLINGS
+      | ES_MULTILINE | WS_VSCROLL | ES_AUTOVSCROLL | WS_CLIPCHILDREN,
+        WS_EX_CLIENTEDGE,
+        8 | 4 | 2 | 0
+    },
+    {
+        "BUTTON",
+        "Set",
+        0, 20, 50, 0,
+        ID_TextSetTextButton,
+        WS_VISIBLE | WS_TABSTOP | WS_CHILD,
+        0,
+        12
+    },
+    {
+        "BUTTON",
+        "Edit text",
+        60, 20, 65, 0,
+        ID_TextEditTextRadio, WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON,
+        0,
+        12
+    },
+    {
+        "BUTTON",
+        "Edit dictionary",
+        130, 20, 120, 0,
+        ID_TextEditDictionaryRadio,
+        WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON,
+        0,
+        12
+    }
 };
 
 // =============================================================================
 
 SUPERDLG textdlg =
 {
-    "", TextDlg, WS_CHILD|WS_VISIBLE,600,200, 5, text_sd
+    "",
+    TextDlg,
+    WS_CHILD | WS_VISIBLE,
+    600, 200,
+    ID_TextNumControls,
+    text_sd
 };
 
 // =============================================================================

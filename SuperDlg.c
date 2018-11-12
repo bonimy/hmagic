@@ -14,8 +14,7 @@ CreateSuperDialog(SUPERDLG *dlgtemp,
                   int h,
                   LPARAM lparam)
 {
-    SDCREATE * const sdc =
-    (SDCREATE*) calloc(1, sizeof(SDCREATE));
+    SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
     
     HWND hc;
     
@@ -45,16 +44,187 @@ CreateSuperDialog(SUPERDLG *dlgtemp,
 
 // =============================================================================
 
+void
+SuperDlg_OnCreate
+(
+    HWND   const p_win,
+    LPARAM const p_lp
+)
+{
+    CREATESTRUCT const * const cs = (CREATESTRUCT*) p_lp;
+    
+    SDCREATE * const sdc = (SDCREATE*) cs->lpCreateParams;
+    
+    int i = 0;
+    
+    int const w = cs->cx;
+    int const h = cs->cy;
+    
+    SD_ENTRY const * sde = sdc->dlgtemp->sde;
+    
+    // -----------------------------
+    
+    SetWindowLongPtr(p_win,
+                     GWLP_USERDATA,
+                     (LONG_PTR) sdc);
+    
+    for(i = 0; i < sdc->dlgtemp->numsde; i += 1)
+    {
+        // X and Y coordinates of the super dialog entry.
+        int sde_x = 0;
+        int sde_y = 0;
+        
+        // width and height of the super dialog entry.
+        // Can be negative, which doesn't appear to be documented
+        // as acceptable for CreateDialogEx(). \task Try to find
+        // any reference on this on the internet.
+        int sde_w = 0;
+        int sde_h = 0;
+        
+        HWND sde_win;
+        
+        // -----------------------------
+        
+        if(sde[i].flags & 1)
+            sde_x = (w - sde[i].x);
+        else
+            sde_x = sde[i].x;
+        
+        if(sde[i].flags & 2)
+            sde_w = (w - sde[i].w - sde_x);
+        else
+            sde_w = sde[i].w;
+        
+        if(sde[i].flags & 4)
+            sde_y = (h - sde[i].y);
+        else
+            sde_y = sde[i].y;
+        
+        if(sde[i].flags & 8)
+            sde_h = (h - sde[i].h - sde_y);
+        else
+            sde_h = sde[i].h;
+        
+        sde_win = CreateWindowEx
+        (
+            sde[i].exstyle,
+            sde[i].cname,
+            sde[i].caption,
+            sde[i].style,
+            sde_x,
+            sde_y,
+            sde_w,
+            sde_h,
+            p_win,
+            (HMENU) (sde[i].id),
+            hinstance,
+            0
+        );
+        
+        if(sde_win != NULL)
+        {
+            SendMessage(sde_win,
+                        WM_SETFONT,
+                        (WPARAM) GetStockObject(ANSI_VAR_FONT),
+                        0);
+        }
+        else
+        {
+            MessageBox(p_win,
+                       "Failed to create SD entry. Why?",
+                       "Error",
+                       MB_OK);
+        }
+    }
+    
+    sdc->win  = p_win;
+    sdc->prev = lastdlg;
+    sdc->next = 0;
+    
+    if(lastdlg)
+        lastdlg->next = sdc;
+    else
+        firstdlg = sdc;
+    
+    lastdlg = sdc;
+    
+    sdc->dlgtemp->proc(p_win,
+                       WM_INITDIALOG,
+                       0, sdc->lparam);
+}
+
+// =============================================================================
+
+void
+SuperDlg_OnSize
+(
+    SDCREATE const * const p_sdc,
+    HWND             const p_win,
+    LPARAM           const p_lp
+)
+{
+    int i = 0;
+    
+    int const w = LOWORD(p_lp);
+    int const h = HIWORD(p_lp);
+    
+    SD_ENTRY const * const sde = p_sdc->dlgtemp->sde;
+    
+    // -----------------------------
+    
+    for(i = 0; i < p_sdc->dlgtemp->numsde; i++)
+    {
+        HWND const sd_child = GetDlgItem(p_win, sde[i].id);
+        
+        int sde_x = 0;
+        int sde_y = 0;
+        
+        int sde_w = 0;
+        int sde_h = 0;
+        
+        // -----------------------------
+        
+        if(sde[i].flags & 1)
+            sde_x = (w - sde[i].x);
+        else
+            sde_x = sde[i].x;
+        
+        if(sde[i].flags & 2)
+            sde_w = (w - sde[i].w - sde_x);
+        else
+            sde_w = sde[i].w;
+        
+        if(sde[i].flags & 4)
+            sde_y = (h - sde[i].y);
+        else
+            sde_y = sde[i].y;
+        
+        if(sde[i].flags & 8)
+            sde_h = (h - sde[i].h - sde_y);
+        else
+            sde_h = sde[i].h;
+        
+        SetWindowPos
+        (
+            sd_child,
+            0,
+            sde_x,
+            sde_y,
+            sde_w,
+            sde_h,
+            SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE
+        );
+    }
+}
+
+// =============================================================================
+
 LRESULT CALLBACK
 superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-    int i,j,k,l,m,w,h;
-    
     SDCREATE * sdc = (SDCREATE*) GetWindowLongPtr(win, GWLP_USERDATA);
     
-    SD_ENTRY * sde;
-    
-    HWND hc;
+    // -----------------------------
     
     switch(msg)
     {
@@ -74,110 +244,13 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_CREATE:
         
-        sdc = (SDCREATE*) ( ( (CREATESTRUCT*) lparam)->lpCreateParams); 
-        
-        SetWindowLongPtr(win,
-                         GWLP_USERDATA,
-                         (LONG_PTR) sdc);
-        
-        sde = sdc->dlgtemp->sde;
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = sdc->w-sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = sdc->w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = sdc->h-sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = sdc->h-sde[i].h-k;
-            else
-                m = sde[i].h;
-            
-            hc = CreateWindowEx
-            (
-                sde[i].exstyle,
-                sde[i].cname,
-                sde[i].caption,
-                sde[i].style,
-                j,
-                k,
-                l,
-                m,
-                win,
-                (HMENU)(sde[i].id),
-                hinstance,
-                0
-            );
-            
-            SendMessage(hc,
-                        WM_SETFONT,
-                        (WPARAM) GetStockObject(ANSI_VAR_FONT),
-                        0);
-        }
-        
-        sdc->win = win;
-        sdc->prev = lastdlg;
-        sdc->next = 0;
-        
-        if(lastdlg)
-            lastdlg->next = sdc;
-        else
-            firstdlg = sdc;
-        
-        lastdlg = sdc;
-        
-        sdc->dlgtemp->proc(win, WM_INITDIALOG, 0, sdc->lparam);
+        SuperDlg_OnCreate(win, lparam);
         
         return 0;
     
     case WM_SIZE:
         
-        sde = sdc->dlgtemp->sde;
-        
-        w = LOWORD(lparam);
-        h = HIWORD(lparam);
-        
-        for(i = 0; i < sdc->dlgtemp->numsde; i++)
-        {
-            if(sde[i].flags & 1)
-                j = w - sde[i].x;
-            else
-                j = sde[i].x;
-            
-            if(sde[i].flags & 2)
-                l = w - sde[i].w - j;
-            else
-                l = sde[i].w;
-            
-            if(sde[i].flags & 4)
-                k = h - sde[i].y;
-            else
-                k = sde[i].y;
-            
-            if(sde[i].flags & 8)
-                m = h - sde[i].h - k;
-            else
-                m = sde[i].h;
-            
-            SetWindowPos(GetDlgItem(win,sde[i].id),
-                         0,
-                         j,
-                         k,
-                         l,
-                         m,
-                         SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        }
+        SuperDlg_OnSize(sdc, win, lparam);
         
         break;
     
@@ -197,18 +270,20 @@ superdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         free(sdc);
         
-        SetWindowLongPtr(win, GWLP_USERDATA,0);
+        SetWindowLongPtr(win, GWLP_USERDATA, 0);
         
         break;
         
     default:
         
-        if(!sdc)
+        if( ! sdc )
+        {
             goto deflt;
+        }
         
         SetWindowLongPtr(win, DWLP_MSGRESULT, 0);
         
-        if( !sdc->dlgtemp->proc(win,msg,wparam,lparam) )
+        if( ! sdc->dlgtemp->proc(win,msg,wparam,lparam) )
 deflt:
             return DefWindowProc(win,msg,wparam,lparam);
         else

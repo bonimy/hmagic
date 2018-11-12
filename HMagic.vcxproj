@@ -223,6 +223,7 @@
     <ClInclude Include="TrackerLogic.h" />
     <ClInclude Include="WorldMapLogic.h" />
     <ClInclude Include="Wrappers.h" />
+    <ClInclude Include="Zelda3_Enum.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico" />

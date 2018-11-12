@@ -410,6 +410,9 @@
     <ClInclude Include="PatchEnum.h">
       <Filter>Header Files\ASM</Filter>
     </ClInclude>
+    <ClInclude Include="Zelda3_Enum.h">
+      <Filter>Header Files\General</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">

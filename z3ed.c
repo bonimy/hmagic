@@ -1783,25 +1783,36 @@ Editwin(FDOC       * const doc,
         int          const size)
 {
     char buf[1024];
+    
     HWND hc;
+    
     MDICREATESTRUCT mdic;
     
     EDITWIN * const a = (EDITWIN*) calloc(1, size);
     
+    // -----------------------------
+    
     wsprintf(buf, "%s - %s", doc->filename, title);
-    a->doc=doc;
-    a->param=param;
-    mdic.szClass=wclass;
-    mdic.szTitle=buf;
-    mdic.hOwner=hinstance;
-    mdic.x=mdic.y=mdic.cx=mdic.cy=CW_USEDEFAULT;
-    mdic.style=WS_SYSMENU|WS_CAPTION|WS_THICKFRAME|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
-    mdic.lParam=(long)a;
-    hc=(HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
+    
+    a->doc   = doc;
+    a->param = param;
+    
+    mdic.szClass = wclass;
+    mdic.szTitle = buf;
+    mdic.hOwner  = hinstance;
+    
+    mdic.x = mdic.y = mdic.cx = mdic.cy = CW_USEDEFAULT;
+    
+    mdic.style = WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
+               | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+    
+    mdic.lParam = (long) a;
+    
+    hc = (HWND) SendMessage(clientwnd, WM_MDICREATE, 0, (LPARAM) &mdic);
     
     if(hc)
     {
-        SendMessage(clientwnd, WM_MDIACTIVATE, (long)hc, 0);
+        SendMessage(clientwnd, WM_MDIACTIVATE, (WPARAM) hc, 0);
         SendMessage(clientwnd, WM_MDIREFRESHMENU, 0, 0);
     }
     else
