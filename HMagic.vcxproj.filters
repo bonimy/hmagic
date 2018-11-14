@@ -85,6 +85,9 @@
     <Filter Include="Header Files\ASM">
       <UniqueIdentifier>{31b0dc9d-3b66-4747-a0f6-108fcc72dad5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\General">
+      <UniqueIdentifier>{c6c83a33-b6ff-4840-aeb1-58a5ba2a1110}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="z3ed.c">
@@ -96,17 +99,11 @@
     <ClCompile Include="ChooseObject.c">
       <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
-    <ClCompile Include="Wrappers.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DungeonDlg.c">
       <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="DungonHeader.c">
       <Filter>Source Files\Dungeon</Filter>
-    </ClCompile>
-    <ClCompile Include="WindowClasses.c">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PaletteFrame.c">
       <Filter>Source Files\Palette</Filter>
@@ -118,9 +115,6 @@
       <Filter>Source Files\Palette</Filter>
     </ClCompile>
     <ClCompile Include="DocumentFrame.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RomProperties.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OverworldMap.c">
@@ -178,12 +172,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HMagicUtility.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="AsmPatchFrame.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="DuplicateRoomDlg.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SoundDevSelectDlg.c">
@@ -261,9 +249,6 @@
     <ClCompile Include="TileMapFrame.c">
       <Filter>Source Files\TileMap</Filter>
     </ClCompile>
-    <ClCompile Include="AboutDlg.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PatchDlg.c">
       <Filter>Source Files\ASM</Filter>
     </ClCompile>
@@ -320,6 +305,24 @@
     </ClCompile>
     <ClCompile Include="Tracker.c">
       <Filter>Source Files\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="AboutDlg.c">
+      <Filter>Source Files\General</Filter>
+    </ClCompile>
+    <ClCompile Include="WindowClasses.c">
+      <Filter>Source Files\General</Filter>
+    </ClCompile>
+    <ClCompile Include="Wrappers.c">
+      <Filter>Source Files\General</Filter>
+    </ClCompile>
+    <ClCompile Include="RomProperties.c">
+      <Filter>Source Files\General</Filter>
+    </ClCompile>
+    <ClCompile Include="AsmPatchFrame.c">
+      <Filter>Source Files\ASM</Filter>
+    </ClCompile>
+    <ClCompile Include="DuplicateRoomDlg.c">
+      <Filter>Source Files\Dungeon</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

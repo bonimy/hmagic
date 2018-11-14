@@ -80,6 +80,12 @@
                               uint8_t     const * const p_data,
                               uint16_t            const p_len);
 
+    /**
+        Resets the length of the zchar string back to zero.
+    */
+    extern void
+    ZTextMessage_Empty(ZTextMessage * const p_msg);
+
     extern void
     ZTextMessage_Free(ZTextMessage * const p_msg);
 

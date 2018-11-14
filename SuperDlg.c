@@ -6,13 +6,13 @@
 // =============================================================================
 
 HWND
-CreateSuperDialog(SUPERDLG *dlgtemp,
-                  HWND owner,
-                  int x,
-                  int y,
-                  int w,
-                  int h,
-                  LPARAM lparam)
+CreateSuperDialog(SUPERDLG * const dlgtemp,
+                  HWND       const owner,
+                  int        const x,
+                  int        const y,
+                  int        const w,
+                  int        const h,
+                  LPARAM     const lparam)
 {
     SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
     
@@ -77,7 +77,10 @@ SuperDlg_OnCreate
         // width and height of the super dialog entry.
         // Can be negative, which doesn't appear to be documented
         // as acceptable for CreateDialogEx(). \task Try to find
-        // any reference on this on the internet.
+        // any reference on this on the internet. Update: This is
+        // apparently not kosher, but doesn't hurt anything,
+        // And the subsequent WM_SIZE issued later on corrects it
+        // before the end user can observe the problem.
         int sde_w = 0;
         int sde_h = 0;
         
@@ -85,22 +88,22 @@ SuperDlg_OnCreate
         
         // -----------------------------
         
-        if(sde[i].flags & 1)
+        if(sde[i].flags & FLG_SDCH_FOX)
             sde_x = (w - sde[i].x);
         else
             sde_x = sde[i].x;
         
-        if(sde[i].flags & 2)
+        if(sde[i].flags & FLG_SDCH_FOW)
             sde_w = (w - sde[i].w - sde_x);
         else
             sde_w = sde[i].w;
         
-        if(sde[i].flags & 4)
+        if(sde[i].flags & FLG_SDCH_FOY)
             sde_y = (h - sde[i].y);
         else
             sde_y = sde[i].y;
         
-        if(sde[i].flags & 8)
+        if(sde[i].flags & FLG_SDCH_FOH)
             sde_h = (h - sde[i].h - sde_y);
         else
             sde_h = sde[i].h;
@@ -184,22 +187,22 @@ SuperDlg_OnSize
         
         // -----------------------------
         
-        if(sde[i].flags & 1)
+        if(sde[i].flags & FLG_SDCH_FOX)
             sde_x = (w - sde[i].x);
         else
             sde_x = sde[i].x;
         
-        if(sde[i].flags & 2)
+        if(sde[i].flags & FLG_SDCH_FOW)
             sde_w = (w - sde[i].w - sde_x);
         else
             sde_w = sde[i].w;
         
-        if(sde[i].flags & 4)
+        if(sde[i].flags & FLG_SDCH_FOY)
             sde_y = (h - sde[i].y);
         else
             sde_y = sde[i].y;
         
-        if(sde[i].flags & 8)
+        if(sde[i].flags & FLG_SDCH_FOH)
             sde_h = (h - sde[i].h - sde_y);
         else
             sde_h = sde[i].h;

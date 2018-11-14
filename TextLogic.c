@@ -302,7 +302,7 @@ Savetext(FDOC * const doc)
     text_codes_ty const * const tc = &to->codes;
     
     int bd;
-    short l,m,n,o,p,q,r,v,t,u;
+    short m,n,o,p,q,v,u;
     
     // Index of which message we're dealing with.
     size_t m_i = 0;
@@ -332,6 +332,8 @@ Savetext(FDOC * const doc)
     {
         ZTextMessage const * const msg = &doc->text_bufz[m_i];
         
+        size_t r = num_dict;
+        
         // Index into the zchar array in the current message.
         size_t z_i = 0;
         
@@ -340,8 +342,6 @@ Savetext(FDOC * const doc)
         // -----------------------------
         
         m = bd = 0;
-        
-        r = num_dict;
         
         for(z_i = 0; z_i < msg_len; )
         {
@@ -352,7 +352,9 @@ Savetext(FDOC * const doc)
             
             if(q >= tc->command_base)
             {
-                l = rom[to->param_counts + q] - 1;
+                uint8_t l = rom[to->param_counts + q] - 1;
+                
+                // -----------------------------
                 
                 for
                 (
@@ -369,11 +371,14 @@ Savetext(FDOC * const doc)
             
             if(bd > m + 1)
             {
+                size_t l = 0;
+                size_t t = num_dict;
+                
+                // -----------------------------
+                
                 o = ldle16b(rom + dict_loc);
                 
                 v = 255;
-                
-                t = num_dict;
                 
                 for(l = 0; l < num_dict; l += 1)
                 {
@@ -387,7 +392,8 @@ Savetext(FDOC * const doc)
                         {
                             if(p < v)
                             {
-                                t = l, v = p;
+                                t = l;
+                                v = p;
                             }
                             
                             if(!p)
@@ -993,6 +999,17 @@ error:
                    p_len);
             
             p_msg->m_len = new_len;
+        }
+    }
+
+// =============================================================================
+
+    extern void
+    ZTextMessage_Empty(ZTextMessage * const p_msg)
+    {
+        if(p_msg)
+        {
+            p_msg->m_len = 0;
         }
     }
 
