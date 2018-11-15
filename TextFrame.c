@@ -4,38 +4,85 @@
 
 // =============================================================================
 
+    #define CP2C(x) x const * const
+
+// =============================================================================
+
+    static void
+    TextEditFrame_OnCreate
+    (
+        HWND   const p_win,
+        LPARAM const p_lp
+    )
+    {
+        CP2C(CREATESTRUCT) cs = (CREATESTRUCT*) p_lp;
+        
+        CP2C(MDICREATESTRUCT) mdi_cs = (MDICREATESTRUCT*) cs->lpCreateParams;
+        
+        TEXTEDIT * const ed = (TEXTEDIT*) (mdi_cs->lParam);
+        
+        // -----------------------------
+        
+        SetWindowLongPtr(p_win, GWLP_USERDATA, mdi_cs->lParam);
+        
+        ShowWindow(p_win, SW_SHOW);
+        
+        CreateSuperDialog(&textdlg,
+                          p_win,
+                          0, 0, 0, 0,
+                          (LPARAM) ed);
+    }
+
+// =============================================================================
+
 LRESULT CALLBACK
-texteditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+texteditproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    TEXTEDIT * ed;
+    TEXTEDIT * const ed = (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
+    
+    // -----------------------------
+    
+    if(msg == WM_CREATE)
+    {
+        TextEditFrame_OnCreate(win, lparam);
+        
+        return DefMDIChildProc(win, msg, wparam, lparam);
+    }
     
     switch(msg)
     {
-    
+
     case WM_MDIACTIVATE:
         
-        activedoc = ( (TEXTEDIT*) GetWindowLong(win, GWL_USERDATA))->ew.doc;
+        activedoc = ( (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA))->ew.doc;
         
-        goto deflt;
+        goto default_case;
     
     case WM_GETMINMAXINFO:
-        ed=(TEXTEDIT*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!ed) goto deflt;
-        return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam,lparam);
+        
+        DefMDIChildProc(win, msg, wparam, lparam);
+        
+        if( ! ed )
+        {
+            goto default_case;
+        }
+        
+        return SendMessage(ed->dlg,
+                           WM_GETMINMAXINFO,
+                           wparam,
+                           lparam);
     
     case WM_SIZE:
         
-        ed = (TEXTEDIT*) GetWindowLong(win,GWL_USERDATA);
-        
         SetWindowPos(ed->dlg,
-                     0, 0, 0, LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
+                     0,
+                     0, 0,
+                     LOWORD(lparam), HIWORD(lparam),
+                     SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
         
-        goto deflt;
+        goto default_case;
     
     case WM_DESTROY:
-        
-        ed = (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         ed->ew.doc->t_wnd = 0;
         
@@ -43,23 +90,12 @@ texteditproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         break;
     
-    case WM_CREATE:
-        
-        ed = (TEXTEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
-        
-        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) ed);
-        
-        ShowWindow(win, SW_SHOW);
-        
-        CreateSuperDialog(&textdlg,
-                          win,
-                          0, 0, 0, 0,
-                          (LPARAM) ed);
-    
-    deflt:
+    default_case:
     default:
-        return DefMDIChildProc(win,msg,wparam,lparam);
+        
+        return DefMDIChildProc(win, msg, wparam, lparam);
     }
+    
     return 0;
 }
 

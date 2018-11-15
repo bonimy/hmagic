@@ -10,6 +10,33 @@
 
 // =============================================================================
 
+    void
+    DocumentFrame_OnCreate(HWND   const p_win,
+                           LPARAM const p_lp)
+    {
+        CREATESTRUCT const * const cs = (CREATESTRUCT*) p_lp;
+        
+        MDICREATESTRUCT const * const mdi_cs = (MDICREATESTRUCT*) cs->lpCreateParams;
+        
+        FDOC * const doc = (FDOC*) mdi_cs->lParam;
+        
+        // -----------------------------
+        
+        SetWindowLongPtr(p_win, GWLP_USERDATA, (LONG_PTR) doc);
+        
+        ShowWindow(p_win, SW_SHOW);
+        
+        doc->editwin = CreateSuperDialog
+        (
+            &z3_dlg,
+            p_win,
+            0, 0, 0, 0,
+            (LPARAM) doc
+        );
+    }
+
+// =============================================================================
+
 void
 DocumentFrame_OnClose(FDOC * const param,
                       HWND   const win)
@@ -165,15 +192,16 @@ dontsave:
 
 // Window procedure for the document window with the large tree control.
 LRESULT CALLBACK
-docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
+docproc(HWND win,UINT msg, WPARAM wparam,LPARAM p_lp)
 {
-    FDOC *param;
+    FDOC * param;
     
     switch(msg)
     {
     
     case WM_MDIACTIVATE:
-        activedoc=(FDOC*)GetWindowLong(win,GWL_USERDATA);
+        
+        activedoc = (FDOC*)GetWindowLong(win,GWL_USERDATA);
         
         goto deflt;
     
@@ -190,26 +218,36 @@ docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
 
     
     case WM_GETMINMAXINFO:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!param) break;
-        return SendMessage(param->editwin,WM_GETMINMAXINFO,wparam,lparam);
+        
+        param = (FDOC*) GetWindowLongPtr(win, GWL_USERDATA);
+        
+        DefMDIChildProc(win,msg,wparam, p_lp);
+        
+        if(!param)
+            break;
+        
+        return SendMessage(param->editwin,WM_GETMINMAXINFO,wparam, p_lp);
+        
     case WM_SIZE:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(param->editwin,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
+        
+        param = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+        
+        SetWindowPos(param->editwin,
+                     0,
+                     0, 0,
+                     LOWORD(p_lp), HIWORD(p_lp),
+                     SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+        
         goto deflt;
+    
     case WM_CREATE:
         
-        param=(FDOC*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
+        DocumentFrame_OnCreate(win, p_lp);
         
-        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) param);
-        
-        ShowWindow(win,SW_SHOW);
-        param->editwin=CreateSuperDialog(&z3_dlg,win,0,0,0,0,(long)param);
     default:
-deflt:
+    deflt:
         
-        return DefMDIChildProc(win,msg,wparam,lparam);
+        return DefMDIChildProc(win, msg, wparam, p_lp);
     }
     
     return 0;

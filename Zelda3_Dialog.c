@@ -5,6 +5,8 @@
     #include "Callbacks.h"
     #include "GdiObjects.h"
 
+    #include "Wrappers.h"
+
     #include "Zelda3_Enum.h"
 
     #include "OverworldEdit.h"
@@ -26,13 +28,22 @@ SD_ENTRY z3_sd[] =
         "",
         0, 0, 0, 0,
         ID_Z3Dlg_TreeView,
-        WS_VISIBLE | WS_TABSTOP | WS_BORDER | WS_CHILD
-      | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES
-      | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP,
+        (
+            WS_VISIBLE | WS_TABSTOP | WS_BORDER | WS_CHILD
+          | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES
+          | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP
+        ),
         WS_EX_CLIENTEDGE,
-        10
+        FLG_SDCH_FOWH
     },
 };
+
+enum
+{
+    NUM_Z3Dlg_Controls = sizeof(z3_sd) / sizeof(SD_ENTRY)
+};
+
+// =============================================================================
 
 SUPERDLG z3_dlg =
 {
@@ -40,41 +51,13 @@ SUPERDLG z3_dlg =
     z3dlgproc,
     WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
     60, 60,
-    ID_Z3Dlg_NumControls,
+    NUM_Z3Dlg_Controls,
     z3_sd
 };
 
 // =============================================================================
 
-BOOL CALLBACK
-z3dlgproc(HWND win,
-          UINT msg,
-          WPARAM wparam,
-          LPARAM lparam)
-{
-    FDOC*doc;
-    
-    HWND hc;
-    
-    int i,j,k,l;
-    
-    TVINSERTSTRUCT tvi;
-    TVHITTESTINFO hti;
-    TVITEM*itemstr;
-    
-    HTREEITEM hitem;
-    
-    RECT rc;
-    
-    ZOVER*ov;
-    
-    OVEREDIT*oed;
-    
-    unsigned char*rom;
-    
-    int lp;
-    
-    static char *pal_text[] =
+    static char const * pal_text[] =
     {
         "Sword",
         "Shield",
@@ -94,7 +77,7 @@ z3dlgproc(HWND win,
         "Crystal"
     };
     
-    static char * locs_text[] =
+    static char const * locs_text[] =
     {
         "Pendant 1",
         "Pendant 2",
@@ -110,69 +93,466 @@ z3dlgproc(HWND win,
         "Agahnim 2"
     };
     
-    static char pal_num[] =
+    static char const pal_num[] =
     {
         4,3,3,6,2,20,16,24,20,2,2,16,18,1,1,1
     };
-    
-    char buf[0x200];
-    
-    // -----------------------------
-    
-    switch(msg)
+
+// =============================================================================
+
+    typedef
+    struct tag_TreeViewNode
     {
-    
-    case WM_INITDIALOG:
+        HTREEITEM node;
         
-        SetWindowLongPtr(win, DWLP_USER, lparam);
+        size_t m_child_count;
         
-        doc = (FDOC*) lparam;
+        struct tag_TreeViewNode * m_children;
         
-        hc = GetDlgItem(win, ID_Z3Dlg_TreeView);
+        struct tag_TreeViewNode * m_next_sibling;
         
-        tvi.hParent = 0;
-        tvi.hInsertAfter = TVI_LAST;
+    } TreeViewNode;
+
+// =============================================================================
+
+    static TreeViewNode default_tvn = { 0 };
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        TreeViewNode ow_root;
+        TreeViewNode dung_root;
+        TreeViewNode music_root;
+        TreeViewNode world_map_root;
+        TreeViewNode pal_root;
+        TreeViewNode palace_map_root;
         
-        tvi.item.mask = TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE;
+    } HM_Z3Dlg_TreeView;
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_InsertItem
+    (
+        HWND                   const p_treeview,
+        HTREEITEM              const p_parent,
+        TVINSERTSTRUCT const * const p_tvis
+    )
+    {
+        BOOL has_children = FALSE;
         
-        tvi.item.stateMask = TVIS_BOLD;
-        tvi.item.state = 0;
-        tvi.item.lParam = 0;
-        tvi.item.pszText = "Overworld";
-        tvi.item.cChildren = 1;
+        HTREEITEM hitem = NULL;
         
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
+        TVITEM parent_tv_item = { 0 };
         
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
+        // Copy so we can adjust the parent field.
+        TVINSERTSTRUCT adj_tvis = p_tvis[0];
         
-        for(i = 0; i < 160; i++)
+        // -----------------------------
+        
+        adj_tvis.hParent = p_parent;
+        
+        // A newly added node can't possibly have any children.
+        adj_tvis.item.cChildren = 0;
+        
+        hitem = (HTREEITEM) SendMessage
+        (
+            p_treeview,
+            TVM_INSERTITEM,
+            0,
+            (LPARAM) &adj_tvis
+        );
+        
+        if( (p_parent == NULL) || (p_parent == TVI_ROOT) )
         {
-            tvi.item.lParam=i + 0x20000;
-            
-            wsprintf(buf,"Area %02X - %s", i, area_names.m_lines[i]);
-            
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            // Can't retrieve the root's item handle anyway, so we're done.
+            return hitem;
         }
         
-        tvi.item.pszText = "Dungeons";
-        tvi.item.cChildren = 1;
-        tvi.item.lParam = 0;
-        tvi.hParent = 0;
+        HM_TreeView_GetItem(p_treeview, p_parent, &parent_tv_item);
         
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
+        // Simultaneously checks for success of insertion of the item and
+        // also helps us decide how to set the apperance of the parent node.
+        has_children = HM_TreeView_HasChildren(p_treeview, p_parent);
         
-        tvi.item.pszText=buf;
-        tvi.item.cChildren = 0;
+        parent_tv_item.cChildren = has_children ? 1 : 0;
+        
+        HM_TreeView_SetItem(p_treeview, p_parent, &parent_tv_item);
+        
+        return hitem;
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HM_TreeView_DeleteItem
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_item
+    )
+    {
+        BOOL r = (BOOL) SendMessage
+        (
+            p_treeview,
+            TVM_INSERTITEM,
+            0,
+            (LPARAM) p_item
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    /**
+        \task The name of this is misleading b/c it currently only deals in
+        whether the node is graphically considered to have child nodes.
+    */
+    extern BOOL
+    HM_TreeView_GetItem
+    (
+        HWND        const p_treeview,
+        HTREEITEM   const p_item_handle,
+        TVITEM    * const p_item
+    )
+    {
+        LRESULT r = 0;
+        
+        // -----------------------------
+        
+        p_item->mask = TVIF_CHILDREN;
+        
+        p_item->hItem = p_item_handle;
+        
+        r = SendMessage(p_treeview,
+                        TVM_GETITEM,
+                        0,
+                        (LPARAM) p_item);
+        
+        // (The message above returns what is intended to be interpreted as
+        // a boolean)
+        return (r == 1);
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HM_TreeView_SetItem
+    (
+        HWND        const p_treeview,
+        HTREEITEM   const p_item_handle,
+        TVITEM    * const p_item
+    )
+    {
+        LRESULT r = 0;
+        
+        // -----------------------------
+        
+        p_item->mask = TVIF_CHILDREN;
+        
+        p_item->hItem = p_item_handle;
+        
+        r = SendMessage(p_treeview,
+                        TVM_SETITEM,
+                        0,
+                        (LPARAM) p_item);
+        
+        // (The message above returns what is intended to be interpreted as
+        // a boolean)
+        return (r == 1);
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_InsertRoot
+    (
+        HWND         const p_treeview,
+        char const * const p_label
+    )
+    {
+        TVINSERTSTRUCT tvis = { 0 };
+        
+        TVITEM * const item = &tvis.item;
+        
+        // -----------------------------
+        
+        tvis.hParent      = TVI_ROOT;
+        tvis.hInsertAfter = TVI_LAST;
+        
+        item->mask      = (TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE);
+        item->cChildren = 0;
+        item->lParam    = 0;
+        
+        item->state      = 0;
+        item->stateMask  = TVIS_BOLD;
+        
+        item->pszText    = (LPTSTR) p_label;
+        
+        return HM_TreeView_InsertItem(p_treeview, NULL, &tvis);
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_InsertChild
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_parent
+    )
+    {
+        TVITEM item = { 0 };
+        
+        HM_TreeView_GetItem(p_treeview,
+                            p_parent,
+                            &item);
+        
+        if(item.cChildren != 1)
+        {
+            item.cChildren = 1;
+        }
+        
+        // \task Finish this implementation. this is just placeholder stuff.
+        return TVI_ROOT;
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_GetFirstChild
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    )
+    {
+        HTREEITEM r;
+        
+        // -----------------------------
+        
+        r = (HTREEITEM) SendMessage
+        (
+            p_treeview,
+            TVM_GETNEXTITEM,
+            TVGN_CHILD,
+            (LPARAM) p_node
+        );
+        
+        return r;
+    }
+
+// =============================================================================
+
+    /**
+        Convenience function that merely returns a boolean based on whether
+        the tree view node has no children (FALSE) or at least one child
+        (TRUE)
+    */
+    extern BOOL
+    HM_TreeView_HasChildren
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    )
+    {
+        HTREEITEM r = HM_TreeView_GetFirstChild(p_treeview, p_node);
+        
+        // -----------------------------
+        
+        return (r != NULL);
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_GetParent
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    )
+    {
+        HTREEITEM r;
+        
+        // -----------------------------
+        
+        r = (HTREEITEM) SendMessage
+        (
+            p_treeview,
+            TVM_GETNEXTITEM,
+            TVGN_PARENT,
+            (LPARAM) p_node
+        );
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_GetNextSibling
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_child
+    )
+    {
+        HTREEITEM r;
+        
+        // -----------------------------
+        
+        r = (HTREEITEM) SendMessage
+        (
+            p_treeview,
+            TVM_GETNEXTITEM,
+            TVGN_NEXT,
+            (LPARAM) p_child
+        );
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern size_t
+    HM_TreeView_CountChildren
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_parent
+    )
+    {
+        size_t count = 0;
+         
+        HTREEITEM r = 0;
+        
+        // -----------------------------
+        
+        // Check if there are any child nodes at all.
+        r = HM_TreeView_GetFirstChild(p_treeview, p_parent);
+        
+        while(r != NULL)
+        {
+            // Please note this is counting the most recent success in locating
+            // the first child node or a subsequent sibling node.
+            count += 1;
+            
+            r = HM_TreeView_GetNextSibling(p_treeview, r);
+        }
+
+        return count;
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HM_TreeView_SetParam
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node,
+        LPARAM    const p_lp
+    )
+    {
+        TVITEM item = { 0 };
+        
+        LRESULT r_get = 0;
+        LRESULT r_set = 0;
+        
+        // -----------------------------
+        
+        item.hItem = p_node;
+        
+        item.mask = (TVIF_HANDLE | TVIF_PARAM);
+        
+        r_get = SendMessage(p_treeview,
+                            TVM_GETITEM,
+                            0,
+                           (LPARAM) &item);
+        
+        item.lParam = p_lp;
+        
+        r_set = SendMessage(p_treeview,
+                            TVM_SETITEM,
+                            0,
+                            (LPARAM) &item);
+        
+        // (The message above returns what is intended to be interpreted as
+        // a boolean)
+        return (r_get & r_set);
+
+        
+
+    }
+
+// =============================================================================
+
+    void
+    Z3Dlg_OnInit
+    (
+        HWND   const p_win,
+        LPARAM const p_lp
+    )
+    {
+        char buf[0x200];
+        
+        int i = 0;
+        int j = 0;
+        int k = 0;
+        int l = 0;
+        
+        HWND const hc = GetDlgItem(p_win, ID_Z3Dlg_TreeView);
+        
+        TVINSERTSTRUCT tvi = { 0 };
+        
+        HTREEITEM hitem;
+        
+        HTREEITEM ow_root;
+        HTREEITEM dung_root;
+        HTREEITEM music_root;
+        HTREEITEM world_map_root;
+        HTREEITEM text_root;
+        HTREEITEM pal_root;
+        HTREEITEM palace_map_root;
+        HTREEITEM dung_props_root;
+        HTREEITEM menu_root;
+        
+        HTREEITEM persp_root;
+        HTREEITEM player_gfx_root;
+        HTREEITEM patch_root;
+        HTREEITEM gfx_schemes_root;
+        
+        // -----------------------------
+        
+        // \note (This is an FDOC pointer under the hood)
+        SetWindowLongPtr(p_win, DWLP_USER, p_lp);
+        
+        tvi.hInsertAfter = TVI_LAST;
+        
+        tvi.item.mask = (TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE);
+        
+        tvi.item.state     = 0;
+        tvi.item.stateMask = TVIS_BOLD;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        ow_root = HM_TreeView_InsertRoot(hc, "Overworld");
+        
+        tvi.item.pszText = buf;
+        
+        for(i = 0; i < 160; i += 1)
+        {
+            tvi.item.lParam = (i + 0x20000);
+            
+            wsprintf(buf, "Area %02X - %s", i, area_names.m_lines[i]);
+            
+            HM_TreeView_InsertItem(hc, ow_root, &tvi);
+        }
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        dung_root = HM_TreeView_InsertRoot(hc, "Dungeons");
+        
+        tvi.item.pszText = buf;
         
         for(i = 0; i < 133; i++)
         {
@@ -183,10 +563,7 @@ z3dlgproc(HWND win,
                      i,
                      entrance_names.m_lines[i]);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 7; i++)
@@ -195,10 +572,7 @@ z3dlgproc(HWND win,
             
             wsprintf(buf, "Starting location %02X", i);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 19; i++)
@@ -207,292 +581,248 @@ z3dlgproc(HWND win,
             
             wsprintf(buf, "Overlay %02X", i);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 8; i++)
         {
-            tvi.item.lParam=i + 0x3009f;
+            tvi.item.lParam = (i + 0x3009f);
             
             wsprintf(buf, "Layout %02X", i);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         tvi.item.lParam = 0x300a7;
         tvi.item.pszText = "Watergate overlay";
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        HM_TreeView_InsertItem(hc, dung_root, &tvi);
         
-        tvi.item.pszText = "Music";
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.item.cChildren = 1;
-        tvi.item.lParam = 0;
-        tvi.hParent = 0;
+        music_root = HM_TreeView_InsertRoot(hc, "Music");
         
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
-        tvi.item.pszText=buf;
-        tvi.item.cChildren=0;
+        tvi.item.pszText = buf;
         
         for(i = 0; i < 3; i++)
         {
-            tvi.item.lParam=i + 0x40000;
-            wsprintf(buf,"Bank %d",i+1);
+            tvi.item.lParam = (i + 0x40000);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            wsprintf(buf, "Bank %d", i + 1);
+            
+            HM_TreeView_InsertItem(hc, music_root, &tvi);
         }
         
-        tvi.item.lParam=0x40003;
-        tvi.item.pszText="Waves";
+        tvi.item.lParam  = 0x40003;
+        tvi.item.pszText = "Waves";
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        HM_TreeView_InsertItem(hc, music_root, &tvi);
         
-        tvi.item.pszText="World maps";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
+        world_map_root = HM_TreeView_InsertRoot(hc, "World maps");
         
-        tvi.item.pszText="Normal world";
-        tvi.item.cChildren=0;
-        tvi.item.lParam=0x60000;
+        tvi.item.pszText = "Normal world";
+        tvi.item.lParam  = 0x60000;
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        HM_TreeView_InsertItem(hc, world_map_root, &tvi);
         
-        tvi.item.pszText="Dark world";
-        tvi.item.lParam=0x60001;
+        tvi.item.pszText = "Dark world";
+        tvi.item.lParam  = 0x60001;
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        HM_TreeView_InsertItem(hc, world_map_root, &tvi);
         
-        tvi.item.pszText = "Monologue";
-        tvi.item.cChildren = 0;
-        tvi.item.lParam = 0x50000;
-        tvi.hParent = 0;
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        text_root = HM_TreeView_InsertRoot(hc, "Monologue");
         
-        tvi.item.pszText="Palettes";
-        tvi.item.cChildren=1;
-        tvi.item.lParam=0;
-        tvi.hParent=0;
+        HM_TreeView_SetParam(hc, text_root, 0x50000);
         
-        hitem = (HTREEITEM) SendMessage(hc,
-                                        TVM_INSERTITEM,
-                                        0,
-                                        (LPARAM) &tvi);
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        hitem = pal_root = HM_TreeView_InsertRoot(hc, "Palettes");
         
         k = 0;
         
         for(i = 0; i < 16; i++)
         {
-            l=pal_num[i];
+            HTREEITEM sub_root = NULL;
             
-            tvi.item.pszText=pal_text[i];
-            tvi.item.cChildren=1;
-            tvi.item.lParam=0;
-            tvi.hParent=hitem;
+            // -----------------------------
             
-            tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                                  TVM_INSERTITEM,
-                                                  0,
-                                                  (LPARAM) &tvi);
+            l = pal_num[i];
+            
+            tvi.item.pszText = (LPSTR) pal_text[i];
+            
+            sub_root = HM_TreeView_InsertItem(hc, pal_root, &tvi);
             
             tvi.item.pszText = buf;
-            tvi.item.cChildren = 0;
             
             for(j = 0; j < l; j++)
             {
-                tvi.item.lParam = k + 0x70000;
+                tvi.item.lParam = (k + 0x70000);
                 
                 wsprintf(buf,
                          "%s pal %d",
                          pal_text[i],
                          j);
                 
-                SendMessage(hc,
-                            TVM_INSERTITEM,
-                            0,
-                            (LPARAM) &tvi);
+                HM_TreeView_InsertItem(hc, sub_root, &tvi);
                 
-                k++;
+                k += 1;
             }
         }
         
-        tvi.item.pszText = "Dungeon maps";
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.item.cChildren = 1;
-        tvi.item.lParam = 0;
-        tvi.hParent = 0;
-        
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
-        
-        tvi.item.cChildren = 0;
+        palace_map_root = HM_TreeView_InsertRoot(hc, "Dungeon Maps");
         
         for(i = 0; i < 14; i++)
         {
-            tvi.item.lParam=i + 0x80000;
+            tvi.item.lParam = (i + 0x80000);
             
-            tvi.item.pszText = (char*) level_str[i+1];
+            // Cast is to suppress a warning that is not very useful here.
+            tvi.item.pszText = (LPSTR) level_str[i + 1];
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, palace_map_root, &tvi);
         }
         
-        tvi.item.pszText = "Dungeon properties";
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.item.cChildren = 1;
-        tvi.item.lParam = 0;
-        tvi.hParent = 0;
-        
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
-        
-        tvi.item.cChildren = 0;
+        dung_props_root = HM_TreeView_InsertRoot(hc, "Dungeon properties");
         
         for(i = 0; i < 12; i++)
         {
-            tvi.item.lParam = i + 0x90000;
-            tvi.item.pszText=locs_text[i];
+            tvi.item.lParam = (i + 0x90000);
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            // Cast is to suppress a warning that is not very useful here.
+            tvi.item.pszText = (LPSTR) locs_text[i];
+            
+             HM_TreeView_InsertItem(hc, dung_props_root, &tvi);
         }
         
-        tvi.item.pszText = "Menu screens";
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.item.cChildren = 1;
-        tvi.item.lParam = 0;
-        tvi.hParent = 0;
-        
-        tvi.hParent = (HTREEITEM) SendMessage(hc,
-                                              TVM_INSERTITEM,
-                                              0,
-                                              (LPARAM) &tvi);
-        
-        tvi.item.cChildren=0;
+        menu_root = HM_TreeView_InsertRoot(hc, "Menu screens");
         
         for(i = 0; i < 11; i++)
         {
-            tvi.item.lParam = i + 0xa0000;
+            tvi.item.lParam = (i + 0xa0000);
             
-            tvi.item.pszText = (char*) screen_text[i];
+            // Cast is to suppress a warning that is not very useful here.
+            tvi.item.pszText = (LPSTR) screen_text[i];
             
-            SendMessage(hc,
-                        TVM_INSERTITEM,
-                        0,
-                        (LPARAM) &tvi);
+            HM_TreeView_InsertItem(hc, menu_root, &tvi);
         }
         
-        tvi.item.pszText = "3D Objects";
-        tvi.item.cChildren = 0;
-        tvi.item.lParam = 0xb0000;
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        tvi.hParent = 0;
+        persp_root       = HM_TreeView_InsertRoot(hc, "3D Objects");
+        player_gfx_root  = HM_TreeView_InsertRoot(hc, "Link's Graphics");
+        patch_root       = HM_TreeView_InsertRoot(hc, "ASM hacks");
+        gfx_schemes_root = HM_TreeView_InsertRoot(hc, "Graphic schemes");
         
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        HM_TreeView_SetParam(hc, persp_root, 0xb0000);
+        HM_TreeView_SetParam(hc, player_gfx_root, 0xc0000);
+        HM_TreeView_SetParam(hc, patch_root, 0xd0000);
+        HM_TreeView_SetParam(hc, gfx_schemes_root, 0xe0000);
+    }
+
+// =============================================================================
+
+BOOL CALLBACK
+z3dlgproc(HWND win,
+          UINT msg,
+          WPARAM wparam,
+          LPARAM lparam)
+{
+    FDOC*doc;
+    
+    HWND hc;
+    
+    int i,j,k;
+    
+    TVINSERTSTRUCT tvi;
+    TVHITTESTINFO hti;
+    TVITEM*itemstr;
+    
+    HTREEITEM hitem;
+    
+    RECT rc;
+    
+    ZOVER*ov;
+    
+    OVEREDIT*oed;
+    
+    // "Notification message header" ?
+    NMHDR const * notific;
+    
+    unsigned char*rom;
+    
+    int lp;
+    
+    char buf[0x200];
+    
+    // -----------------------------
+    
+    switch(msg)
+    {
+    
+    case WM_INITDIALOG:
         
-        tvi.item.pszText = "Link's graphics";
-        tvi.item.lParam = 0xc0000;
-        
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
-        
-        tvi.item.pszText = "ASM hacks";
-        tvi.item.lParam = 0xd0000;
-        
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
-        
-        tvi.item.pszText = "Graphic schemes";
-        tvi.item.lParam = 0xe0000;
-        
-        SendMessage(hc,
-                    TVM_INSERTITEM,
-                    0,
-                    (LPARAM) &tvi);
+        Z3Dlg_OnInit(win, lparam);
         
         break;
     
     case WM_NOTIFY:
+        
+        notific = (NMHDR*) lparam;
         
         switch(wparam)
         {
         
         case ID_Z3Dlg_TreeView:
             
-            switch(( (NMHDR*) lparam)->code )
+            switch(notific->code)
             {
             
             case NM_DBLCLK:
-                GetWindowRect(((NMHDR*)lparam)->hwndFrom,&rc);
+                
+                GetWindowRect(notific->hwndFrom, &rc);
                 
                 hti.pt.x = mouse_x-rc.left;
                 hti.pt.y = mouse_y-rc.top;
-                hitem = (HTREEITEM) SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_HITTEST,0,(long)&hti);
                 
-                if(!hitem)
+                hitem = (HTREEITEM) SendMessage
+                (
+                    notific->hwndFrom,
+                    TVM_HITTEST,
+                    0,
+                    (LPARAM) &hti
+                );
+                
+                if( ! hitem )
                     break;
                 
-                if(!(hti.flags & TVHT_ONITEM))
+                if( ! (hti.flags & TVHT_ONITEM) )
                     break;
                 
                 itemstr = &(tvi.item);
                 itemstr->hItem = hitem;
                 itemstr->mask = TVIF_PARAM;
                 
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
+                SendMessage
+                (
+                    notific->hwndFrom,
+                    TVM_GETITEM,
+                    0,
+                    (long) itemstr
+                );
                 
                 lp = itemstr->lParam;
 open_edt:
                 
-                doc = (FDOC*)GetWindowLong(win,DWL_USER);
+                doc = (FDOC*) GetWindowLongPtr(win, DWLP_USER);
                 
                 j = lp & 0xffff;
                 
@@ -513,7 +843,8 @@ open_edt:
                         if(j >= k && ov[j - k].win)
                         {
                             hc = ov[j - k].win;
-                            oed = (OVEREDIT*)GetWindowLong(hc,GWL_USERDATA);
+                            
+                            oed = (OVEREDIT*)GetWindowLongPtr(hc, GWLP_USERDATA);
                             
                             if(i && !(oed->mapsize))
                                 continue;
@@ -732,12 +1063,28 @@ open_edt:
                     break;
                 
                 case 11:
-                    if(doc->perspwnd) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->perspwnd),0);break;}
-                    doc->perspwnd=Editwin(doc,"PERSPEDIT","3D object editor",0,sizeof(PERSPEDIT));
+                    
+                    if(doc->perspwnd)
+                    {
+                        SendMessage(clientwnd,
+                                    WM_MDIACTIVATE,
+                                    (WPARAM) doc->perspwnd,
+                                    0);
+                        
+                        break;
+                    }
+                    
+                    doc->perspwnd = Editwin(doc,
+                                            "PERSPEDIT",
+                                            "3D object editor",
+                                            0,
+                                            sizeof(PERSPEDIT) );
+                    
                     break;
+                
                 case 12:
                     
-                    oed = (OVEREDIT*) malloc(sizeof(OVEREDIT));
+                    oed = (OVEREDIT*) malloc( sizeof(OVEREDIT) );
                     
                     oed->bmih=zbmih;
                     oed->hpal=0;
@@ -767,12 +1114,19 @@ open_edt:
                     
                     if(doc->hackwnd)
                     {
-                        SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->hackwnd),0);
+                        SendMessage(clientwnd,
+                                    WM_MDIACTIVATE,
+                                    (WPARAM) doc->hackwnd,
+                                    0);
                         
                         break;
                     }
                     
-                    doc->hackwnd = Editwin(doc, "PATCHLOAD", "Patch modules", 0, sizeof(PATCHLOAD));
+                    doc->hackwnd = Editwin(doc,
+                                           "PATCHLOAD",
+                                           "Patch modules",
+                                           0,
+                                           sizeof(PATCHLOAD) );
                     
                     break;
                 
@@ -798,5 +1152,6 @@ open_edt:
         
         goto open_edt;
     }
+    
     return FALSE;
 }

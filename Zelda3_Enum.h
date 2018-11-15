@@ -16,7 +16,7 @@
         
         ID_Z3Dlg_AfterLast,
         
-        ID_Z3Dlg_NumControls = (ID_Z3Dlg_AfterLast - ID_SuperDlg_FirstChild)
+        NUM_Z3Dlg_IDs = (ID_Z3Dlg_AfterLast - ID_SuperDlg_FirstChild)
     };
 
 // =============================================================================

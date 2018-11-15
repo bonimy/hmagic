@@ -216,6 +216,95 @@ struct
              const char *  const p_fmt,
              ...);
 
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_InsertItem
+    (
+        HWND                   const p_treeview,
+        HTREEITEM              const p_parent,
+        TVINSERTSTRUCT const * const p_tvis
+    );
+
+    extern BOOL
+    HM_TreeView_DeleteItem
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_item
+    );
+
+    extern BOOL
+    HM_TreeView_GetItem
+    (
+        HWND        const p_treeview,
+        HTREEITEM   const p_item_handle,
+        TVITEM    * const p_item
+    );
+
+    extern BOOL
+    HM_TreeView_SetItem
+    (
+        HWND        const p_treeview,
+        HTREEITEM   const p_item_handle,
+        TVITEM    * const p_item
+    );
+
+    extern HTREEITEM
+    HM_TreeView_InsertRoot
+    (
+        HWND         const p_treeview,
+        char const * const p_label
+    );
+
+    extern HTREEITEM
+    HM_TreeView_InsertChild
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_parent
+    );
+
+    extern HTREEITEM
+    HM_TreeView_GetFirstChild
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    );
+
+    /**
+        Convenience function that merely returns a boolean based on whether
+        the tree view node has no children (FALSE) or at least one child
+        (TRUE)
+    */
+    extern BOOL
+    HM_TreeView_HasChildren
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    );
+
+    extern HTREEITEM
+    HM_TreeView_GetParent
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_node
+    );
+
+    extern HTREEITEM
+    HM_TreeView_GetNextSibling
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_child
+    );
+
+    extern size_t
+    HM_TreeView_CountChildren
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_parent
+    );
+
+// =============================================================================
+
 
 
 #endif

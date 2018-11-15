@@ -18,8 +18,6 @@
         ID_TextEditDictionaryRadio,
         
         ID_TextAfterLast,
-        ID_TextNumControls = (ID_TextAfterLast - ID_SuperDlg_FirstChild)
-    
     };
 
 // =============================================================================

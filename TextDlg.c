@@ -20,49 +20,59 @@ SD_ENTRY text_sd[] =
     {
         "LISTBOX",
         "",
-        0, 0, 0, 90,
+        0, 0, 0, 100,
         ID_TextEntriesListControl,
-        WS_VISIBLE | WS_CHILD | LBS_NOTIFY | WS_VSCROLL | WS_CLIPCHILDREN,
+        (WS_VISIBLE | WS_CHILD | LBS_NOTIFY | WS_VSCROLL | WS_CLIPCHILDREN),
         WS_EX_CLIENTEDGE,
-        10
+        FLG_SDCH_FOWH
     },
     {
         "EDIT",
         "",
-        20, 90, 30, 40,
+        10, 95, 10, 30,
         ID_TextEditWindow,
-        WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_BORDER | WS_CLIPSIBLINGS
-      | ES_MULTILINE | WS_VSCROLL | ES_AUTOVSCROLL | WS_CLIPCHILDREN,
+        (
+            WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_BORDER | WS_CLIPSIBLINGS
+          | ES_MULTILINE | WS_VSCROLL | ES_AUTOVSCROLL | WS_CLIPCHILDREN
+        ),
         WS_EX_CLIENTEDGE,
-        8 | 4 | 2 | 0
+        (FLG_SDCH_FOWH | FLG_SDCH_FOY)
     },
     {
         "BUTTON",
         "Set",
-        0, 20, 50, 0,
+        0, 25, 50, 0,
         ID_TextSetTextButton,
-        WS_VISIBLE | WS_TABSTOP | WS_CHILD,
+        (WS_VISIBLE | WS_TABSTOP | WS_CHILD),
         0,
-        12
+        (FLG_SDCH_FOY | FLG_SDCH_FOH)
     },
     {
         "BUTTON",
         "Edit text",
-        60, 20, 65, 0,
-        ID_TextEditTextRadio, WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON,
+        60, 25, 65, 0,
+        ID_TextEditTextRadio,
+        (WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON),
         0,
-        12
+        (FLG_SDCH_FOY | FLG_SDCH_FOH)
     },
     {
         "BUTTON",
         "Edit dictionary",
-        130, 20, 120, 0,
+        130, 25, 120, 0,
         ID_TextEditDictionaryRadio,
-        WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON,
+        (WS_VISIBLE | WS_TABSTOP | WS_CHILD | BS_AUTORADIOBUTTON),
         0,
-        12
+        (FLG_SDCH_FOY | FLG_SDCH_FOH)
     }
 };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_TextDlg_NumControls = sizeof(text_sd) / sizeof(SD_ENTRY)
+    };
 
 // =============================================================================
 
@@ -72,7 +82,7 @@ SUPERDLG textdlg =
     TextDlg,
     WS_CHILD | WS_VISIBLE,
     600, 200,
-    ID_TextNumControls,
+    NUM_TextDlg_NumControls,
     text_sd
 };
 
@@ -82,26 +92,24 @@ static void
 TextDlg_SetText(TEXTEDIT * const p_ed,
                 HWND       const p_win)
 {
-    int i = SendDlgItemMessage(p_win,
-                               ID_TextEntriesListControl,
-                               LB_GETCURSEL,
-                               0,
-                               0);
-    
-    int j = 0;
-    int k = 0;
-    int l = 0;
-    int m = 0;
+    // Message index (if any is selected)
+    int m_i = SendDlgItemMessage(p_win,
+                                 ID_TextEntriesListControl,
+                                 LB_GETCURSEL,
+                                 0,
+                                 0);
     
     FDOC * const doc = p_ed->ew.doc;
     
     uint8_t * const rom = doc->rom;
     
-    unsigned const dict_loc = offsets.text.dictionary;
+    text_offsets_ty const * const to = &offsets.text;
+    
+    unsigned const dict_loc = to->dictionary;
     
     // -----------------------------
     
-    if(i != LB_ERR)
+    if(m_i != LB_ERR)
     {
         HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
         
@@ -143,13 +151,33 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             
             if(p_ed->num)
             {
-                m = zmsg.m_len;
+                // Note that this logic assumes that the dictionary
+                // data directly follows its pointer table.
+                uint16_t j = ldle16b
+                (
+                    rom
+                  + rom_addr_split(to->bank, ldle16b(rom + dict_loc) - 2)
+                );
                 
-                j = *(unsigned short*) (rom + 0x77ffe + ldle16b(rom + dict_loc) );
-                l = ((unsigned short*) (rom + dict_loc))[i];
-                k = ((unsigned short*) (rom + dict_loc))[i + 1];
+                // Dictionary entry base and bound. (Bound is one byte past
+                // the end of the dictionary entry.
+                int const de_base  = ldle16b_i(rom + dict_loc, m_i);
+                int const de_bound = ldle16b_i(rom + dict_loc, m_i + 1);
+                int const de_delta = (de_bound - de_base);
                 
-                if(j + m + l - k > 0xc8d9)
+                // Code golf for the length in zchars of the revised
+                // dictionary entry.
+                int const m = zmsg.m_len;
+                
+                int num_dict = 0;
+                 
+                // Index into dictionary entries.
+                int d_i = 0;
+                
+                // -----------------------------
+                
+                // \task Eliminate raw hex constant.
+                if( (j + m + de_base - de_bound) > 0xc8d9)
                 {
                     MessageBeep(0);
                     
@@ -159,30 +187,34 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                     return;
                 }
                 
-                memcpy(rom + 0x68000 + l + m, rom + 0x68000 + k, j - k);
-                memcpy(rom + 0x68000 + l, zmsg.m_text, m);
+                memcpy(rom + rom_addr_split(to->bank, de_base + m),
+                       rom + rom_addr_split(to->bank, de_bound),
+                       j - de_bound);
                 
-                k -= l;
+                memcpy(rom + rom_addr_split(to->bank, de_base),
+                       zmsg.m_text,
+                       m);
                 
-                l = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
+                // \task Eliminate raw hex constant.
+                num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
                 
-                for(j = i + 1; j < l; j++)
+                for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
                 {
-                    ((short*) (rom + dict_loc))[j] += m - k;
+                    addle16b_i(rom + dict_loc, d_i, (m - de_delta) );
                 }
             }
             else
             {
-                ZTextMessage_Free( &doc->text_bufz[i] );
+                ZTextMessage_Free( &doc->text_bufz[m_i] );
                 
-                doc->text_bufz[i] = zmsg;
+                doc->text_bufz[m_i] = zmsg;
             }
             
             Makeasciistring(doc, &zmsg, &amsg);
             
             asprintf(&text_buf,
                      "%03d: %s",
-                     i,
+                     m_i,
                      amsg.m_text);
             
             if(p_ed->num)
@@ -190,9 +222,9 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 ZTextMessage_Free(&zmsg);
             }
             
-            SendMessage(hc, LB_DELETESTRING, i, 0);
-            SendMessage(hc, LB_INSERTSTRING, i, (LPARAM) text_buf);
-            SendMessage(hc, LB_SETCURSEL, i, 0);
+            SendMessage(hc, LB_DELETESTRING, m_i, 0);
+            SendMessage(hc, LB_INSERTSTRING, m_i, (LPARAM) text_buf);
+            SendMessage(hc, LB_SETCURSEL, m_i, 0);
             
             free(text_buf);
         }
@@ -200,10 +232,12 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         {
             char * text_buf = NULL;
             
-            // \task What the hell was this intended to do?
-            i = text_error - text_buf;
+            // \task What the hell was this intended to do? Update:
+            // I think this tries to select the place in the edit window
+            // where the error occurred?
+            int e_i = text_error - text_buf;
             
-            SendMessage(ted_win, EM_SETSEL, i, i);
+            SendMessage(ted_win, EM_SETSEL, e_i, e_i);
             
             SetFocus(ted_win);
             
@@ -216,22 +250,163 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
     }
 }
 
+// =============================================================================
 
+    static void
+    TextDlg_ListMonologueStrings
+    (
+        FDOC const * const p_doc,
+        HWND         const p_listbox
+    )
+    {
+        char * text_buf = NULL;
+        
+        size_t m_i = 0;
+        
+        AsciiTextMessage asc_msg = { 0 };
+        
+        // -----------------------------
+        
+        for(m_i = 0; m_i < p_doc->t_number; m_i += 1)
+        {
+            size_t dummy_len = 0;
+            int    write_len = 0;
+            
+            AsciiTextMessage_Init(&asc_msg);
+            
+            Makeasciistring(p_doc,
+                            &p_doc->text_bufz[m_i],
+                            &asc_msg);
+            
+            dummy_len = strlen(asc_msg.m_text);
+            
+            write_len = asprintf(&text_buf,
+                                 "%03d: %s",
+                                 m_i,
+                                 asc_msg.m_text);
+            
+            SendMessage(p_listbox,
+                        LB_ADDSTRING,
+                        0,
+                        (LPARAM) text_buf);
+            
+            free(text_buf);
+        }
+        
+        AsciiTextMessage_Free(&asc_msg);
+    }
 
 // =============================================================================
 
-BOOL CALLBACK
+    static void
+    TextDlg_ListDictionaryStrings
+    (
+        FDOC const * const p_doc,
+        HWND         const p_listbox
+    )                             
+    {
+        uint8_t * const rom = p_doc->rom;
+        
+        char * text_buf = NULL;
+        
+        int de_offset = 0;
+        
+        uint16_t de_base = 0;
+
+        text_offsets_ty const * const to = &offsets.text;
+        
+        AsciiTextMessage amsg = { 0 };
+        
+        ZTextMessage zmsg = { 0 };
+        
+        // Index into dictionary entry table.
+        size_t d_i = 0;
+        
+        // \task Eliminate raw hex constant.
+        // Number of dictionary entries.
+        size_t num_des =
+        (
+            ldle16b(rom + to->dictionary)
+          - ( cpuaddr(to->dictionary + 2) & 0xffff )
+        ) >> 1;
+        
+        // -----------------------------
+        
+        ZTextMessage_Init(&zmsg);
+        
+        
+        de_base = ldle16b(rom + to->dictionary);
+        
+        for(d_i = 0; d_i < num_des; d_i += 1)
+        {
+            uint16_t const de_bound = ldle16b_i(rom + to->dictionary,
+                                                d_i + 1);
+            
+            // -----------------------------
+            
+            ZTextMessage_Empty(&zmsg);
+            
+            de_offset = rom_addr_split(to->bank, de_base);
+            
+            ZTextMessage_AppendStream(&zmsg,
+                                      rom + de_offset,
+                                      de_bound - de_base);
+            
+            Makeasciistring(p_doc, &zmsg, &amsg);
+            
+            asprintf(&text_buf, "%03d: %s", d_i, amsg.m_text);
+            
+            SendMessage(p_listbox,
+                        LB_ADDSTRING,
+                        0,
+                        (LPARAM) text_buf);
+            
+            free(text_buf);
+            
+            de_base = de_bound;
+        }
+        
+        ZTextMessage_Free(&zmsg);
+        AsciiTextMessage_Free(&amsg);
+    }
+
+// =============================================================================
+
+    static void
+    TextDlg_ListStrings
+    (
+        TEXTEDIT const * const p_ed,
+        HWND             const p_win
+    )
+    {
+        FDOC const * const doc = p_ed->ew.doc;
+        
+        HWND const ted_listbox = GetDlgItem(p_win, ID_TextEntriesListControl);
+        
+        // -----------------------------
+        
+        if(p_ed->num)
+        {
+            TextDlg_ListDictionaryStrings(doc, ted_listbox);
+        }
+        else
+        {
+            TextDlg_ListMonologueStrings(doc, ted_listbox);
+        }
+    }
+
+// =============================================================================
+
+extern BOOL CALLBACK
 TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     TEXTEDIT * ed;
     
     FDOC *doc;
     
-    int i, j, k, l;
+    int i, k, l;
     
     unsigned char *rom;
-    
-    HWND hc;
     
     AsciiTextMessage asc_msg = { 0 } ;
     
@@ -262,82 +437,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             LoadText(doc);
         }
         
-    updstrings:
-        
-        hc = GetDlgItem(win, ID_TextEntriesListControl);
-        
-        if(ed->num)
-        {
-            char * text_buf = NULL;
-            
-            int dict_entry_offset = 0;
-            
-            ZTextMessage zmsg = { 0 };
-            
-            // -----------------------------
-            
-            ZTextMessage_Init(&zmsg);
-            
-            rom = doc->rom;
-            
-            j = ( ldle16b(rom + dict_loc) - 0xc705 ) >> 1;
-            
-            l = ldle16b(rom + dict_loc);
-            
-            for(i = 0; i < j; i++)
-            {
-                k = ldle16b_i(rom + dict_loc, i + 1);
-                
-                dict_entry_offset = rom_addr_split(to->bank, l);
-                
-                ZTextMessage_AppendStream(&zmsg,
-                                          rom + dict_entry_offset,
-                                          k - l);
-                
-                Makeasciistring(doc, &zmsg, &asc_msg);
-                
-                asprintf(&text_buf, "%03d: %s", i, asc_msg.m_text);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (LPARAM) text_buf);
-                
-                ZTextMessage_Free(&zmsg);
-                
-                free(text_buf);
-                
-                l = k;
-            }
-        }
-        else
-        {
-            char * text_buf = NULL;
-            
-            size_t m_i = 0;
-            
-            // -----------------------------
-            
-            for(m_i = 0; m_i < doc->t_number; m_i += 1)
-            {
-                size_t dummy_len = 0;
-                int    write_len = 0;
-                
-                AsciiTextMessage_Init(&asc_msg);
-                
-                Makeasciistring(doc,
-                                &doc->text_bufz[m_i],
-                                &asc_msg);
-                
-                dummy_len = strlen(asc_msg.m_text);
-                
-                write_len = asprintf(&text_buf,
-                                     "%03d: %s",
-                                     m_i,
-                                     asc_msg.m_text);
-                
-                SendMessage(hc, LB_ADDSTRING, 0, (LPARAM) text_buf);
-                
-                free(text_buf);
-            }
-        }
+        TextDlg_ListStrings(ed, win);
         
         break;
     
@@ -361,9 +461,9 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         case ID_TextEntriesListControl | (LBN_DBLCLK << 16):
             
-            i = SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
+            i = SendMessage((HWND) lparam, LB_GETCURSEL, 0, 0);
             
-            if(i != -1)
+            if(i != LB_ERR)
             {
                 if(ed->num)
                 {
@@ -376,7 +476,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                     l = ldle16b_i(rom + dict_loc, i);
                     k = ldle16b_i(rom + dict_loc, i + 1);
                     
-                    dict_entry_offset = romaddr(0xe0000 + l);
+                    dict_entry_offset = rom_addr_split(to->bank, l);
                     
                     zmsg.m_len = (k - l);
                     zmsg.m_text = (uint8_t*) calloc(1, zmsg.m_len + 1);
@@ -417,7 +517,9 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                                0,
                                0);
             
-            goto updstrings;
+            TextDlg_ListStrings(ed, win);
+
+            break;
         
         case ID_TextEditDictionaryRadio:
             
@@ -429,7 +531,9 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                                0,
                                0);
             
-            goto updstrings;
+            TextDlg_ListStrings(ed, win);
+            
+            break;
         }
         
         break;

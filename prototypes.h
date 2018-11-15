@@ -154,8 +154,13 @@ void
 Updatesize(HWND win);
 
 HWND
-CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,
-                  LPARAM lparam);
+CreateSuperDialog(SUPERDLG * const dlgtemp,
+                  HWND       const owner,
+                  int        const x,
+                  int        const y,
+                  int        const w,
+                  int        const h,
+                  LPARAM     const lparam);
 
 void
 Unloadovl(FDOC *doc);
