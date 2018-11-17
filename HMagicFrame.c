@@ -20,10 +20,15 @@
     #include "TextLogic.h"
 
     #include "AudioLogic.h"
+    #include "TrackerLogic.h"
 
     #include "WorldMapLogic.h"
 
+    #include "LevelMapLogic.h"
+
     #include "TileMapLogic.h"
+
+    #include "PerspectiveLogic.h"
 
     #include "PatchLogic.h"
 
@@ -656,7 +661,7 @@ saveerror:
                 WriteFile(h2,activedoc->segs,activedoc->numseg<<2,&write_size,0);
                 mod = activedoc->modules;
                 
-                for(i=0;i<activedoc->nummod;i++,mod++)
+                for(i = 0; i < activedoc->nummod; i++, mod++)
                 {
                     enum { PATCH_HEADER_SIZE = 8 };
                     
@@ -665,7 +670,7 @@ saveerror:
                     j = strlen(mod->filename);
                     
                     stle32b_i(patch_header, 0, j);
-                    stle32b_i(patch_header, 1, activedoc->modules[i].flag);
+                    stle32b_i(patch_header, 1, mod->flag);
                     
                     WriteFile(h2,
                               patch_header,

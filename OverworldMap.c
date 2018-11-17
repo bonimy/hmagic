@@ -1097,7 +1097,14 @@ updent:
         switch(ed->tool)
         {
         case 3:
-            SendMessage(ed->ew.doc->editwin,4000,0x30000 + ed->ew.doc->rom[0xdbb73 + ed->selobj],0);
+            
+            // Double clicked on an entrance marker, launch a dungeon editor
+            // window that corresponds to that entrance.
+            SendMessage(ed->ew.doc->editwin,
+                        4000,
+                        0x30000 + ed->ew.doc->rom[0xdbb73 + ed->selobj],
+                        0);
+            
             break;
         case 5:
             

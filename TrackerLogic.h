@@ -26,6 +26,9 @@
     extern short
     Getblocktime(FDOC *doc, short num, short prevtime);
 
+    extern void
+    Savesongs(FDOC *doc);
+
 // =============================================================================
 
 #endif

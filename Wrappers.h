@@ -7,6 +7,20 @@
 
 // =============================================================================
 
+    /**
+        Convenience macro for declarations. Also horizontal code golf.
+        Read "constant pointer to constant x"
+    */
+    #define CP2C(x) x const * const
+
+    /**
+        Convenience macro for declarations. Also horizontal code golf.
+        Read "constant pointer to x"
+    */
+    #define CP2(x) x * const
+
+// =============================================================================
+
 typedef
 struct
 {

@@ -1,8 +1,11 @@
 
 // =============================================================================
 
-extern short cost[256];
+    extern short cost[256];
 
-extern int rptx,rpty,rptz;
+    extern int rptx,rpty,rptz;
 
 // =============================================================================
+
+    extern void
+    Savepersp(PERSPEDIT * ed);

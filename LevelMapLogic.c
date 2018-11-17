@@ -1,6 +1,8 @@
 
     #include "structs.h"
 
+    #include "HMagicUtility.h"
+
     #include "LevelMapLogic.h"
 
 // =============================================================================
@@ -103,6 +105,92 @@ Paintfloor(LMAPEDIT * const ed)
         }
         n+=54;
     }
+}
+
+// =============================================================================
+
+extern void
+Savedungmap(LMAPEDIT const * const ed)
+{
+    int i,j,k,l,m,n,o,p;
+    
+    unsigned char*rom=ed->ew.doc->rom;
+    
+    m=*(short*)(rom + 0x56640) + 0x58000;
+    o=ed->ew.doc->dmend;
+    
+    if(ed->ew.param < 13)
+        i = ((short*)(rom + 0x57605))[ed->ew.param+1] + 0x58000;
+    else
+        i = m;
+    
+    j = ((short*)(rom + 0x57605))[ed->ew.param] + 0x58000;
+    
+    if(ed->ew.param < 13)
+        k = ((short*)(rom+m))[ed->ew.param+1] + 0x58000;
+    else
+        k = o;
+    
+    n = (ed->basements + ed->floors) * 25;
+    
+    l = ((short*)(rom+m))[ed->ew.param] + 0x58000;
+    
+    if( j + n - i + l + ed->len - k + o > 0x57ce0)
+    {
+        MessageBox(framewnd,
+                   "Not enough space",
+                   "Bad error happened",
+                   MB_OK);
+        
+        return;
+    }
+    
+    memmove(rom + j+ n , rom + i, o - i);
+    memcpy(rom + j, ed->rbuf, n);
+    
+    for(p = ed->ew.param + 1; p < 14; p += 1)
+    {
+        addle16b_i(rom + 0x57605, p, j + n - i);
+    }
+    
+    o += j + n - i;
+    k += j + n - i;
+    l += j + n - i;
+    m += j + n - i;
+    
+    memmove(rom+l+ed->len,rom+k,o-k);
+    memcpy(rom+l,ed->buf,ed->len);
+    
+    for(p=0;p<14;p++)
+        ((short*)(rom+m))[p]+=j+n-i;
+    
+    for(p=ed->ew.param+1;p<14;p++)
+        ((short*)(rom+m))[p]+=l+ed->len-k;
+    
+    o += l + ed->len - k;
+    
+    stle16b(rom + 0x56640, m - 0x8000);
+    
+    ed->ew.doc->dmend=o;
+    
+    rom[0x56196 + ed->ew.param] = ed->level;
+    
+    stle16b_i(rom + 0x56807, ed->ew.param, ed->bossroom);
+    
+    stle16b_i(rom + 0x56e79,
+              ed->ew.param,
+              (ed->bossroom == 15) ? -1
+                                   : (ed->bosspos / 25 - ed->basements) );
+    
+    stle16b_i(rom + 0x56e5d,
+              ed->ew.param,
+              ed->bossofs);
+    
+    stle16b_i(rom + 0x575d9,
+              ed->ew.param,
+              ed->basements + (ed->floors << 4) + (ed->bg << 8) );
+    
+    ed->ew.doc->modf = 1;
 }
 
 // =============================================================================

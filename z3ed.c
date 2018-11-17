@@ -462,6 +462,46 @@ LoadTextFileResource(unsigned p_res_id)
 
 // =============================================================================
 
+    void
+    HM_TextResource_Free
+    (
+        HM_TextResource * const p_text_res
+    )
+    {
+        if(p_text_res == NULL )
+        {
+            return;
+        }
+        else if(p_text_res->m_lines == NULL)
+        {
+            return;
+        }
+        else
+        {
+            size_t i = 0;
+            
+            char ** const lines = p_text_res->m_lines;
+            
+            // -----------------------------
+            
+            for(i = 0; i < p_text_res->m_num_lines; i += 1)
+            {
+                if( lines[i] )
+                {
+                    free( lines[i] );
+                    
+                    lines[i] = NULL;
+                }
+            }
+            
+            free(p_text_res->m_lines);
+            
+            p_text_res->m_lines = NULL;
+        }
+    }
+
+// =============================================================================
+
 HWND debug_window = 0;
 HWND debug_box = 0;
 
@@ -4041,186 +4081,6 @@ okovl:
 
 // =============================================================================
 
-void
-SaveOverlays(FDOC * const doc)
-{
-    int i, // counter variable
-        j = 0,
-        k, // another counter variable
-        l,
-        m,
-        n,
-        o,
-        p,
-        q = 0,
-        r = 0;
-    
-    unsigned short *b = doc->ovlbuf;
-    unsigned char *rom = doc->rom;
-    
-    char buf[4096];
-    
-    // if the overlays have not been loaded, exit the routine. 
-    if(doc->o_loaded != 1)
-        return;
-    
-    m = 0;
-    o = 0;
-    
-    for(i = 0; i < 128; i++)
-    {
-        for(k = 0; k < i; k++)
-        {
-            // if b[k] is the same as the last one in the list (b[i]), copy it in the rom
-            if(b[k] == b[i])
-            {
-                ( (short*) ( rom + 0x77664 ) )[i] = ((short*) ( rom + 0x77664 ))[k];
-                
-                // skip to the next overlay. i.e. increment i.
-                goto nextovl;
-            }
-        }
-        
-        // if none of them match, take i and make k into the value of b[i].
-        k = b[i];
-        
-        ( (short*) ( rom + 0x77664 ) )[i] = j + 0xf764;
-        
-        if( !( doc->o_enb[i >> 3] & (1 << (i & 7) ) ))
-            // beats me. seems like loop around if certain overlays are not enabled.
-            continue;
-        
-        // convert m to the next lowest even integer. 
-        if(b[k] == 0xfffe && m)
-        {
-            ((short*) ( rom + 0x77664 ))[i] = m + 0xf864;
-            
-            continue;
-        }
-        
-        p = 0;
-        
-        k = b[i];
-        
-        n = 0xfffe;
-        
-        for(;;)
-        {
-            l = b[k++];
-            
-            if(l >= 0xfffe)
-                break;
-            
-            if(l == 0x918)
-                q = j;
-            
-            if(l - n == 1)
-            {
-                if(n == p + 0x918)
-                    p++;
-                else
-                    p = 0;
-                
-                buf[j++] = 0x1a;
-            }
-            else
-            {
-                p = 0;
-                
-                if(l - n == 2)
-                {
-                    *(short*) (buf + j) = 0x1a1a;
-                    j += 2;
-                }
-                else
-                {
-                    buf[j] = 0xa9;
-                    
-                    *(short*) (buf + j + 1) = l;
-                    
-                    j += 3;
-                }
-            }
-            
-            n = l;
-            
-            for(;;)
-            {
-                if(j >= 0x89c)
-                {
-error:
-                    MessageBox(framewnd,"Not enough room for overlays","Bad error happened",MB_OK);
-                    return;
-                }
-                
-                l = b[k++];
-                
-                if(l >= 0xfffe)
-                    break;
-                
-                if(!p)
-                    r = l;
-                else if( map16ofs[p] != l - r)
-                    p = 0;
-                
-                buf[j] = 0x8d;
-                
-                *(short*) (buf + j + 1) = (l << 1) + 0x2000;
-                j += 3;
-            }
-            
-            if(l == 0xfffe)
-                break;
-        }
-        
-        if(p == 3)
-        {
-            j = q;
-            buf[j] = 0xa2;
-            
-            *(short*) (buf + j + 1) = r << 1;
-            
-            if(o)
-            {
-                buf[j + 3] = 0x4c;
-                
-                *(short*) (buf + j + 4) = o + 0xf764;
-                j += 6;
-            }
-            else
-            {
-                j += 3;
-                o = j;
-                
-                *(int*) (buf + j) = 0x9d0918a9;
-                *(int*) (buf + j + 4) = 0x9d1a2000;
-                *(int*) (buf + j + 8) = 0x9d1a2002;
-                *(int*) (buf + j + 12) = 0x9d1a2080;
-                *(int*) (buf + j + 16) = 0x602082;
-                
-                j += 19;
-            }
-        }
-        else
-            buf[j++] = 0x60;
-        
-        if(!m)
-            m = j;
-        
-        if(j >= 0x89c)
-            goto error;
-        
-nextovl:;
-    }
-    
-    memcpy(rom + 0x77764, buf, j);
-    
-    doc->oolend = j + 0x77764;
-    doc->o_modf = 0;
-}
-
-// =============================================================================
-
 void Unloadovl(FDOC *doc)
 {
     // if the overlays are loaded, free the overlay buffer.
@@ -4421,54 +4281,6 @@ Paintspr(HDC const p_dc,
 #endif
     
     TextOut(p_dc, p_x, p_y, buffer, final_len);
-}
-
-void Savepersp(PERSPEDIT*ed)
-{
-    memcpy(ed->ew.doc->rom + 0x4ff8c,ed->buf,ed->len);
-    ed->ew.doc->modf=1;
-}
-
-void Savedungmap(LMAPEDIT*ed)
-{
-    int i,j,k,l,m,n,o,p;
-    unsigned char*rom=ed->ew.doc->rom;
-    m=*(short*)(rom + 0x56640) + 0x58000;
-    o=ed->ew.doc->dmend;
-    if(ed->ew.param<13) i=((short*)(rom + 0x57605))[ed->ew.param+1] + 0x58000;
-    else i=m;
-    j=((short*)(rom + 0x57605))[ed->ew.param] + 0x58000;
-    if(ed->ew.param<13) k=((short*)(rom+m))[ed->ew.param+1] + 0x58000;
-    else k=o;
-    n=(ed->basements+ed->floors)*25;
-    l=((short*)(rom+m))[ed->ew.param] + 0x58000;
-    if(j+n-i+l+ed->len-k+o>0x57ce0) {
-        MessageBox(framewnd,"Not enough space","Bad error happened",MB_OK);
-        return;
-    }
-    memmove(rom+j+n,rom+i,o-i);
-    memcpy(rom+j,ed->rbuf,n);
-    for(p=ed->ew.param+1;p<14;p++)
-        ((short*)(rom + 0x57605))[p]+=j+n-i;
-    o+=j+n-i;
-    k+=j+n-i;
-    l+=j+n-i;
-    m+=j+n-i;
-    memmove(rom+l+ed->len,rom+k,o-k);
-    memcpy(rom+l,ed->buf,ed->len);
-    for(p=0;p<14;p++)
-        ((short*)(rom+m))[p]+=j+n-i;
-    for(p=ed->ew.param+1;p<14;p++)
-        ((short*)(rom+m))[p]+=l+ed->len-k;
-    o+=l+ed->len-k;
-    *(short*)(rom + 0x56640)=m - 0x8000;
-    ed->ew.doc->dmend=o;
-    rom[0x56196 + ed->ew.param]=ed->level;
-    ((short*)(rom + 0x56807))[ed->ew.param]=ed->bossroom;
-    ((short*)(rom + 0x56e79))[ed->ew.param]=(ed->bossroom==15)?-1:(ed->bosspos/25-ed->basements);
-    ((short*)(rom + 0x56e5d))[ed->ew.param]=ed->bossofs;
-    ((short*)(rom + 0x575d9))[ed->ew.param]=ed->basements+(ed->floors<<4)+(ed->bg<<8);
-    ed->ew.doc->modf=1;
 }
 
 // =============================================================================
@@ -5222,6 +5034,8 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                     {
                         size_t len = 0;
                         
+                        char * mru_temp = NULL;
+                        
                         // -------------------------
                         
                         if( (section_size - (k + 1) ) < 2)
@@ -5244,16 +5058,17 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                         
                         // Size (in bytes) is pascal style and preceeds
                         // the string / path.
-                        mrulist[j] =
-                        (char*) calloc(1,
-                                       (len + 1) );
+                        mru_temp = (char*) calloc(1,
+                                                  (len + 1) );
                         
-                        memcpy(mrulist[j],
+                        memcpy(mru_temp,
                                section_data + k,
                                len);
                         
                         // Null terminate the path.
-                        mrulist[j][len]=0;
+                        mru_temp[len] = 0;
+                        
+                        mrulist[j] = mru_temp;
                         
                         k += len;
                     }
@@ -5583,6 +5398,11 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     
     for(i=0;i<8;i++)
         DeleteObject(shade_brush[i]);
+    
+    FreeMRU();
+    
+    HM_TextResource_Free(&entrance_names);
+    HM_TextResource_Free(&area_names);
     
     return 0;
 }

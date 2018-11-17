@@ -18,44 +18,48 @@ void
 Updatesprites(void)
 {
     FDOC *doc;
+    
     HWND win;
+    
     OVEREDIT*oe;
     DUNGEDIT*ed;
+    
     RECT rc;
     
-    int i,j,k,m;
+    int i, j, k, m;
     
-    unsigned char*l;
+    unsigned char * l;
     
-    for(doc=firstdoc;doc;doc=doc->next)
+    for(doc = firstdoc; doc; doc = doc->next)
     {
-        for(i=0;i<144;i++)
+        for(i = 0; i < 144; i += 1)
         {
-            win=doc->overworld[i].win;
+            win = doc->overworld[i].win;
+            
             if(win)
             {
                 text_buf_ty text_buf;
                 
-                win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), 3001);
+                win = GetDlgItem(GetDlgItem(win, ID_SuperDlg), 3001);
                 
-                oe=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+                oe = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
                 
                 if( ! (oe->disp & SD_OverShowMarkers) )
                     continue;
                 
-                k=oe->esize[oe->sprset];
-                l=oe->ebuf[oe->sprset];
+                k = oe->esize[oe->sprset];
+                l = oe->ebuf[oe->sprset];
                 
-                for(j=0;j<k;j++)
+                for(j = 0; j < k; j++)
                 {
-                    rc.left=(l[j+1]<<4)-(oe->mapscrollh<<5);
-                    rc.top=(l[j]<<4)-(oe->mapscrollv<<5);
+                    rc.left = (l[j + 1] << 4) - (oe->mapscrollh << 5);
+                    rc.top = (l[j] << 4) - (oe->mapscrollv << 5);
                     
                     GetOverString(oe, 5, j, text_buf);
                     
                     Getstringobjsize(text_buf, &rc);
                     
-                    InvalidateRect(win,&rc,0);
+                    InvalidateRect(win, &rc, 0);
                 }
                 
                 if(i < 128)

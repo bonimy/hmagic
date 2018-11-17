@@ -1,9 +1,11 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "GdiObjects.h"
-#include "Callbacks.h"
-#include "resource.h"
+    #include "GdiObjects.h"
+
+    #include "Callbacks.h"
+
+    #include "resource.h"
 
 // =============================================================================
 

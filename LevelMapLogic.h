@@ -25,4 +25,8 @@
 
 // =============================================================================
 
+    extern void
+    Savedungmap(LMAPEDIT const * const  ed);
+
+
 #endif

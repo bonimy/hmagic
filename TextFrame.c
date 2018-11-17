@@ -1,10 +1,9 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
 
-// =============================================================================
+    #include "prototypes.h"
 
-    #define CP2C(x) x const * const
+    #include "Wrappers.h"
 
 // =============================================================================
 

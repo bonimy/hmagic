@@ -11,7 +11,12 @@ extern BOOL CALLBACK
 editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     static unsigned char *rom;
+    
+    // \task While it is true that this is a modal dialog, this still has
+    // a bit of code smell to it. Consider refactoring this into something
+    // managed by the caller and e.g. passed in via lparam.
     static EDITCOMMON ec;
+    
     static int gfxnum,sprgfx,palnum;
     static int init = 0;
     static BLOCKSEL8 bs;
@@ -29,28 +34,45 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     static HWND hc;
     switch(msg) {
     case WM_INITDIALOG:
+        
         memset(&ec,0,sizeof(ec));
+        
         rom=(ec.ew.doc=(FDOC*)lparam)->rom;
+        
         ec.bmih=zbmih;
         ec.gfxtmp=0;
         ec.anim=3;
         gfxnum=0;
+        
         init=1;
+        
         SetDlgItemInt(win,3000,0,0);
         SetDlgItemInt(win,3001,0,0);
         SetDlgItemInt(win,3002,0,0);
         SetDlgItemInt(win,3003,0,0);
+        
         init=0;
+        
         Addgraphwin((void*)&ec,1);
-        bs.ed=(void*)&ec;
-        hdc=GetDC(win);
-        InitBlksel8(hc=GetDlgItem(win,IDC_CUSTOM3),&bs,ec.hpal,hdc);
+        
+        bs.ed = (OVEREDIT*) &ec;
+        
+        hdc = GetDC(win);
+        
+        InitBlksel8(hc = GetDlgItem(win, IDC_CUSTOM3),
+                    &bs,ec.hpal,
+                    hdc);
+        
         ReleaseDC(win,hdc);
-        Setdispwin((void*)&ec);
+        
+        Setdispwin( (DUNGEDIT*) &ec);
+        
 loadnewgfx:
         
         for(i = 0; i < 8; i++)
+        {
             ec.blocksets[i] = rom[0x6073 + i + (ec.gfxtmp << 3)];
+        }
         
         for(i = 0; i < 4; i++)
         {
@@ -78,7 +100,13 @@ updscrn:
         
         DeleteDC(bs.bufdc);
         DeleteObject(bs.bufbmp);
-        Delgraphwin( (void*) &ec);
+        Delgraphwin( (DUNGEDIT*) &ec);
+
+        for(i = 0; i < 8; i++)
+        {
+            Releaseblks(ec.ew.doc,
+                        ec.blocksets[i] );
+        }
         
         break;
     
@@ -103,10 +131,15 @@ updscrn:
             break;
         }
         
-        if((wparam>>16)!=EN_CHANGE) break;
-        wparam&=65535;
-        i=GetDlgItemInt(win,wparam,0,0);
-        if(wparam==IDC_EDIT1) {
+        if( (wparam >> 16) != EN_CHANGE )
+            break;
+        
+        wparam &= 65535;
+        
+        i = GetDlgItemInt(win, wparam, 0, 0);
+        
+        if(wparam == IDC_EDIT1)
+        {
             bs.flags=(i&7)<<10;
             goto updscrn;
         }
@@ -130,41 +163,82 @@ updscrn:
         if(wparam<3012) {
             if(init>1) break;
             if(!init) rom[0x54b7 + (ec.gfxtmp<<3)+wparam]=i,ec.ew.doc->modf=1;
-freegfx:
-            for(i=0;i<8;i++) Releaseblks(ec.ew.doc,ec.blocksets[i]);
+            
+        freegfx:
+            
+            for(i = 0; i < 8; i++)
+            {
+                Releaseblks(ec.ew.doc,
+                            ec.blocksets[i]);
+            }
+            
             goto loadnewgfx;
         }
-        if(wparam<3016) {
+        
+        if(wparam < 3016)
+        {
             if(init>1) break;
             if(!init) rom[0x51d3 + (gfxnum<<2)+wparam]=i,ec.ew.doc->modf=1;
             goto freegfx;
         }
-        if(wparam<3020) {
-            if(!init) rom[0x4f8f + (sprgfx<<2)+wparam]=i,ec.ew.doc->modf=1;
-            if(init<2) Releaseblks(ec.ew.doc,ec.blocksets[wparam-3005]);
-            i+=115;
-            ec.blocksets[wparam-3005]=i;
-            Getblocks(ec.ew.doc,i);
-            if(init>1 && wparam!=3016) break;
+        
+        if(wparam < 3020)
+        {
+            if( ! init )
+                rom[0x4f8f + (sprgfx<<2)+wparam]=i,ec.ew.doc->modf=1;
+            
+            if(init < 2)
+                Releaseblks(ec.ew.doc,ec.blocksets[wparam-3005]);
+            
+            i += 115;
+            
+            ec.blocksets[wparam - 3005] = i;
+            Getblocks(ec.ew.doc, i);
+            
+            if(init > 1 && wparam != 3016)
+                break;
+            
             goto updscrn;
         }
-        if(wparam<3024) {
-            if(init>1 && wparam!=3020) break;
-            if(!init) rom[0x74894 + (palnum<<2)+wparam]=i,ec.ew.doc->modf=1;
-            buf2=rom+(palnum<<2) + 0x75460;
-            if(palnum<41) {
-                i=0x1bd734 + buf2[0]*90;
-                Loadpal(&ec,rom,i,0x21,15,6);
-                Loadpal(&ec,rom,i,0x89,7,1);
-                Loadpal(&ec,rom,0x1bd39e + buf2[1]*14,0x81,7,1);
-                Loadpal(&ec,rom,0x1bd4e0 + buf2[2]*14,0xd1,7,1);
-                Loadpal(&ec,rom,0x1bd4e0 + buf2[3]*14,0xe1,7,1);
-            } else {
-                if(buf2[0]<128) Loadpal(&ec,rom,0x1be86c + (((unsigned short*)(rom + 0xdec13))[buf2[0]]),0x29,7,3);
-                if(buf2[1]<128) Loadpal(&ec,rom,0x1be86c + (((unsigned short*)(rom + 0xdec13))[buf2[1]]),0x59,7,3);
-                if(buf2[2]<128) Loadpal(&ec,rom,0x1be604 + (((unsigned char*)(rom + 0xdebc6))[buf2[2]]),0x71,7,1);
+        
+        if(wparam < 3024)
+        {
+            if(init > 1 && wparam != 3020)
+                break;
+            
+            if( ! init )
+            {
+                rom[0x74894 + (palnum << 2) + wparam] = i;
+
+                ec.ew.doc->modf = 1;
             }
-            if(!ec.hpal) goto updscrn;
+            
+            buf2 = rom + (palnum << 2) + 0x75460;
+            
+            if(palnum < 41)
+            {
+                i = 0x1bd734 + buf2[0] * 90;
+                
+                Loadpal(&ec, rom, i, 0x21, 15, 6);
+                Loadpal(&ec, rom, i, 0x89, 7, 1);
+                Loadpal(&ec, rom, 0x1bd39e + buf2[1] * 14, 0x81, 7, 1);
+                Loadpal(&ec, rom, 0x1bd4e0 + buf2[2] * 14, 0xd1, 7, 1);
+                Loadpal(&ec, rom, 0x1bd4e0 + buf2[3] * 14, 0xe1, 7, 1);
+            }
+            else
+            {
+                if(buf2[0] < 128)
+                    Loadpal(&ec,rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[buf2[0]]),0x29,7,3);
+                
+                if(buf2[1] < 128)
+                    Loadpal(&ec,rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[buf2[1]]),0x59,7,3);
+                
+                if(buf2[2] < 128)
+                    Loadpal(&ec, rom, 0x1be604 + (((unsigned char*)(rom + 0xdebc6))[buf2[2]]),0x71,7,1);
+            }
+            
+            if( ! ec.hpal )
+                goto updscrn;
         }
     }
     return 0;

@@ -1,4 +1,18 @@
 
+/// Putting this in to see if this can help us find memory leaks.
+//{
+
+#if defined _DEBUG
+
+    #define _CRTDBG_MAP_ALLOC  
+    
+    #include <stdlib.h>  
+    #include <crtdbg.h>
+
+#endif
+
+//}
+
 #if !defined HMAGIC_STRUCTS_HEADER_GUARD
 
     #define HMAGIC_STRUCTS_HEADER_GUARD
@@ -135,10 +149,17 @@ typedef struct
     unsigned char*pv;
 } PATCH;
 
-typedef struct
+typedef struct tag_ASMHACK
 {
     char*filename;
+
+    /**
+        Seems to indicate, if non zero, that a patch should not be included
+        However, nothing in the program interface currently sets this to
+        anything other than zero.
+    */
     int flag;
+    
 } ASMHACK;
 
 // =============================================================================
@@ -490,10 +511,15 @@ typedef struct overedit
     short objx,objy;
     short selx,sely;
     short stselx,stsely;
+    
     unsigned short undobuf[0x400];
+    
     int undomodf;
+    
     short esize[3];
-    unsigned char*ebuf[3];
+    
+    uint8_t * ebuf[3];
+    
     unsigned char e_modf[3];
     char ecopy[3];
     short ssize;

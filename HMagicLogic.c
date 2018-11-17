@@ -23,7 +23,7 @@ char asmpath[MAX_PATH] = { 0 };
 
 char currdir[MAX_PATH] = { 0 };
 
-char * mrulist[4] =
+char const * mrulist[NUM_MaxMRU] =
 {
     0, 0, 0, 0
 };
@@ -60,32 +60,40 @@ HMENU filemenu = 0;
 
 // =============================================================================
 
-void
+extern void
 AddMRU(char * f)
 {
-    int i;
+    int i = 0;
     
-    for(i=0;i<4;i++)
+    // -----------------------------
+    
+    for(i = 0; i < NUM_MaxMRU; i++)
     {
-        if(mrulist[i] && !_stricmp(mrulist[i],f))
+        if( mrulist[i] && ! _stricmp(mrulist[i], f) )
         {
-            f = mrulist[i];
+            char const * f2 = mrulist[i];
+            
+            // -----------------------------
             
             for( ; i; i--)
-                mrulist[i] = mrulist[i-1];
+            {
+                mrulist[i] = mrulist[i - 1];
+            }
             
-            mrulist[0] = f;
+            mrulist[0] = f2;
             
             goto foundmru;
         }
     }
     
-    free(mrulist[3]);
+    free( (char*) mrulist[NUM_MaxMRU - 1] );
     
-    for(i = 3; i; i--)
-        mrulist[i] = mrulist[i-1];
+    for(i = (NUM_MaxMRU - 1); i; i--)
+    {
+        mrulist[i] = mrulist[i - 1];
+    }
     
-    mrulist[0]=_strdup(f);
+    mrulist[0] = _strdup(f);
     
 foundmru:
     
@@ -96,12 +104,14 @@ foundmru:
 
 // =============================================================================
 
-void
+extern void
 UpdMRU(void)
 {
-    int i;
+    int i = 0;
     
-    for(i=0;i<4;i++)
+    // -----------------------------
+    
+    for(i = 0; i < NUM_MaxMRU; i += 1)
     {
         DeleteMenu(filemenu, ID_MRU1 + i, 0);
         
@@ -122,3 +132,25 @@ UpdMRU(void)
         }
     }
 }
+
+// =============================================================================
+
+extern void
+FreeMRU(void)
+{
+    int i = 0;
+    
+    // -----------------------------
+    
+    for(i = 0; i < NUM_MaxMRU; i += 1)
+    {
+        if( mrulist[i] )
+        {
+            free( (void*) mrulist[i] );
+            
+            mrulist[i] = NULL;
+        }
+    }
+}
+
+// =============================================================================

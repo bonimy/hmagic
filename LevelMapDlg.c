@@ -172,13 +172,20 @@ updscrn:
         }
         break;
     case WM_DESTROY:
+        
         ed=(LMAPEDIT*)GetWindowLong(win,DWL_USER);
+        
         Delgraphwin((DUNGEDIT*)ed);
+        
         ed->ew.doc->dmaps[ed->ew.param]=0;
-        for(i=0;i<15;i++) Releaseblks(ed->ew.doc,ed->blocksets[i]);
+        
+        for(i=0;i<15;i++)
+            Releaseblks(ed->ew.doc,ed->blocksets[i]);
+        
         free(ed->rbuf);
         free(ed->buf);
         free(ed);
+        
         break;
     }
     return FALSE;

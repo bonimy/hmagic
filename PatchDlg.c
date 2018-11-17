@@ -48,7 +48,7 @@ PatchDlg_Init
     
     FDOC * const doc = ed->ew.doc;
     
-    ASMHACK * mod = doc->modules;
+    ASMHACK const * const mod = doc->modules;
     
     // -----------------------------
     
@@ -56,13 +56,13 @@ PatchDlg_Init
     
     j = doc->nummod;
     
-    for(i = 0; i < j; i++, mod++)
+    for(i = 0; i < j; i++)
     {
         SendDlgItemMessage(p_win,
                            ID_Patch_ModulesListBox,
                            LB_ADDSTRING,
                            0,
-                           (LPARAM) doc->modules[i].filename);
+                           (LPARAM) mod[i].filename);
     }
 }
 

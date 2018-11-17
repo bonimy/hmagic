@@ -77,6 +77,11 @@ dungproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         ed = (DUNGEDIT*) GetWindowLong(win,GWL_USERDATA);
         Delgraphwin(ed);
+        
+        free(ed->buf);
+        free(ed->sbuf);
+        free(ed->ebuf);
+        
         free(ed);
         
         break;

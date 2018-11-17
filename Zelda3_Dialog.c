@@ -152,10 +152,16 @@ SUPERDLG z3_dlg =
         
         // -----------------------------
         
-        adj_tvis.hParent = p_parent;
+        // So that the GUI setting of having children will be considered valid
+        // when passed for insertion.
+        adj_tvis.item.mask |= (TVIF_CHILDREN);
         
         // A newly added node can't possibly have any children.
         adj_tvis.item.cChildren = 0;
+        
+        // Explicitly define the relationship between the node we wish to
+        // insert and its parent.
+        adj_tvis.hParent = p_parent;
         
         hitem = (HTREEITEM) SendMessage
         (
@@ -182,6 +188,84 @@ SUPERDLG z3_dlg =
         HM_TreeView_SetItem(p_treeview, p_parent, &parent_tv_item);
         
         return hitem;
+    }
+
+// =============================================================================
+
+    // \task Move these functions to Wrappers.c, or begin subidividng the
+    // wrapper functions into logical units if that translation unit gets too big.
+    extern HTREEITEM
+    HM_TreeView_InsertSubroot
+    (
+        HWND                   const p_treeview,
+        HTREEITEM              const p_parent,
+        char           const * const p_label
+    )
+    {
+        BOOL has_children = FALSE;
+        
+        HTREEITEM hitem = NULL;
+        
+        TVITEM parent_tv_item = { 0 };
+        
+        // Copy so we can adjust the parent field.
+        TVINSERTSTRUCT tvis = { 0 };
+        
+        TVITEM * const item = &tvis.item;
+        
+        // -----------------------------
+        
+        tvis.hParent      = TVI_ROOT;
+        tvis.hInsertAfter = TVI_LAST;
+        
+        // So that the configurations that follow this instruction are taken
+        // into consideration when inserting the item.
+        item->mask =
+        (
+            TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE
+        );
+        
+        item->cChildren = 0;
+        item->lParam    = 0;
+        
+        item->pszText    = (LPTSTR) p_label;
+        
+        item->state      = 0;
+        item->stateMask  = TVIS_BOLD;
+        
+        hitem = HM_TreeView_InsertItem(p_treeview, p_parent, &tvis);
+        
+        if( (p_parent != NULL) && (p_parent != TVI_ROOT) )
+        {
+            HM_TreeView_GetItem(p_treeview,
+                                p_parent,
+                                &parent_tv_item);
+            
+            // Simultaneously checks for success of insertion of the item and
+            // also helps us decide how to set the apperance of the parent node.
+            has_children = HM_TreeView_HasChildren(p_treeview,
+                                                   p_parent);
+            
+            parent_tv_item.cChildren = has_children ? 1 : 0;
+            
+            HM_TreeView_SetItem(p_treeview,
+                                p_parent,
+                                &parent_tv_item);
+        }
+        
+        return hitem;
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_InsertRoot
+    (
+        HWND         const p_treeview,
+        char const * const p_label
+    )
+    {
+        return HM_TreeView_InsertSubroot(p_treeview, TVI_ROOT, p_label);
     }
 
 // =============================================================================
@@ -264,36 +348,6 @@ SUPERDLG z3_dlg =
         // (The message above returns what is intended to be interpreted as
         // a boolean)
         return (r == 1);
-    }
-
-// =============================================================================
-
-    extern HTREEITEM
-    HM_TreeView_InsertRoot
-    (
-        HWND         const p_treeview,
-        char const * const p_label
-    )
-    {
-        TVINSERTSTRUCT tvis = { 0 };
-        
-        TVITEM * const item = &tvis.item;
-        
-        // -----------------------------
-        
-        tvis.hParent      = TVI_ROOT;
-        tvis.hInsertAfter = TVI_LAST;
-        
-        item->mask      = (TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE);
-        item->cChildren = 0;
-        item->lParam    = 0;
-        
-        item->state      = 0;
-        item->stateMask  = TVIS_BOLD;
-        
-        item->pszText    = (LPTSTR) p_label;
-        
-        return HM_TreeView_InsertItem(p_treeview, NULL, &tvis);
     }
 
 // =============================================================================
@@ -504,8 +558,6 @@ SUPERDLG z3_dlg =
         
         TVINSERTSTRUCT tvi = { 0 };
         
-        HTREEITEM hitem;
-        
         HTREEITEM ow_root;
         HTREEITEM dung_root;
         HTREEITEM music_root;
@@ -554,7 +606,7 @@ SUPERDLG z3_dlg =
         
         tvi.item.pszText = buf;
         
-        for(i = 0; i < 133; i++)
+        for(i = 0; i < 133; i += 1)
         {
             tvi.item.lParam = (i + 0x30000);
             
@@ -566,7 +618,7 @@ SUPERDLG z3_dlg =
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
-        for(i = 0; i < 7; i++)
+        for(i = 0; i < 7; i += 1)
         {
             tvi.item.lParam = (i + 0x30085);
             
@@ -575,7 +627,7 @@ SUPERDLG z3_dlg =
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
-        for(i = 0; i < 19; i++)
+        for(i = 0; i < 19; i += 1)
         {
             tvi.item.lParam = (i + 0x3008c);
             
@@ -584,7 +636,7 @@ SUPERDLG z3_dlg =
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
-        for(i = 0; i < 8; i++)
+        for(i = 0; i < 8; i += 1)
         {
             tvi.item.lParam = (i + 0x3009f);
             
@@ -604,7 +656,7 @@ SUPERDLG z3_dlg =
         
         tvi.item.pszText = buf;
         
-        for(i = 0; i < 3; i++)
+        for(i = 0; i < 3; i += 1)
         {
             tvi.item.lParam = (i + 0x40000);
             
@@ -640,11 +692,11 @@ SUPERDLG z3_dlg =
         
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
-        hitem = pal_root = HM_TreeView_InsertRoot(hc, "Palettes");
+        pal_root = HM_TreeView_InsertRoot(hc, "Palettes");
         
         k = 0;
         
-        for(i = 0; i < 16; i++)
+        for(i = 0; i < 16; i += 1)
         {
             HTREEITEM sub_root = NULL;
             
@@ -652,9 +704,9 @@ SUPERDLG z3_dlg =
             
             l = pal_num[i];
             
-            tvi.item.pszText = (LPSTR) pal_text[i];
-            
-            sub_root = HM_TreeView_InsertItem(hc, pal_root, &tvi);
+            sub_root = HM_TreeView_InsertSubroot(hc,
+                                                 pal_root,
+                                                 pal_text[i]);
             
             tvi.item.pszText = buf;
             
@@ -677,7 +729,7 @@ SUPERDLG z3_dlg =
         
         palace_map_root = HM_TreeView_InsertRoot(hc, "Dungeon Maps");
         
-        for(i = 0; i < 14; i++)
+        for(i = 0; i < 14; i += 1)
         {
             tvi.item.lParam = (i + 0x80000);
             
@@ -691,7 +743,7 @@ SUPERDLG z3_dlg =
         
         dung_props_root = HM_TreeView_InsertRoot(hc, "Dungeon properties");
         
-        for(i = 0; i < 12; i++)
+        for(i = 0; i < 12; i += 1)
         {
             tvi.item.lParam = (i + 0x90000);
             
@@ -705,7 +757,7 @@ SUPERDLG z3_dlg =
         
         menu_root = HM_TreeView_InsertRoot(hc, "Menu screens");
         
-        for(i = 0; i < 11; i++)
+        for(i = 0; i < 11; i += 1)
         {
             tvi.item.lParam = (i + 0xa0000);
             
@@ -765,6 +817,10 @@ z3dlgproc(HWND win,
     
     // -----------------------------
     
+#if defined _DEBUG
+    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );      
+#endif
+    
     switch(msg)
     {
     
@@ -785,6 +841,12 @@ z3dlgproc(HWND win,
             
             switch(notific->code)
             {
+            
+            case NM_RCLICK:
+                
+                // Is joek. Put in a collapse all or expand all at some point
+                // maybe.
+                // MessageBox(win, "Hey don't do that!", "Really!", MB_OK);
             
             case NM_DBLCLK:
                 

@@ -232,18 +232,6 @@ Editwin(FDOC       * const doc,
         LPARAM       const param,
         int          const size);
 
-// \task These belong in a *Logic.h header flie
-void
-Savedungmap(LMAPEDIT*ed);
-void
-Savepersp(PERSPEDIT*ed);
-void
-Savesongs(FDOC *doc);
-void
-SaveOverlays(FDOC * const doc);
-void
-Updatesprites(void);
-
 void
 HM_RegisterClasses(HINSTANCE p_inst);
 

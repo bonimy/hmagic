@@ -17,6 +17,13 @@
 
 // =============================================================================
 
+    enum
+    {
+        NUM_MaxMRU = 4
+    };
+
+// =============================================================================
+
 typedef
 struct
 {
@@ -44,7 +51,7 @@ struct
 
     extern char vererror_str[];
 
-    extern char * mrulist[4];
+    extern char const * mrulist[NUM_MaxMRU];
 
     extern uint16_t soundvol;
 
@@ -60,14 +67,18 @@ struct
     extern ZCHANNEL zchans[8];
 
     extern HMENU filemenu;
-
+    
 // =============================================================================
 
-    void
+    extern void
     AddMRU(char * f);
 
-    void
+    extern void
     UpdMRU(void);
+
+    extern void
+    FreeMRU(void);
+
 
     extern void
     ProcessMessage(MSG * msg);

@@ -29,7 +29,7 @@ SD_ENTRY text_sd[] =
     {
         "EDIT",
         "",
-        10, 95, 10, 30,
+        10, 95, 10, 40,
         ID_TextEditWindow,
         (
             WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_BORDER | WS_CLIPSIBLINGS
@@ -469,7 +469,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 {
                     int dict_entry_offset = 0;
                     
-                    ZTextMessage zmsg;
+                    ZTextMessage zmsg = { 0 };
                     
                     // -----------------------------
                     
@@ -478,14 +478,13 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                     
                     dict_entry_offset = rom_addr_split(to->bank, l);
                     
-                    zmsg.m_len = (k - l);
-                    zmsg.m_text = (uint8_t*) calloc(1, zmsg.m_len + 1);
-                    
-                    memcpy(zmsg.m_text,
-                           rom + dict_entry_offset,
-                           zmsg.m_len);
+                    ZTextMessage_AppendStream(&zmsg,
+                                              rom + dict_entry_offset,
+                                              (k - l) );
                     
                     Makeasciistring(doc, &zmsg, &asc_msg);
+                    
+                    ZTextMessage_Free(&zmsg);
                 }
                 else
                 {

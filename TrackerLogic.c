@@ -325,8 +325,13 @@ short Loadscmd(FDOC*doc,unsigned short addr,short bank,int t)
         sr[lastsr].first=h;
         sr[lastsr].start=addr;
         sr[lastsr].inst++;
-    } else {
-        if(doc->srsize==doc->srnum) doc->sr=realloc(doc->sr,(doc->srsize+=16)*sizeof(SRANGE));
+    }
+    else
+    {
+        if(doc->srsize == doc->srnum)
+            doc->sr = realloc(doc->sr,
+                              (doc->srsize += 16) * sizeof(SRANGE) );
+        
         lastsr=doc->srnum;
         sr=doc->sr+(doc->srnum++);
         sr->start=addr;
@@ -338,8 +343,10 @@ short Loadscmd(FDOC*doc,unsigned short addr,short bank,int t)
         sr->bank=d;
         sc[sc[i].prev].next=-1;
     }
+    
     sc[i].prev=-1;
     doc->m_free=i;
+    
     return h;
 }
 
@@ -498,41 +505,79 @@ foundwave:
         l = 1024;
         u = t = 0;
         
-        for(;;) {
-            m=*(d++);
-            range=(m>>4)+8;
-            filter=(m&12)>>2;
-            for(n=0;n<8;n++) {
-                o=(*d)>>4;
-                if(o>7) o-=16;
-                o<<=range;
-                if(filter) o+=(t*fil1[filter]>>fil2[filter])-((u&-256)*fil3[filter]>>4);
-                if(o>0x7fffff) o=0x7fffff;
-                if(o < -0x800000) o = -0x800000;
-                u=o;
+        for(;;)
+        {
+            m = *(d++);
+            
+            range  = (m >> 4) + 8;
+            filter = (m & 12) >> 2;
+            
+            for(n = 0; n < 8; n++)
+            {
+                o = (*d) >> 4;
+                
+                if(o > 7)
+                    o -= 16;
+                
+                o <<= range;
+                
+                if(filter)
+                    o += ( t * fil1[filter] >> fil2[filter] )
+                       - ( (u & -256) * fil3[filter] >> 4 );
+                
+                if(o > 0x7fffff)
+                    o = 0x7fffff;
+                
+                if(o < -0x800000)
+                    o = -0x800000;
+                
+                u = o;
+                
 // \code             if(t>0x7fffff) t=0x7fffff;
 // \code              if(t < -0x800000) t=-0x800000;
-                e[k++]=o>>8;
-                o=*(d++)&15;
-                if(o>7) o-=16;
-                o<<=range;
-                if(filter) o+=(u*fil1[filter]>>fil2[filter])-((t&-256)*fil3[filter]>>4);
+                
+                e[k++] = o >> 8;
+                
+                o = *(d++) &15;
+                
+                if(o > 7)
+                    o -= 16;
+                
+                o <<= range;
+                
+                if(filter)
+                    o+=(u*fil1[filter]>>fil2[filter])-((t&-256)*fil3[filter]>>4);
+                
                 if(o>0x7fffff) o=0x7fffff;
+                
                 if(o < -0x800000) o = -0x800000;
-                t=o;
+                
+                t = o;
 // \code             if(u>0x7fffff) u=0x7fffff;
 // \code             if(u < -0x800000) u= -0x800000;
                 e[k++]=o>>8;
             }
-            if(m&1) {zw->lflag=(m&2)>>1; break;}
+            
+            if(m & 1)
+            {
+                zw->lflag=(m&2)>>1; break;}
             if(k==l) {l+=1024;e=realloc(e,l<<1);}
         }
+        
         e = zw->buf = realloc(e, (k + 1) << 1);
-        zw->lopst=(((unsigned short*)b)[i+1]-j)*16/9;
-        if(zw->lflag) e[k]=e[zw->lopst]; else e[k]=0;
-        zw->end=k;
+        
+        zw->lopst = (((unsigned short *) b)[i + 1] - j) * 16 / 9;
+        
+        if(zw->lflag)
+            e[k] = e[zw->lopst];
+        else
+            e[k] = 0;
+        
+        zw->end = k;
+        
         zw++;
     }
+    
     doc->numwave=i>>1;
     doc->m_loaded=1;
     doc->w_modf=0;

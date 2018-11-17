@@ -222,6 +222,8 @@ LoadText(FDOC * const doc)
                 // indicate that text is loaded and return
                 doc->t_loaded = 1;
                 
+                ZTextMessage_Free(&msg);
+                
                 return;
             }
             else if(a < tc->zchar_bound)

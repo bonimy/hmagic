@@ -1,7 +1,9 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "prototypes.h"
+    #include "prototypes.h"
+
+    #include "PerspectiveLogic.h"
 
 // =============================================================================
 
