@@ -156,7 +156,7 @@ char const * const tcmd_str[] =
 
 enum
 {
-    NUM_CmdStrings = sizeof(tcmd_str) / sizeof(char const *)
+    NUM_CmdStrings = sizeof(tcmd_str) / sizeof(tcmd_str[0]),
 };
 
 // =============================================================================

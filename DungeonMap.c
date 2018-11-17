@@ -3695,12 +3695,15 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
         }
         else if(i < 0x138)
         {
-            int _ = (dm_k -= 0x40);
+            int _ = (i -= 0x40);
             int j = obj3_t[dm_k];
             
-            dm_l = (j == 0) | (j == 2);
+            dm_k = _;
             
-            (void) _;
+            // \task This logic doesn't work. Just disabling it for
+            // now until we can figure out what the original intent
+            // was.
+            // dm_l = (j == 0) | ( (j == 2) );
         }
         else
         {
