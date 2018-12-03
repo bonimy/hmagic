@@ -125,11 +125,11 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         ZTextMessage zmsg = { 0 };
         
-        AsciiTextMessage amsg = { 0 };
+        AString amsg = { 0 };
         
         // -----------------------------
         
-        AsciiTextMessage_InitSized(&amsg, ted_len + 1);
+        AString_InitSized(&amsg, ted_len + 1);
         
         // \task This sequence has code smell, it would be nice if
         // we could directly initialize ascii text message from
@@ -182,7 +182,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                     MessageBeep(0);
                     
                     ZTextMessage_Free(&zmsg);
-                    AsciiTextMessage_Free(&amsg);
+                    AString_Free(&amsg);
                     
                     return;
                 }
@@ -244,7 +244,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             return;
         }
         
-        AsciiTextMessage_Free(&amsg);
+        AString_Free(&amsg);
         
         doc->t_modf = 1;
     }
@@ -263,7 +263,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         size_t m_i = 0;
         
-        AsciiTextMessage asc_msg = { 0 };
+        AString asc_msg = { 0 };
         
         // -----------------------------
         
@@ -272,7 +272,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             size_t dummy_len = 0;
             int    write_len = 0;
             
-            AsciiTextMessage_Init(&asc_msg);
+            AString_Init(&asc_msg);
             
             Makeasciistring(p_doc,
                             &p_doc->text_bufz[m_i],
@@ -293,7 +293,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             free(text_buf);
         }
         
-        AsciiTextMessage_Free(&asc_msg);
+        AString_Free(&asc_msg);
     }
 
 // =============================================================================
@@ -315,7 +315,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
 
         text_offsets_ty const * const to = &offsets.text;
         
-        AsciiTextMessage amsg = { 0 };
+        AString amsg = { 0 };
         
         ZTextMessage zmsg = { 0 };
         
@@ -367,7 +367,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         }
         
         ZTextMessage_Free(&zmsg);
-        AsciiTextMessage_Free(&amsg);
+        AString_Free(&amsg);
     }
 
 // =============================================================================
@@ -408,7 +408,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     unsigned char *rom;
     
-    AsciiTextMessage asc_msg = { 0 } ;
+    AString asc_msg = { 0 } ;
     
     text_offsets_ty const * const to = &offsets.text;
     
@@ -538,7 +538,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         break;
     }
     
-    AsciiTextMessage_Free(&asc_msg);
+    AString_Free(&asc_msg);
     
     return FALSE;
 }

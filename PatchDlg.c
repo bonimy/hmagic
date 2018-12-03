@@ -3,6 +3,8 @@
 
     #include "prototypes.h"
 
+    #include "Wrappers.h"
+
     #include "Callbacks.h"
 
     #include "PatchEnum.h"
@@ -12,7 +14,18 @@
 
 SD_ENTRY patch_sd[] =
 {
-    {"LISTBOX","",0,20,100,70, ID_Patch_ModulesListBox, WS_VISIBLE|WS_CHILD|LBS_NOTIFY|WS_VSCROLL,WS_EX_CLIENTEDGE,10},
+    {
+        WC_LISTBOX,
+        "",
+        0, 20, 100, 70,
+        ID_Patch_ModulesListBox,
+        (
+            WS_VISIBLE | WS_CHILD | WS_VSCROLL
+          | LBS_NOTIFY
+        ),
+        WS_EX_CLIENTEDGE,
+        10
+    },
     {"STATIC","Loaded modules:",0,0,0,0, ID_Patch_ModulesLabel, WS_VISIBLE|WS_CHILD,0,0},
     {"BUTTON","Add",80,20,0,20, ID_Patch_AddModuleButton, WS_VISIBLE|WS_CHILD,0,3},
     {"BUTTON","Remove",80,44,0,20, ID_Patch_RemoveModuleButton, WS_VISIBLE|WS_CHILD,0,3},
@@ -24,11 +37,11 @@ SD_ENTRY patch_sd[] =
 SUPERDLG patchdlg =
 {
     "",
-    patchdlgproc,
+    PatchDlg,
     WS_CHILD | WS_VISIBLE,
     200,
     200,
-    5,
+    MACRO_ArrayLength(patch_sd),
     patch_sd
 };
 
@@ -160,7 +173,7 @@ PatchDlg_RemoveModule
     
     // -----------------------------
     
-    if(i == -1)
+    if(i == LB_ERR)
     {
         return;
     }
@@ -171,11 +184,26 @@ PatchDlg_RemoveModule
                        i,
                        (LPARAM) 0);
     
+    if(always)
+    {
+        CP2(ASMHACK) mod = (doc->modules + i);
+        
+        // -----------------------------
+        
+        if(mod->filename)
+        {
+            free(mod->filename);
+            
+            mod->filename = NULL;
+            mod->flag     = 0;
+        }
+    }
+        
     doc->nummod--;
     
-    memcpy(doc->modules+i,
-           doc->modules+i+1,
-           (doc->nummod-i) * sizeof(ASMHACK));
+    memcpy(doc->modules + i,
+           doc->modules + i + 1,
+           (doc->nummod - i) * sizeof(ASMHACK));
     
     doc->modules = (ASMHACK*) realloc(doc->modules,
                                       sizeof(ASMHACK) * doc->nummod);
@@ -186,7 +214,7 @@ PatchDlg_RemoveModule
 // =============================================================================
 
 extern BOOL CALLBACK
-patchdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+PatchDlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     PATCHLOAD*ed;
     
@@ -228,7 +256,7 @@ patchdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         case ID_Patch_BuildButton:
             
-            Buildpatches(doc);
+            Patch_Build(doc);
             
             break;
         }

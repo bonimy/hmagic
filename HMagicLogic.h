@@ -24,6 +24,14 @@
 
 // =============================================================================
 
+    enum tag_HM_AppMsgs
+    {
+        HM_WM_1,
+
+    } HM_AppMsgs;
+
+// =============================================================================
+
 typedef
 struct
 {
@@ -49,7 +57,8 @@ struct
 
     extern char currdir[MAX_PATH];
 
-    extern char vererror_str[];
+    extern char const
+    vererror_str[];
 
     extern char const * mrulist[NUM_MaxMRU];
 
@@ -79,10 +88,8 @@ struct
     extern void
     FreeMRU(void);
 
-
     extern void
     ProcessMessage(MSG * msg);
-
 
 // =============================================================================
 

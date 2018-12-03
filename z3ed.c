@@ -74,6 +74,8 @@
 #include "Callbacks.h"
 #include "Wrappers.h"
 
+#include "GdiObjects.h"
+
 #include "HMagicEnum.h"
 #include "HMagicLogic.h"
 #include "HMagicUtility.h"
@@ -95,11 +97,7 @@
 #include "AudioLogic.h"
 #include "SampleEnum.h"
 
-#include "TrackerLogic.h"
-
-// \task Probably will move this once the worldmap super dialog procedure gets
-// its own file.
-#include "WorldMapLogic.h"
+    #include "TrackerLogic.h"
 
     #include "TileMapLogic.h"
 
@@ -219,46 +217,12 @@ const short bg3blkofs[4] = {221,222,220,0};
 
 RECT const empty_rect = { 0, 0, 0, 0 };
 
-HPEN green_pen,
-     null_pen,
-     white_pen,
-     blue_pen,
-     black_pen,
-     gray_pen = 0,
-     tint_pen = 0;
-
-HBRUSH black_brush,
-       white_brush,
-       green_brush,
-       yellow_brush,
-       purple_brush,
-       red_brush,
-       blue_brush,
-       gray_brush,
-       tint_br = 0;
-
-HGDIOBJ trk_font;
-
-HCURSOR normal_cursor,
-        forbid_cursor,
-        wait_cursor;
-
-HCURSOR sizecsor[5];
-
-HBITMAP arrows_imgs[4];
-
-HANDLE shade_brush[8];
-
 // The handle to the program
 HINSTANCE hinstance;
 
 HWND framewnd, clientwnd;
 
 RGBQUAD darkcolor={80,136,144,0};
-
-RGBQUAD const blackcolor={0,0,0,0};
-
-BITMAPINFOHEADER zbmih={sizeof(BITMAPINFOHEADER),32,32,1,8,BI_RGB,0,0,0,256,0};
 
 SDCREATE *firstdlg = 0, *lastdlg = 0;
 
@@ -279,7 +243,7 @@ HM_TextResource area_names;
 
 HDC objdc;
 
-HBITMAP objbmp;
+HACCEL actab;
 
 // =============================================================================
 
@@ -1535,9 +1499,15 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     const static char *cls_def[] = {"BUTTON","EDIT","STATIC","LISTBOX","SCROLLBAR","COMBOBOX"};
     
-    if(!wver)
+    // -----------------------------
+    
+    if( ! wver )
         return DialogBoxParam(hinst, id, owner, dlgproc, param);
     
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    // We end up here if we're running on Win32S
+    // (32-bit windows emulated on 16-bit Windows)
     rc = FindResource(hinst, id, RT_DIALOG);
     
     if(!rc)
@@ -2870,23 +2840,32 @@ void CALLBACK testfunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 
 // =============================================================================
 
-HACCEL actab;
-
 extern void
 ProcessMessage(MSG * msg)
 {
     RECT rc;
+    
     SDCREATE *sdc;
-    if(!TranslateMDISysAccel(clientwnd,msg)) {
-        if(!TranslateAccelerator(framewnd,actab,msg)) {
-            if(msg->message==WM_MOUSEMOVE) {
+    
+    if( ! TranslateMDISysAccel(clientwnd, msg) )
+    {
+        if( ! TranslateAccelerator(framewnd, actab, msg) )
+        {
+            if(msg->message == WM_MOUSEMOVE)
+            {
                 GetWindowRect(msg->hwnd,&rc);
                 mouse_x=LOWORD(msg->lParam)+rc.left;
                 mouse_y=HIWORD(msg->lParam)+rc.top;     
             }
-            for(sdc=firstdlg;sdc;sdc=sdc->next)
-                if(IsDialogMessage(sdc->win,msg)) break;
-            if(!sdc) {
+            
+            for(sdc = firstdlg; sdc; sdc = sdc->next)
+            {
+                if(IsDialogMessage(sdc->win,msg))
+                    break;
+            }
+            
+            if( ! sdc )
+            {
                 TranslateMessage(msg);
                 DispatchMessage(msg);
             }
@@ -4240,11 +4219,9 @@ Paintspr(HDC const p_dc,
     
     // -----------------------------
     
-    // \task Small nitpick, but "secrets" drawn at the far right
-    // edge of the screen can leave a half circle artifact.
-    // also the very bottom of the screen. This is owing to their
-    // being 8 pixel aligned. Certainly fixable but will have to look
-    // a bit in depth.
+    // \task Looks like the problems with Items (secrets) leaving artifacts
+    // was fixed. This routine should probably be gradually phased out as
+    // we apparently have better alternatives now.
     
     // Probably not strictly necessary, but the program doesn't make a point
     // to set it anywhere more general.
@@ -4475,10 +4452,6 @@ SD_ENTRY persp_sd[]={
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
-};
-
-SUPERDLG overdlg={
-    "",overdlgproc,WS_CHILD|WS_VISIBLE,560,140, SD_OverNumControls, over_sd
 };
 
 SUPERDLG trackdlg = {
@@ -4784,13 +4757,246 @@ LoadSpriteNamesFile(void)
 
 // =============================================================================
 
-int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
+    void
+    HMagic_MessageLoop(void)
+    {
+        MSG msg;
+        
+        while( GetMessage(&msg, 0, 0, 0) )
+        {
+            if(debug_box && (msg.hwnd == debug_box) )
+            {
+                if(msg.message == WM_LBUTTONDOWN && ! always)
+                {
+                    HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
+                    
+                    char class_name[0x200];
+                    
+                    GetClassName(below, class_name, 0x200);
+                    
+                    msg.hwnd = below;
+                    
+                    DispatchMessage(&msg);
+                    
+                    continue;
+                }
+            }
+            
+            if(msg.message == WM_MOUSEWHEEL)
+            {
+                POINT pt;
+                GetCursorPos(&pt);
+                
+                msg.hwnd = WindowFromPoint(pt);
+                
+                DispatchMessage(&msg);
+                
+                continue;
+            }
+            
+            ProcessMessage(&msg);
+        }
+    }
+
+// =============================================================================
+
+void
+HMagic_TearDown(void)
+{
+    uint8_t * b;
+    uint8_t * b2;
+
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    
+    HANDLE h = INVALID_HANDLE_VALUE;
+    
+    // -----------------------------
+    
+    if(cfg_modf)
+    {
+        DWORD write_bytes = 0;
+        
+        // Descriptor for the configuration section.
+        uint8_t desc[5];
+        
+        SetCurrentDirectory(currdir);
+        h=CreateFile("HMAGIC.CFG",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
+        
+        if(cfg_flag & CFG_SPRNAMES_LOADED)
+        {
+            j=0;
+            
+            for(i = 0; i < 0x11c; i++)
+                j += strlen(sprname[i]) + 1;
+            
+            b2 = b = (unsigned char*) malloc(j + 5);
+            *b2=0;
+            
+            stle32b(b2 + 1, j);
+            
+            b2 += 5;
+            
+            for(i=0;i<0x11c;i++)
+            {
+                k=strlen(sprname[i]);
+                (*b2) = (unsigned char) k;
+                b2++;
+                memcpy(b2,sprname[i],k);
+                b2+=k;
+            }
+            
+            // \note Writes a sprite names file if you hold shift while
+            // saving. Okay then...
+            if(GetKeyState(VK_SHIFT) & 128)
+            {
+                HANDLE const h2 = CreateFile("SPRNAME.DAT",
+                                             GENERIC_WRITE,
+                                             0,
+                                             0,
+                                             CREATE_ALWAYS,
+                                             0,
+                                             0);
+                
+                WriteFile(h2, b, j + 5, &write_bytes, 0);
+                
+                CloseHandle(h2);
+            }
+            
+            WriteFile(h, b, j + 5, &write_bytes, 0);
+            free(b);
+        }
+        
+        if(cfg_flag & CFG_MRU_LOADED)
+        {
+            j = 0;
+            
+            // Calculate total length required for an MRU section.
+            for(i = 0; i < 4; i++)
+            {
+                if( !mrulist[i] )
+                    break;
+                
+                j += strlen(mrulist[i]) + 1;
+            }
+            
+            b2 = b = (unsigned char*) malloc(j + 6);
+            
+            b2[0] = 1;
+            
+            stle32b(b2 + 1, j + 1);
+            
+            // Write how many MRU entries follow. Note that this could be
+            // zero, in which case the overall written out section is only
+            // 6 bytes long.
+            b2[5] = (unsigned char) i;
+            
+            b2 += 6;
+            
+            for(i = 0; i < 4; i++)
+            {
+                if(!mrulist[i])
+                    break;
+                
+                k = strlen(mrulist[i]);
+                
+                (*b2) = (unsigned char) k;
+                
+                b2++;
+                
+                memcpy(b2, mrulist[i], k);
+                
+                b2 += k;
+            }
+            
+            WriteFile(h, b, j + 6, &write_bytes, 0);
+            
+            free(b);
+        }
+        
+        if(cfg_flag & CFG_SNDVOL_LOADED)
+        {
+            uint8_t section[2];
+            
+            // -----------------------------
+            
+            desc[0] = 2;
+            
+            stle32b(desc + 1, 2);
+            
+            stle16b(section, soundvol);
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            WriteFile(h, section, 2, &write_bytes, 0);
+        }
+        
+        if(cfg_flag & CFG_MIDI_LOADED)
+        {
+            int i = 0;
+            
+            uint8_t entry[2];
+            
+            // -----------------------------
+            
+            desc[0] = 3;
+            
+            stle32b(desc + 1, 100);
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            
+            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+            {
+                stle16b(entry, midi_inst[i]);
+                
+                WriteFile(h, entry, 2, &write_bytes, 0);
+            }
+            
+            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+            {
+                stle16b(entry, midi_trans[i]);
+                
+                WriteFile(h, entry, 2, &write_bytes, 0);
+            }
+        }
+        
+        if(cfg_flag & CFG_ASM_LOADED)
+        {
+            desc[0] = 4;
+            
+            stle32b(desc + 1, strlen(asmpath) );
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);
+        }
+        
+        CloseHandle(h);
+    }
+    
+    Exitsound();
+    
+    HM_TearDownGDI();
+    
+    FreeMRU();
+    
+    HM_TextResource_Free(&entrance_names);
+    HM_TextResource_Free(&area_names);
+}
+
+// =============================================================================
+
+int WINAPI
+WinMain
+(
+    HINSTANCE p_inst,
+    HINSTANCE pinst,
+    LPSTR     cmdline,
+    int       cmdshow
+)
 {
     HMENU hmenu;
     
-    HANDLE h,h2;
-    
-    MSG msg;
+    HANDLE h;
     
     // device context handle
     HDC hdc;
@@ -4800,122 +5006,80 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
         k,
         l;
     
-    unsigned char *b, *b2;
+    (void) pinst, cmdline;
     
     // -----------------------------
     
-    (void) pinst, cmdline;
-    
     i = GetVersion();
-    
-    LoadOffsets();
     
     // Appears to be a check to see if we're running Win32s
     // (32-bit runtime for Windows 3.1)
     // There's probably someone in a remote bunker somewhere that is... idk.
     wver = ( (i < 0) && ( (i & 255) == 3) );
     
-    // both are globals
-    black_brush = (HBRUSH) GetStockObject(BLACK_BRUSH);
-    white_brush = (HBRUSH) GetStockObject(WHITE_BRUSH);
+    // set the global instance variable to this program.
+    hinstance = p_inst;
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
     
     InitCommonControls();
     
-    // set the global instance variable to this program.
-    hinstance=hinst;
+    HM_InitGDI(p_inst);
     
-    HM_RegisterClasses(hinst);
+    HM_RegisterClasses(p_inst);
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    LoadOffsets();
     
     //  postmsgfunc=&PostMessage;
     //  wsprintf(buffer,"%08X",hinstance);
     //  MessageBox(framewnd,buffer,"blah",MB_OK);
     
-    hmenu = LoadMenu(hinst,MAKEINTRESOURCE(IDR_MENU1));
+    hmenu = LoadMenu(p_inst, MAKEINTRESOURCE(IDR_MENU1));
     
     // load the one menu we have :)
     
     // file is the first menu.
     filemenu = GetSubMenu(hmenu,0);
     
-    framewnd=CreateWindowEx(WS_EX_LEFT,
-                            "ZEFRAME",
-                            "Hyrule Magic",
-                            WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            0,
-                            hmenu,
-                            hinst,
-                            0);
+    framewnd = CreateWindowEx
+    (
+        WS_EX_LEFT,
+        "ZEFRAME",
+        "Hyrule Magic",
+        (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN),
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        0,
+        hmenu,
+        p_inst,
+        0
+    );
     
     ShowWindow(framewnd, cmdshow);
     
-    actab=LoadAccelerators(hinstance,MAKEINTRESOURCE(IDR_ACCELERATOR1));
+    actab = LoadAccelerators(hinstance,
+                             MAKEINTRESOURCE(IDR_ACCELERATOR1) );
     
-    green_brush = CreateSolidBrush(0xff00);
-    purple_brush = CreateSolidBrush(0xff00ff);
-    yellow_brush = CreateSolidBrush(0xffff);
-    red_brush = CreateSolidBrush(0xff);
-    blue_brush = CreateSolidBrush(0xff0000);
-    gray_brush = CreateSolidBrush(0x608060);
+    hdc = GetDC(framewnd);
     
-    green_pen = CreatePen(PS_SOLID,0,0xff00);
+    if( GetDeviceCaps(hdc, RASTERCAPS) & RC_PALETTE )
+    {
+        palmode = 1;
+    }
     
-    null_pen  = (HPEN) GetStockObject(NULL_PEN);
-    white_pen = (HPEN) GetStockObject(WHITE_PEN);
+    objdc = CreateCompatibleDC(hdc);
+    objbmp = CreateCompatibleBitmap(hdc,512,512);
     
-    blue_pen  = (HPEN) CreatePen(PS_SOLID, 0, 0xff0000);
+    SelectObject(objdc, objbmp);
+    SelectObject(objdc, trk_font);
     
-    black_pen = (HPEN) GetStockObject(BLACK_PEN);
+    GetTextMetrics(objdc, &textmetric);
     
-    for(i=0;i<8;i++)
-        shade_brush[i]=CreateSolidBrush(i * 0x1f1f1f);
-    
-    forbid_cursor=LoadCursor(0,IDC_NO);
-    
-    arrows_imgs[0]=LoadBitmap(0,(LPSTR)OBM_LFARROW);
-    arrows_imgs[1]=LoadBitmap(0,(LPSTR)OBM_RGARROW);
-    arrows_imgs[2]=LoadBitmap(0,(LPSTR)OBM_UPARROW);
-    arrows_imgs[3]=LoadBitmap(0,(LPSTR)OBM_DNARROW);
-    
-    sizecsor[0] = LoadCursor(0,IDC_SIZENESW);
-    sizecsor[1] = LoadCursor(0,IDC_SIZENS);
-    sizecsor[2] = LoadCursor(0,IDC_SIZENWSE);
-    sizecsor[3] = LoadCursor(0,IDC_SIZEWE);
-    sizecsor[4] = normal_cursor;
-    
-    wait_cursor = LoadCursor(0, IDC_WAIT);
-    
-#if 0
-    trk_font = GetStockObject(ANSI_FIXED_FONT);
-#else
-    trk_font = CreateFont(16, 0,
-                          0, 0,
-                          0,
-                          FALSE, FALSE, FALSE,
-                          DEFAULT_CHARSET,
-                          OUT_OUTLINE_PRECIS,
-                          CLIP_DEFAULT_PRECIS,
-                          DEFAULT_QUALITY,
-#if 0
-                          | ANTIALIASED_QUALITY,
-#endif
-                          FIXED_PITCH, "Consolas");
-#endif
-
-    hdc=GetDC(framewnd);
-    
-    if(GetDeviceCaps(hdc,RASTERCAPS)&RC_PALETTE)
-        palmode=1;
-    
-    objdc=CreateCompatibleDC(hdc);
-    objbmp=CreateCompatibleBitmap(hdc,512,512);
-    SelectObject(objdc,objbmp);
-    SelectObject(objdc,trk_font);
-    GetTextMetrics(objdc,&textmetric);
-    ReleaseDC(framewnd,hdc);
+    ReleaseDC(framewnd, hdc);
     
     for(i = 0; i < 256; i++)
     {
@@ -4934,8 +5098,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                    0,
                    0);
     
-    for(j=0;j<4;j++)
-        mrulist[j]=0;
+    for(j = 0; j < 4; j += 1)
+    {
+        mrulist[j] = 0;
+    }
     
     if(h != INVALID_HANDLE_VALUE)
     {
@@ -5189,220 +5355,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     debug_window = CreateNotificationWindow(framewnd);
     debug_box    = CreateNotificationBox(framewnd);
     
-    while(GetMessage(&msg,0,0,0))
-    {
-        if(debug_box && (msg.hwnd == debug_box) )
-        {
-            if(msg.message == WM_LBUTTONDOWN && ! always)
-            {
-                HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
-                
-                char class_name[0x200];
-                
-                GetClassName(below, class_name, 0x200);
-                
-                msg.hwnd = below;
-                
-                DispatchMessage(&msg);
-                
-                continue;
-            }
-        }
-        
-        if(msg.message == WM_MOUSEWHEEL)
-        {
-            POINT pt;
-            GetCursorPos(&pt);
-            
-            msg.hwnd = WindowFromPoint(pt);
-            
-            DispatchMessage(&msg);
-            
-            continue;
-        }
-        
-        ProcessMessage(&msg);
-    }
+    HMagic_MessageLoop();
     
-    if(cfg_modf)
-    {
-        DWORD write_bytes = 0;
-        
-        // Descriptor for the configuration section.
-        uint8_t desc[5];
-        
-        SetCurrentDirectory(currdir);
-        h=CreateFile("HMAGIC.CFG",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
-        
-        if(cfg_flag & CFG_SPRNAMES_LOADED)
-        {
-            j=0;
-            
-            for(i = 0; i < 0x11c; i++)
-                j += strlen(sprname[i]) + 1;
-            
-            b2 = b = (unsigned char*) malloc(j + 5);
-            *b2=0;
-            
-            stle32b(b2 + 1, j);
-            
-            b2 += 5;
-            
-            for(i=0;i<0x11c;i++)
-            {
-                k=strlen(sprname[i]);
-                (*b2) = (unsigned char) k;
-                b2++;
-                memcpy(b2,sprname[i],k);
-                b2+=k;
-            }
-            
-            // \note Writes a sprite names file if you hold shift while
-            // saving. Okay then...
-            if(GetKeyState(VK_SHIFT) & 128)
-            {
-                h2 = CreateFile("SPRNAME.DAT",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
-                
-                WriteFile(h2, b, j + 5, &write_bytes, 0);
-                
-                CloseHandle(h2);
-            }
-            
-            WriteFile(h, b, j + 5, &write_bytes, 0);
-            free(b);
-        }
-        
-        if(cfg_flag & CFG_MRU_LOADED)
-        {
-            j = 0;
-            
-            // Calculate total length required for an MRU section.
-            for(i = 0; i < 4; i++)
-            {
-                if( !mrulist[i] )
-                    break;
-                
-                j += strlen(mrulist[i]) + 1;
-            }
-            
-            b2 = b = (unsigned char*) malloc(j + 6);
-            
-            b2[0] = 1;
-            
-            stle32b(b2 + 1, j + 1);
-            
-            // Write how many MRU entries follow. Note that this could be
-            // zero, in which case the overall written out section is only
-            // 6 bytes long.
-            b2[5] = (unsigned char) i;
-            
-            b2 += 6;
-            
-            for(i = 0; i < 4; i++)
-            {
-                if(!mrulist[i])
-                    break;
-                
-                k = strlen(mrulist[i]);
-                
-                (*b2) = (unsigned char) k;
-                
-                b2++;
-                
-                memcpy(b2, mrulist[i], k);
-                
-                b2 += k;
-            }
-            
-            WriteFile(h, b, j + 6, &write_bytes, 0);
-            
-            free(b);
-        }
-        
-        if(cfg_flag & CFG_SNDVOL_LOADED)
-        {
-            uint8_t section[2];
-            
-            // -----------------------------
-            
-            desc[0] = 2;
-            
-            stle32b(desc + 1, 2);
-            
-            stle16b(section, soundvol);
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            WriteFile(h, section, 2, &write_bytes, 0);
-        }
-        
-        if(cfg_flag & CFG_MIDI_LOADED)
-        {
-            int i = 0;
-            
-            uint8_t entry[2];
-            
-            // -----------------------------
-            
-            desc[0] = 3;
-            
-            stle32b(desc + 1, 100);
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            
-            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
-            {
-                stle16b(entry, midi_inst[i]);
-                
-                WriteFile(h, entry, 2, &write_bytes, 0);
-            }
-            
-            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
-            {
-                stle16b(entry, midi_trans[i]);
-                
-                WriteFile(h, entry, 2, &write_bytes, 0);
-            }
-        }
-        
-        if(cfg_flag & CFG_ASM_LOADED)
-        {
-            desc[0] = 4;
-            
-            stle32b(desc + 1, strlen(asmpath) );
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);
-        }
-        
-        CloseHandle(h);
-    }
-    
-    Exitsound();
-    
-    DeleteObject(arrows_imgs[0]);
-    DeleteObject(arrows_imgs[1]);
-    DeleteObject(arrows_imgs[2]);
-    DeleteObject(arrows_imgs[3]);
-    
-    DeleteObject(objdc);
-    DeleteObject(objbmp);
-    
-    DeleteObject(green_brush);
-    DeleteObject(purple_brush);
-    DeleteObject(yellow_brush);
-    DeleteObject(red_brush);
-    DeleteObject(blue_brush);
-    DeleteObject(gray_brush);
-    DeleteObject(green_pen);
-    DeleteObject(blue_pen);
-    
-    for(i=0;i<8;i++)
-        DeleteObject(shade_brush[i]);
-    
-    FreeMRU();
-    
-    HM_TextResource_Free(&entrance_names);
-    HM_TextResource_Free(&area_names);
+    HMagic_TearDown();
     
     return 0;
 }

@@ -30,7 +30,89 @@
 
 // =============================================================================
 
-    void
+    static void
+    SampleDisplay_OnKeydown
+    (
+        CP2(SAMPEDIT) p_ed,
+        CP2C(MSG)     p_packed_msg)
+    {
+        CP2(ZWAVE) zw = p_ed->ew.doc->waves + p_ed->editsamp;
+        
+        HWND const win = p_packed_msg->hwnd;
+        
+        // -----------------------------
+        
+        switch(p_packed_msg->wParam)
+        {
+        
+        case VK_DELETE:
+            
+            if(zw->copy != -1)
+                break;
+            
+            if(p_ed->sell == p_ed->selr)
+            {
+                /*
+                    \task This logic deletes the whole sample if there is
+                    is not a selected region of width greater than zero. We
+                    really ought to change this behavior, as there is no
+                    undo feature currently, and this isn't even intuitive
+                    behavior! Without a way to manually enter data, not to
+                    mention confirm modifications like many other sorts of
+                    editors in the program, this is a real problem.
+                */
+                
+                zw->end = 0;
+                
+                zw->buf = (short*) realloc(zw->buf, 2);
+                
+                zw->buf[0]=0;
+                zw->lopst=0;
+                
+                p_ed->sell=0;
+            }
+            else
+            {
+                int const sel_len = (p_ed->selr - p_ed->sell);
+                
+                // -----------------------------
+                
+                memcpy(zw->buf + p_ed->sell,
+                       zw->buf + p_ed->selr,
+                       (zw->end - p_ed->selr) );
+                
+                zw->end -= sel_len;
+                
+                zw->buf = (short*) realloc(zw->buf,
+                                           (zw->end + 1) << 1);
+                
+                if(zw->lopst >= p_ed->selr)
+                    zw->lopst -= (sel_len);
+                
+                zw->buf[zw->end] = zw->buf[zw->lopst];
+            }
+            
+            p_ed->selr = p_ed->sell;
+            
+            p_ed->init = 1;
+            
+            SetDlgItemInt(p_ed->dlg, ID_Samp_SampleLengthEdit, zw->end, 0);
+            SetDlgItemInt(p_ed->dlg, ID_Samp_LoopPointEdit, zw->lopst, 0);
+            
+            InvalidateRect(win, 0, 1);
+            
+            p_ed->init = 0;
+            
+            p_ed->ew.doc->m_modf = 1;
+            p_ed->ew.doc->w_modf = 1;
+            
+            break;
+        }
+    }
+
+// =============================================================================
+
+    static void
     SampleDisplay_OnChar(SAMPEDIT * const p_ed,
                          MSG        const p_packed_msg)
     {
@@ -176,13 +258,16 @@ LRESULT CALLBACK
 SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
 {
     ZWAVE * zw;
+    
     SCROLLINFO si;
+    
     int i;
+    
     RECT rc,rc2;
     
     MSG const packed_msg = HM_PackMessage(p_win, p_msg, p_wp, p_lp);
     
-    SAMPEDIT * const ed = (SAMPEDIT*) GetWindowLongPtr(p_win, GWLP_USERDATA);
+    CP2(SAMPEDIT) ed = (SAMPEDIT*) GetWindowLongPtr(p_win, GWLP_USERDATA);
     
     // -----------------------------
     
@@ -233,58 +318,9 @@ SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
     
     case WM_KEYDOWN:
         
-        switch(p_wp)
-        {
-        
-        case VK_DELETE:
-            
-            zw = ed->zw;
-            
-            if(zw->copy != -1)
-                break;
-            
-            if(ed->sell == ed->selr)
-            {
-                // \task This logic deletes the whole sample if there is
-                // is not a selected region of width greater than zero.
-                // Is this really intuitive? Seems like a great way to lose
-                // work.
-                
-                zw->end = 0;
-                
-                zw->buf = (short*) realloc(zw->buf, 2);
-                
-                zw->buf[0]=0;
-                zw->lopst=0;
-                ed->sell=0;
-            }
-            else
-            {
-                memcpy(zw->buf+ed->sell,zw->buf+ed->selr,zw->end-ed->selr);
-                
-                zw->end += ed->sell-ed->selr;
-                
-                zw->buf = realloc(zw->buf, (zw->end + 1) << 1);
-                
-                if(zw->lopst >= ed->selr)
-                    zw->lopst += ed->sell - ed->selr;
-                
-                zw->buf[zw->end]=zw->buf[zw->lopst];
-            }
-            
-            ed->selr=ed->sell;
-            ed->init=1;
-            
-            SetDlgItemInt(ed->dlg, ID_Samp_SampleLengthEdit, zw->end, 0);
-            SetDlgItemInt(ed->dlg, ID_Samp_LoopPointEdit, zw->lopst,0);
-            
-            InvalidateRect(p_win,0,1);
-            
-            ed->init=0;
-            ed->ew.doc->m_modf=1;
-            ed->ew.doc->w_modf=1;
-            break;
-        }
+        SampleDisplay_OnKeydown(ed,
+                                &packed_msg);
+
         
         break;
     

@@ -1,223 +1,427 @@
 
     #include "structs.h"
 
-    #include "GdiObjects.h"
+    #include "Wrappers.h"
 
     #include "Callbacks.h"
+
+    #include "GdiObjects.h"
 
     #include "resource.h"
 
 // =============================================================================
 
-static WNDPROC DefaultEditProc;
+    static WNDPROC
+    DefaultEditProc;
 
 // =============================================================================
 
-HM_DeclareWndProc(NumEditProc)
-{
-    switch(p_msg)
+    HM_DeclareWndProc(NumEditProc)
     {
-    
-    default:
-        
-        break;
-        
-    case WM_CHAR:
-        
-        if(always)
+        switch(p_msg)
         {
-            enum { backspace_char = '\x08' };
+        
+        default:
             
-            unsigned short c = (unsigned short) p_wp;
+            break;
             
-            // Only pass numeric and backspace characters on to the
-            // standard edit window proc.
-            if('0' <= c && c <= '9')
+        case WM_CHAR:
+            
+            if(always)
             {
-                break;
+                enum { backspace_char = '\x08' };
+                
+                unsigned short c = (unsigned short) p_wp;
+                
+                // Only pass numeric and backspace characters on to the
+                // standard edit window proc.
+                if('0' <= c && c <= '9')
+                {
+                    break;
+                }
+                else if(backspace_char == c)
+                {
+                    break;
+                }
+                
+                return 0;
             }
-            else if(backspace_char == c)
+        }
+        
+        return DefaultEditProc(p_win, p_msg, p_wp, p_lp);
+    }
+
+// =============================================================================
+
+    /**
+        
+    */
+    typedef
+    struct
+    {
+        WNDPROC m_proc;
+        
+        char const * const m_class_name;
+        
+        UINT m_style;
+        
+        HBRUSH * m_brush;
+        
+        HCURSOR * m_cursor;
+        
+        ATOM m_atom;
+        
+    } HM_WindowClass;
+
+// =============================================================================
+
+    HM_WindowClass frame_classes[] =
+    {
+        {
+            frameproc,
+            "ZEFRAME"
+        },
+        {
+            docproc,
+            "ZEDOC",
+        },
+        {
+            overproc,
+            "ZEOVER",
+        },
+        {
+            dungproc,
+            "ZEDUNGEON",
+        },
+        {
+            PatchFrameProc,
+            "PATCHLOAD"
+        },
+        {
+            TextFrameProc,
+            "ZTXTEDIT"
+        },
+        {
+            wmapproc,
+            "WORLDMAP"
+        },
+        {
+            PalaceMapFrame,
+            "LEVELMAP"
+        },
+        {
+            tmapproc,
+            "TILEMAP"
+        },
+        {
+            AudioFrameProc,
+            "MUSBANK"
+        },
+        {
+            PerspectiveFrameProc,
+            "PERSPEDIT"
+        },
+        {
+            PaletteFrameProc,
+            "PALEDIT",
+            (CS_HREDRAW | CS_VREDRAW),
+        },
+    };
+
+// =============================================================================
+
+    // \task Adding this is a bit of a hack to accomodate the Dungeon map
+    // window. Perhaps move this into the GDI objects module, even though
+    // it doesn't actually reprsent any allocated GDI resource.
+    HCURSOR null_cursor = 0;
+
+// =============================================================================
+
+    /**
+        Dialog control windows
+    */
+    HM_WindowClass control_classes[] =
+    {
+        {
+            blkedit8proc,
+            "BLKEDIT8"
+        },
+        {
+            blksel8proc,
+            "BLKSEL8"
+        },
+        {
+            blksel16proc,
+            "BLKSEL16"
+        },
+        {
+            blkedit16proc,
+            "BLKEDIT16"
+        },
+        {
+            blksel32proc,
+            "BLKSEL32"
+        },
+        {
+            blkedit32proc,
+            "BLKEDIT32"
+        },
+        {
+            DungeonMapProc,
+            "DUNGEON",
+            0,
+            0,
+            &null_cursor
+        },
+        {
+            overmapproc,
+            "OVERWORLD"
+        },
+        {
+            lmapdispproc,
+            "LMAPDISP"
+        },
+        {
+            perspdispproc,
+            "PERSPDISP",
+            0,
+            &black_brush
+        },
+        {
+            trackeditproc,
+            "TRACKEDIT"
+        },
+        {
+            tmapdispproc,
+            "TMAPDISP",
+        },
+        {
+            wmapdispproc,
+            "WMAPDISP"
+        },
+        {
+            lmapblksproc,
+            "LMAPBLKS",
+            (CS_HREDRAW | CS_VREDRAW)
+        },
+        {
+            trackerproc,
+            "TRAX0R",
+            0,
+            &white_brush
+        },
+        {
+            SampleDisplayProc,
+            "SAMPEDIT",
+            0,
+            &black_brush
+        },
+        {
+            blk16search,
+            "SEARCH16"
+        },
+        {
+            palselproc,
+            "PALSELECT"
+        },
+        {
+            dpceditproc,
+            "DPCEDIT"
+        },
+        {
+            dungselproc,
+            "DUNGSEL"
+        }
+    };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_FrameClasses   = MACRO_ArrayLength(frame_classes),
+        NUM_ControlClasses = MACRO_ArrayLength(control_classes)
+    };
+
+// =============================================================================
+
+    static void
+    HM_RegisterFrameClasses(HINSTANCE const p_inst)
+    {
+        int i = 0;
+        
+        WNDCLASS wc = { 0 };
+        
+        // -----------------------------
+        
+        wc.hInstance = p_inst;
+        
+        for(i = 0; i < NUM_FrameClasses; i += 1)
+        {
+            CP2(HM_WindowClass) cfc = &frame_classes[i];
+            
+            // -----------------------------
+            
+            wc.style  = cfc->m_style;
+            wc.style |= (CS_DBLCLKS);
+            
+            wc.hIcon   = alt_icon;
+            
+            if(cfc->m_brush)
             {
-                break;
+                // If a pointer to a specific brush object is supplied, use it.
+                wc.hbrBackground = cfc->m_brush[0];
+            }
+            else
+            {
+                wc.hbrBackground = (HBRUSH) (COLOR_APPWORKSPACE + 1);
             }
             
-            return 0;
+            if(cfc->m_cursor)
+            {
+                wc.hCursor = cfc->m_cursor[0];
+            }
+            else
+            {
+                wc.hCursor = normal_cursor;
+            }
+            
+            wc.lpfnWndProc   = cfc->m_proc;
+            wc.lpszClassName = cfc->m_class_name;
+            
+            cfc->m_atom = RegisterClass(&wc);
         }
     }
-    
-    return DefaultEditProc(p_win, p_msg, p_wp, p_lp);
-}
 
 // =============================================================================
 
-void
-HM_RegisterClasses(HINSTANCE p_inst)
-{
-    WNDCLASS wc;
-    
-    wc.style=0;
-    wc.lpfnWndProc=frameproc;
-    wc.cbClsExtra=0;
-    wc.cbWndExtra=0;
-    wc.hInstance=p_inst;
-    wc.hIcon=LoadIcon(p_inst, MAKEINTRESOURCE(IDI_ICON1));
-    wc.hCursor = normal_cursor = LoadCursor(0,IDC_ARROW);
-    wc.hbrBackground=0;
-    wc.lpszMenuName=0;
-    wc.lpszClassName="ZEFRAME";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=docproc;
-    wc.lpszClassName="ZEDOC";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=overproc;
-    wc.lpszClassName="ZEOVER";
-    RegisterClass(&wc);
-    
-    // dungeon dialogue editing.
-    wc.lpfnWndProc=dungproc;
-    wc.lpszClassName="ZEDUNGEON";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=musbankproc;
-    wc.lpszClassName="MUSBANK";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackeditproc;
-    wc.lpszClassName="TRACKEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspproc;
-    wc.lpszClassName="PERSPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=patchproc;
-    wc.lpszClassName="PATCHLOAD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=texteditproc;
-    wc.lpszClassName="ZTXTEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=wmapproc;
-    wc.lpszClassName="WORLDMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapproc;
-    wc.lpszClassName="LEVELMAP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=tmapproc;
-    wc.lpszClassName="TILEMAP";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=blksel16proc;
-    wc.lpszClassName="BLKSEL16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blkedit32proc;
-    wc.lpszClassName="BLKEDIT32";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel8proc;
-    wc.lpszClassName="BLKSEL8";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=blkedit16proc;
-    wc.lpszClassName="BLKEDIT16";
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=(HBRUSH)(COLOR_APPWORKSPACE+1);
-    wc.lpfnWndProc=blkedit8proc;
-    wc.lpszClassName="BLKEDIT8";
-    RegisterClass(&wc);
-    
-    wc.style=CS_DBLCLKS;
-    wc.lpfnWndProc=overmapproc;
-    wc.lpszClassName="OVERWORLD";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blksel32proc;
-    wc.lpszClassName="BLKSEL32";
-    RegisterClass(&wc);
-    
-    wc.hCursor=0;
-    wc.lpfnWndProc=DungeonMapProc;
-    wc.lpszClassName="DUNGEON";
-    RegisterClass(&wc);
-    
-    wc.hCursor = normal_cursor;
-    wc.lpfnWndProc=wmapdispproc;
-    wc.lpszClassName="WMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dungselproc;
-    wc.lpszClassName="DUNGSEL";
-    RegisterClass(&wc);
-    
-    wc.style=0;
-    wc.lpfnWndProc=tmapdispproc;
-    wc.lpszClassName="TMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=blk16search;
-    wc.lpszClassName="SEARCH16";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=palselproc;
-    wc.lpszClassName="PALSELECT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=lmapdispproc;
-    wc.lpszClassName="LMAPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=dpceditproc;
-    wc.lpszClassName="DPCEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=palproc;
-    wc.lpszClassName="PALEDIT";
-    RegisterClass(&wc);
-    
-    wc.style=CS_HREDRAW|CS_VREDRAW;
-    wc.lpfnWndProc=lmapblksproc;
-    wc.lpszClassName="LMAPBLKS";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=trackerproc;
-    wc.lpszClassName="TRAX0R";
-    wc.style=0;
-    wc.hbrBackground=white_brush;
-    RegisterClass(&wc);
-    
-    wc.hbrBackground=black_brush;
-    wc.lpfnWndProc=SampleDisplayProc;
-    wc.lpszClassName="SAMPEDIT";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=perspdispproc;
-    wc.lpszClassName="PERSPDISP";
-    RegisterClass(&wc);
-    
-    wc.lpfnWndProc=superdlgproc;
-    wc.lpszClassName="SUPERDLG";
-    wc.hbrBackground=(HBRUSH)(wver?COLOR_WINDOW+1:COLOR_BTNFACE+1);
-    wc.cbWndExtra=12;
-    RegisterClass(&wc);
-    
-    // Subclass the standard edit control with a different window procedure
-    // that only accepts numerical characters.
-    if( GetClassInfo(p_inst, "Edit", &wc) )
+    /**
+        These classes assume double clicking is valid, mainly. They also
+        have a default brush of grey, etc.
+    */
+    static void
+    HM_RegisterControlClasses(HINSTANCE const p_inst)
     {
-        DefaultEditProc = wc.lpfnWndProc;
+        int i = 0;
         
-        wc.lpszClassName = "NumEdit";
-        wc.lpfnWndProc = NumEditProc;
+        WNDCLASS wc = { 0 };
         
-        RegisterClass(&wc);
+        // -----------------------------
+        
+        wc.hInstance = p_inst;
+        
+        for(i = 0; i < NUM_ControlClasses; i += 1)
+        {
+            CP2(HM_WindowClass) cfc = &control_classes[i];
+            
+            // -----------------------------
+            
+            if(cfc->m_brush)
+            {
+                // If a pointer to a specific brush object is supplied, use it.
+                wc.hbrBackground = cfc->m_brush[0];
+            }
+            else
+            {
+                wc.hbrBackground = (HBRUSH) (COLOR_APPWORKSPACE + 1);
+            }
+            
+            wc.hIcon = alt_icon;
+            
+            if(cfc->m_cursor)
+            {
+                wc.hCursor = cfc->m_cursor[0];
+            }
+            else
+            {
+                wc.hCursor = normal_cursor;
+            }
+            
+            wc.style  = cfc->m_style;
+            wc.style |= CS_DBLCLKS;
+            
+            wc.lpfnWndProc   = cfc->m_proc;
+            wc.lpszClassName = cfc->m_class_name;
+            
+            cfc->m_atom = RegisterClass(&wc);
+        }
     }
-}
+
+// =============================================================================
+
+    /**
+        Subclass existing window classes. This is typically done to alter
+        the behavior of the standard window classes provided by Microsoft.
+
+        In our case, currently we only subclass the edit control.
+    */
+    static void
+    HM_RegisterSubclasses(HINSTANCE const p_inst)
+    {
+        WNDCLASS wc = { 0 };
+        
+        ATOM atom = 0;
+        
+        // -----------------------------
+        
+        // Subclass the standard edit control with a different window procedure
+        // that only accepts numerical characters.
+        if( GetClassInfo(p_inst, WC_EDIT, &wc) )
+        {
+            DefaultEditProc = wc.lpfnWndProc;
+            
+            wc.lpszClassName = "NumEdit";
+            wc.lpfnWndProc = NumEditProc;
+            
+            atom = RegisterClass(&wc);
+        }
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HM_RegisterClasses(HINSTANCE const p_inst)
+    {
+        WNDCLASS wc = { 0 };
+        
+        ATOM atom;
+        
+        // -----------------------------
+        
+        wc.style = 0;
+        wc.cbClsExtra = 0;
+        wc.cbWndExtra = 0;
+        wc.hInstance = p_inst;
+        
+    #if 1
+        wc.hIcon = alt_icon;
+    #else
+        wc.hIcon = main_icon;
+    #endif
+        
+        // \task Move all GDI initialization to a specific routine. In
+        // particular, I'm talking about just loading the cursor here.
+        wc.hCursor = normal_cursor;
+        
+        HM_RegisterFrameClasses(p_inst);
+        HM_RegisterControlClasses(p_inst);
+        
+        HM_RegisterSubclasses(p_inst);
+        
+        // For the ... super dialog?
+        wc.lpfnWndProc = superdlgproc;
+        wc.lpszClassName = "SUPERDLG";
+        
+        wc.hbrBackground = (HBRUSH)
+        (
+            wver ? COLOR_WINDOW + 1
+                 : COLOR_BTNFACE + 1
+        );
+        
+        wc.cbWndExtra = 12;
+        
+        atom = RegisterClass(&wc);
+        
+        return TRUE;
+    }
+
+// =============================================================================

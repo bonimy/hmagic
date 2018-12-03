@@ -8,6 +8,14 @@
 // =============================================================================
 
     /**
+        Convenience macro to avoid accidental assignment when testing for
+        equality of two entities.
+    */
+    #define Is(x, y) (x == y)
+
+// =============================================================================
+
+    /**
         Convenience macro for declarations. Also horizontal code golf.
         Read "constant pointer to constant x"
     */
@@ -18,6 +26,32 @@
         Read "constant pointer to x"
     */
     #define CP2(x) x * const
+
+// =============================================================================
+
+    /**
+        Convenicne macro for calculating the number of elements in an array
+        of indeterminate size, but whose size is known at compile time.
+        
+        E.g. int foo[] = { 1, 2, 4, 6, 9, 10 }; has 6 elements and this macro
+        will resolve to 6 in that case.
+    */
+    #define MACRO_ArrayLength(arr) ( sizeof(arr) / sizeof(arr[0]) )
+
+// =============================================================================
+
+// Not supported in the C compiler until VS 2013
+#if defined _MSC_VER
+
+#if ! defined __cplusplus
+
+#if _MSC_VER < 1800
+    #define va_copy(d, s) ((d) = (s))
+#endif
+
+#endif
+
+#endif
 
 // =============================================================================
 
@@ -214,21 +248,58 @@ struct
     HM_CheckEmbeddedStr(void const * const p_buffer,
                         char const * const p_string);
 
+// =============================================================================
+
+    BOOL
+    HM_FileExists
+    (
+        char const * const p_filename,
+        HANDLE     * const p_handle
+    );
+
+// =============================================================================
+
     int __stdcall
     askinteger(int max, char *caption, char *text);
+
+// =============================================================================
 
     /**
         Variadic version of vsprintf that allocates the required buffer
     */
     extern int
-    vasprintf(char       ** const p_buf_out,
-              const char  * const p_fmt,
-              va_list       const p_var_args);
+    vasprintf
+    (
+        char       ** const p_buf_out,
+        const char  * const p_fmt,
+        va_list       const p_var_args
+    );
 
     extern int
-    asprintf(char       ** const p_buf_out,
-             const char *  const p_fmt,
-             ...);
+    asprintf
+    (
+        char       ** const p_buf_out,
+        const char *  const p_fmt,
+        ...
+    );
+
+// =============================================================================
+
+    extern int
+    vascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        va_list       const p_var_args
+    );
+
+    extern int
+    ascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        ...
+    );
 
 // =============================================================================
 

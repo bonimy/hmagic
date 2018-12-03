@@ -97,7 +97,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareDlgProc(TextDlg);
 
     // Text-related window procedures.
-    HM_DeclareWndProc(texteditproc);
+    HM_DeclareWndProc(TextFrameProc);
 
 // =============================================================================
 
@@ -114,7 +114,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     HM_DeclareDlgProc(musdlgproc);
 
-    HM_DeclareWndProc(musbankproc);
+    HM_DeclareWndProc(AudioFrameProc);
 
 // =============================================================================
 
@@ -122,7 +122,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(palselproc);
 
     // Child frame window procedure.
-    HM_DeclareWndProc(palproc);
+    HM_DeclareWndProc(PaletteFrameProc);
 
 // =============================================================================
 
@@ -145,7 +145,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     HM_DeclareDlgProc(lmapdlgproc);
     
-    HM_DeclareWndProc(lmapproc);
+    HM_DeclareWndProc(PalaceMapFrame);
 
 // =============================================================================
 
@@ -167,7 +167,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     HM_DeclareDlgProc(perspdlgproc);
 
-    HM_DeclareWndProc(perspproc);
+    HM_DeclareWndProc(PerspectiveFrameProc);
 
 // =============================================================================
 
@@ -178,9 +178,9 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     // ASM-related procedures.
 
-    HM_DeclareDlgProc(patchdlgproc);
+    HM_DeclareDlgProc(PatchDlg);
 
-    HM_DeclareWndProc(patchproc);
+    HM_DeclareWndProc(PatchFrameProc);
 
 // =============================================================================
 

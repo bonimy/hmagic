@@ -129,6 +129,7 @@
     <ClCompile Include="EditExitDlg.c" />
     <ClCompile Include="EditWhirlpoolDlg.c" />
     <ClCompile Include="ErrorsDlg.c" />
+    <ClCompile Include="GdiObjects.c" />
     <ClCompile Include="GraphicSchemesDlg.c" />
     <ClCompile Include="GraphicsLogic.c" />
     <ClCompile Include="HMagicConfigDlg.c" />
@@ -236,6 +237,7 @@
     <ResourceCompile Include="z3ed.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="icon2.ico" />
     <None Include="text_resources\area_names.txt" />
     <None Include="text_resources\entrance_names.txt" />
   </ItemGroup>

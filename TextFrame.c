@@ -34,68 +34,68 @@
 
 // =============================================================================
 
-LRESULT CALLBACK
-texteditproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    TEXTEDIT * const ed = (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
-    
-    // -----------------------------
-    
-    if(msg == WM_CREATE)
+    LRESULT CALLBACK
+    TextFrameProc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        TextEditFrame_OnCreate(win, lparam);
+        TEXTEDIT * const ed = (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
-        return DefMDIChildProc(win, msg, wparam, lparam);
-    }
-    
-    switch(msg)
-    {
-
-    case WM_MDIACTIVATE:
+        // -----------------------------
         
-        activedoc = ( (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA))->ew.doc;
-        
-        goto default_case;
-    
-    case WM_GETMINMAXINFO:
-        
-        DefMDIChildProc(win, msg, wparam, lparam);
-        
-        if( ! ed )
+        if(msg == WM_CREATE)
         {
-            goto default_case;
+            TextEditFrame_OnCreate(win, lparam);
+            
+            return DefMDIChildProc(win, msg, wparam, lparam);
         }
         
-        return SendMessage(ed->dlg,
-                           WM_GETMINMAXINFO,
-                           wparam,
-                           lparam);
+        switch(msg)
+        {
     
-    case WM_SIZE:
+        case WM_MDIACTIVATE:
+            
+            activedoc = ( (TEXTEDIT*) GetWindowLongPtr(win, GWLP_USERDATA))->ew.doc;
+            
+            goto default_case;
         
-        SetWindowPos(ed->dlg,
-                     0,
-                     0, 0,
-                     LOWORD(lparam), HIWORD(lparam),
-                     SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+        case WM_GETMINMAXINFO:
+            
+            DefMDIChildProc(win, msg, wparam, lparam);
+            
+            if( ! ed )
+            {
+                goto default_case;
+            }
+            
+            return SendMessage(ed->dlg,
+                               WM_GETMINMAXINFO,
+                               wparam,
+                               lparam);
         
-        goto default_case;
-    
-    case WM_DESTROY:
+        case WM_SIZE:
+            
+            SetWindowPos(ed->dlg,
+                         0,
+                         0, 0,
+                         LOWORD(lparam), HIWORD(lparam),
+                         SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+            
+            goto default_case;
         
-        ed->ew.doc->t_wnd = 0;
+        case WM_DESTROY:
+            
+            ed->ew.doc->t_wnd = 0;
+            
+            free(ed);
+            
+            break;
         
-        free(ed);
+        default_case:
+        default:
+            
+            return DefMDIChildProc(win, msg, wparam, lparam);
+        }
         
-        break;
-    
-    default_case:
-    default:
-        
-        return DefMDIChildProc(win, msg, wparam, lparam);
+        return 0;
     }
-    
-    return 0;
-}
 
 // =============================================================================

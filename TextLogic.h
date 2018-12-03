@@ -7,6 +7,8 @@
 
     #include "structs.h"
 
+    #include "Wrappers.h"
+
 // =============================================================================
 
     extern char const * text_error;
@@ -20,22 +22,22 @@
     Savetext(FDOC * const doc);
 
     extern void
-    Makezeldastring(FDOC             const * const p_doc,
-                    AsciiTextMessage const * const p_amsg,
-                    ZTextMessage           * const p_zmsg);
+    Makezeldastring(CP2C(FDOC)        p_doc,
+                    CP2C(AString)     p_amsg,
+                    CP2(ZTextMessage) p_zmsg);
 
     extern void
     Makeasciistring
     (
-        FDOC             const * const doc,
-        ZTextMessage     const * const p_zmsg,
-        AsciiTextMessage       * const p_msg
+        CP2C(FDOC)            doc,
+        CP2C(ZTextMessage)    p_zmsg,
+        CP2(AString) p_msg
     );
 
 // =============================================================================
 
     extern int
-    AsciiTextMessage_Init(AsciiTextMessage * const p_msg);
+    AString_Init(CP2(AString) p_msg);
 
 
     /**
@@ -43,28 +45,59 @@
         "a priori".
     */
     extern int
-    AsciiTextMessage_InitSized
+    AString_InitSized
     (
-        AsciiTextMessage * const p_msg,
-        size_t             const p_size
+        CP2(AString)       p_msg,
+        size_t       const p_size
     );
 
     extern int
-    AsciiTextMessage_AppendChar
+    AString_InitFromNativeString
     (
-        AsciiTextMessage * const p_msg,
-        char               const p_char
+        CP2(AString) p_msg,
+        CP2C(char)   p_source
     );
 
     extern int
-    AsciiTextMessage_AppendString
+    AString_InitFormatted
     (
-        AsciiTextMessage       * const p_msg,
-        char             const * const p_str
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
+    );
+
+    extern int
+    AString_CopyN
+    (
+        CP2(AString)        p_dest,
+        CP2C(AString)       p_source,
+        size_t        const p_count
+    );
+    
+    extern int
+    AString_AppendChar
+    (
+        CP2(AString)       p_msg,
+        char         const p_char
+    );
+
+    extern int
+    AString_AppendString
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_str
+    );
+
+    extern int
+    AString_AppendFormatted
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
     );
 
     extern void
-    AsciiTextMessage_Free(AsciiTextMessage * const p_msg);
+    AString_Free(CP2(AString) p_msg);
 
 // =============================================================================
 

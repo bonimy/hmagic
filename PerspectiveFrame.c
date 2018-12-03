@@ -8,7 +8,13 @@
 // =============================================================================
 
 LRESULT CALLBACK
-perspproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+PerspectiveFrameProc
+(
+    HWND win,
+    UINT msg,
+    WPARAM wparam,
+    LPARAM lparam
+)
 {
     PERSPEDIT*ed;
     switch(msg) {

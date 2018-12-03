@@ -232,7 +232,7 @@ Editwin(FDOC       * const doc,
         LPARAM       const param,
         int          const size);
 
-void
-HM_RegisterClasses(HINSTANCE p_inst);
+    extern BOOL
+    HM_RegisterClasses(HINSTANCE p_inst);
 
 #endif

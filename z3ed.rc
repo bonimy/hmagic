@@ -202,6 +202,15 @@ END
 IDR_SPRNAMES            RCDATA                  "sprname.dat"
 IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
 IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON2               ICON                    "icon2.ico"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -739,6 +748,7 @@ BEGIN
     EDITTEXT        IDC_EDIT1,8,28,172,87,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
 END
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Accelerator
@@ -859,6 +869,7 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

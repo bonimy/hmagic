@@ -186,7 +186,7 @@ struct
 
 // =============================================================================
 
-/// Ascii encoded text (aka monologue) message
+/// Ascii encoded STRING
 typedef
 struct
 {
@@ -202,7 +202,7 @@ struct
     /// Ascii encoded text
     char * m_text;
     
-} AsciiTextMessage;
+} AString;
 
 // =============================================================================
 

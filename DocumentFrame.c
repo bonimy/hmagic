@@ -8,6 +8,8 @@
 
     #include "TextLogic.h"
 
+    #include "PatchLogic.h"
+
 // =============================================================================
 
     void
@@ -184,6 +186,8 @@ dontsave:
         
         free(param->text_bufz);
     }
+    
+    Doc_FreePatchInputs(param);
     
     free(param);
 }

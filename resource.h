@@ -33,6 +33,7 @@
 #define IDD_DEBUG_DLG                   133
 #define IDR_ENTRANCE_NAMES              134
 #define IDR_AREA_NAMES                  135
+#define IDI_ICON2                       136
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002
@@ -164,7 +165,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        136
+#define _APS_NEXT_RESOURCE_VALUE        137
 #define _APS_NEXT_COMMAND_VALUE         40059
 #define _APS_NEXT_CONTROL_VALUE         1045
 #define _APS_NEXT_SYMED_VALUE           101

@@ -413,24 +413,26 @@ frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             break;
         
         case ID_Z3_HELP:
+            
             SetCurrentDirectory(currdir);
+            
             WinHelp(framewnd,"Z3ED.HLP",HELP_CONTENTS,0);
             
             break;
         
-fileexit:
+        fileexit:
         case ID_Z3_EXIT:
             doc=firstdoc;
             
             while(doc)
             {
-                hc=doc->mdiwin;
-                doc2=doc->next;
+                hc   = doc->mdiwin;
+                doc2 = doc->next;
                 
-                if(SendMessage(hc,WM_CLOSE,0,0))
+                if( SendMessage(hc, WM_CLOSE, 0, 0) )
                     return 0;
                 
-                doc=doc2;
+                doc = doc2;
             }
             
             PostQuitMessage(0);
@@ -552,8 +554,10 @@ saveas:
                 if(activedoc->p_modf)
                 {
 updatemods:
-                    if(Buildpatches(activedoc))
+                    if( Patch_Build(activedoc) )
+                    {
                         return 1;
+                    }
                 }
                 else
                 {
@@ -935,8 +939,10 @@ openrom:
             ReadFile(h, rom, j, &read_size, 0);
             CloseHandle(h);
             
-            //this is LDA $2801, BEQ... another primitive file check (as though romhackers 
-            //would never change such things... >_> <_<
+            // This is LDA $0128, BEQ... another primitive file check 
+            // (as though romhackers would never change such things... >_> <_<
+            // \task Change this so that it can be clicked through if the
+            // user knows for a fact that it is a Z3 rom.
             if( ldle32b(rom + 0x200) != 0xf00128ad)
             {
                 MessageBox(framewnd,
@@ -984,8 +990,18 @@ error:
             
             if(i > 3)
             {
-                vererror_str[90] = ((k & 0xe000) >> 13) + 48;
-                wsprintf(text_buf, vererror_str, k >> 16, k & 8191);
+                text_buf_ty intermed = { 0 };
+                
+                // -----------------------------
+                
+                strcpy(intermed, vererror_str);
+                
+                intermed[90] = ((k & 0xe000) >> 13) + '0';
+                
+                wsprintf(text_buf,
+                         intermed,
+                         k >> 16,
+                         k & 0x1fff);
                 
                     MessageBox(framewnd,
                            text_buf,
@@ -1044,6 +1060,16 @@ error:
                     goto errormsg;
                 }
                 
+                /**
+                    \task There are SERIOUS problems with this code. It depends
+                    upon certain expectations of the layout of the document
+                    structure, including size and ordering.
+                    Case in point, a raw constant like the one in this
+                    line. This should be given the same treatment that reading
+                    the config file was given. Sanitize inputs and don't trust
+                    what is being read in from files. Also manually assign to
+                    the relevant structure members.
+                */
                 ReadFile(h,&(doc->nummod),14,&read_size,0);
                 
                 doc->patches = malloc(doc->numpatch*sizeof(PATCH));

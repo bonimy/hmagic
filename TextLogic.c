@@ -522,9 +522,12 @@ bi_strnistr(char const * const p_lhs,
 
 /// Converts ASCII text to the game's custom text format.
 extern void
-Makezeldastring(FDOC             const * const p_doc,
-                AsciiTextMessage const * const p_amsg,
-                ZTextMessage           * const p_zmsg)
+Makezeldastring
+(
+    CP2C(FDOC)        p_doc,
+    CP2C(AString)     p_amsg,
+    CP2(ZTextMessage) p_zmsg
+)
 {
     text_codes_ty const * const tc = &offsets.text.codes;
     
@@ -777,26 +780,71 @@ error:
 
 // =============================================================================
 
+    static int
+    AString_Resize
+    (
+        CP2(AString)       p_msg,
+        size_t       const p_size
+    )
+    {
+        size_t old_capacity = 0;
+        
+        // -----------------------------
+        
+        if(p_msg == NULL)
+        {
+            return -1;
+        }
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        old_capacity = p_msg->m_capacity;
+        
+        if(p_size < 2048)
+        {
+            p_msg->m_capacity = 2048;
+        }
+        else
+        {
+            p_msg->m_capacity = p_size;
+        }
+        
+        p_msg->m_text = (char*) recalloc
+        (
+            p_msg->m_text,
+            p_msg->m_capacity + 1,
+            old_capacity,
+            sizeof(char)
+        );
+        
+        if(p_msg->m_text)
+        {
+            return p_msg->m_capacity;
+        }
+        
+        return -1;
+    }
+
+// =============================================================================
+
     extern int
-    AsciiTextMessage_Init(AsciiTextMessage * const p_msg)
+    AString_Init(CP2(AString) p_msg)
     {
         if(p_msg == NULL)
         {
             return 0;
         }
         
+        p_msg->m_len = 0;
+        
         if(p_msg->m_text)
         {
-            p_msg->m_len = 0;
-            
             /// Fill with zeroes, so reset it, essentially.
             memset(p_msg->m_text, 0, p_msg->m_capacity + 1);
         }
         else
         {
-            p_msg->m_capacity = 2048;
-            p_msg->m_len      = 0;
-            p_msg->m_text     = (char*) calloc(1, p_msg->m_capacity + 1);
+            AString_Resize(p_msg, 2048);
         }
         
         return (p_msg->m_text != NULL);
@@ -805,10 +853,10 @@ error:
 // =============================================================================
 
     extern int
-    AsciiTextMessage_InitSized
+    AString_InitSized
     (
-        AsciiTextMessage * const p_msg,
-        size_t             const p_size
+        CP2(AString)       p_msg,
+        size_t       const p_size
     )
     {
         if(p_msg == NULL)
@@ -828,32 +876,154 @@ error:
         p_msg->m_capacity = p_size;
         p_msg->m_len      = p_size;
         p_msg->m_text     = (char*) calloc(1,
-                                            p_msg->m_capacity + 1);
+                                           p_msg->m_capacity + 1);
         
         return (p_msg->m_text != NULL);
+    }
+
+    #define MACRO_ReturnIf(x, value) if(x == value) { return x; }
+
+// =============================================================================
+
+    extern int
+    AString_InitFromNativeString
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_source
+    )
+    {
+        size_t const source_length = strlen(p_source);
+        
+        int r = 0;
+        
+        // -----------------------------
+        
+        AString_Free(p_msg);
+        
+        r = AString_Resize(p_msg, source_length);
+        
+        MACRO_ReturnIf(r, -1);
+        
+        p_msg->m_len = source_length;
+        
+        strcpy(p_msg->m_text, p_source);
+        
+        return (p_msg->m_len);
     }
 
 // =============================================================================
 
     extern int
-    AsciiTextMessage_AppendChar(AsciiTextMessage * const p_msg,
-                                char               const p_char)
+    AString_InitFormatted
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
+    )
+    {
+        char * buf = NULL;
+        
+        va_list var_args;
+        
+        int length = 0;
+        
+        // -----------------------------
+        
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
+        
+        // If it already had allocated content, flush it out and start over.
+        AString_Free(p_msg);
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        va_start(var_args, p_fmt);
+        
+        length = vasprintf(&buf, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        if(buf)
+        {
+            AString_AppendString(p_msg, buf);
+            
+            free(buf);
+            
+            return length;
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
+    extern int
+    AString_CopyN
+    (
+        CP2(AString)        p_dest,
+        CP2C(AString)       p_source,
+        size_t        const p_count
+    )
+    {
+        size_t i = 0;
+        
+        size_t new_capacity = 0;
+        
+        // -----------------------------
+        
+        if( (p_dest == NULL) || (p_source == NULL) )
+        {
+            return 0;
+        }
+        
+        if(p_dest->m_text)
+        {
+            p_dest->m_len = 0;
+        }
+        
+        new_capacity = ( (p_count / 2048) + 1) * 2048;
+        
+        // \task We want something like AString_Expand() to optionally resize
+        // only if necessary.
+        AString_Resize(p_dest,
+                       new_capacity);
+        
+        for(i = 0; i < p_count; i += 1)
+        {
+            p_dest->m_text[i] = p_source->m_text[i];
+        }
+        
+        p_dest->m_len = p_count;
+        
+        return p_count;
+    }
+
+// =============================================================================
+
+    extern int
+    AString_AppendChar
+    (
+        CP2(AString)       p_msg,
+        char         const p_char
+    )
     {
         // Fake a one character string to pass on to another "member" function.
         char str[2] = { p_char, '\0' };
         
         // -----------------------------
         
-        return AsciiTextMessage_AppendString(p_msg, str);
+        return AString_AppendString(p_msg, str);
     }
 
 // =============================================================================
 
     extern int
-    AsciiTextMessage_AppendString
+    AString_AppendString
     (
-        AsciiTextMessage       * const p_msg,
-        char             const * const p_str
+        CP2(AString) p_msg,
+        CP2C(char)   p_str
     )
     {
         size_t i = 0;
@@ -895,8 +1065,47 @@ error:
 
 // =============================================================================
 
+    extern int
+    AString_AppendFormatted
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
+    )
+    {
+        char * buf = NULL;
+        
+        va_list var_args;
+        
+        int additional_length = 0;
+        
+        // -----------------------------
+        
+        va_start(var_args, p_fmt);
+        
+        additional_length = vasprintf(&buf, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        if(buf)
+        {
+            AString_AppendString(p_msg, buf);
+            
+            free(buf);
+            
+            return additional_length;
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
     extern void
-    AsciiTextMessage_Free(AsciiTextMessage * const p_msg)
+    AString_Free
+    (
+        CP2(AString) p_msg
+    )
     {
         if(p_msg)
         {
@@ -915,7 +1124,10 @@ error:
 // =============================================================================
 
     extern int
-    ZTextMessage_Init(ZTextMessage * const p_msg)
+    ZTextMessage_Init
+    (
+        CP2(ZTextMessage) p_msg
+    )
     {
         p_msg->m_len      = 0;
         p_msg->m_capacity = TEXT_GROW_SIZE;
@@ -934,8 +1146,11 @@ error:
 // =============================================================================
 
     extern void
-    ZTextMessage_AppendChar(ZTextMessage * const p_msg,
-                            uint8_t        const p_char)
+    ZTextMessage_AppendChar
+    (
+        CP2(ZTextMessage)       p_msg,
+        uint8_t           const p_char
+    )
     {
         if(p_msg)
         {
@@ -969,9 +1184,12 @@ error:
 // =============================================================================
 
     extern void
-    ZTextMessage_AppendStream(ZTextMessage       * const p_msg,
-                              uint8_t      const * const p_data,
-                              uint16_t             const p_len)
+    ZTextMessage_AppendStream
+    (
+        CP2(ZTextMessage)       p_msg,
+        CP2C(uint8_t)           p_data,
+        uint16_t          const p_len
+    )
     {
         if(p_msg && p_data && (p_len > 0) )
         {
@@ -1007,7 +1225,10 @@ error:
 // =============================================================================
 
     extern void
-    ZTextMessage_Empty(ZTextMessage * const p_msg)
+    ZTextMessage_Empty
+    (
+        CP2(ZTextMessage) p_msg
+    )
     {
         if(p_msg)
         {
@@ -1017,120 +1238,123 @@ error:
 
 // =============================================================================
 
-extern void
-ZTextMessage_Free(ZTextMessage * const p_msg)
-{
-    if(p_msg != NULL)
+    extern void
+    ZTextMessage_Free
+    (
+        CP2(ZTextMessage) p_msg
+    )
     {
-        if(p_msg->m_text)
+        if(p_msg != NULL)
         {
-            free(p_msg->m_text);
+            if(p_msg->m_text)
+            {
+                free(p_msg->m_text);
+                
+                p_msg->m_text = NULL;
+            }
             
-            p_msg->m_text = NULL;
+            p_msg->m_len      = 0;
+            p_msg->m_capacity = 0;
         }
-        
-        p_msg->m_len      = 0;
-        p_msg->m_capacity = 0;
     }
-}
 
 // =============================================================================
 
-extern void
-Makeasciistring
-(
-    FDOC             const * const doc,
-    ZTextMessage     const * const p_zmsg,
-    AsciiTextMessage       * const p_msg
-)
-{
-    text_buf_ty text_buf = { 0 };
-    
-    int i;
-    
-    short k,m;
-    
-    uint16_t const zchar_len = p_zmsg->m_len;
-    
-    // Index into the zchar buffer.
-    size_t z_i = 0;
-    
-    text_offsets_ty const * const to = &offsets.text;
-    
-    text_codes_ty const * const tc = &to->codes;
-    
-    // -----------------------------
-    
-    AsciiTextMessage_Init(p_msg);
-    
-    for(i = 0; ; )
+    extern void
+    Makeasciistring
+    (
+        CP2C(FDOC)         doc,
+        CP2C(ZTextMessage) p_zmsg,
+        CP2(AString)       p_msg
+    )
     {
-        if(z_i >= zchar_len)
-            break;
+        text_buf_ty text_buf = { 0 };
         
-        k = p_zmsg->m_text[z_i];
+        int i;
         
-        z_i += 1;
+        short k,m;
         
-        if(k < NUM_Zchars)
+        uint16_t const zchar_len = p_zmsg->m_len;
+        
+        // Index into the zchar buffer.
+        size_t z_i = 0;
+        
+        text_offsets_ty const * const to = &offsets.text;
+        
+        text_codes_ty const * const tc = &to->codes;
+        
+        // -----------------------------
+        
+        AString_Init(p_msg);
+        
+        for(i = 0; ; )
         {
-            if( ! z_alphabet[k][0] )
+            if(z_i >= zchar_len)
+                break;
+            
+            k = p_zmsg->m_text[z_i];
+            
+            z_i += 1;
+            
+            if(k < NUM_Zchars)
             {
-                // \task We don't really know what happens for these
-                // characters if they're used in game. These are the ones
-                // on the upper edge of the zchar range.
-                exit(-1);
+                if( ! z_alphabet[k][0] )
+                {
+                    // \task We don't really know what happens for these
+                    // characters if they're used in game. These are the ones
+                    // on the upper edge of the zchar range.
+                    exit(-1);
+                }
+                else
+                {
+                    AString_AppendString(p_msg,
+                                         z_alphabet[k]);
+                }
+            }
+            else if
+            (
+                (k != tc->msg_terminator)
+             && (k >= tc->command_base)
+             && (k <  tc->command_bound)
+            )
+            {
+                size_t n = 0;
+                
+                m = wsprintf(text_buf,"[%s",tcmd_str[k - tc->command_base]);
+                n = doc->rom[to->param_counts + k] - 1;
+                
+                while(n--)
+                {
+                    m += wsprintf(text_buf + m,
+                                  " %02X",
+                                  p_zmsg->m_text[z_i]);
+                    
+                    z_i += 1;
+                }
+                
+                text_buf[m] = ']';
+                
+                m += 1;
+                
+            longstring:
+                
+                n = 0;
+                
+                while(m--)
+                {
+                    AString_AppendChar(p_msg,
+                                       text_buf[n]);
+                    
+                    n += 1;
+                }
             }
             else
             {
-                AsciiTextMessage_AppendString(p_msg,
-                                              z_alphabet[k]);
-            }
-        }
-        else if
-        (
-            (k != tc->msg_terminator)
-         && (k >= tc->command_base)
-         && (k <  tc->command_bound)
-        )
-        {
-            size_t n = 0;
-            
-            m = wsprintf(text_buf,"[%s",tcmd_str[k - tc->command_base]);
-            n = doc->rom[to->param_counts + k] - 1;
-            
-            while(n--)
-            {
-                m += wsprintf(text_buf + m,
-                              " %02X",
-                              p_zmsg->m_text[z_i]);
+                m = wsprintf(text_buf, "[%02X]",k);
                 
-                z_i += 1;
+                goto longstring;
             }
-            
-            text_buf[m] = ']';
-            
-            m += 1;
-            
-        longstring:
-            
-            n = 0;
-            
-            while(m--)
-            {
-                AsciiTextMessage_AppendChar(p_msg,
-                                            text_buf[n]);
-                
-                n += 1;
-            }
-        }
-        else
-        {
-            m = wsprintf(text_buf, "[%02X]",k);
-            
-            goto longstring;
         }
     }
-}
 
 // =============================================================================

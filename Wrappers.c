@@ -597,77 +597,235 @@ hm_strndup(char const * const p_str,
 
 // =============================================================================
 
-// Not supported in the C compiler until VS 2013
-#if defined _MSC_VER
-
-#if ! defined __cplusplus
-
-#if _MSC_VER < 1800
-    #define va_copy(d, s) ((d) = (s))
-#endif
-
-#endif
-
-#endif
-
-
-// =============================================================================
-
-extern int
-vasprintf(char       ** const p_buf_out,
-          const char  * const p_fmt,
-          va_list       const p_var_args)
-{
-    va_list ap1;
-    
-    size_t size;
-    
-    char * buf;
-
-    // -----------------------------
-    
-    va_copy(ap1, p_var_args);
-    
-    size = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
-    
-    va_end(ap1);
-    
-    buf = (char*) calloc(1, size);
-
-    if( ! buf )
+    BOOL
+    HM_FileExists
+    (
+        char const * const p_filename,
+        HANDLE     * const p_handle
+    )
     {
-        return -1;
+        HANDLE h = CreateFile(p_filename,
+                              GENERIC_READ,
+                              0,
+                              0,
+                              OPEN_EXISTING,
+                              0,
+                              0);
+        
+        // -----------------------------
+        
+        p_handle[0] = h;
+        
+        return (h != INVALID_HANDLE_VALUE);
     }
 
-    (*p_buf_out) = buf;
+// =============================================================================
 
-    return vsnprintf(buf,
-                     size,
-                     p_fmt,
-                     p_var_args);
-}
+    extern int
+    vasprintf(char       ** const p_buf_out,
+              const char  * const p_fmt,
+              va_list       const p_var_args)
+    {
+        va_list ap1;
+        
+        size_t size;
+        
+        char * buf;
+        
+        // -----------------------------
+        
+        va_copy(ap1, p_var_args);
+        
+        size = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
+        
+        va_end(ap1);
+        
+        buf = (char*) calloc(1, size);
+        
+        if( ! buf )
+        {
+            return -1;
+        }
+        
+        (*p_buf_out) = buf;
+        
+        return vsnprintf(buf,
+                         size,
+                         p_fmt,
+                         p_var_args);
+    }
 
 // =============================================================================
 
-extern int
-asprintf(char       ** const p_buf_out,
-         const char *  const p_fmt,
-         ...)
-{
-    int r;
+    extern int
+    asprintf(char       ** const p_buf_out,
+             char const *  const p_fmt,
+             ...)
+    {
+        int r;
+        
+        // -----------------------------
+        
+        va_list var_args;
     
-    // -----------------------------
+        va_start(var_args, p_fmt);
+        
+        r = vasprintf(p_buf_out, p_fmt, var_args);
+        
+        va_end(var_args);
     
-    va_list var_args;
-
-    va_start(var_args, p_fmt);
-    
-    r = vasprintf(p_buf_out, p_fmt, var_args);
-    
-    va_end(var_args);
-
-    return r;
-}
+        return r;
+    }
 
 // =============================================================================
 
+    extern int
+    vascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        va_list       const p_var_args
+    )
+    {
+        va_list ap1;
+        
+        size_t current_len    = 0;
+        size_t additional_len = 0;
+        size_t final_len      = 0;
+        
+        char * buf = NULL;
+        
+        // -----------------------------
+        
+        va_copy(ap1, p_var_args);
+        
+        additional_len = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
+        
+        va_end(ap1);
+        
+        if( ! p_buf_out )
+        {
+            return -1;
+        }
+        
+        if( p_buf_out[0] )
+        {
+            current_len = strlen(p_buf_out[0]);
+            
+            final_len = (current_len + additional_len + 1);
+            
+            buf = (char*) recalloc(p_buf_out[0],
+                                   final_len,
+                                   current_len + 1,
+                                   sizeof(char) );
+        }
+        else
+        {
+            buf = (char*) calloc(1, additional_len);
+            
+            final_len = additional_len;
+        }
+        
+        if( ! buf )
+        {
+            return -1;
+        }
+        
+        p_buf_out[0] = buf;
+        
+        return vsnprintf(buf + current_len,
+                         final_len,
+                         p_fmt,
+                         p_var_args);
+    }
+
+// =============================================================================
+
+    // \task Finish this. It's supposed to be a way to add to concatenate to
+    // a buffer dynamically.
+    extern int
+    ascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        ...
+    )
+    {
+        int r;
+        
+        // -----------------------------
+        
+        va_list var_args;
+        
+        va_start(var_args, p_fmt);
+        
+        r = vascatf(p_buf_out, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        return r;
+    }
+
+// =============================================================================
+
+#if 1
+
+    static int
+    IconResourceArray[] = { IDI_ICON1 };
+
+    enum
+    {
+        NUM_AnimIcons = MACRO_ArrayLength(IconResourceArray)
+    };
+
+// =============================================================================
+
+    #include "HMagicLogic.h"
+
+// =============================================================================
+
+    void
+    AnimateIcon
+    (
+        HINSTANCE const hInstance,
+        HWND      const hWnd, 
+        DWORD     const dwMsgType,
+        UINT      const p_icon_index
+    )
+    {
+        LPCTSTR a = MAKEINTRESOURCE( IconResourceArray[p_icon_index] );
+        
+        HICON const h_icon = LoadIcon(hInstance, a);
+        
+        NOTIFYICONDATA IconData;
+        
+        // -----------------------------
+        
+        IconData.cbSize = sizeof(NOTIFYICONDATA);
+        IconData.hIcon  = h_icon;
+        IconData.hWnd   = hWnd;
+        
+        lstrcpyn(IconData.szTip,
+                 "Animated Icons - Demo", 
+                (int) strlen("Animated Icons - Demo") + 1);
+        
+        IconData.uCallbackMessage = HM_WM_1;
+        
+        IconData.uFlags = (NIF_MESSAGE | NIF_ICON | NIF_TIP);
+        
+        Shell_NotifyIcon(dwMsgType, &IconData);
+        
+        SendMessage(hWnd,
+                    WM_SETICON,
+                    (WPARAM) NULL,
+                    (LPARAM) h_icon);
+        
+        if(h_icon)
+        {
+            DestroyIcon(h_icon);
+        }
+    }
+
+// =============================================================================
+
+#endif
