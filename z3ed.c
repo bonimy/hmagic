@@ -2432,7 +2432,14 @@ HWND CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h, LPA
     return hc;
 }
 
-HWND Editwin(FDOC * doc,char * wclass, char const * title,int param,int size)
+// =============================================================================
+
+HWND
+Editwin(FDOC       * const doc,
+        char const * const wclass,
+        char const * const title,
+        LPARAM       const param,
+        int          const size)
 {
     char buf[1024];
     HWND hc;
@@ -2449,15 +2456,22 @@ HWND Editwin(FDOC * doc,char * wclass, char const * title,int param,int size)
     mdic.x=mdic.y=mdic.cx=mdic.cy=CW_USEDEFAULT;
     mdic.style=WS_SYSMENU|WS_CAPTION|WS_THICKFRAME|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS;
     mdic.lParam=(long)a;
-    hc=(HWND)SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
+    hc = (HWND) SendMessage(clientwnd,WM_MDICREATE,0,(long)&mdic);
     
-    SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
-    SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
+    if(hc)
+    {
+        SendMessage(clientwnd,WM_MDIACTIVATE,(long)hc,0);
+        SendMessage(clientwnd,WM_MDIREFRESHMENU,0,0);
+    }
+    else
+    {
+        MessageBox(framewnd, "Edit window creation failed!", NULL, MB_OK);
+    }
     
     return hc;
 }
 
-//Compress****************************************
+// =============================================================================
 
 unsigned char* Compress(unsigned char *src, int oldsize, int *size, int flag)
 {
@@ -18751,7 +18765,7 @@ upd:
     
     case WM_DESTROY:
         
-        ed = (PALEDIT*) GetWindowLong(win,GWL_USERDATA);
+        ed = (PALEDIT*) GetWindowLong(win, GWL_USERDATA);
         
         for(i=ed->palw*ed->palh-1;i>=0;i--) DeleteObject(ed->brush[i]);
         free(ed->pal);
