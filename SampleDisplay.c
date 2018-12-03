@@ -240,7 +240,7 @@ SampleDisplay_UnmetPrereqs(MSG    const p_packed_msg,
     default:
         
         // If this comparison is true, we have an unmet prerequisite.
-        return (NULL == p_edit_structure);
+        return Is(p_edit_structure, NULL);
     
     case WM_GETDLGCODE:
     case WM_NCCREATE:
@@ -257,8 +257,6 @@ SampleDisplay_UnmetPrereqs(MSG    const p_packed_msg,
 LRESULT CALLBACK
 SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
 {
-    ZWAVE * zw;
-    
     SCROLLINFO si;
     
     int i;

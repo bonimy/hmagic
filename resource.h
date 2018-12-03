@@ -4,7 +4,7 @@
 //
 #define IDR_ACCELERATOR1                101
 #define IDR_MENU1                       102
-#define IDD_DIALOG1                     103
+#define IDD_ABOUT_DLG                   103
 #define IDI_ICON1                       104
 #define IDR_SPRNAMES                    105
 #define IDD_DIALOG2                     108

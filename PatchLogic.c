@@ -17,6 +17,67 @@
 
 // =============================================================================
 
+    SECURITY_ATTRIBUTES const
+    inheritable_sa_base =
+    {
+        sizeof(SECURITY_ATTRIBUTES),
+        0,
+        TRUE
+    };
+    
+    static SECURITY_ATTRIBUTES const
+    noninheritable_sa_base =
+    {
+        sizeof(SECURITY_ATTRIBUTES),
+        0,
+        FALSE
+    };
+
+    enum
+    {
+        /// Size of the shared memory region between HM and FSNASM
+        SIZE_FSNASM_Shared = 4096
+    };
+
+    /**
+        Wrapper for a memory mapped file
+    */
+    typedef
+    struct
+    {
+        HANDLE m_handle;
+        
+        uint32_t * m_view;
+        
+        SECURITY_ATTRIBUTES m_sa;
+    
+    } HM_SharedMem;
+
+
+    enum
+    {
+        NUM_AssemblerStateSyncObjCount = 2
+    };
+
+    typedef
+    struct
+    {
+        size_t m_j2;
+        
+        uint32_t * m_o;
+        
+        PROCESS_INFORMATION m_proc_info;
+        
+        /**
+            First is a handle to an event, second should be a handle to
+            process
+        */
+        HANDLE m_sync_objs[NUM_AssemblerStateSyncObjCount];
+       
+    } HM_AssemblerState;
+
+// =============================================================================
+
     static BOOL
     FileTimeEarlier(FILETIME const p_left,
                     FILETIME const p_right)
@@ -95,7 +156,9 @@
     )
     {
         int i = 0;
-        int l = 0;
+        
+        // Number of patch entities that will be actually processed.
+        size_t patch_count = 0;
         
         AString arg_path = { 0 };
         AString err_msg  = { 0 };
@@ -144,7 +207,7 @@
                 continue;
             }
             
-            l += 1;
+            patch_count += 1;
             
             // Now check if it's an object file (*.obj) and openable.
             if( ! HM_FileExists(arg_path.m_text, &h) )
@@ -221,41 +284,430 @@
         AString_Free(&arg_path);
         AString_Free(&err_msg);
         
-        return l;
+        return patch_count;
     }
 
 // =============================================================================
 
+    static BOOL
+    PatchLogic_AllocSharedMemory
+    (
+        CP2(HM_SharedMem) p_mem_file
+    )
+    {
+        p_mem_file->m_sa = inheritable_sa_base;
+        
+        p_mem_file->m_handle = CreateFileMapping
+        (
+            INVALID_HANDLE_VALUE,
+            &p_mem_file->m_sa,
+            PAGE_READWRITE,
+            0,
+            SIZE_FSNASM_Shared,
+            0
+        );
+        
+        if( Is(p_mem_file->m_handle, NULL) )
+        {
+            MessageBox(framewnd,
+                       "Not enough memory.",
+                       "Bad error happened",
+                       MB_OK);
+            
+            return FALSE;
+        }
+        
+        p_mem_file->m_view = (uint32_t*) MapViewOfFile
+        (
+            p_mem_file->m_handle,
+            FILE_MAP_WRITE,
+            0,
+            0,
+            0
+        );
+        
+        if( Is(p_mem_file->m_view, NULL) )
+        {
+            CloseHandle(p_mem_file->m_handle);
+            
+            return FALSE;
+        }
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
+    /// Free all views (memory) and handles and reset the structure to an
+    /// uninitialized state.
+    static void
+    PatchLogic_FreeSharedMemory
+    (
+        CP2(HM_SharedMem) p_mem_file
+    )
+    {
+        if(p_mem_file->m_view)
+        {
+            UnmapViewOfFile(p_mem_file->m_view);
+            
+            p_mem_file->m_view = NULL;
+        }
+        
+        if(p_mem_file->m_handle)
+        {
+            CloseHandle(p_mem_file->m_handle);
+            
+            p_mem_file->m_handle = NULL;
+        }
+        
+        p_mem_file->m_sa = inheritable_sa_base;
+    }
+
+// =============================================================================
+
+    static BOOL
+    PatchLogic_LaunchAssemblerProcess
+    (
+        CP2(HM_SharedMem)      p_mem_file,
+        CP2(TCHAR)             p_command,
+        CP2(HM_AssemblerState) p_asm_state
+    )
+    {
+        STARTUPINFO sti;
+        
+        CP2(uint32_t) mem = p_mem_file->m_view;
+        
+        HANDLE h2;
+        
+        // -----------------------------
+        
+        h2 = CreateFile("HMAGIC.ERR",
+                        GENERIC_WRITE,
+                        0,
+                        &p_mem_file->m_sa,
+                        CREATE_ALWAYS,
+                        0,
+                        0);
+        
+        sti.cb = sizeof(sti);
+        
+        sti.lpReserved = 0;
+        sti.lpDesktop = 0;
+        sti.lpTitle = 0;
+        sti.dwFlags = STARTF_USESTDHANDLES;
+        sti.cbReserved2 = 0;
+        sti.lpReserved2 = 0;
+        sti.hStdInput = (HANDLE) -1;
+        sti.hStdOutput = h2;
+        sti.hStdError = h2;
+        
+        mem[0] = (uint32_t) CreateEvent(&p_mem_file->m_sa, 0, 0, 0);
+        mem[1] = (uint32_t) CreateEvent(&p_mem_file->m_sa, 0, 0, 0);
+        
+        // Launch the assembler and wait for it to complete.
+        if
+        (
+            ! CreateProcess
+            (
+                NULL,
+                p_command,
+                0,
+                0,
+                TRUE,
+                DETACHED_PROCESS,
+                0,
+                0,
+                &sti,
+                &p_asm_state->m_proc_info
+            )
+        )
+        {
+            AString err_msg = { 0 };
+            
+            CloseHandle(h2);
+            
+            AString_InitFormatted
+            (
+                &err_msg,
+                "Unable to start %s",
+                asmpath
+            );
+            
+            MessageBox(framewnd,
+                       err_msg.m_text,
+                       "Bad error happened",
+                       MB_OK);
+            
+            AString_Free(&err_msg);
+            
+            return FALSE;
+        }
+        
+        CloseHandle(h2);
+        
+        p_asm_state->m_sync_objs[0] = (HANDLE) (mem[0]);
+        p_asm_state->m_sync_objs[1] = p_asm_state->m_proc_info.hProcess;
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
+    static BOOL
+    PatchLogic_AssemblerInterop
+    (
+        CP2(FDOC)              p_doc,
+        CP2(HM_SharedMem)      p_mem_file,
+        CP2(HM_AssemblerState) p_asm_state
+    )
+    {
+        BOOL sync_error = FALSE;
+        
+        uint32_t * o = 0;
+        
+        size_t j2 = 0;
+        size_t l  = 0;
+        
+        size_t k = 0;
+        
+        DWORD wait_result = 0;
+        
+        MSG msg = { 0 };
+        
+        // -----------------------------
+        
+        for( ; Is(sync_error, FALSE); )
+        {
+            size_t i = 0;
+            
+            // Address of an added segment, when one is generated.
+            uint32_t seg_addr = 0;
+            
+            CP2(uint32_t) mem = p_mem_file->m_view;
+            
+            // -----------------------------
+            
+            wait_result = MsgWaitForMultipleObjects
+            (
+                NUM_AssemblerStateSyncObjCount,
+                p_asm_state->m_sync_objs,
+                0,
+                INFINITE,
+                QS_ALLEVENTS
+            );
+            
+            switch(wait_result)
+            {
+            
+            case WAIT_OBJECT_0:
+                
+                switch( mem[2] )
+                {
+                
+                // Add a segment?
+                case 0:
+                    
+                    // Type of segment?
+                    if( mem[3] >= 3 )
+                    {
+                        goto error;
+                    }
+                    
+                    if(p_doc->numseg == 92)
+                    {
+                        MessageBox(framewnd,
+                                   "Too many segments",
+                                   "Bad error happened",
+                                   MB_OK);
+                        
+                        break;
+                    }
+                    
+                    p_doc->numseg++;
+                    p_doc->segs[k] = 0;
+                    
+                    seg_addr = Changesize(p_doc, 0x802a4 + k, mem[4]);
+                    
+                    mem[3] = cpuaddr(seg_addr);
+                    
+                    k += 1;
+                    
+                    if( ! seg_addr )
+                        goto error;
+                    
+                    goto regseg;
+                
+                case 1:
+                    
+                    if(p_doc->patches)
+                    {
+                        goto error;
+                    }
+                    
+                    i = mem[6];
+                    
+                    if( mem[3] < 3 )
+                    {
+                        i = romaddr(i);
+                        
+                        if(i >= 0x100000)
+                        {
+                            
+                        error:
+                            
+                            mem[2] = 1;
+                            
+                            break;
+                        }
+                        
+                        l++;
+                        
+                    regseg:
+                        
+                        if( ! (j2 & 0xff) )
+                        {
+                            p_asm_state->m_o = (uint32_t*) realloc
+                            (
+                                p_asm_state->m_o,
+                                (j2 + 512) << 2
+                            );
+                            
+                            o = p_asm_state->m_o;
+                        }
+                        
+                        o[j2 ]     = i;
+                        o[j2 + 1] = mem[4];
+                        o[j2 + 2] = mem[5];
+                        o[j2 + 3] = mem[2];
+                        
+                        j2 += 4;
+                    }
+                    
+                    // Is FSNASM waiting for this as their signal to continue?
+                    mem[2] = 0;
+                    
+                    break;
+                
+                case 2:
+                    
+                    p_doc->patches = (PATCH*) malloc( l * sizeof(PATCH) );
+                    
+                    for(i = 0; i < j2; i++)
+                    {
+                        p_doc->patches[i].len  = 0;
+                        p_doc->patches[i].addr = 0;
+                        p_doc->patches[i].pv   = 0;
+                    }
+                    
+                    break;
+                
+                default:
+                    
+                    // Does FSNASM interpret this as
+                    // "received, but not handled"?
+                    mem[2] = 1;
+                }
+                
+                // Is FSNASM waiting for this to be signaled before it
+                // continues?
+                SetEvent( (HANDLE) mem[1] );
+                
+                break;
+            
+            case WAIT_OBJECT_0 + 1:
+                
+                p_asm_state->m_j2 = j2;
+                
+                return TRUE;
+            
+            case WAIT_OBJECT_0 + 2:
+                
+                while( PeekMessage(&msg, 0, 0, 0, PM_REMOVE) )
+                {
+                    if(msg.message == WM_QUIT)
+                    {
+                        break;
+                    }
+                    
+                    ProcessMessage(&msg);
+                }
+                
+                break;
+            
+            default:
+                
+                // Something unusual occurred and we can no longer synchronize
+                // with the FSNASM process.
+                sync_error = TRUE;
+                
+                break;
+            }
+        }
+        
+        return FALSE;
+    }
+
+// =============================================================================
+
+    static void
+    PatchLogic_FreeAssemblerState
+    (
+        CP2(HM_AssemblerState) p_asm_state
+    )
+    {
+        CP2(PROCESS_INFORMATION) pi = &p_asm_state->m_proc_info;
+        
+        // -----------------------------
+        
+        if(p_asm_state->m_o)
+        {
+            free(p_asm_state->m_o);
+
+            p_asm_state->m_o = NULL;
+        }
+        
+        if(pi->hThread)
+        {
+            CloseHandle(pi->hThread);
+            
+            pi->hThread = NULL;
+        }
+        
+        if(pi->hProcess)
+        {
+            CloseHandle(pi->hProcess);
+            
+            pi->hProcess = NULL;
+        }
+    }
+
+// =============================================================================
+
+    // \task While the delegation of responsibilities to subroutines has been
+    // significantly improved in this source file, I feel that the refactoring
+    // that has been done has made the code slightly more fragile, so it
+    // should be checked for robustness, and perhaps given even further
+    // division of labor and clarity of logic. In particular, there are still
+    // a number of vaguely named variables in play, and that should be
+    // remedied. On the plus side, there don't appear to be any memory leaks.
     extern int
     Patch_Build(FDOC * const doc)
     {
-        int * n, * o = 0;
+        BOOL b = FALSE;
         
-        int i;
-        
-        int j2 = 0;
-        
-        int k, l, r, s;
+        int l;
         
         DWORD q = 0;
         
-        MSG msg;
-        
         PATCH * p;
         
-        HANDLE h, h2;
+        HANDLE h2 = INVALID_HANDLE_VALUE;
         
-        HANDLE h3[2];
+        HM_SharedMem mem_file = { 0 };
         
-        SECURITY_ATTRIBUTES sa;
-        
-        STARTUPINFO sti;
-        
-        PROCESS_INFORMATION pinfo;
+        HM_AssemblerState asm_state = { 0 };
         
         AString buf = { 0 };
-        
-        AString err_msg = { 0 };
         
         // -----------------------------
         
@@ -285,254 +737,41 @@
             goto nomod;
         }
         
-        sa.nLength = 12;
-        sa.lpSecurityDescriptor = 0;
-        sa.bInheritHandle = 1;
+        b = PatchLogic_AllocSharedMemory(&mem_file);
         
-        h = CreateFileMapping((HANDLE) -1,
-                              &sa,
-                              PAGE_READWRITE,
-                              0,
-                              4096,
-                              0);
-        
-        if( ! h )
+        if( IsFalse(b) )
         {
-            
-        nomem:
-            
-            MessageBox(framewnd,
-                       "Not enough memory.",
-                       "Bad error happened",
-                       MB_OK);
-            
-            q = 1;
-            
             goto cleanup;
-        }
-        
-        n = MapViewOfFile(h, FILE_MAP_WRITE, 0, 0, 0);
-        
-        if( ! n )
-        {
-            CloseHandle(h);
-            
-            goto nomem;
         }
         
         AString_AppendFormatted
         (
             &buf,
             " -l -h $%X -o HMTEMP.DAT",
-            h
+            mem_file.m_handle
         );
         
-        h2 = CreateFile("HMAGIC.ERR",
-                        GENERIC_WRITE,
-                        0,
-                        &sa,
-                        CREATE_ALWAYS,
-                        0,
-                        0);
-        
-        sti.cb = sizeof(sti);
-        
-        sti.lpReserved = 0;
-        sti.lpDesktop = 0;
-        sti.lpTitle = 0;
-        sti.dwFlags = STARTF_USESTDHANDLES;
-        sti.cbReserved2 = 0;
-        sti.lpReserved2 = 0;
-        sti.hStdInput = (HANDLE) -1;
-        sti.hStdOutput = h2;
-        sti.hStdError = h2;
-        
-        n[0] = (int) CreateEvent(&sa, 0, 0, 0);
-        n[1] = (int) CreateEvent(&sa, 0, 0, 0);
-        
-        // Launch the assembler and wait for it to complete.
-        if
+        b = PatchLogic_LaunchAssemblerProcess
         (
-            ! CreateProcess
-            (
-                0,
-                buf.m_text,
-                0,
-                0,
-                1,
-                DETACHED_PROCESS,
-                0,
-                0,
-                &sti,
-                &pinfo
-            )
-        )
+            &mem_file,
+            buf.m_text,
+            &asm_state
+        );
+        
+        if( IsFalse(b) )
         {
-            CloseHandle(h2);
-            
-            UnmapViewOfFile(n);
-            
-            CloseHandle(h);
-            
-            AString_InitFormatted
-            (
-                &err_msg,
-                "Unable to start %s",
-                asmpath
-            );
-            
-            MessageBox(framewnd,
-                       err_msg.m_text,
-                       "Bad error happened",
-                       MB_OK);
-            
-            q = 1;
-            
             goto cleanup;
         }
         
-        CloseHandle(h2);
+        b = PatchLogic_AssemblerInterop
+        (
+            doc,
+            &mem_file,
+            &asm_state
+        );
         
-        j2 = 0;
-        k  = 0;
-        l  = 0;
-        
-        h3[0] = (void*) (n[0]);
-        h3[1] = pinfo.hProcess;
-        
-        for( ; ; )
-        {
-            switch( MsgWaitForMultipleObjects(2, h3, 0, INFINITE, QS_ALLEVENTS) )
-            {
-            
-            case WAIT_OBJECT_0:
-                
-                switch( n[2] )
-                {
-                
-                // Add a segment?
-                case 0:
-                    
-                    // Type of segment?
-                    if( n[3] >= 3 )
-                    {
-                        goto error;
-                    }
-                    
-                    if(doc->numseg == 92)
-                    {
-                        MessageBox(framewnd,
-                                   "Too many segments",
-                                   "Bad error happened",
-                                   MB_OK);
-                        
-                        break;
-                    }
-                    
-                    doc->numseg++;
-                    doc->segs[k] = 0;
-                    
-                    i = Changesize(doc, 0x802a4 + k, n[4]);
-                    
-                    n[3] = cpuaddr(i);
-                    
-                    k += 1;
-                    
-                    if( ! i )
-                        goto error;
-                    
-                    goto regseg;
-                
-                case 1:
-                    
-                    if(doc->patches)
-                    {
-                        goto error;
-                    }
-                    
-                    i = n[6];
-                    
-                    if( n[3] < 3 )
-                    {
-                        i = romaddr(i);
-                        
-                        if(i >= 0x100000)
-                        {
-                            
-                        error:
-                            
-                            n[2] = 1;
-                            
-                            break;
-                        }
-                        
-                        l++;
-                        
-                    regseg:
-                        
-                        if( ! (j2 & 0xff) )
-                            o = realloc(o, (j2 + 512) << 2);
-                        
-                        o[j2 ]     = i;
-                        o[j2 + 1] = n[4];
-                        o[j2 + 2] = n[5];
-                        o[j2 + 3] = n[2];
-                        
-                        j2 += 4;
-                    }
-                    
-                    // Is FSNASM waiting for this as their signal to continue?
-                    n[2] = 0;
-                    
-                    break;
-                
-                case 2:
-                    
-                    doc->patches = malloc( l * sizeof(PATCH) );
-                    
-                    for(i = 0; i < j2; i++)
-                    {
-                        doc->patches[i].len  = 0;
-                        doc->patches[i].addr = 0;
-                        doc->patches[i].pv   = 0;
-                    }
-                    
-                    break;
-                
-                default:
-                    
-                    // Does FSNASM interpret this as
-                    // "received, but not handled"?
-                    n[2] = 1;
-                }
-                
-                // Is FSNASM waiting for this to be signaled before it
-                // continues?
-                SetEvent( (HANDLE) n[1] );
-                
-                break;
-            
-            case WAIT_OBJECT_0 + 1:
-                
-                goto done;
-            
-            case WAIT_OBJECT_0 + 2:
-                
-                while( PeekMessage(&msg, 0, 0, 0, PM_REMOVE) )
-                {
-                    if(msg.message == WM_QUIT)
-                    {
-                        break;
-                    }
-                    
-                    ProcessMessage(&msg);
-                }
-            }
-        }
-        
-    done:
-        
-        GetExitCodeProcess(pinfo.hProcess, &q);
+        GetExitCodeProcess(asm_state.m_proc_info.hProcess,
+                           &q);
         
         if(q)
         {
@@ -548,7 +787,16 @@
         }
         else
         {
+            size_t i;
+            size_t s = asm_state.m_j2;
+            
+            uint32_t const j2 = (asm_state.m_j2 >> 2);
+            
+            uint32_t r = 0;
+            
             DWORD read_bytes = 0;
+            
+            CP2C(uint32_t) o = asm_state.m_o;
             
             // -----------------------------
             
@@ -574,13 +822,9 @@
                 goto errors;
             }
             
-            p = doc->patches = malloc(l * sizeof(PATCH) );
+            p = doc->patches = (PATCH*) malloc(l * sizeof(PATCH) );
             
             doc->numpatch = l;
-            
-            s = j2;
-            
-            j2 >>= 2;
             
             for(r = 0; r < j2; r++)
             {
@@ -595,9 +839,9 @@
                 if( o[i + 3] )
                 {
                     p->addr = o[i];
-                    p->len  = o[i+1];
+                    p->len  = o[i + 1];
                     
-                    p->pv = malloc(p->len);
+                    p->pv = (uint8_t*) malloc(p->len);
                     
                     memcpy(p->pv,doc->rom+p->addr,p->len);
                     
@@ -614,13 +858,6 @@
             CloseHandle(h2);
         }
         
-        CloseHandle(pinfo.hThread);
-        CloseHandle(pinfo.hProcess);
-        
-        UnmapViewOfFile(n);
-        
-        CloseHandle(h);
-        
         if( ! q )
         {
             GetSystemTimeAsFileTime( &(doc->lastbuild) );
@@ -631,13 +868,12 @@
         
     cleanup:
         
+        PatchLogic_FreeAssemblerState(&asm_state);
+        
+        PatchLogic_FreeSharedMemory(&mem_file);
+        
         AString_Free(&buf);
 
-        if(o)
-        {
-            free(o);
-        }
-        
         return q;
     }
 
@@ -654,7 +890,7 @@
         
         for(i = 0; i < num_patches; i += 1)
         {
-            PATCH const * const p = &doc->patches[i];
+            CP2(PATCH) p = &doc->patches[i];
             
             // -----------------------------
             
@@ -663,6 +899,8 @@
                    p->len);
             
             free(p->pv);
+            
+            p->pv = NULL;
         }
         
         for(i = 0; i < doc->numseg; i += 1)
@@ -710,6 +948,24 @@
             free(p_doc->modules);
             
             p_doc->modules = NULL;
+        }
+        
+        for(i = 0; i < p_doc->numpatch; i += 1)
+        {
+            CP2(PATCH) p = &p_doc->patches[i];
+            
+            free(p->pv);
+            
+            p->addr = 0;
+            p->len  = 0;
+            p->pv   = NULL;
+        }
+        
+        if(p_doc->patches)
+        {
+            free(p_doc->patches);
+            
+            p_doc->patches = NULL;
         }
         
         return i;

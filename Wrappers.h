@@ -13,6 +13,12 @@
     */
     #define Is(x, y) (x == y)
 
+
+    /**
+        Convenience macro for testing for a false condition.
+    */
+    #define IsFalse(x) Is(x, FALSE)
+
 // =============================================================================
 
     /**

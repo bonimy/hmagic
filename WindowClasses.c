@@ -53,28 +53,6 @@
 
 // =============================================================================
 
-    /**
-        
-    */
-    typedef
-    struct
-    {
-        WNDPROC m_proc;
-        
-        char const * const m_class_name;
-        
-        UINT m_style;
-        
-        HBRUSH * m_brush;
-        
-        HCURSOR * m_cursor;
-        
-        ATOM m_atom;
-        
-    } HM_WindowClass;
-
-// =============================================================================
-
     HM_WindowClass frame_classes[] =
     {
         {

@@ -194,7 +194,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     HM_DeclareDlgProc(editvarious);
 
-    HM_DeclareDlgProc(aboutfunc);
+    HM_DeclareDlgProc(AboutDlg);
     
     HM_DeclareDlgProc(seldevproc);
 

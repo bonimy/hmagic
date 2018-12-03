@@ -408,7 +408,12 @@ frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             goto openrom;
         
         case ID_Z3_ABOUT:
-            ShowDialog(hinstance,MAKEINTRESOURCE(IDD_DIALOG1),framewnd,aboutfunc,0);
+            
+            ShowDialog(hinstance,
+                       MAKEINTRESOURCE(IDD_ABOUT_DLG),
+                       framewnd,
+                       AboutDlg,
+                       0);
             
             break;
         

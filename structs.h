@@ -829,6 +829,11 @@ typedef struct
     
 } ZCHANNEL;
 
+// =============================================================================
+
+    /**
+        This is meant to represent the binary layout of a wav file.
+    */
     typedef
     struct
     {
@@ -859,6 +864,30 @@ typedef struct
         int8_t m_data[1];
         
     } HM_WaveFileData;
+
+// =============================================================================
+
+    /**
+        Contains customization information for Window classes. This has
+        less information than the full up structure used by Microsoft, but
+        just enough that we can specify what is usually important to us.
+    */
+    typedef
+    struct
+    {
+        WNDPROC m_proc;
+        
+        char const * const m_class_name;
+        
+        UINT m_style;
+        
+        HBRUSH * m_brush;
+        
+        HCURSOR * m_cursor;
+        
+        ATOM m_atom;
+        
+    } HM_WindowClass;
 
 // =============================================================================
 
