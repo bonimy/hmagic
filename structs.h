@@ -280,8 +280,29 @@ typedef struct tagFDOC
     */
     ZTextMessage * text_bufz;
     
+    /**
+        The number of modules that are currently loaded. These do not represent
+        actualized changes to the rom, just objects that, when applied, might
+        change the rom. In particular this counts the number of *.asm or *.obj
+        files that are in loaded into the program to be applied to the rom.
+    */
     unsigned short nummod;
+    
+    /**
+        This is the number of changes that have been actualized on the rom,
+        and counts the number of PATCH objects we have allocated. Each of these
+        PATCH structures contains the state of the rom prior to the changes
+        that were applied. These are stored to file as a backup mechanism
+        if a rom is saved by the program, in a file with the naming convention
+        ${filepath}${filename}.${extension}.hmd
+        
+        The convention described above uses syntax similar to bash on Linux.
+    */
     unsigned short numpatch;
+    
+    /**
+        The number
+    */
     unsigned short numseg;
     
     FILETIME lastbuild;

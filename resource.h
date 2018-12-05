@@ -28,7 +28,7 @@
 #define IDD_DIALOG20                    128
 #define IDD_DIALOG21                    129
 #define IDD_DIALOG22                    130
-#define IDD_DIALOG23                    131
+#define IDD_FSNASM_RESULTS_DLG          131
 #define IDD_GRAPHIC_THEMES              132
 #define IDD_DEBUG_DLG                   133
 #define IDR_ENTRANCE_NAMES              134

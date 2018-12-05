@@ -13,11 +13,25 @@
     */
     #define Is(x, y) (x == y)
 
+    /**
+        Convenience macro for testing for a true condition.
+    */
+    #define IsTrue(x) Is(x, TRUE)
 
     /**
         Convenience macro for testing for a false condition.
     */
     #define IsFalse(x) Is(x, FALSE)
+
+    /**
+        Convenience macro for testing whether a variable is equal to zero.
+    */
+    #define IsZero(x) Is(x, 0)
+
+    /**
+        Convenience macro for testing whether a variable is not equal to zero.
+    */
+    #define IsNonzero(x) ( ! IsZero(x) )
 
 // =============================================================================
 

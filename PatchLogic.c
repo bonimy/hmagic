@@ -66,6 +66,8 @@
         
         uint32_t * m_o;
         
+        size_t m_patch_count;
+        
         PROCESS_INFORMATION m_proc_info;
         
         /**
@@ -373,7 +375,7 @@
         CP2(HM_AssemblerState) p_asm_state
     )
     {
-        STARTUPINFO sti;
+        STARTUPINFO sti = { 0 };
         
         CP2(uint32_t) mem = p_mem_file->m_view;
         
@@ -466,7 +468,6 @@
         uint32_t * o = 0;
         
         size_t j2 = 0;
-        size_t l  = 0;
         
         size_t k = 0;
         
@@ -524,6 +525,7 @@
                     }
                     
                     p_doc->numseg++;
+                    
                     p_doc->segs[k] = 0;
                     
                     seg_addr = Changesize(p_doc, 0x802a4 + k, mem[4]);
@@ -560,7 +562,7 @@
                             break;
                         }
                         
-                        l++;
+                        p_asm_state->m_patch_count += 1;
                         
                     regseg:
                         
@@ -590,7 +592,11 @@
                 
                 case 2:
                     
-                    p_doc->patches = (PATCH*) malloc( l * sizeof(PATCH) );
+                    p_doc->patches = (PATCH*) calloc
+                    (
+                        p_asm_state->m_patch_count,
+                        sizeof(PATCH)
+                    );
                     
                     for(i = 0; i < j2; i++)
                     {
@@ -649,6 +655,97 @@
 
 // =============================================================================
 
+    static BOOL
+    PatchLogic_ApplyPatches
+    (
+        CP2(FDOC)               p_doc,
+        CP2C(HM_AssemblerState) p_asm_state
+    )
+    {
+        size_t i = 0;
+        size_t s = p_asm_state->m_j2;
+        
+        uint32_t const j2 = (p_asm_state->m_j2 >> 2);
+        
+        uint32_t r = 0;
+        
+        DWORD read_bytes = 0;
+        
+        CP2C(uint32_t) o = p_asm_state->m_o;
+        
+        PATCH * p;
+        
+        HANDLE const h2 = CreateFile
+        (
+            "HMTEMP.DAT",
+            GENERIC_READ,
+            0,
+            0,
+            OPEN_EXISTING,
+            FILE_FLAG_DELETE_ON_CLOSE,
+            0
+        );
+        
+        // -----------------------------
+        
+        DeleteFile("HMAGIC.ERR");
+        
+        if(h2 == INVALID_HANDLE_VALUE)
+        {
+            MessageBox(framewnd,
+                       "Unable to apply patch",
+                       "Bad error happened",
+                       MB_OK);
+            
+            return FALSE;
+        }
+        
+        p = p_doc->patches = (PATCH*) calloc
+        (
+            sizeof(PATCH),
+            p_asm_state->m_patch_count
+        );
+        
+        p_doc->numpatch = p_asm_state->m_patch_count;
+        
+        for(r = 0; r < j2; r++)
+        {
+            for(i = 0; i < s; i += 4)
+            {
+                if(o[i + 2] == r)
+                {
+                    break;
+                }
+            }
+            
+            if( o[i + 3] )
+            {
+                p->addr = o[i];
+                p->len  = o[i + 1];
+                
+                p->pv = (uint8_t*) malloc(p->len);
+                
+                memcpy(p->pv,
+                       p_doc->rom + p->addr,
+                       p->len);
+                
+                p++;
+            }
+            
+            ReadFile(h2,
+                     p_doc->rom + o[i],
+                     o[i+1],
+                     &read_bytes,
+                     0);
+        }
+        
+        CloseHandle(h2);
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
     static void
     PatchLogic_FreeAssemblerState
     (
@@ -695,13 +792,9 @@
     {
         BOOL b = FALSE;
         
-        int l;
+        int module_count = 0;
         
-        DWORD q = 0;
-        
-        PATCH * p;
-        
-        HANDLE h2 = INVALID_HANDLE_VALUE;
+        DWORD asm_return_code = 0;
         
         HM_SharedMem mem_file = { 0 };
         
@@ -717,24 +810,30 @@
         // supplied in the patch dialog.
         Removepatches(doc);
         
-        if( ! doc->nummod )
+        if( IsZero(doc->nummod) )
         {
-            
-        nomod:
-            
             MessageBox(framewnd,
                        "No modules are loaded",
-                       "Bad error happened",
+                       "",
                        MB_OK);
             
             goto cleanup;
         }
         
-        l = PatchLogic_Form_ASM_Command(doc, &buf);
+        module_count = PatchLogic_Form_ASM_Command(doc, &buf);
         
-        if( ! l )
+        if( IsZero(module_count) )
         {
-            goto nomod;
+            MessageBox
+            (
+                framewnd,
+                "While there are modules loaded, none of them are acceptable"
+                "formats for FSNASM",
+                "",
+                MB_OK
+            );
+            
+            goto cleanup;
         }
         
         b = PatchLogic_AllocSharedMemory(&mem_file);
@@ -771,94 +870,33 @@
         );
         
         GetExitCodeProcess(asm_state.m_proc_info.hProcess,
-                           &q);
+                           &asm_return_code);
         
-        if(q)
+        b = IsZero(asm_return_code);
+        
+        if( IsFalse(b) )
         {
-            DialogBoxParam(hinstance,
-                           (LPSTR) IDD_DIALOG23,
-                           framewnd,
-                           errorsproc,
-                           0);
-            
-        errors:
+            ShowDialog
+            (
+                hinstance,
+                MAKEINTRESOURCE(IDD_FSNASM_RESULTS_DLG),
+                framewnd,
+                errorsproc,
+                0
+            );
             
             Removepatches(doc);
         }
         else
         {
-            size_t i;
-            size_t s = asm_state.m_j2;
-            
-            uint32_t const j2 = (asm_state.m_j2 >> 2);
-            
-            uint32_t r = 0;
-            
-            DWORD read_bytes = 0;
-            
-            CP2C(uint32_t) o = asm_state.m_o;
-            
-            // -----------------------------
-            
-            DeleteFile("HMAGIC.ERR");
-            
-            h2 = CreateFile("HMTEMP.DAT",
-                            GENERIC_READ,
-                            0,
-                            0,
-                            OPEN_EXISTING,
-                            FILE_FLAG_DELETE_ON_CLOSE,
-                            0);
-            
-            if( h2 == (HANDLE) -1 )
-            {
-                MessageBox(framewnd,
-                           "Unable to apply patch",
-                           "Bad error happened",
-                           MB_OK);
-                
-                q = 1;
-                
-                goto errors;
-            }
-            
-            p = doc->patches = (PATCH*) malloc(l * sizeof(PATCH) );
-            
-            doc->numpatch = l;
-            
-            for(r = 0; r < j2; r++)
-            {
-                for(i = 0; i < s; i += 4)
-                {
-                    if(o[i + 2] == r)
-                    {
-                        break;
-                    }
-                }
-                
-                if( o[i + 3] )
-                {
-                    p->addr = o[i];
-                    p->len  = o[i + 1];
-                    
-                    p->pv = (uint8_t*) malloc(p->len);
-                    
-                    memcpy(p->pv,doc->rom+p->addr,p->len);
-                    
-                    p++;
-                }
-                
-                ReadFile(h2,
-                         doc->rom + o[i],
-                         o[i+1],
-                         &read_bytes,
-                         0);
-            }
-            
-            CloseHandle(h2);
+            b = PatchLogic_ApplyPatches
+            (
+                doc,
+                &asm_state
+            );
         }
         
-        if( ! q )
+        if( IsTrue(b) )
         {
             GetSystemTimeAsFileTime( &(doc->lastbuild) );
             
@@ -874,7 +912,7 @@
         
         AString_Free(&buf);
 
-        return q;
+        return b;
     }
 
 // =============================================================================
@@ -954,6 +992,8 @@
         {
             CP2(PATCH) p = &p_doc->patches[i];
             
+            // -----------------------------
+            
             free(p->pv);
             
             p->addr = 0;
@@ -989,16 +1029,27 @@ Usage: FSNASM [option] srcfile
 Options:
 -l: Produce LO-ROM
 -o : Select output filename
-    <MoN> (Update) There is also a parameter -h which expects an 8-bit hex value
-    referring to a memory mapped file. Example: -h $22334411 If the handle to
-    the memory mapped file has value 0x22334411. This appears to put FSNASM
+
+<MoN>
+-h $handle_value : Handle to memory mapped file. If present, and the memory
+    mapped file handle is valid, this puts the program into into a
+    synchronizated mode where it communicates back and forth with a client
+    process. handle_value should should be the 8-bit hexadecimal value of
+    the handle, and it should be prefixed with the dollar sign character to
+    indicate that it is hexadecimal. It is unconfirmed whether passing the
+    decimal representation of the handle (and without a '$' prefix) works.
+     
+    Example: -h $22334411 If the handle to the memory mapped file has value 
+    0x22334411. This appears to put FSNASM
     into an interprocess operation mode where it sends data to a client
     application and waits before proceeding. Hyrule Magic creates a memory
     mapped file that is sized at 4096 bytes, though it's not yet clear if
     FSNASM needs all of that, or whether it was just a convenient sounding
     size to use (that's 4 Kbytes).
+</MoN>
 
-You can use .b, .w, and .l to be explicit about what version of a particular instruction you want (so, for example, LDA.w). If you don't use those, the assembler will make its best guess.
+You can use .b, .w, and .l to be explicit about what version of a particular instruction you want (so, for example, LDA.w).
+If you don't use those, the assembler will make its best guess.
 
 Commands are: charset, defchar, endb, base, data, block, align, end, code, global, zram, incbin and org
 

@@ -2448,7 +2448,7 @@ nochange:
     rom[0xcbad] = (uint8_t) (j >> 16);
     stle16b(rom + 0xcba2, (j & 0xffff) );
     
-    for(i = 0; i < 19; i++)
+    for(i = 0; i < 19; i += 1)
     {
         blah = (int*) (rom + 0x26cc0 + i*3);
         
@@ -2456,14 +2456,14 @@ nochange:
         *blah |= cpuaddr(l[i + 641]);
     }
     
-    for(i = 0; i < 8; i++)
+    for(i = 0; i < 8; i += 1)
     {
         blah = (int*) (rom + l[640] + i*3);
         *blah &= 0xff000000;
         *blah |= cpuaddr(l[i+660]);
     }
     
-    for(i = 0; i < 7; i++)
+    for(i = 0; i < 7; i += 1)
     {
         if(!(rom[0x1386 + i] & 128))
             continue;
@@ -2474,10 +2474,12 @@ nochange:
         rom[0x138f + i] = (uint8_t) (j >> 16);
     }
     
-    for(i = 676; i < max; i++)
+    for(i = 676; i < max; i += 1)
     {
-        if( l[i] != doc->segs[i-676] )
+        if( l[i] != doc->segs[i - 676] )
+        {
             doc->p_modf = 1;
+        }
         
         doc->segs[i - 676] = l[i];
     }
@@ -2486,10 +2488,12 @@ nochange:
     {
         j = l[num];
         
-        for(i = 0; i < 320; i++)
+        for(i = 0; i < 320; i += 1)
         {
             if(l[i + 320] == j)
+            {
                 t[i] = door_ofs;
+            }
         }
     }
     

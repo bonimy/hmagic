@@ -667,7 +667,15 @@ saveerror:
                               0);
                 }
                 
-                WriteFile(h2,activedoc->segs,activedoc->numseg<<2,&write_size,0);
+                WriteFile
+                (
+                    h2,
+                    activedoc->segs,
+                    activedoc->numseg << 2,
+                    &write_size,
+                    0
+                );
+                
                 mod = activedoc->modules;
                 
                 for(i = 0; i < activedoc->nummod; i++, mod++)
@@ -1077,7 +1085,11 @@ error:
                 */
                 ReadFile(h,&(doc->nummod),14,&read_size,0);
                 
-                doc->patches = malloc(doc->numpatch*sizeof(PATCH));
+                doc->patches = (PATCH*) calloc
+                (
+                    doc->numpatch,
+                    sizeof(PATCH)
+                );
                 
                 for(i = 0; i < doc->numpatch; i++)
                 {
@@ -1087,9 +1099,20 @@ error:
                     ReadFile(h,doc->patches[i].pv,doc->patches[i].len,&read_size,0);
                 }
                 
-                ReadFile(h,doc->segs,doc->numseg<<2,&read_size,0);
+                ReadFile
+                (
+                    h,
+                    doc->segs,
+                    doc->numseg << 2,
+                    &read_size,
+                    0
+                );
                 
-                mod = doc->modules = malloc(doc->nummod * sizeof(ASMHACK));
+                mod = doc->modules = (ASMHACK*) calloc
+                (
+                    doc->nummod,
+                    sizeof(ASMHACK)
+                );
                 
                 for(i = 0; i < doc->nummod; i++, mod++)
                 {
@@ -1111,9 +1134,13 @@ error:
 nomod:
                 doc->lastbuild.dwLowDateTime=0;
                 doc->lastbuild.dwHighDateTime=0;
-                doc->numseg=doc->numpatch=doc->nummod=0;
-                doc->patches = 0;
-                doc->modules = 0;
+                
+                doc->numseg   = 0;
+                doc->numpatch = 0;
+                doc->nummod   = 0;
+                
+                doc->patches = NULL;
+                doc->modules = NULL;
             }
             else
             {
