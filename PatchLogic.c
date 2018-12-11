@@ -151,6 +151,25 @@
 // =============================================================================
 
     static int
+    Path_AddExtension
+    (
+        CP2(AString) p_str,
+        CP2C(char)   p_new_ext
+    )
+    {
+        int r = AString_AppendString(p_str, ".");
+        
+        if(r >= 0)
+        {
+            r = AString_AppendString(p_str, p_new_ext);
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static int
     PatchLogic_Form_ASM_Command
     (
         CP2C(FDOC)   p_doc,
@@ -1011,6 +1030,206 @@
         return i;
     }
 
+// =============================================================================
+
+    extern BOOL
+    PatchLogic_DeserializePatches
+    (
+        CP2(FDOC) p_doc
+    )
+    {
+        BOOL b = FALSE;
+        
+        char magic_str[5] = { 0 };
+        
+        text_buf_ty text_buf = { 0 };
+        
+        int i = 0;
+        int r = 0;
+        
+        DWORD read_size = 0;
+        
+        HANDLE h = INVALID_HANDLE_VALUE;
+        
+        AString serial_asm_path = { 0 };
+        
+        // -----------------------------
+        
+        AString_InitFromNativeString
+        (
+            &serial_asm_path,
+            p_doc->filename
+        );
+        
+        r = Path_ChangeExtension
+        (
+            &serial_asm_path,
+            "HMD"
+        );
+        
+        if(r < 0)
+        {
+            Path_AddExtension
+            (
+                &serial_asm_path,
+                "HMD"
+            );
+        }
+        
+        h = CreateFile
+        (
+            serial_asm_path.m_text,
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            0,
+            OPEN_EXISTING,
+            FILE_FLAG_SEQUENTIAL_SCAN,
+            0
+        );
+        
+        if( h == (HANDLE) -1 )
+        {
+            wsprintf
+            (
+                text_buf,
+                "A required file, %s, is missing",
+                serial_asm_path.m_text
+            );
+
+        errormsg:
+            
+            MessageBox
+            (
+                framewnd,
+                text_buf,
+                "Bad error happened",
+                MB_OK
+            );
+            
+            goto cleanup;
+        }
+        
+        ReadFile(h, magic_str, 4, &read_size, 0);
+        
+        if( IsNonzero( _stricmp(magic_str, "HMD0") ) )
+        {
+            wsprintf
+            (
+                text_buf,
+                "%s has an invalid format.",
+                p_doc->filename
+            );
+            
+            goto errormsg;
+        }
+        
+        /**
+            \task There are SERIOUS problems with this code. It depends
+            upon certain expectations of the layout of the document
+            structure, including size and ordering.
+            Case in point, a raw constant like the one in this
+            line. This should be given the same treatment that reading
+            the config file was given. Sanitize inputs and don't trust
+            what is being read in from files. Also manually assign to
+            the relevant structure members.
+        */
+        ReadFile
+        (
+            h,
+            &(p_doc->nummod),
+            14,
+            &read_size,
+            0
+        );
+        
+        p_doc->patches = (PATCH*) calloc
+        (
+            p_doc->numpatch,
+            sizeof(PATCH)
+        );
+        
+        for(i = 0; i < p_doc->numpatch; i++)
+        {
+            // read in the patches
+            ReadFile
+            (
+                h,
+                p_doc->patches + i,
+                8,
+                &read_size,
+                0
+            );
+            
+            p_doc->patches[i].pv = malloc(p_doc->patches[i].len);
+            
+            ReadFile
+            (
+                h,
+                p_doc->patches[i].pv,
+                p_doc->patches[i].len,
+                &read_size,
+                0
+            );
+        }
+        
+        ReadFile
+        (
+            h,
+            p_doc->segs,
+            p_doc->numseg << 2,
+            &read_size,
+            0
+        );
+        
+        p_doc->modules = (ASMHACK*) calloc
+        (
+            p_doc->nummod,
+            sizeof(ASMHACK)
+        );
+        
+        for(i = 0; i < p_doc->nummod; i += 1)
+        {
+            int k = 0;
+            
+            CP2(ASMHACK) mod = &p_doc->modules[i];
+            
+            // -----------------------------
+            
+            ReadFile
+            (
+                h,
+                p_doc->modules + i,
+                sizeof(ASMHACK),
+                &read_size,
+                0
+            );
+            
+            k = (int) mod->filename;
+            
+            mod->filename = (char*) malloc(k + 1);
+            
+            ReadFile
+            (
+                h,
+                mod->filename,
+                k,
+                &read_size,
+                0
+            );
+            
+            mod->filename[k] = 0;
+        }
+        
+        b = TRUE;
+        
+    cleanup:
+        
+        AString_Free(&serial_asm_path); 
+        
+        CloseHandle(h);
+        
+        return b;
+    }
 
 // =============================================================================
 

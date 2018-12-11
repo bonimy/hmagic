@@ -28,16 +28,27 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     FDOC*doc;
     int i,j;
     short*l;
-    unsigned char*rom;
-    switch(msg) {
+    
+    unsigned char * rom;
+    
+    switch(msg)
+    {
+    
     case WM_QUERYNEWPALETTE:
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
-        Setpalette(win,ed->bs.ed->hpal);
+        
+        ed = (BLOCKEDIT32*) GetWindowLong(win,GWL_USERDATA);
+        
+        SetPalette(win,ed->bs.ed->hpal);
+        
         return 1;
+    
     case WM_PALETTECHANGED:
+        
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
+        
         break;
+    
     case WM_INITDIALOG:
         ed = (BLOCKEDIT32*) malloc(sizeof(BLOCKEDIT32));
         bs=&(ed->bs);

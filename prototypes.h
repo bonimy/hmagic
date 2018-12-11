@@ -9,9 +9,6 @@ int
 ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param);
 
 void
-Setpalette(HWND const win, HPALETTE const pal);
-
-void
 PaintSprName(HDC hdc,
              int x,
              int y,

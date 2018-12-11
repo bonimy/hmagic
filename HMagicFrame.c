@@ -5,6 +5,8 @@
     #include "Wrappers.h"
     #include "Callbacks.h"
 
+    #include "GdiObjects.h"
+
     #include "HMagicEnum.h"
     #include "HMagicLogic.h"
     #include "HMagicUtility.h"
@@ -356,10 +358,11 @@ frameproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_QUERYNEWPALETTE:
-        if(!dispwnd)
+        
+        if( ! dispwnd )
             break;
         
-        Setpalette(win,dispwnd->hpal);
+        SetPalette(win,dispwnd->hpal);
         
         return 1;
     
@@ -798,8 +801,10 @@ okay2:
             if(GetKeyState(VK_SHIFT) & 128)
             {
                 // if there is no active document, stop.
-                if(!activedoc)
+                if( IsNull(activedoc) )
+                {
                     break;
+                }
                 
                 // If the music data is loaded...
                 if(activedoc->m_loaded)
@@ -814,7 +819,8 @@ okay2:
                     Unloadsongs(activedoc);
                     Loadsongs(activedoc);
                     
-                    // if the HWND handle for the third music bank is valid.
+                    // if the HWND handle for the sample editor windows is
+                    // valid.
                     if(activedoc->mbanks[3])
                     {
                         sed = ((SAMPEDIT*)GetWindowLong(activedoc->mbanks[3],GWL_USERDATA));
@@ -846,9 +852,15 @@ okay2:
             // allocate enough memory for the object.
             doc = (FDOC*) malloc(sizeof(FDOC));
             
-            if(!doc) // not enough memory.
+            if( IsNull(doc) ) // not enough memory.
             {
-                MessageBox(framewnd,"No memory at all","Bad error happened",MB_OK);
+                MessageBox
+                (
+                    framewnd,
+                    "No memory at all",
+                    "Bad error happened",
+                    MB_OK
+                );
                 
                 break;
             }
@@ -877,7 +889,10 @@ okay2:
 //                  wsprintf(text_buf,"GUI error. Error: %08X",i);
 //                  MessageBox(framewnd,text_buf,"Bad error happened",MB_OK);
 //              }
-                free(doc); break;
+                
+                free(doc);
+                
+                break;
             }
 openrom:
             
@@ -887,18 +902,41 @@ openrom:
                 if(!_stricmp(doc2->filename,doc->filename))
                 {
                     free(doc);
-                    SendMessage(clientwnd,WM_MDIACTIVATE,(long)(doc2->mdiwin),0);
+                    
+                    SendMessage
+                    (
+                        clientwnd,
+                        WM_MDIACTIVATE,
+                        (WPARAM) (doc2->mdiwin),
+                        0
+                    );
                     
                     return 0;
                 }
             }
             
             // load the rom file
-            h = CreateFile(doc->filename,GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,0);
+            h = CreateFile
+            (
+                doc->filename,
+                GENERIC_READ,
+                FILE_SHARE_READ,
+                0,
+                OPEN_EXISTING,
+                FILE_FLAG_SEQUENTIAL_SCAN,
+                0
+            );
             
             if(h == INVALID_HANDLE_VALUE)
             {
-                MessageBox(framewnd,"Unable to open file","Bad error happened",MB_OK);
+                MessageBox
+                (
+                    framewnd,
+                    "Unable to open file",
+                    "Bad error happened",
+                    MB_OK
+                );
+                
                 free(doc);
                 
                 break;
@@ -908,7 +946,14 @@ openrom:
             j = GetFileSize(h,0);
             
             //read the first four bytes of the file.
-            ReadFile(h,&i,4,&read_size,0);
+            ReadFile
+            (
+                h,
+                &i,
+                4,
+                &read_size,
+                0
+            );
             
             //these first four bytes have to match, apparently. 
             //kind of primitive error checking...eh?
@@ -936,10 +981,18 @@ openrom:
             // allocate a rom (buffer) the same size as the file.
             rom = doc->rom = malloc(j);
             
-            if(!rom)
+            if( IsNull(rom) )
             {
-                MessageBox(framewnd,"Not enough memory.","Bad error happened",MB_OK);
+                MessageBox
+                (
+                    framewnd,
+                    "Not enough memory.",
+                    "Bad error happened",
+                    MB_OK
+                );
+                
                 CloseHandle(h);
+                
                 free(doc);
                 
                 break;
@@ -958,15 +1011,24 @@ openrom:
             // user knows for a fact that it is a Z3 rom.
             if( ldle32b(rom + 0x200) != 0xf00128ad)
             {
-                MessageBox(framewnd,
-                           "Hey! This is not Zelda 3.",
-                           "Bad error happened",
-                           MB_OK);
-error:
-                free(rom);
-                free(doc);
+                BOOL response = HM_YesNo_MsgBox
+                (
+                    framewnd,
+                    ("Hey! This seems to not be Zelda 3.\n"
+                    "Continue?"),
+                    "Warning"
+                );
                 
-                break;
+                if( IsFalse(response) )
+                {
+
+                error:
+                    
+                    free(rom);
+                    free(doc);
+                    
+                    break;
+                }
             }
             
             // these tell us where certain data structures end.
@@ -1024,123 +1086,30 @@ error:
                 goto error;
             }
             
-            if( i >= 3 ) if( rom[0x17fa4] & 1 )
+            if( i >= 3 )
             {
-                // truncate to the last '.' (period) in the filename.
-                m = strrchr(doc->filename, '.');
-                
-                // comment later.
-                if( (!m) || strrchr(doc->filename, '\\') > m)
-                    //go to the end of the filenamme.
-                    m = doc->filename + strlen(doc->filename);
-                
-                l = *(int*)m; // what is the int value there?
-                // change the path extensions .HMD.
-                strcpy(m, ".HMD");
-                
-                h = CreateFile(doc->filename,
-                               GENERIC_READ,
-                               FILE_SHARE_READ,
-                               0,
-                               OPEN_EXISTING,
-                               FILE_FLAG_SEQUENTIAL_SCAN,
-                               0);
-                
-                if(h == (HANDLE) -1)
+                if( rom[0x17fa4] & 1 )
                 {
-                    wsprintf(text_buf,
-                             "A required file, %s, is missing",
-                             doc->filename);
-
-                errormsg:
-                    
-                    MessageBox(framewnd,
-                               text_buf,
-                               "Bad error happened",
-                               MB_OK);
-                    
-                    goto error;
+                    if( IsFalse(PatchLogic_DeserializePatches(doc) ) )
+                    {
+                        goto error;
+                    }
                 }
-                
-                ReadFile(h,&i,4,&read_size,0);
-                
-                if(i != 'HMD0')
+                else
                 {
-                    wsprintf(text_buf,
-                             "%s has an invalid format.",
-                             doc->filename);
                     
-                    goto errormsg;
-                }
-                
-                /**
-                    \task There are SERIOUS problems with this code. It depends
-                    upon certain expectations of the layout of the document
-                    structure, including size and ordering.
-                    Case in point, a raw constant like the one in this
-                    line. This should be given the same treatment that reading
-                    the config file was given. Sanitize inputs and don't trust
-                    what is being read in from files. Also manually assign to
-                    the relevant structure members.
-                */
-                ReadFile(h,&(doc->nummod),14,&read_size,0);
-                
-                doc->patches = (PATCH*) calloc
-                (
-                    doc->numpatch,
-                    sizeof(PATCH)
-                );
-                
-                for(i = 0; i < doc->numpatch; i++)
-                {
-                    // read in the patches
-                    ReadFile(h,doc->patches+i,8,&read_size,0);
-                    doc->patches[i].pv=malloc(doc->patches[i].len);
-                    ReadFile(h,doc->patches[i].pv,doc->patches[i].len,&read_size,0);
-                }
-                
-                ReadFile
-                (
-                    h,
-                    doc->segs,
-                    doc->numseg << 2,
-                    &read_size,
-                    0
-                );
-                
-                mod = doc->modules = (ASMHACK*) calloc
-                (
-                    doc->nummod,
-                    sizeof(ASMHACK)
-                );
-                
-                for(i = 0; i < doc->nummod; i++, mod++)
-                {
-                    ReadFile(h,doc->modules+i,sizeof(ASMHACK),&read_size,0);
+                nomod:
                     
-                    k = (int) mod->filename;
-                    mod->filename = malloc(k + 1);
+                    doc->lastbuild.dwLowDateTime=0;
+                    doc->lastbuild.dwHighDateTime=0;
                     
-                    ReadFile(h,mod->filename,k,&read_size,0);
-                    mod->filename[k]=0;
+                    doc->numseg   = 0;
+                    doc->numpatch = 0;
+                    doc->nummod   = 0;
+                    
+                    doc->patches = NULL;
+                    doc->modules = NULL;
                 }
-                
-                CloseHandle(h);
-                
-                *(int*)m = l;
-            }
-            else
-            {
-nomod:
-                doc->lastbuild.dwLowDateTime=0;
-                doc->lastbuild.dwHighDateTime=0;
-                
-                doc->numseg   = 0;
-                doc->numpatch = 0;
-                doc->nummod   = 0;
-                
-                doc->patches = NULL;
-                doc->modules = NULL;
             }
             else
             {

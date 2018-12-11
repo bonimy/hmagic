@@ -3624,22 +3624,6 @@ Paintdungeon(DUNGEDIT * const ed,
 
 // =============================================================================
 
-void
-Setpalette(HWND const win, HPALETTE const pal)
-{
-    HDC const hdc = GetDC(win);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, pal, 0);
-    
-    RealizePalette(hdc);
-    
-    SelectPalette(hdc, oldpal, 1);
-    
-    ReleaseDC(win, hdc);
-    
-    return;
-}
-
 void Updateblk8sel(BLOCKSEL8 *ed, int num)
 {
     int i=num+(ed->scroll<<4);
@@ -3884,9 +3868,13 @@ void
 Updpal(void*ed)
 {
     if(ed == dispwnd && ( (DUNGEDIT*) ed)->hpal)
-        Setpalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
+    {
+        SetPalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
+    }
     else
+    {
         SendMessage(( (DUNGEDIT*) ed)->dlg, 4002, 0, 0);
+    }
 }
 
 void Setdispwin(DUNGEDIT *ed)
@@ -3894,7 +3882,8 @@ void Setdispwin(DUNGEDIT *ed)
     if(ed != dispwnd)
     {
         dispwnd = ed;
-        Setpalette(framewnd, ed->hpal);
+        
+        SetPalette(framewnd, ed->hpal);
     }
 }
 
@@ -4141,7 +4130,6 @@ int Editblocks(OVEREDIT *ed, int num, HWND win)
     
     // -----------------------------
     
-    // \task Pointer problem on 64-bit (and just generally)
     x[0] = (LPARAM) ed;
     
     if(num == 17)

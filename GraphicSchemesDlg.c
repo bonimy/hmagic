@@ -72,7 +72,7 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         Setdispwin( (DUNGEDIT*) &ec);
         
         // \task This line is a test.
-        PostMessage(win, WM_SETICON, 0, main_icon);
+        PostMessage(win, WM_SETICON, 0, (LPARAM) main_icon);
         
 loadnewgfx:
         

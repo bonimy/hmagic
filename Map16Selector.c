@@ -27,15 +27,25 @@ BOOL CALLBACK editblock16(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     int i,j;
     short*l;
     unsigned char*rom;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_QUERYNEWPALETTE:
-        ed=(BLOCKEDIT16*)GetWindowLong(win,GWL_USERDATA);
-        Setpalette(win,ed->bs.ed->hpal);
+        
+        ed = (BLOCKEDIT16*)GetWindowLong(win,GWL_USERDATA);
+        
+        SetPalette(win, ed->bs.ed->hpal);
+        
         return 1;
+    
     case WM_PALETTECHANGED:
+        
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
+        
         break;
+    
     case WM_INITDIALOG:
         ed=malloc(sizeof(BLOCKEDIT16));
         bs=&(ed->bs);

@@ -495,43 +495,69 @@ HM_NullLP(void)
 
 // =============================================================================
 
-unsigned long
-HM_NumPadKeyDownFilter(MSG const p_packed_msg)
-{
-    unsigned long const key_info = p_packed_msg.lParam;
-    
-    unsigned long const key = p_packed_msg.wParam;
-    
-    // -----------------------------
-    
-    if( ! (key_info & 0x1000000) )
+    extern unsigned long
+    HM_NumPadKeyDownFilter
+    (
+        MSG const p_packed_msg
+    )
     {
-        // Allows the num pad directional keys to work regardless of 
-        // whether numlock is on or not. (This block is entered if numlock
-        // is off.)
+        unsigned long const key_info = p_packed_msg.lParam;
         
-        switch(key)
+        unsigned long const key = p_packed_msg.wParam;
+        
+        // -----------------------------
+        
+        if( ! (key_info & 0x1000000) )
         {
-           
-        default:
-            break;
-        
-        case VK_RIGHT:
-            return VK_NUMPAD6;
-        
-        case VK_LEFT:
-            return VK_NUMPAD4;
-        
-        case VK_DOWN:
-            return VK_NUMPAD2;
-        
-        case VK_UP:
-            return VK_NUMPAD8;
+            // Allows the num pad directional keys to work regardless of 
+            // whether numlock is on or not. (This block is entered if numlock
+            // is off.)
+            
+            switch(key)
+            {
+               
+            default:
+                break;
+            
+            case VK_RIGHT:
+                return VK_NUMPAD6;
+            
+            case VK_LEFT:
+                return VK_NUMPAD4;
+            
+            case VK_DOWN:
+                return VK_NUMPAD2;
+            
+            case VK_UP:
+                return VK_NUMPAD8;
+            }
         }
+        
+        return key;
     }
-    
-    return key;
-}
+
+// =============================================================================
+
+    extern BOOL
+    HM_YesNo_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    )
+    {
+        int response = MessageBox
+        (
+            p_win,
+            p_prompt,
+            p_title_bar,
+            MB_YESNO
+        );
+        
+        // -----------------------------
+        
+        return Is(response, IDYES);
+    }
 
 // =============================================================================
 

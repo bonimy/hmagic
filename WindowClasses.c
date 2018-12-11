@@ -199,7 +199,7 @@
             "SEARCH16"
         },
         {
-            palselproc,
+            PaletteSelector,
             "PALSELECT"
         },
         {

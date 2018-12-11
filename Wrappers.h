@@ -33,6 +33,11 @@
     */
     #define IsNonzero(x) ( ! IsZero(x) )
 
+    /**
+        Convenience macro for testing whether a pointer is a NULL pointer.
+    */
+    #define IsNull(x) ( Is(x, NULL) )
+
 // =============================================================================
 
     /**
@@ -253,8 +258,19 @@ struct
     LPARAM
     HM_NullLP(void);
 
-    unsigned long
-    HM_NumPadKeyDownFilter(MSG const p_packed_msg);
+    extern unsigned long
+    HM_NumPadKeyDownFilter
+    (
+        MSG const p_packed_msg
+    );
+
+    extern BOOL
+    HM_YesNo_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    );
 
     void*
     hm_memdup(void const * const p_arr,

@@ -86,7 +86,8 @@ blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_QUERYNEWPALETTE:
         
         ed = (BLKEDIT8*) GetWindowLong(win, DWL_USER);
-        Setpalette(win, ed->oed->hpal);
+        
+        SetPalette(win, ed->oed->hpal);
         
         break;
     

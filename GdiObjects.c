@@ -146,10 +146,10 @@
         wait_cursor   = LoadCursor(0, IDC_WAIT);
         forbid_cursor = LoadCursor(0, IDC_NO);
         
-        sizecsor[0] = LoadCursor(0,IDC_SIZENESW);
-        sizecsor[1] = LoadCursor(0,IDC_SIZENS);
-        sizecsor[2] = LoadCursor(0,IDC_SIZENWSE);
-        sizecsor[3] = LoadCursor(0,IDC_SIZEWE);
+        sizecsor[0] = LoadCursor(0, IDC_SIZENESW);
+        sizecsor[1] = LoadCursor(0, IDC_SIZENS);
+        sizecsor[2] = LoadCursor(0, IDC_SIZENWSE);
+        sizecsor[3] = LoadCursor(0, IDC_SIZEWE);
         sizecsor[4] = normal_cursor;
         
     #if 0
@@ -204,3 +204,25 @@
     }
 
 // =============================================================================
+
+    void
+    SetPalette
+    (
+        HWND     const win,
+        HPALETTE const pal)
+    {
+        HDC const hdc = GetDC(win);
+        
+        HPALETTE const oldpal = SelectPalette(hdc, pal, 0);
+        
+        RealizePalette(hdc);
+        
+        SelectPalette(hdc, oldpal, 1);
+        
+        ReleaseDC(win, hdc);
+        
+        return;
+    }
+
+// =============================================================================
+

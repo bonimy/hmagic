@@ -192,7 +192,7 @@ SUPERDLG z3_dlg =
 
 // =============================================================================
 
-    // \task Move these functions to Wrappers.c, or begin subidividng the
+    // \task Move these functions to Wrappers.c, or begin subdividing the
     // wrapper functions into logical units if that translation unit gets too big.
     extern HTREEITEM
     HM_TreeView_InsertSubroot
@@ -792,7 +792,7 @@ z3dlgproc(HWND win,
     
     HWND hc;
     
-    int i,j,k;
+    int i,k;
     
     TVINSERTSTRUCT tvi;
     TVHITTESTINFO hti;
@@ -811,7 +811,10 @@ z3dlgproc(HWND win,
     
     unsigned char*rom;
     
-    int lp;
+    uint16_t item_id       = 0;
+    uint16_t item_category = u16_neg1;
+    
+    uint32_t item_param = u32_neg1;
     
     char buf[0x200];
     
@@ -881,41 +884,51 @@ z3dlgproc(HWND win,
                     (long) itemstr
                 );
                 
-                lp = itemstr->lParam;
+                item_param = itemstr->lParam;
+                
+                
 open_edt:
                 
                 doc = (FDOC*) GetWindowLongPtr(win, DWLP_USER);
                 
-                j = lp & 0xffff;
+                item_category = HIWORD(item_param);
+                item_id       = LOWORD(item_param);
                 
-                switch(lp >> 16)
+                switch(item_category)
                 {
 
                     // double clicked on an overworld area
                 case 2:
                     ov = doc->overworld;
                     
-                    if(j < 128)
-                        j = doc->rom[0x125ec + (j & 0x3f)] | (j & 0x40);
+                    if(item_id < 128)
+                    {
+                        item_id = doc->rom[0x125ec + (item_id & 0x3f)]
+                                | (item_id & 0x40);
+                    }
                     
-                    for(i=0;i<4;i++)
+                    for(i = 0; i < 4; i += 1)
                     {
                         k = map_ind[i];
                         
-                        if(j >= k && ov[j - k].win)
+                        if(item_id >= k && ov[item_id - k].win)
                         {
-                            hc = ov[j - k].win;
+                            hc = ov[item_id - k].win;
                             
                             oed = (OVEREDIT*)GetWindowLongPtr(hc, GWLP_USERDATA);
                             
-                            if(i && !(oed->mapsize))
+                            if(i && ! (oed->mapsize) )
                                 continue;
                             
-                            SendMessage(clientwnd,WM_MDIACTIVATE,(int)hc,0);
+                            SendMessage(clientwnd,
+                                        WM_MDIACTIVATE,
+                                        (WPARAM) hc,
+                                        0);
                             
                             hc = GetDlgItem(oed->dlg,3001);
-                            SendMessage(hc,WM_HSCROLL,SB_THUMBPOSITION|((i&1)<<20),0);
-                            SendMessage(hc,WM_VSCROLL,SB_THUMBPOSITION|((i&2)<<19),0);
+                            
+                            SendMessage(hc, WM_HSCROLL, SB_THUMBPOSITION | ( (i & 1) << 20),0);
+                            SendMessage(hc, WM_VSCROLL, SB_THUMBPOSITION | ( (i & 2) << 19),0);
                             
                             return FALSE;
                         }
@@ -923,29 +936,40 @@ open_edt:
                     
                     wsprintf(buf,
                              "Area %02X - %s",
-                             j,
-                             area_names.m_lines[j]);
+                             item_id,
+                             area_names.m_lines[item_id]);
                     
-                    ov[j].win = Editwin(doc,"ZEOVER",buf,j,sizeof(OVEREDIT));
+                    ov[item_id].win = Editwin
+                    (
+                        doc,
+                        "ZEOVER",
+                        buf,
+                        item_id,
+                        sizeof(OVEREDIT)
+                    );
                     
                     break;
                 
                 case 3:
                     
                     // double clicked on a dungeon item
-                    if(doc->ents[j])
+                    if(doc->ents[item_id])
                     {
                         SendMessage(clientwnd,
                                     WM_MDIACTIVATE,
-                                    (int) (doc->ents[j]),
+                                    (int) (doc->ents[item_id]),
                                     0);
                         
                         break;
                     }
                     
-                    if(j < 0x8c)
+                    if(item_id < 0x8c)
                     {
-                        k = ((short*) (doc->rom + (j >= 0x85 ? 0x15a64 : 0x14813)))[j];
+                        k = ((short*)
+                        (
+                            doc->rom
+                          + (item_id >= 0x85 ? 0x15a64 : 0x14813) )
+                        )[item_id];
                         
                         if(doc->dungs[k])
                         {
@@ -957,24 +981,31 @@ open_edt:
                             break;
                         }
                         
-                        if(j >= 0x85)
-                            wsprintf(buf,"Start location %02X",j - 0x85);
+                        if(item_id >= 0x85)
+                            wsprintf(buf,"Start location %02X", item_id - 0x85);
                         else
                         {
                             wsprintf(buf,
                                      "Entrance %02X - %s",
-                                     j,
-                                     entrance_names.m_lines[j]);
+                                     item_id,
+                                     entrance_names.m_lines[item_id]);
                         }
                     }
-                    else if(j < 0x9f)
-                        wsprintf(buf,"Overlay %d",j - 0x8c);
-                    else if(j < 0xa7)
-                        wsprintf(buf,"Layout %d",j - 0x9f);
+                    else if(item_id < 0x9f)
+                        wsprintf(buf,"Overlay %d", item_id - 0x8c);
+                    else if(item_id < 0xa7)
+                        wsprintf(buf,"Layout %d", item_id - 0x9f);
                     else
                         wsprintf(buf,"Watergate overlay");
                     
-                    hc = Editwin(doc,"ZEDUNGEON",buf,j, sizeof(DUNGEDIT));
+                    hc = Editwin
+                    (
+                        doc,
+                        "ZEDUNGEON",
+                        buf,
+                        item_id,
+                        sizeof(DUNGEDIT)
+                    );
                     
                     if(hc)
                     {
@@ -986,20 +1017,56 @@ open_edt:
                     
                     break;
                 case 4:
-                    if(doc->mbanks[j]) {SendMessage(clientwnd,WM_MDIACTIVATE,(int)(doc->mbanks[j]),0);break;}
-                    if(j==3) doc->mbanks[3]=Editwin(doc,"MUSBANK","Wave editor",3,sizeof(SAMPEDIT)); else {
-                        wsprintf(buf,"Song bank %d",j+1);
-                        doc->mbanks[j]=Editwin(doc,"MUSBANK",buf,j,sizeof(MUSEDIT));
+                    
+                    if(doc->mbanks[item_id])
+                    {
+                         SendMessage
+                         (
+                            clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->mbanks[item_id],
+                            0
+                        );
+                        
+                        break;
                     }
+                    
+                    if(item_id == 3)
+                    {
+                        doc->mbanks[3] = Editwin
+                        (
+                            doc,
+                            "MUSBANK",
+                            "Wave editor",
+                            3,
+                            sizeof(SAMPEDIT)
+                        );
+                    }
+                    else
+                    {
+                        wsprintf(buf,
+                                 "Song bank %d",
+                                 item_id + 1);
+                        
+                        doc->mbanks[item_id] = Editwin
+                        (
+                            doc,
+                            "MUSBANK",
+                            buf,
+                            item_id,
+                            sizeof(MUSEDIT)
+                        );
+                    }
+                    
                     break;
                 
                 case 6:
                     
-                    if( doc->wmaps[j] )
+                    if( doc->wmaps[item_id] )
                     {
                         SendMessage(clientwnd,
                                     WM_MDIACTIVATE,
-                                    (WPARAM) doc->wmaps[j],
+                                    (WPARAM) doc->wmaps[item_id],
                                     0);
                         
                         break;
@@ -1007,13 +1074,16 @@ open_edt:
                     
                     wsprintf(buf,
                              "World map %d",
-                             j + 1);
+                             item_id + 1);
                     
-                    doc->wmaps[j] = Editwin(doc,
-                                            "WORLDMAP",
-                                            buf,
-                                            j,
-                                            sizeof(WMAPEDIT) );
+                    doc->wmaps[item_id] = Editwin
+                    (
+                        doc,
+                        "WORLDMAP",
+                        buf,
+                        item_id,
+                        sizeof(WMAPEDIT)
+                    );
                     
                     break;
                 
@@ -1029,21 +1099,24 @@ open_edt:
                         break;
                     }
                     
-                    doc->t_wnd = Editwin(doc,
-                                         "ZTXTEDIT",
-                                         "Text editor",
-                                         0,
-                                         sizeof(TEXTEDIT) );
+                    doc->t_wnd = Editwin
+                    (
+                        doc,
+                        "ZTXTEDIT",
+                        "Text editor",
+                        0,
+                        sizeof(TEXTEDIT)
+                    );
                     
                     break;
                 
                 case 7:
                     
-                    if(doc->pals[j])
+                    if(doc->pals[item_id])
                     {
                         SendMessage(clientwnd,
                                     WM_MDIACTIVATE,
-                                    (WPARAM) doc->pals[j],
+                                    (WPARAM) doc->pals[item_id],
                                     0);
                         
                         break;
@@ -1053,7 +1126,7 @@ open_edt:
                     
                     for(i = 0; i < 16; i += 1)
                     {
-                        if(k + pal_num[i] > j)
+                        if(k + pal_num[i] > item_id)
                             break;
                         
                         k += pal_num[i];
@@ -1062,33 +1135,39 @@ open_edt:
                     wsprintf(buf,
                              "%s palette %d",
                              pal_text[i],
-                             j - k);
+                             item_id - k);
                     
-                    doc->pals[j] = Editwin(doc,
-                                           "PALEDIT",
-                                           buf,
-                                           j | (i << 10) | ( (j - k) << 16),
-                                           sizeof(PALEDIT) );
+                    doc->pals[item_id] = Editwin
+                    (
+                        doc,
+                        "PALEDIT",
+                        buf,
+                        item_id | (i << 10) | ( (item_id - k) << 16),
+                        sizeof(PALEDIT)
+                    );
                     
                     break;
                 
                 case 8:
                     
-                    if( doc->dmaps[j] )
+                    if( doc->dmaps[item_id] )
                     {
                         SendMessage(clientwnd,
                                     WM_MDIACTIVATE,
-                                    (WPARAM) doc->dmaps[j],
+                                    (WPARAM) doc->dmaps[item_id],
                                     0);
                         
                         break;
                     }
                     
-                    doc->dmaps[j] = Editwin(doc,
-                                            "LEVELMAP",
-                                            level_str[j + 1],
-                                            j,
-                                            sizeof(LMAPEDIT) );
+                    doc->dmaps[item_id] = Editwin
+                    (
+                        doc,
+                        "LEVELMAP",
+                        level_str[item_id + 1],
+                        item_id,
+                        sizeof(LMAPEDIT)
+                    );
                     
                     break;
                 
@@ -1100,27 +1179,30 @@ open_edt:
                                MAKEINTRESOURCE(IDD_DIALOG17),
                                framewnd,
                                editbosslocs,
-                               j);
+                               item_id);
                     
                     break;
                 
                 case 10:
                     
-                    if( doc->tmaps[j] )
+                    if( doc->tmaps[item_id] )
                     {
                         SendMessage(clientwnd,
                                     WM_MDIACTIVATE,
-                                    (WPARAM) doc->tmaps[j],
+                                    (WPARAM) doc->tmaps[item_id],
                                     0);
                         
                         break;
                     }
                     
-                    doc->tmaps[j] = Editwin(doc,
-                                            "TILEMAP",
-                                            screen_text[j],
-                                            j,
-                                            sizeof(TMAPEDIT) );
+                    doc->tmaps[item_id] = Editwin
+                    (
+                        doc,
+                        "TILEMAP",
+                        screen_text[item_id],
+                        item_id,
+                        sizeof(TMAPEDIT)
+                    );
                     
                     break;
                 
@@ -1210,7 +1292,7 @@ open_edt:
     
     case 4000:
         
-        lp = wparam;
+        item_param = wparam;
         
         goto open_edt;
     }

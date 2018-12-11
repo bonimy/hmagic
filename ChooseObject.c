@@ -515,10 +515,16 @@ dpcdlgproc(HWND win,
     RECT rc = empty_rect;
     HWND hc;
     BLOCKSEL8*bs;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_QUERYNEWPALETTE:
-        Setpalette(win,dunged->hpal);
+        
+        SetPalette(win,dunged->hpal);
+        
         return 1;
+    
     case WM_PALETTECHANGED:
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
@@ -893,7 +899,7 @@ scroll:
             
             ed = (CHOOSEDUNG*) GetWindowLong(win, DWL_USER);
             
-            Setpalette(win, ed->ed->hpal);
+            SetPalette(win, ed->ed->hpal);
             
             return 1;
         

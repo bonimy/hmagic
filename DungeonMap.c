@@ -3703,7 +3703,11 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
             // \task This logic doesn't work. Just disabling it for
             // now until we can figure out what the original intent
             // was.
+#if 0
             // dm_l = (j == 0) | ( (j == 2) );
+#else
+            (void) j;
+#endif
         }
         else
         {

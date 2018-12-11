@@ -119,7 +119,9 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 // =============================================================================
 
     // Palette-related procedures.
-    HM_DeclareWndProc(palselproc);
+    
+    // Palette Selector for viewing CHR tilesets.
+    HM_DeclareWndProc(PaletteSelector);
 
     // Child frame window procedure.
     HM_DeclareWndProc(PaletteFrameProc);

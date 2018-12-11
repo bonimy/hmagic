@@ -90,6 +90,13 @@
     extern void
     HM_TearDownGDI(void);
 
+    extern void
+    SetPalette
+    (
+        HWND     const win,
+        HPALETTE const pal
+    );
+
 // =============================================================================
 
 #endif
