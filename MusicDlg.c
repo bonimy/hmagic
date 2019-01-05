@@ -3,6 +3,8 @@
 
     #include "prototypes.h"
 
+    #include "Wrappers.h"
+
     #include "AudioLogic.h"
 
 // =============================================================================
@@ -27,7 +29,7 @@ BOOL CALLBACK musdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     {
     
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(MUSEDIT*)lparam;
         ed->dlg=win;
         ed->sel_song=-1;
@@ -43,7 +45,7 @@ BOOL CALLBACK musdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             else
                 st = mus_str[i + 2];
             
-            SendMessage(hc,LB_ADDSTRING,0,(long)st);
+            SendMessage(hc,LB_ADDSTRING,0, (LPARAM) st);
         }
         break;
     case WM_COMMAND:
@@ -52,7 +54,7 @@ BOOL CALLBACK musdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         {
         
         case 3000|(LBN_SELCHANGE<<16):
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
             doc=ed->ew.doc;
             j=ed->ew.param;
@@ -73,17 +75,21 @@ songchg:
                     {
                         wsprintf(buf, "Part %d", j);
                         
-                        SendMessage(hc,LB_ADDSTRING,0, (long) buf);
+                        SendMessage(hc,LB_ADDSTRING,0, (LPARAM) buf);
                     }
                     SetDlgItemInt(win,3025,s->lopst,0);
                     CheckDlgButton(win,3026,(s->flag&2)?BST_CHECKED:BST_UNCHECKED);
                     ShowWindow(GetDlgItem(win,3025),(s->flag&2)?SW_SHOW:SW_HIDE);
-                } else ShowWindow(hc,SW_HIDE);
-                for(j=0;j<8;j++) EnableWindow(GetDlgItem(win,3001+j),(int)s);
+                }
+                else
+                    ShowWindow(hc, SW_HIDE);
+                
+                for(j=0;j<8;j++)
+                    EnableWindow(GetDlgItem(win,3001+j), IsNonNull(s) );
             }
             break;
         case 3009|(LBN_DBLCLK<<16):
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
             if(i==-1) break;
             if(!sndinit) Initsound();
@@ -97,7 +103,7 @@ songchg:
 //          LeaveCriticalSection(&cs_song);
             break;
         case 3009|(LBN_SELCHANGE<<16):
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=SendMessage((HWND)lparam,LB_GETCURSEL,0,0);
             if(i==-1) break;
             doc=ed->ew.doc;
@@ -122,13 +128,13 @@ songchg:
         case 3007:
         case 3008:
             i=wparam-3001;
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             j=SendDlgItemMessage(win,3009,LB_GETCURSEL,0,0);
             if(j==-1 || ed->sel_song==-1) break;
             Edittrack(ed->ew.doc,ed->ew.doc->songs[ed->sel_song]->tbl[j]->tbl[i]);
             break;
         case 3010:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             if(ed->sel_song==-1 || !ed->ew.doc->songs[ed->sel_song]) break;
             if(!sndinit) Initsound();
             if(sndinit) Playsong(ed->ew.doc,ed->sel_song);
@@ -151,7 +157,7 @@ songchg:
             {
                 text_buf_ty buf;
                 
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             
             if(ed->init) break;
             
@@ -168,7 +174,7 @@ songchg:
             
             break;
         case 3020:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             j=SendDlgItemMessage(win,3009,LB_GETCURSEL,0,0);
             if(j==-1 || ed->sel_song==-1) break;
             s=ed->ew.doc->songs[ed->sel_song];
@@ -176,7 +182,7 @@ songchg:
             ed->ew.doc->sp_mark=s->tbl[j];
             break;
         case 3021:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=ed->sel_song;
             j=SendDlgItemMessage(win,3009,LB_GETCURSEL,0,0);
             if(i==-1) break;
@@ -197,7 +203,7 @@ songchg:
             ed->ew.doc->m_modf=1;
             goto songchg;
         case 3022:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=ed->sel_song;
             if(i==-1) break;
             doc=ed->ew.doc;
@@ -212,7 +218,7 @@ songchg:
             ed->ew.doc->m_modf=1;
             goto songchg;
         case 3023:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=ed->sel_song;
             j=SendDlgItemMessage(win,3009,LB_GETCURSEL,0,0);
             if(j==-1 || i==-1) break;
@@ -233,7 +239,7 @@ songchg:
             ed->ew.doc->m_modf=1;
             goto songchg;
         case 3024:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             j=SendDlgItemMessage(win,3009,LB_GETCURSEL,0,0);
             i=ed->sel_song;
             if(i==-1) break;
@@ -242,7 +248,7 @@ songchg:
             NewSR(ed->ew.doc,((j==-1)?(s->flag&1):(s->tbl[j]->flag&1))?0:ed->ew.param+1);
             break;
         case 3025|(EN_CHANGE<<16):
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             if(ed->init) break;
             i=ed->sel_song;
             if(i==-1) break;
@@ -251,7 +257,7 @@ songchg:
             ed->ew.doc->m_modf=1;
             break;
         case 3026:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=ed->sel_song;
             if(i==-1) break;
             s=ed->ew.doc->songs[i];
@@ -269,7 +275,7 @@ songchg:
             break;
         case 3027:
             
-            ed = (MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed = (MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             
             i = ed->sel_song;
             
@@ -298,7 +304,7 @@ songchg:
             goto updsongs;
         
         case 3028:
-            ed=(MUSEDIT*)GetWindowLong(win,DWL_USER);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,DWLP_USER);
             i=ed->sel_song;
             if(i==-1) break;
             doc=ed->ew.doc;
@@ -324,7 +330,7 @@ songchg:
 updsongs:
                 ed->ew.doc->m_modf=1;
                 ed->sel_song=-1;
-                musdlgproc(win,WM_COMMAND,3000|(LBN_SELCHANGE<<16),(long)GetDlgItem(win,3000));
+                musdlgproc(win,WM_COMMAND,3000|(LBN_SELCHANGE<<16), (LPARAM) GetDlgItem(win,3000));
             } else MessageBox(framewnd,"There is no song","Bad error happened",MB_OK);
             break;
         }

@@ -28,7 +28,7 @@ lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     {
     
     case WM_LBUTTONDOWN:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=(lparam&65535)>>4;
         j=lparam>>20;
         if(i<0 || i>=ed->blkrow || j<0) break;
@@ -41,7 +41,7 @@ lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     case WM_PAINT:
         
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         hdc=BeginPaint(win,&ps);
         oldpal=SelectPalette(hdc,ed->hpal,1);
@@ -105,7 +105,7 @@ lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_SIZE:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -119,7 +119,7 @@ lmapblksproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->blkscroll=Handlescroll(win,-1,ed->blkscroll,ed->blkpage,SB_VERT,si.nMax,16);
         break;
     case WM_VSCROLL:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->blkscroll=Handlescroll(win,wparam,ed->blkscroll,ed->blkpage,SB_VERT,ed->maxrow,16);
         break;
     default:

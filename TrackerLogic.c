@@ -1,6 +1,8 @@
 
     #include "structs.h"
 
+    #include "Wrappers.h"
+
     #include "prototypes.h"
 
     #include "GdiObjects.h"
@@ -909,7 +911,7 @@ alreadysaved:
         zw = doc->waves;
         
         if(doc->mbanks[3])
-            sed = (SAMPEDIT*)GetWindowLong(doc->mbanks[3],GWL_USERDATA);
+            sed = (SAMPEDIT*)GetWindowLongPtr(doc->mbanks[3],GWLP_USERDATA);
         else
             sed = 0;
         
@@ -1236,7 +1238,7 @@ error:
     }
     
     if(sr->editor)
-        SendMessage(clientwnd,WM_MDIACTIVATE,(int)(sr->editor),0);
+        HM_MDI_ActivateChild(clientwnd, sr->editor);
     else
         Editwin(doc,"TRACKEDIT","Song editor",l+(i<<16),sizeof(TRACKEDIT));
 }

@@ -932,7 +932,7 @@ struct tag_overworld_offsets_ty
 // =============================================================================
 
 typedef
-struct
+struct tag_text_codes_ty
 {
     /// Start of the zchar codes.
     uint8_t zchar_base;
@@ -966,7 +966,7 @@ struct
 // =============================================================================
 
 typedef
-struct
+struct tag_text_offsets_ty
 {
     /**
         The primary CPU bank that the Text module in the rom operates from.
@@ -1013,7 +1013,7 @@ struct
 // =============================================================================
 
 typedef
-struct
+struct tag_offsets_ty
 {
     dungeon_offsets_ty dungeon;
     

@@ -153,7 +153,7 @@ perspdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     HBRUSH oldbrush,oldbrush2,oldbrush3;
     switch(msg) {
     case WM_SIZE:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(PERSPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         ed->width=lparam&65535;
         ed->height=lparam>>16;
@@ -164,7 +164,7 @@ updscale:
     case WM_GETDLGCODE:
         return DLGC_WANTCHARS+DLGC_WANTARROWS;
     case WM_KEYDOWN:
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(PERSPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!(lparam&0x1000000)) switch(wparam) {
         case VK_RIGHT: goto moveright;
         case VK_LEFT: goto moveleft;
@@ -288,7 +288,7 @@ delnext:;
         break;
     case WM_LBUTTONDOWN:
         SetFocus(win);
-        ed=(PERSPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(PERSPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         k=lparam&65535;
         l=lparam>>16;
         switch(ed->tool) {
@@ -457,7 +457,7 @@ updsize:
     
     case WM_PAINT:
         
-        ed = (PERSPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (PERSPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(!ed)
             break;

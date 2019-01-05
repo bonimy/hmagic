@@ -175,7 +175,7 @@ blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         return DLGC_WANTCHARS|DLGC_WANTARROWS;
     case WM_KEYDOWN:
         
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(wparam >= 48 && wparam < 58)
         {
@@ -188,7 +188,7 @@ blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         } else ed->schscroll=Keyscroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
         break;
     case WM_SIZE:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -200,13 +200,13 @@ blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->schscroll=Handlescroll(win,-1,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
         break;
     case WM_VSCROLL:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->schscroll=Handlescroll(win,wparam,ed->schscroll,ed->schpage,SB_VERT,0xea8,16);
         break;
     
     case WM_PAINT:
         
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -217,7 +217,7 @@ blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_LBUTTONDOWN:
         SetFocus(win);
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=(short)lparam;
         j=lparam>>16;
         k=(j>>4)+ed->schscroll;
@@ -239,7 +239,7 @@ blk16search(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         }
         break;
     case WM_LBUTTONUP:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->schpush!=-1) {
             i=(short)lparam;
             j=lparam>>16;

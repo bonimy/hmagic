@@ -240,7 +240,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         
         ed = (OVEREDIT*) lparam;
         ed->hpal = 0;
@@ -301,7 +301,14 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         //Tell the window to set an appropriate graphic for each arrow button.
         for(i = 0; i < 4; i++)
-            SendDlgItemMessage(win, 3029 + i, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[i]);
+            SendDlgItemMessage
+            (
+                win,
+                3029 + i,
+                BM_SETIMAGE,
+                IMAGE_BITMAP,
+                (LPARAM) arrows_imgs[i]
+            );
         
         //The GFX# box is set here.
         SetDlgItemInt(win, 3007, m, 0);
@@ -500,7 +507,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             hc = GetDlgItem(win, i);
             
-            SetWindowLong(hc, GWL_USERDATA, (int) ed);
+            SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) ed);
             ShowWindow(hc, SW_SHOW);
             Updatesize(hc);
         }
@@ -510,7 +517,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         ed->bs.sel = 0;
         
         hc = GetDlgItem(win, SD_OverMap16_Selector);
-        SetWindowLong(hc, GWL_USERDATA, (int)&(ed->bs));
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) &(ed->bs));
         Updatesize(hc);
         
         CheckDlgButton(win,3003,BST_CHECKED);
@@ -560,7 +567,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 ed->ebuf[i] = malloc(k);
                 memcpy(ed->ebuf[i], b2, k);
                 
-                SendMessage(hc,CB_ADDSTRING,0,(long)(sprset_str[i]));
+                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) (sprset_str[i]));
             }
             
             SendMessage(hc, CB_SETCURSEL, ed->sprset - l, 0);
@@ -617,7 +624,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case WM_COMMAND:
         
-        ed = (OVEREDIT*) GetWindowLong(win, DWL_USER);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, DWLP_USER);
         
         if(!ed)
             break;
@@ -1063,9 +1070,10 @@ overlaunch:
             if(ov[j].win)
             {
                 hc = ov[j].win;
-                SendMessage(clientwnd,WM_MDIACTIVATE,(int)hc,0);
                 
-                oed = (OVEREDIT*) GetWindowLong(hc, GWL_USERDATA);
+                HM_MDI_ActivateChild(clientwnd, hc);
+                
+                oed = (OVEREDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
             }
             else
             {
@@ -1159,7 +1167,7 @@ search2:
                                (LPSTR) IDD_DIALOG19,
                                framewnd,
                                findblks,
-                               (int) ed);
+                               (LPARAM) ed);
                 
                 if(i != 0)
                 {
@@ -1260,7 +1268,7 @@ updsel32:
         
     case WM_DESTROY:
         
-        ed = (OVEREDIT*) GetWindowLong(win, DWL_USER);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, DWLP_USER);
         
         Delgraphwin((DUNGEDIT*) ed);
         

@@ -5,8 +5,15 @@
 
 #include "structs.h"
 
-int
-ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param);
+    extern LPARAM
+    ShowDialog
+    (
+        HINSTANCE const hinst,
+        LPSTR     const id,
+        HWND      const p_owner,
+        DLGPROC   const dlgproc,
+        LPARAM    const param
+    );
 
 void
 PaintSprName(HDC hdc,

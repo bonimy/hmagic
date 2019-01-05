@@ -534,8 +534,8 @@ dpcdlgproc(HWND win,
         dpce->sel=0;
         dpce->flag=0;
         dpce->bs.ed=(OVEREDIT*)dunged;
-        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[0]);
-        SendDlgItemMessage(win,IDC_BUTTON8,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[1]);
+        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[0]);
+        SendDlgItemMessage(win,IDC_BUTTON8,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[1]);
         memcpy(dpce->buf,dunged->ew.doc->rom + 0x1b52,0x342e);
         
         hdc = GetDC(win);
@@ -762,7 +762,7 @@ dungselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         if(wparam>=48 && wparam<58) {
             wparam-=48;
 digscr:
-            ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+            ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
             ed->typednum=((ed->typednum<<4)|wparam)&0xfff;
             i=ed->typednum;
             if(!(ed->ed->selchk&1))
@@ -778,7 +778,7 @@ digscr:
         }
         break;
     case WM_VSCROLL:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+        ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
         j=i=ed->scroll;
         switch(wparam&65535) {
         case SB_LINEDOWN:
@@ -836,7 +836,7 @@ scroll:
     
     case WM_PAINT:
         
-        ed = (CHOOSEDUNG*) GetWindowLong(win, GWL_USERDATA);
+        ed = (CHOOSEDUNG*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -847,7 +847,7 @@ scroll:
     
     case WM_LBUTTONDOWN:
         
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+        ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
         SetFocus(win);
         i=ed->sel-(ed->scroll<<2);
         if(i>=0 && i<16) {
@@ -897,7 +897,7 @@ scroll:
         
         case WM_QUERYNEWPALETTE:
             
-            ed = (CHOOSEDUNG*) GetWindowLong(win, DWL_USER);
+            ed = (CHOOSEDUNG*) GetWindowLongPtr(win, DWLP_USER);
             
             SetPalette(win, ed->ed->hpal);
             
@@ -966,8 +966,8 @@ scroll:
             SetBkMode(ed->bufdc,TRANSPARENT);
             SelectObject(ed->bufdc,ed->bufbmp);
             
-            SetWindowLong(win,DWL_USER,(long)ed);
-            SetWindowLong(hc,GWL_USERDATA,(long)ed);
+            SetWindowLongPtr(win,DWLP_USER, (LPARAM) ed);
+            SetWindowLongPtr(hc,GWLP_USERDATA, (LPARAM) ed);
             
             si.cbSize=sizeof(si);
             si.fMask=SIF_PAGE|SIF_RANGE|SIF_POS;
@@ -1008,7 +1008,7 @@ scroll:
         
         case WM_DESTROY:
             
-            ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
+            ed = (CHOOSEDUNG*) GetWindowLongPtr(win,DWLP_USER);
             
             DeleteDC(ed->bufdc);
             DeleteObject(ed->bufbmp);
@@ -1022,7 +1022,7 @@ scroll:
             switch(wparam)
             {
             case IDOK:
-                ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
+                ed = (CHOOSEDUNG*) GetWindowLongPtr(win,DWLP_USER);
                 EndDialog(win, ed->sel);
                 
                 break;
@@ -1033,7 +1033,7 @@ scroll:
                 break;
             
             case IDC_BUTTON1:
-                ed = (CHOOSEDUNG*) GetWindowLong(win, DWL_USER);
+                ed = (CHOOSEDUNG*) GetWindowLongPtr(win, DWLP_USER);
                 dunged = ed->ed;
                 
                 if
@@ -1054,7 +1054,7 @@ scroll:
                     {
                         if(*p)
                         {
-                            de = (DUNGEDIT*) GetWindowLong(*p, GWL_USERDATA);
+                            de = (DUNGEDIT*) GetWindowLongPtr(*p, GWLP_USERDATA);
                             Updatemap(de);
                             InvalidateRect( GetDlgItem(de->dlg, ID_DungEditWindow),
                                            0,

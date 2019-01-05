@@ -11,32 +11,37 @@
         Convenience macro to avoid accidental assignment when testing for
         equality of two entities.
     */
-    #define Is(x, y) (x == y)
+    #define Is(x, y) ( (x) == (y) )
 
     /**
         Convenience macro for testing for a true condition.
     */
-    #define IsTrue(x) Is(x, TRUE)
+    #define IsTrue(x) Is( (x), TRUE)
 
     /**
         Convenience macro for testing for a false condition.
     */
-    #define IsFalse(x) Is(x, FALSE)
+    #define IsFalse(x) Is( (x), FALSE)
 
     /**
         Convenience macro for testing whether a variable is equal to zero.
     */
-    #define IsZero(x) Is(x, 0)
+    #define IsZero(x) Is( (x), 0 )
 
     /**
         Convenience macro for testing whether a variable is not equal to zero.
     */
-    #define IsNonzero(x) ( ! IsZero(x) )
+    #define IsNonZero(x) ( ! IsZero(x) )
 
     /**
         Convenience macro for testing whether a pointer is a NULL pointer.
     */
     #define IsNull(x) ( Is(x, NULL) )
+
+    /**
+        Convenience macro for testing whether a pointer is non-NULL.
+    */
+    #define IsNonNull(x) ( ! IsNull(x) )
 
 // =============================================================================
 
@@ -198,8 +203,6 @@ struct
     HM_MouseWheelData
     HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp);
 
-    HM_MdiActivateData
-    HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp);
 
     BOOL
     HM_DrawRectangle(HDC const p_device_context,
@@ -339,6 +342,35 @@ struct
 
 // =============================================================================
 
+    extern HM_MdiActivateData
+    HM_MDI_GetActivateData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    );
+
+    extern HWND
+    HM_MDI_GetActiveChild
+    (
+        HWND const p_mdi_client_wnd
+    );
+
+    extern LRESULT
+    HM_MDI_ActivateChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    );
+
+    extern void
+    HM_MDI_DestroyChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    );
+
+// =============================================================================
+
     extern HTREEITEM
     HM_TreeView_InsertItem
     (
@@ -426,6 +458,36 @@ struct
 
 // =============================================================================
 
+    extern int
+    HM_ListBox_AddString
+    (
+        HWND    const p_listbox,
+        LPCSTR  const p_string
+    );
 
+    extern int
+    HM_ListBox_SetItemData
+    (
+        HWND   const p_listbox,
+        int    const p_item_index,
+        LPARAM const p_data
+    );
+
+    extern int
+    HM_ListBox_SelectItem
+    (
+        HWND const p_listbox,
+        int  const p_item_index
+    );
+
+// =============================================================================
+
+#if ! defined GWLP_STYLE
+    enum { GWLP_STYLE = GWL_STYLE};
+#endif
+
+#if ! defined GWLP_EXSTYLE
+    enum { GWLP_EXSTYLE = GWL_EXSTYLE };
+#endif
 
 #endif

@@ -1911,8 +1911,11 @@ void
 DungeonMap_OnMouseWheel(DUNGEDIT * const p_ed,
                         MSG        const p_msg)
 {
-    HM_MouseWheelData const d = HM_GetMouseWheelData(p_msg.wParam,
-                                                     p_msg.lParam);
+    HM_MouseWheelData const d = HM_GetMouseWheelData
+    (
+        p_msg.wParam,
+        p_msg.lParam
+    );
     
     unsigned scroll_type = SB_LINEUP;
     
@@ -3854,7 +3857,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     
     AppendMenu(menu2, MF_STRING, DCM_GfxSubmenu, "Other...");
     
-    AppendMenu(menu, MF_POPUP | MF_STRING,(int) menu2,"Edit blocks");
+    AppendMenu(menu, MF_POPUP | MF_STRING, (UINT_PTR) menu2,"Edit blocks");
     
     GetCursorPos(&pt);
     

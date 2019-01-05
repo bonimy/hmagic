@@ -1,6 +1,8 @@
 
     #include "structs.h"
 
+    #include "Wrappers.h"
+
     #include "HMagicUtility.h"
 
 // =============================================================================
@@ -524,7 +526,7 @@ Unsnes(unsigned char * const buf, int size)
         n = size << 1,
         o = (size << 2) + 7;
     
-    unsigned char * const b2 = (unsigned char*) malloc(size << 3);
+    CP2(unsigned char) b2 = (unsigned char*) malloc(size << 3);
     
     // -----------------------------
     

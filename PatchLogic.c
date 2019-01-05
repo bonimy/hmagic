@@ -170,6 +170,25 @@
 // =============================================================================
 
     static int
+    Path_ChangeOrAddExtension
+    (
+        CP2(AString) p_str,
+        CP2C(char)   p_new_ext
+    )
+    {
+        if( IsNonNull( Path_GetExtension(p_str) ) )
+        {
+            return Path_ChangeExtension(p_str, p_new_ext);
+        }
+        else
+        {
+            return Path_AddExtension(p_str, p_new_ext);
+        }
+    }
+
+// =============================================================================
+
+    static int
     PatchLogic_Form_ASM_Command
     (
         CP2C(FDOC)   p_doc,
@@ -209,7 +228,11 @@
             }
             
             // Duplicate each filename specified in the dialog.
-            AString_InitFromNativeString(&arg_path, mod->filename);
+            AString_InitFromNativeString
+            (
+                &arg_path,
+                mod->filename
+            );
             
             ext_pos = Path_GetExtension(&arg_path);
             
@@ -1032,6 +1055,313 @@
 
 // =============================================================================
 
+    /// "HMD0", but backwards.
+    char const HackDatabaseMagic[4] = { '0', 'D', 'M', 'H' };
+
+// =============================================================================
+
+    /**
+        \task These types and the HackDatabase array below are first draft
+        attempts at providing a higher level model of the serialized hack
+        database file format.
+    */
+    typedef
+    enum
+    {
+        ID_SerialMagic,
+        ID_uint16,
+        ID_uint32,
+        ID_FILETIME,
+        ID_PatchArray,
+        ID_SegmentArray,
+        ID_ModuleArray
+        
+    } SerialType;
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        SerialType m_type;
+        
+        void * m_data;
+        
+        size_t m_length;
+        
+    } SerializationEntry;
+
+// =============================================================================
+
+    SerializationEntry HackDatabase[] =
+    {
+        {
+            ID_SerialMagic,
+            (void*) HackDatabaseMagic,
+        },
+        {
+            ID_uint16
+        },
+        {
+            ID_uint16
+        },
+        {
+            ID_uint16
+        },
+        {
+            ID_FILETIME
+        },
+        {
+            ID_PatchArray
+        },
+        {
+            ID_PatchArray
+        },
+        {
+            ID_SegmentArray
+        },
+        {
+            ID_ModuleArray
+        }
+    };
+
+// =============================================================================
+
+    // \task Serialization logic seems to need work still.
+    extern BOOL
+    PatchLogic_SerializePatches
+    (
+        CP2C(FDOC) p_doc
+    )
+    {
+        BOOL b = FALSE;
+        
+        DWORD write_size = 0;
+        
+        int i = 0;
+        
+        HANDLE h = INVALID_HANDLE_VALUE;
+        
+        AString serial_asm_path = { 0 };
+        
+        CP2(uint8_t) rom = p_doc->rom;
+        
+        // -----------------------------
+        
+        AString_InitFromNativeString
+        (
+            &serial_asm_path,
+            p_doc->filename
+        );
+        
+        Path_ChangeOrAddExtension
+        (
+            &serial_asm_path,
+            "HMD"
+        );
+        
+        // There are no modules loaded, so we don't need to save a hack
+        // database.
+        if( IsZero(p_doc->nummod) )
+        {
+            DeleteFile(serial_asm_path.m_text);
+            
+            rom[0x17fa4] &= ~FLG_HasPatches;
+            
+            b = TRUE;
+            
+            goto cleanup;
+        }
+        
+        h = CreateFile
+        (
+            "HMTEMP.DAT",
+            GENERIC_WRITE,
+            0,
+            0,
+            CREATE_ALWAYS,
+            FILE_FLAG_SEQUENTIAL_SCAN,
+            0
+        );
+        
+        if(h == INVALID_HANDLE_VALUE)
+        {
+            goto cleanup;
+        }
+        
+        i = 'HMD0';
+        
+        WriteFile
+        (
+            h,
+            &i,
+            4,
+            &write_size,
+            0
+        );
+        
+        WriteFile
+        (
+            h,
+            &(p_doc->nummod),
+            14,
+            &write_size,
+            0
+        );
+        
+        for(i = 0; i < p_doc->numpatch; i++)
+        {
+            WriteFile
+            (
+                h,
+                p_doc->patches + i,
+                8,
+                &write_size,
+                0
+            );
+            
+            WriteFile
+            (
+                h,
+                p_doc->patches[i].pv,
+                p_doc->patches[i].len,
+                &write_size,
+                0
+            );
+        }
+        
+        WriteFile
+        (
+            h,
+            p_doc->segs,
+            p_doc->numseg << 2,
+            &write_size,
+            0
+        );
+        
+        for(i = 0; i < p_doc->nummod; i += 1)
+        {
+            enum { PATCH_HEADER_SIZE = 8 };
+            
+            uint8_t patch_header[PATCH_HEADER_SIZE] = { 0 };
+            
+            size_t j = 0;
+            
+            CP2(ASMHACK) mod = &p_doc->modules[i];
+            
+            // -----------------------------
+            
+            j = strlen(mod->filename);
+            
+            stle32b_i(patch_header, 0, j);
+            stle32b_i(patch_header, 1, mod->flag);
+            
+            WriteFile
+            (
+                h,
+                patch_header,
+                PATCH_HEADER_SIZE,
+                &write_size,
+                0
+            );
+            
+            WriteFile
+            (
+                h,
+                mod->filename,
+                j,
+                &write_size,
+                0
+            );
+        }
+        
+        if( IsZero(rom[0x17fa4] & FLG_HasPatches) )
+        {
+
+            if
+            (
+                IsFalse
+                (
+                    MoveFile("HMTEMP.DAT", serial_asm_path.m_text)
+                )
+            )
+            {
+                if(GetLastError() == ERROR_ALREADY_EXISTS)
+                {
+                    text_buf_ty text_buf = { 0 };
+                    
+                    // -----------------------------
+                    
+                    wsprintf(text_buf,
+                             "%s exists already. Do you want to overwrite it?",
+                             serial_asm_path.m_text);
+                    
+                    if
+                    (
+                        MessageBox
+                        (
+                            framewnd,
+                            text_buf,
+                            "Gigasoft Hyrule Magic",
+                            MB_YESNO
+                        ) == IDYES
+                    )
+                    {
+                        goto okay;
+                    }
+                    else
+                    {
+                    othersaveerror:
+                        
+                        DeleteFile("HMTEMP.DAT");
+                        
+                        goto cleanup;
+                    }
+                }
+                else
+                {
+                    goto othersaveerror;
+                }
+            }
+            
+            goto okay2;
+        }
+        else
+        {
+            
+        okay:
+            
+            DeleteFile(serial_asm_path.m_text);
+            
+            if( ! MoveFile("HMTEMP.DAT", serial_asm_path.m_text) )
+            {
+                MessageBox(framewnd,"Unable to save hack database","Bad error happened",MB_OK);
+                
+                goto othersaveerror;
+            }
+        }
+        
+    okay2:
+        
+        rom[0x17fa4] |= FLG_HasPatches;
+        //}
+        
+        b = TRUE;
+        
+    cleanup:
+        
+        if(h != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(h);
+        }
+        
+        AString_Free(&serial_asm_path);
+
+        return b;
+    }
+
+// =============================================================================
+
     extern BOOL
     PatchLogic_DeserializePatches
     (
@@ -1061,20 +1391,11 @@
             p_doc->filename
         );
         
-        r = Path_ChangeExtension
+        r = Path_ChangeOrAddExtension
         (
             &serial_asm_path,
             "HMD"
         );
-        
-        if(r < 0)
-        {
-            Path_AddExtension
-            (
-                &serial_asm_path,
-                "HMD"
-            );
-        }
         
         h = CreateFile
         (
@@ -1111,13 +1432,13 @@
         
         ReadFile(h, magic_str, 4, &read_size, 0);
         
-        if( IsNonzero( _stricmp(magic_str, "HMD0") ) )
+        if( IsNonZero( _stricmp(magic_str, "HMD0") ) )
         {
             wsprintf
             (
                 text_buf,
                 "%s has an invalid format.",
-                p_doc->filename
+                serial_asm_path.m_text
             );
             
             goto errormsg;
@@ -1160,7 +1481,11 @@
                 0
             );
             
-            p_doc->patches[i].pv = malloc(p_doc->patches[i].len);
+            p_doc->patches[i].pv = (uint8_t*) calloc
+            (
+                p_doc->patches[i].len,
+                sizeof(uint8_t)
+            );
             
             ReadFile
             (
@@ -1204,6 +1529,7 @@
                 0
             );
             
+            // \task Code smell here...
             k = (int) mod->filename;
             
             mod->filename = (char*) malloc(k + 1);

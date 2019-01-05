@@ -32,7 +32,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     };
     switch(msg) {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(WMAPEDIT*)lparam;
         Getblocks(ed->ew.doc,223);
         ed->hpal=0;
@@ -66,7 +66,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         memcpy(ed->undobuf,ed->buf,0x1000);
         Loadpal(ed,rom,ed->ew.param?0xadc27:0xadb27,0,16,8);
         hc=GetDlgItem(win,3000);
-        SetWindowLong(hc,GWL_USERDATA,(long)ed);
+        SetWindowLongPtr(hc,GWLP_USERDATA, (LPARAM) ed);
         Updatesize(hc);
         bs=&(ed->bs);
         
@@ -107,7 +107,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             SelectPalette(bs->bufdc, oldpal2, 1);
         }
         
-        SetWindowLong(hc, GWL_USERDATA, (int) bs);
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) bs);
         Updatesize(hc);
         
         ed->tool=1;
@@ -117,17 +117,23 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->undomodf=0;
         ed->selbuf=0;
         ed->marknum=0;
+        
         CheckDlgButton(win,3003,BST_CHECKED);
+        
         hc=GetDlgItem(win,3005);
-        for(i=0;i<10;i++) SendMessage(hc,CB_ADDSTRING,0,(long)mapmark_str[i]);
+        
+        for(i=0;i<10;i++)
+            SendMessage(hc,CB_ADDSTRING,0,(LPARAM) mapmark_str[i]);
+        
         SendMessage(hc,CB_SETCURSEL,0,0);
+        
         break;
     case 4002:
         InvalidateRect(GetDlgItem(win,3000),0,0);
         InvalidateRect(GetDlgItem(win,3001),0,0);
         break;
     case WM_DESTROY:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         ed->ew.doc->wmaps[ed->ew.param]=0;
         Delgraphwin((DUNGEDIT*)ed);
         Releaseblks(ed->ew.doc,223);
@@ -138,7 +144,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     // \task What is this constant?
     case 4000:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         j=wparam;
         if(j<0) j=0;
         if(j>0xff) j=0xff;
@@ -148,7 +154,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         Changeblk8sel(hc,&(ed->bs));
         break;
     case WM_COMMAND:
-        ed=(WMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         j=ed->tool;
         switch(wparam) {
         case 3002:

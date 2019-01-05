@@ -23,7 +23,7 @@
         
         case WM_CLOSE:
             
-            ed = (LMAPEDIT*) GetWindowLong(win,GWL_USERDATA);
+            ed = (LMAPEDIT*) GetWindowLongPtr(win,GWLP_USERDATA);
             
             if(ed->modf)
             {
@@ -58,7 +58,7 @@
             
             if((HWND)lparam!=win) break;
             
-            ed=((LMAPEDIT*)GetWindowLong(win,GWL_USERDATA));
+            ed=((LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA));
             
             activedoc=ed->ew.doc;
             Setdispwin((DUNGEDIT*)ed);
@@ -67,7 +67,7 @@
         
         case WM_GETMINMAXINFO:
             
-            ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+            ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
             
             DefMDIChildProc(win,msg,wparam,lparam);
             
@@ -77,7 +77,7 @@
         
         case WM_SIZE:
             
-            ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+            ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
             
             SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
             
@@ -87,10 +87,10 @@
             
             ed=(LMAPEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
             
-            SetWindowLong(win,GWL_USERDATA,(long)ed);
+            SetWindowLongPtr(win,GWLP_USERDATA, (LONG_PTR) ed);
             ShowWindow(win,SW_SHOW);
             
-            ed->dlg=CreateSuperDialog(&lmapdlg,win,0,0,256,256,(long)ed);
+            ed->dlg=CreateSuperDialog(&lmapdlg,win,0,0,256,256, (LPARAM) ed);
             
         deflt:
         default:

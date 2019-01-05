@@ -145,7 +145,7 @@ tmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_GETDLGCODE:
         return DLGC_WANTCHARS|DLGC_WANTARROWS;
     case WM_SIZE:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -163,29 +163,29 @@ tmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_VSCROLL:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,16,32);
         
         break;
     
     case WM_HSCROLL:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,16,32);
         break;
     case WM_SETFOCUS:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->withfocus|=1;
         Tmapobjchg(ed,win);
         break;
     case WM_KILLFOCUS:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->withfocus&=-2;
         Tmapobjchg(ed,win);
         break;  
     
     case WM_PAINT:
         
-        ed = (TMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (TMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -196,7 +196,7 @@ tmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_RBUTTONDOWN:
     case WM_LBUTTONDOWN:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         SetFocus(win);
         o=(lparam&65535)+(ed->mapscrollh<<5);
         p=(lparam>>16)+(ed->mapscrollv<<5)+(ed->selbg<<9);
@@ -247,11 +247,11 @@ movesel:
         }
         break;
     case WM_LBUTTONUP:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->withfocus&2) ed->withfocus&=-3,ReleaseCapture();
         break;
     case WM_MOUSEMOVE:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         o=(lparam&65535)+(ed->mapscrollh<<5);
         p=(lparam>>16)+(ed->mapscrollv<<5)+(ed->selbg<<9);
         if(ed->withfocus&2) {
@@ -385,7 +385,7 @@ updblk:
         }
         break;
     case WM_KEYDOWN:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         switch(wparam) {
         case VK_RIGHT:
             Tmapobjchg(ed,win);
@@ -411,7 +411,7 @@ updblk:
         }
         break;
     case WM_CHAR:
-        ed=(TMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(wparam>=96) wparam-=32;
         switch(wparam) {
         case '1': case '2': case '3':

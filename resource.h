@@ -23,7 +23,7 @@
 #define IDD_HEADER                      121
 #define IDD_DIALOG16                    124
 #define IDD_DIALOG17                    125
-#define IDD_DIALOG18                    126
+#define IDD_ROM_PROPERTIES              126
 #define IDD_DIALOG19                    127
 #define IDD_DIALOG20                    128
 #define IDD_DIALOG21                    129

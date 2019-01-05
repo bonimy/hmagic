@@ -20,7 +20,7 @@ blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_LBUTTONDOWN:
         
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT32*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=((lparam&65535)<<1)/ed->w+((((lparam>>16)<<2)/ed->h)&2);
         ed->blks[i]=ed->bs.sel;
         
@@ -38,14 +38,14 @@ blkedit32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_RBUTTONDOWN:
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT32*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=((lparam&65535)<<1)/ed->w+((((lparam>>16)<<2)/ed->h)&2);
         SendMessage(GetParent(win),4000,ed->blks[i],0);
         break;
     
     case WM_PAINT:
         
-        ed = (BLOCKEDIT32*) GetWindowLong(win, GWL_USERDATA);
+        ed = (BLOCKEDIT32*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(always)
         {

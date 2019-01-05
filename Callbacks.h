@@ -30,7 +30,13 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
 // =============================================================================
 
-    HM_DeclareWndProc(frameproc);
+    /**
+        Window procedure for the application's main frame window. (In fact
+        in typical MDI contexts, these are called "MainFrame" windows.)
+    */
+    HM_DeclareWndProc(MDI_FrameWnd);
+
+// =============================================================================
 
     // Root document window procedure.
     HM_DeclareWndProc(superdlgproc);

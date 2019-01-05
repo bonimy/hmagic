@@ -98,7 +98,7 @@ HM_GetDlgItemRect(HWND     const p_dlg,
 signed int
 HM_GetSignedLoword(LPARAM p_ptr)
 {
-    return ( (int)(short) LOWORD(p_ptr) );
+    return ( (int) (short) LOWORD(p_ptr) );
 }
 
 // =============================================================================
@@ -106,7 +106,7 @@ HM_GetSignedLoword(LPARAM p_ptr)
 signed int
 HM_GetSignedHiword(LPARAM p_ptr)
 {
-    return ( (int)(short) HIWORD(p_ptr) );
+    return ( (int) (short) HIWORD(p_ptr) );
 }
 
 // =============================================================================
@@ -149,25 +149,29 @@ HM_GetMouseMoveData(HWND   const p_win,
 
 // =============================================================================
 
-HM_MouseWheelData
-HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MouseWheelData d;
+    HM_MouseWheelData
+    HM_GetMouseWheelData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    )
+    {
+        HM_MouseWheelData d;
+        
+        d.m_distance = HM_GetSignedHiword(p_wp);
+        
+        d.m_flags = LOWORD(p_wp);
+        
+        d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
+        d.m_control_key = truth(d.m_flags & MK_CONTROL);
     
-    d.m_distance = HM_GetSignedHiword(p_wp);
-    
-    d.m_flags = LOWORD(p_wp);
-    
-    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
-    d.m_control_key = truth(d.m_flags & MK_CONTROL);
-
-    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
-    
-    d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
-    d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
-    
-    return d;
-}
+        d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
+        
+        d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
+        d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
+        
+        return d;
+    }
 
 // =============================================================================
 
@@ -216,18 +220,84 @@ HM_GetMouseData(MSG const p_packed_msg)
 
 // =============================================================================
 
-HM_MdiActivateData
-HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MdiActivateData d;
-    
-    // -----------------------------
-    
-    d.m_deactivating = (HWND) p_wp;
-    d.m_activating   = (HWND) p_lp;
-    
-    return d;
-}
+    extern HM_MdiActivateData
+    HM_MDI_GetActivateData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    )
+    {
+        HM_MdiActivateData d;
+        
+        // -----------------------------
+        
+        d.m_deactivating = (HWND) p_wp;
+        d.m_activating   = (HWND) p_lp;
+        
+        return d;
+    }
+
+// =============================================================================
+
+    extern HWND
+    HM_MDI_GetActiveChild
+    (
+        HWND const p_mdi_client_wnd
+    )
+    {
+        HWND const h = (HWND) SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIGETACTIVE,
+            HM_NullWP(),
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return h;
+    }
+
+// =============================================================================
+
+    extern LRESULT
+    HM_MDI_ActivateChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    )
+    {
+        // MDI child windows should return zero if they process this message.
+        LRESULT r = SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIACTIVATE,
+            (WPARAM) p_mdi_child_wnd,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_MDI_DestroyChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    )
+    {
+        SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIDESTROY,
+            (WPARAM) p_mdi_child_wnd,
+            0
+        );
+    }
 
 // =============================================================================
 
@@ -492,6 +562,73 @@ HM_NullLP(void)
 {
     return (LPARAM) 0;
 }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_AddString
+    (
+        HWND    const p_listbox,
+        LPCSTR  const p_string
+    )
+    {
+        int index = SendMessage
+        (
+            p_listbox,
+            LB_ADDSTRING,
+            0,
+            (LPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return index;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_SetItemData
+    (
+        HWND   const p_listbox,
+        int    const p_item_index,
+        LPARAM const p_data
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_SETITEMDATA,
+            (WPARAM) p_item_index,
+            p_data
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_SelectItem
+    (
+        HWND const p_listbox,
+        int  const p_item_index
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_SETCURSEL,
+            p_item_index,
+            0
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
 
 // =============================================================================
 
@@ -833,7 +970,7 @@ hm_strndup(char const * const p_str,
         
         lstrcpyn(IconData.szTip,
                  "Animated Icons - Demo", 
-                (int) strlen("Animated Icons - Demo") + 1);
+                 strlen("Animated Icons - Demo") + 1);
         
         IconData.uCallbackMessage = HM_WM_1;
         

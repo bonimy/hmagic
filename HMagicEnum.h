@@ -19,6 +19,17 @@
 
     enum
     {
+        /**
+            If set, the game image was last saved with asm patches applied
+            to it.
+        */
+        FLG_HasPatches = 1
+    };
+
+// =============================================================================
+
+    enum
+    {
         ID_MRU1 = 5000,
         ID_MRU2,
         ID_MRU3,
@@ -63,7 +74,7 @@
         \credit sephiroth3 (or whoever designed this scheme)
         
         Far-orientation flags for SuperDlg children. What does far-oriented
-        mean, you ask? Let's take In typical creation and placement of controls,
+        mean, you ask? In typical creation and placement of controls,
         the x and y coordinates would be considered as absolute placements,
         relative to the left-hand or top-hand edges of the parent window. They
         are child windows, after all.
@@ -79,13 +90,15 @@
         if that flag is used, we should expect that the child window will be
         placed at x coordinate (600 - 70) = 530 units. This is useful for,
         in a certain sense, anchoring a control to a far side of the SuperDlg.
+        Note that more specifically we are referring to where the leftmost
+        boundary of the child control is placed.
         
         Let us examine what this means in the context of width of the child
         window. If the child window has a specified width of 10 units, this
         would normally indicate that the child spans 10 units horizontally from
         its left boundary to its right boundary. If the far-oriented flag
         is indicated for the child window, however, then a width of 10 units
-        would be interpreted as 10 unit displacement from the right hand
+        would be interpreted as a 10 unit displacement from the right hand
         bound of the parent window. Using our previous example, this would mean
         that the child window's left bound is still at 530 units from the
         parent's left boundary, and the child window's right boundary is 
@@ -101,7 +114,9 @@
         
         It might not be apparent why this is useful, but it allows for a
         certain degree of control over window placement and auto-sizing
-        as the parent window (the SuperDlg) is itself resized.
+        as the parent window (the SuperDlg) is itself resized. Essentially this
+        allows one to "glue" a control to the right and / or bottom
+        side of a parent window, among other possible configurations.
     */
     enum
     {

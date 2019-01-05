@@ -631,7 +631,7 @@ overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     unsigned char*b6 = 0,*rom = 0;
     
-    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+    OVEREDIT * const ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
     
     switch(msg)
     {
@@ -732,7 +732,14 @@ overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                         if(k&j) AppendMenu(menu2,MF_STRING,i+9,sprset_str[i]);
                         k<<=1;
                     }
-                    AppendMenu(menu,MF_STRING|MF_POPUP,(int)menu2,"Use same sprites as");
+                    
+                    AppendMenu
+                    (
+                        menu,
+                        MF_STRING | MF_POPUP,
+                        (UINT_PTR) menu2,
+                        "Use same sprites as"
+                    );
                 }
             }
             if(ed->disp&8) AppendMenu(menu,MF_STRING,12,"Clear overlay");

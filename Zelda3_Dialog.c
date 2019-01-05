@@ -21,39 +21,39 @@
 
 // =============================================================================
 
-SD_ENTRY z3_sd[] =
-{
+    SD_ENTRY z3_sd[] =
     {
-        WC_TREEVIEW,
-        "",
-        0, 0, 0, 0,
-        ID_Z3Dlg_TreeView,
-        (
-            WS_VISIBLE | WS_TABSTOP | WS_BORDER | WS_CHILD
-          | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES
-          | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP
-        ),
-        WS_EX_CLIENTEDGE,
-        FLG_SDCH_FOWH
-    },
-};
+        {
+            WC_TREEVIEW,
+            "",
+            0, 0, 0, 0,
+            ID_Z3Dlg_TreeView,
+            (
+                WS_VISIBLE | WS_TABSTOP | WS_BORDER | WS_CHILD
+              | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES
+              | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP
+            ),
+            WS_EX_CLIENTEDGE,
+            FLG_SDCH_FOWH
+        },
+    };
 
-enum
-{
-    NUM_Z3Dlg_Controls = sizeof(z3_sd) / sizeof(SD_ENTRY)
-};
+    enum
+    {
+        NUM_Z3Dlg_Controls = MACRO_ArrayLength(z3_sd)
+    };
 
 // =============================================================================
 
-SUPERDLG z3_dlg =
-{
-    "",
-    z3dlgproc,
-    WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
-    60, 60,
-    NUM_Z3Dlg_Controls,
-    z3_sd
-};
+    SUPERDLG z3_dlg =
+    {
+        "",
+        z3dlgproc,
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+        60, 60,
+        NUM_Z3Dlg_Controls,
+        z3_sd
+    };
 
 // =============================================================================
 
@@ -881,7 +881,7 @@ z3dlgproc(HWND win,
                     notific->hwndFrom,
                     TVM_GETITEM,
                     0,
-                    (long) itemstr
+                    (LPARAM) itemstr
                 );
                 
                 item_param = itemstr->lParam;
@@ -955,10 +955,7 @@ open_edt:
                     // double clicked on a dungeon item
                     if(doc->ents[item_id])
                     {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (int) (doc->ents[item_id]),
-                                    0);
+                        HM_MDI_ActivateChild(clientwnd, doc->ents[item_id]);
                         
                         break;
                     }
@@ -1009,7 +1006,7 @@ open_edt:
                     
                     if(hc)
                     {
-                        DUNGEDIT * ed = (DUNGEDIT*) GetWindowLong(hc, GWL_USERDATA);
+                        DUNGEDIT * ed = (DUNGEDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
                         HWND map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
                     
                         Dungselectchg(ed, map_win, 1);
@@ -1281,7 +1278,7 @@ open_edt:
                                MAKEINTRESOURCE(IDD_GRAPHIC_THEMES),
                                framewnd,
                                editvarious,
-                               (int) doc);
+                               (LPARAM) doc);
                     
                     break;
                 }

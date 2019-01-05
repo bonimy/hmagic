@@ -22,13 +22,13 @@
         
         case WM_MDIACTIVATE:
             
-            activedoc = ((DUNGEDIT*)GetWindowLong(win, GWL_USERDATA))->ew.doc;
+            activedoc = ((DUNGEDIT*)GetWindowLongPtr(win, GWLP_USERDATA))->ew.doc;
             
             goto deflt;
         
         case WM_GETMINMAXINFO:
             
-            ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
             DefMDIChildProc(win,msg,wparam,lparam);
             
             if(!ed)
@@ -38,14 +38,14 @@
         
         case WM_SIZE:
             
-            ed=(MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
+            ed=(MUSEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
             SetWindowPos(ed->dlg,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
             
             goto deflt;
         
         case WM_DESTROY:
             
-            ed = (MUSEDIT*)GetWindowLong(win,GWL_USERDATA);
+            ed = (MUSEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
             ed->ew.doc->mbanks[ed->ew.param]=0;
             
             if(sndinit && ed->ew.doc == sounddoc && !playedsong)
@@ -59,9 +59,9 @@
             
             ed = (MUSEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
             
-            SetWindowLong(win,GWL_USERDATA,(long)ed);
+            SetWindowLongPtr(win,GWLP_USERDATA, (LONG_PTR) ed);
             ShowWindow(win,SW_SHOW);
-            CreateSuperDialog((ed->ew.param==3)?&sampdlg:&musdlg,win,0,0,0,0,(long)ed);
+            CreateSuperDialog((ed->ew.param==3)?&sampdlg:&musdlg,win,0,0,0,0, (LPARAM) ed);
             
         deflt:
         default:

@@ -218,7 +218,7 @@ COLORREF custcols[16];
             goto deflt;
         case WM_MDIACTIVATE:
             
-            activedoc=((WMAPEDIT*)GetWindowLong(win,GWL_USERDATA))->ew.doc;
+            activedoc=((WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA))->ew.doc;
             
             break;
         

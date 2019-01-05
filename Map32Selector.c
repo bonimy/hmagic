@@ -36,7 +36,7 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_QUERYNEWPALETTE:
         
-        ed = (BLOCKEDIT32*) GetWindowLong(win,GWL_USERDATA);
+        ed = (BLOCKEDIT32*) GetWindowLongPtr(win,GWLP_USERDATA);
         
         SetPalette(win,ed->bs.ed->hpal);
         
@@ -57,17 +57,25 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         bs->scroll=0;
         bs->sel=0;
         hc=GetDlgItem(win,IDC_CUSTOM2);
-        SetWindowLong(win,GWL_USERDATA,(int)ed);
-        SetWindowLong(hc,GWL_USERDATA,(int)ed);
+        
+        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) ed);
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) ed);
+        
         Updatesize(hc);
+        
         hc=GetDlgItem(win,IDC_CUSTOM1);
+        
         rc = HM_GetClientRect(hc);
+        
         ed->w=rc.right;
         ed->h=rc.bottom;
         hdc=GetDC(win);
+        
         ed->bufdc=CreateCompatibleDC(hdc);
         ed->bufbmp=CreateCompatibleBitmap(hdc,rc.right,rc.bottom);
+        
         ReleaseDC(win,hdc);
+        
         SelectObject(ed->bufdc,ed->bufbmp);
         SelectPalette(ed->bufdc,ed->bs.ed->hpal,1);
         
@@ -81,7 +89,7 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             SelectPalette(objdc, oldpal, 1);
         }
         
-        SetWindowLong(hc, GWL_USERDATA, (int) ed);
+        SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) ed);
         
         wparam = 0;
     
@@ -91,7 +99,7 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetDlgItemInt(win,IDC_EDIT1,wparam,0);
         break;
     case WM_DESTROY:
-        ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT32*)GetWindowLongPtr(win,GWLP_USERDATA);
         DeleteDC(ed->bufdc);
         DeleteObject(ed->bufbmp);
         free(ed);
@@ -99,7 +107,7 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case 4001:
         
-        ed = (BLOCKEDIT32*) GetWindowLong(win, GWL_USERDATA);
+        ed = (BLOCKEDIT32*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(always)
         {
@@ -119,11 +127,11 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_COMMAND:
         switch(wparam) {
         case IDC_EDIT1|(EN_CHANGE<<16):
-            bs=(BLOCKSEL16*)GetWindowLong(win,GWL_USERDATA);
+            bs=(BLOCKSEL16*)GetWindowLongPtr(win,GWLP_USERDATA);
             SetBS16(bs,GetDlgItemInt(win,IDC_EDIT1,0,0),GetDlgItem(win,IDC_CUSTOM2));
             break;
         case IDOK:
-            ed=(BLOCKEDIT32*)GetWindowLong(win,GWL_USERDATA);
+            ed=(BLOCKEDIT32*)GetWindowLongPtr(win,GWLP_USERDATA);
             oe=ed->bs.ed;
             doc=oe->ew.doc;
             rom=doc->rom;
@@ -216,7 +224,7 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_SIZE:
         
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -247,7 +255,7 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             
             WPARAM fake_wp;
             
-            ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+            ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
             
             if(d.m_distance > 0)
             {
@@ -287,7 +295,7 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_VSCROLL:
         
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         ed->sel_scroll = Handlescroll(win,
                                       wparam,
@@ -299,7 +307,7 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_LBUTTONDOWN:
-        ed=(OVEREDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         rc = HM_GetClientRect(win);
         i=(rc.right>>1)-64;
         j=lparam&65535;
@@ -314,11 +322,11 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetDlgItemInt(ed->dlg,3005,m,0);
         break;
     case WM_LBUTTONDBLCLK:
-        ShowDialog(hinstance,(LPSTR)IDD_DIALOG7,framewnd,editblock32,GetWindowLong(win,GWL_USERDATA));
+        ShowDialog(hinstance,(LPSTR)IDD_DIALOG7,framewnd,editblock32,GetWindowLongPtr(win,GWLP_USERDATA));
         break;
     case WM_PAINT:
         
-        ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(!ed)
             break;

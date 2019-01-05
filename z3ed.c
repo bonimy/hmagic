@@ -1261,7 +1261,7 @@ BOOL CALLBACK port(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     switch(msg) 
     {
     case WM_INITDIALOG:
-        SetWindowLong( win, DWL_USER, lparam);
+        SetWindowLongPtr( win, DWLP_USER, lparam);
         
         srcdoc = firstdoc;
     
@@ -1475,7 +1475,15 @@ Updatesize(HWND win)
 // existed long before MFC, so this code probably predates it.
 // On the other hand, most of this code doesn't run unless the program
 // is executing on the win32s platform.
-int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param)
+extern LPARAM
+ShowDialog
+(
+    HINSTANCE const hinst,
+    LPSTR     const id,
+    HWND      const p_owner,
+    DLGPROC   const dlgproc,
+    LPARAM    const param
+)
 {
     HGLOBAL hgl;
     
@@ -1487,9 +1495,14 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     HWND win;
     
     unsigned short *p, *q;
-    int x, y, bw, bh, i, j, k, l;
+    int bw, bh, i, j, k, l;
+
+    LPARAM x = HM_NullLP();
+    LPARAM y = HM_NullLP();
     
     MSG msg;
+    
+    HWND owner = p_owner;
     
     TEXTMETRIC tm;
     RECT rect;
@@ -1536,11 +1549,13 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     WideCharToMultiByte(CP_ACP, 0, p, -1, buffer, 512, 0, 0);
     
-    while(GetWindowLong(owner, GWL_STYLE) & WS_CHILD)
+    while( GetWindowLongPtr(owner, GWLP_STYLE) & WS_CHILD)
+    {
         owner = GetParent(owner);
+    }
     
     win = CreateWindowEx(k, (LPSTR) 32770, buffer, l & ~WS_VISIBLE, 0, 0, 100, 100, owner, 0, hinst, 0);
-    SetWindowLong(win,DWL_DLGPROC,(int)dlgproc);
+    SetWindowLongPtr(win, DWLP_DLGPROC, (LONG_PTR) dlgproc);
     p+=1+lstrlenW(p);
     
     if(l & DS_SETFONT)
@@ -1549,22 +1564,22 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         HGDIOBJ oldobj;
         
-        x = -*p * GetDeviceCaps(dc, LOGPIXELSY) / 72;
+        x = (LPARAM) ( -*p * GetDeviceCaps(dc, LOGPIXELSY) / 72 );
         
         if(j)
         {
             WideCharToMultiByte(CP_ACP,0,p+3,-1,buffer,512,0,0);
-            font=CreateFont(x,0,0,0,p[1],p[2],0,0,0,0,0,0,0,buffer);
+            font=CreateFont((int) x, 0,0,0,p[1],p[2],0,0,0,0,0,0,0,buffer);
             p+=4+lstrlenW(p+3);
         }
         else
         {
             WideCharToMultiByte(CP_ACP,0,p+1,-1,buffer,512,0,0);
-            font=CreateFont(x,0,0,0,0,0,0,0,0,0,0,0,0,buffer);
+            font=CreateFont(x, 0,0,0,0,0,0,0,0,0,0,0,0,buffer);
             p+=2+lstrlenW(p+1);
         }
         
-        SendMessage(win,WM_SETFONT,(int)font,1);
+        SendMessage(win,WM_SETFONT,(WPARAM)font,1);
         
         oldobj = SelectObject(dc, font);
         
@@ -1574,26 +1589,30 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         ReleaseDC(win, dc);
         
-        SetWindowLong(win, 12, tm.tmAveCharWidth + (tm.tmHeight << 16) + 1);
+        SetWindowLongPtr(win, 12, tm.tmAveCharWidth + (tm.tmHeight << 16) + 1);
     }
     else
     {
         font=0;
         bw=GetDialogBaseUnits();
-        SetWindowLong(win,12,bw);
+        SetWindowLongPtr(win,12,bw);
         bh=bw>>16;
         bw&=65535;
     }
-    rect.left=dt->x;
-    rect.top=dt->y;
-    rect.right=dt->cx;
-    rect.bottom=dt->cy;
-    MapDialogRect(win,&rect);
-    rect.right+=rect.left;
-    rect.bottom+=rect.top;
-    AdjustWindowRect(&rect,l,0);
-    rect.right-=rect.left;
-    rect.bottom-=rect.top;
+    rect.left   = dt->x;
+    rect.top    = dt->y;
+    rect.right  = dt->cx;
+    rect.bottom = dt->cy;
+    
+    MapDialogRect(win, &rect);
+    
+    rect.right  += rect.left;
+    rect.bottom += rect.top;
+    
+    AdjustWindowRect(&rect, l, 0);
+    
+    rect.right  -= rect.left;
+    rect.bottom -= rect.top;
     
     if(l & DS_CENTER)
     {
@@ -1601,11 +1620,15 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         rect.top  = ( GetSystemMetrics(SM_CYSCREEN) - rect.bottom ) >> 1;
     }
     
-    SetWindowPos(win,0,rect.left,rect.top,rect.right,rect.bottom,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(win,
+                 0,
+                 rect.left,  rect.top,
+                 rect.right, rect.bottom,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
     
     q = p;
     
-    for(i=dt->cdit;i;i--)
+    for(i = dt->cdit; i; i--)
     {
         HWND child_win = NULL;
         
@@ -1636,7 +1659,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         {
             bw=p[1]-128;
             
-            x = (int) cls_def[bw];
+            x = (LPARAM) cls_def[bw];
             p += 2;
             
             if(bw==1)
@@ -1646,7 +1669,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         {
             WideCharToMultiByte(CP_ACP,0,p,-1,buffer,256,0,0);
             
-            x=(int)buffer,p+=1+lstrlenW(p);
+            x = (LPARAM) buffer,p+=1+lstrlenW(p);
             bw=6;
         }
         
@@ -1659,7 +1682,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         else
         {
             WideCharToMultiByte(CP_ACP,0,p,-1,buffer+256,256,0,0);
-            y=(int)buffer+256,p+=1+lstrlenW(p);
+            y = (LPARAM) buffer + 256, p += 1 + lstrlenW(p);
         }
         
         rect.left   = dit->x;
@@ -1671,13 +1694,13 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         bh=l&31;
         
         if(bw==2 && (bh==SS_ICON))
-            bh=y,y=(int)"";
+            bh = y, y = (LPARAM) "";
         else
             bh=0;
         
         child_win = CreateWindowEx(k,
-                                   (LPSTR)x,
-                                   (LPSTR)y,
+                                   (LPSTR) x,
+                                   (LPSTR) y,
                                    l,
                                    rect.left,
                                    rect.top,
@@ -1690,7 +1713,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         SendMessage(child_win,
                     WM_SETFONT,
-                    (int) font,
+                    (WPARAM) font,
                     1);
         
         if(bh)
@@ -1706,7 +1729,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     hc = GetNextDlgTabItem(win,0,0);
     
-    if( SendMessage(win, WM_INITDIALOG, (int) hc, param) )
+    if( SendMessage(win, WM_INITDIALOG, (WPARAM) hc, param) )
     {
         hc = GetNextDlgTabItem(win, 0, 0);
         
@@ -1715,7 +1738,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     ShowWindow(win, SW_SHOW);
     
-    x = EnableWindow(owner, 0);
+    x = (LPARAM) EnableWindow(owner, 0);
     
     while((!GetWindowWord(win,18)) && GetMessage(&msg,0,0,0))
     {
@@ -1726,7 +1749,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         }
     }
     
-    y=GetWindowWord(win,22);
+    y = GetWindowWord(win,22);
     p=q;
     
     for(i=dt->cdit;i;i--)
@@ -1777,7 +1800,8 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     }
     
     DestroyWindow(win);
-    EnableWindow(owner,!x);
+    EnableWindow(owner, !x);
+    
     return y;
 }
 
@@ -1798,7 +1822,7 @@ Editwin(FDOC       * const doc,
     
     MDICREATESTRUCT mdic;
     
-    EDITWIN * const a = (EDITWIN*) calloc(1, size);
+    CP2(EDITWIN) a = (EDITWIN*) calloc(1, size);
     
     // -----------------------------
     
@@ -1813,10 +1837,13 @@ Editwin(FDOC       * const doc,
     
     mdic.x = mdic.y = mdic.cx = mdic.cy = CW_USEDEFAULT;
     
-    mdic.style = WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
-               | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+    mdic.style = 
+    (
+        WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
+      | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
+    );
     
-    mdic.lParam = (long) a;
+    mdic.lParam = (LPARAM) a;
     
     hc = (HWND) SendMessage(clientwnd, WM_MDICREATE, 0, (LPARAM) &mdic);
     
@@ -3678,7 +3705,7 @@ void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
     SelectPalette(objdc,oldpal,1);
     SelectPalette(bs->bufdc,oldpal,1);
     
-    SetWindowLong(hc, GWLP_USERDATA, (LONG_PTR) bs);
+    SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) bs);
     
     Updatesize(hc);
 }
@@ -3703,23 +3730,46 @@ void Changeblk8sel(HWND win,BLOCKSEL8*ed)
 BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     HWND hc;
-    int i,j,k;
-    switch(msg) {
+    
+    int i, j, k;
+    
+    switch(msg)
+    {
+    
     case WM_INITDIALOG:
-        hc=GetDlgItem(win,IDC_LIST1);
-        j=(lparam&512)?0x11c:256;
-        for(i=0;i<j;i++) {
-            SendMessage(hc,LB_SETITEMDATA,k=SendMessage(hc,LB_ADDSTRING,0,(long)sprname[i]),i);
-            if(i==(lparam&511)) SendMessage(hc,LB_SETCURSEL,k,0);
+        
+        hc = GetDlgItem(win, IDC_LIST1);
+        
+        j = (lparam & 512)
+          ? 0x11c
+          : 256;
+        
+        for(i = 0 ; i < j; i++)
+        {
+            k = HM_ListBox_AddString(hc, sprname[i]);
+            
+            HM_ListBox_SetItemData(hc, k, i);
+            
+            if( i == (lparam & 511) )
+            {
+                HM_ListBox_SelectItem(hc, k);
+            }
         }
+        
         SendMessage(hc,LB_SETTOPINDEX,SendMessage(hc,LB_GETCURSEL,0,0),0);
+        
         break;
+    
     case WM_COMMAND:
-        switch(wparam) {
+        
+        switch(wparam)
+        {
+        
         case IDOK:
             hc=GetDlgItem(win,IDC_LIST1);
             EndDialog(win,SendMessage(hc,LB_GETITEMDATA,SendMessage(hc,LB_GETCURSEL,0,0),0));
             break;
+        
         case IDCANCEL:
             EndDialog(win,-1);
             break;
@@ -3728,17 +3778,21 @@ BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return FALSE;
 }
 
-BOOL CALLBACK getnumber(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+getnumber(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j;
-    if(msg==WM_INITDIALOG) {
-        SetWindowLong(win,DWL_USER,lparam);
+    
+    if(msg == WM_INITDIALOG)
+    {
+        SetWindowLongPtr(win, DWLP_USER,lparam);
         SetWindowText(win,((LPSTR*)lparam)[1]);
         SetDlgItemText(win,IDC_STATIC2,((LPSTR*)lparam)[2]);
         SetFocus(GetDlgItem(win,IDC_EDIT1));
-    } else if(msg==WM_COMMAND) if(wparam==IDOK) {
+    }
+    else if(msg==WM_COMMAND) if(wparam==IDOK) {
         i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        j=*(int*)GetWindowLong(win,DWL_USER);
+        j=*(int*)GetWindowLongPtr(win, DWLP_USER);
         if(i<0 || i>j) {
             wsprintf(buffer,"Please enter a number between 0 and %d",j);
             MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
@@ -3753,7 +3807,14 @@ int __stdcall askinteger(int max,char*caption,char*text)
 {
     (void) caption, text;
     
-    return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
+    return ShowDialog
+    (
+        hinstance,
+        (LPSTR) IDD_DIALOG4,
+        framewnd,
+        getnumber,
+        (LPARAM) &max
+    );
 }
 
 // =============================================================================

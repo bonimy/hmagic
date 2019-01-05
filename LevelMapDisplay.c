@@ -235,7 +235,7 @@ lmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         return DLGC_WANTCHARS | DLGC_WANTARROWS;
     
     case WM_CHAR:
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(wparam>=0x40) wparam&=0xdf;
         switch(wparam) {
         case 8:
@@ -298,7 +298,7 @@ updblk:
     case WM_RBUTTONDOWN:
     case WM_LBUTTONDOWN:
         SetFocus(win);
-        ed=(LMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         k=lparam&65535;
         l=lparam>>16;
         if(k>=24 && k<104 && l>=8 && l<88) {
@@ -391,7 +391,7 @@ chgloc:
     
     case WM_PAINT:
         
-        ed = (LMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (LMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {

@@ -51,8 +51,8 @@
         
         Updatesize(hc);
         
-        SendDlgItemMessage(p_win, 3001, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[0]);
-        SendDlgItemMessage(p_win, 3002, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[1]);
+        SendDlgItemMessage(p_win, 3001, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM) arrows_imgs[0]);
+        SendDlgItemMessage(p_win, 3002, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM) arrows_imgs[1]);
         
         wsprintf(buf, "Free: %d", 116 - ed->len);
         
@@ -76,7 +76,7 @@ BOOL CALLBACK perspdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_COMMAND:
-        ed=(PERSPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(PERSPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         switch(wparam) {
         case 3001:
             ed->objsel=0;

@@ -247,7 +247,7 @@
         
         // -----------------------------
         
-        if( IsNull(ed) || 1 )
+        if( IsNull(ed) )
         {
             return HM_ErrorControlProc(win, msg, wparam, lparam);
         }

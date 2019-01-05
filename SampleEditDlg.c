@@ -182,7 +182,7 @@ sampdlgproc(HWND p_win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(p_win, DWL_USER, lparam);
+        SetWindowLongPtr(p_win, DWLP_USER, lparam);
         
         ed=(SAMPEDIT*)lparam;
         ed->dlg= p_win;
@@ -218,7 +218,7 @@ chgsamp:
     
     case WM_COMMAND:
         
-        ed = (SAMPEDIT*) GetWindowLong(p_win, DWL_USER);
+        ed = (SAMPEDIT*) GetWindowLongPtr(p_win, DWLP_USER);
         
         if(ed->init)
             break;

@@ -94,7 +94,7 @@ seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     HWND hc;
     switch(msg) {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,0);
+        SetWindowLongPtr(win,DWLP_USER,0);
         hc=GetDlgItem(win,IDC_TREE1);
         tvi.hParent=0;
         tvi.hInsertAfter=TVI_LAST;
@@ -104,40 +104,40 @@ seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         tvi.item.lParam=0;
         tvi.item.pszText="Wave devices";
         tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         tvi.item.pszText="Wave mapper";
         tvi.item.cChildren=0;
         tvi.item.lParam=0x10001;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+        SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         j=waveOutGetNumDevs();
         if(j>256) j=256;
         tvi.item.pszText=woc.szPname;
         for(i=0;i<j;i++) {
             if(waveOutGetDevCaps(i,&woc,sizeof(woc))) continue;
             tvi.item.lParam=0x10002 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+            SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         }
         tvi.hParent=0;
         tvi.item.pszText="Midi devices";
         tvi.item.cChildren=1;
-        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+        tvi.hParent=(HTREEITEM)SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         tvi.item.pszText="Midi mapper";
         tvi.item.cChildren=0;
         tvi.item.lParam=0x20000;
-        SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+        SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         j=midiOutGetNumDevs();
         if(j>256) j=256;
         tvi.item.pszText=moc.szPname;
         for(i=0;i<j;i++) {
             if(midiOutGetDevCaps(i,&moc,sizeof(moc))) continue;
             tvi.item.lParam=0x20001 + i;
-            SendMessage(hc,TVM_INSERTITEM,0,(long)&tvi);
+            SendMessage(hc,TVM_INSERTITEM,0, (LPARAM) &tvi);
         }
         break;
     case WM_COMMAND:
         switch(wparam) {
         case IDOK:
-            lp=GetWindowLong(win,DWL_USER);
+            lp=GetWindowLongPtr(win,DWLP_USER);
             if(!lp) break;
             if(!Soundsetting(win,lp)) break;
             Exitsound();
@@ -156,8 +156,8 @@ seldevproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             switch(((NMHDR*)lparam)->code) {
             case TVN_SELCHANGED:
                 itemstr=&(((NMTREEVIEW*)lparam)->itemNew);
-                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM,0,(long)itemstr);
-                SetWindowLong(win,DWL_USER,itemstr->lParam);
+                SendMessage(((NMHDR*)lparam)->hwndFrom,TVM_GETITEM, 0,(LPARAM) itemstr);
+                SetWindowLongPtr(win,DWLP_USER,itemstr->lParam);
                 break;
             }
         }

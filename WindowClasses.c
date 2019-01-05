@@ -56,7 +56,7 @@
     HM_WindowClass frame_classes[] =
     {
         {
-            frameproc,
+            MDI_FrameWnd,
             "ZEFRAME"
         },
         {

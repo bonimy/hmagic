@@ -67,14 +67,14 @@ CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             hc = GetDlgItem(win, cb_ids[i]);
             
             for(j = 0; j < 16; j++)
-                SendMessage(hc,CB_ADDSTRING,0,(long)mus_str[j+1]);
+                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) mus_str[j+1]);
             
             SendMessage(hc,CB_SETCURSEL,k&15,0);
             
             hc = GetDlgItem(win, cb2_ids[i]);
             
             for(j = 0; j < 9; j++)
-                SendMessage(hc,CB_ADDSTRING,0,(long)amb_str[j]);
+                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) amb_str[j]);
             
             SendMessage(hc,CB_SETCURSEL,k>>5,0);
         }

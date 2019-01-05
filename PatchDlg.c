@@ -227,7 +227,7 @@ PatchDlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win, DWL_USER, lparam);
+        SetWindowLongPtr(win, DWLP_USER, lparam);
         
         PatchDlg_Init(win, lparam);
         
@@ -235,7 +235,7 @@ PatchDlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_COMMAND:
         
-        ed = (PATCHLOAD*) GetWindowLong(win, DWL_USER);
+        ed = (PATCHLOAD*) GetWindowLongPtr(win, DWLP_USER);
         
         doc = ed->ew.doc;
         

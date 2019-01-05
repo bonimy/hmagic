@@ -30,7 +30,7 @@ trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(TRACKEDIT*)lparam;
         ed->dlg=win;
         doc=ed->ew.doc;
@@ -65,14 +65,14 @@ trackdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->withcapt=0;
         SetDlgItemInt(win,3001,doc->sr[m].bank,0);
         hc=GetDlgItem(win,3000);
-        SetWindowLong(hc,GWL_USERDATA,lparam);
+        SetWindowLongPtr(hc,GWLP_USERDATA,lparam);
         Updatesize(hc);
         
         break;
     
     case 3001 | (EN_CHANGE<<16):
         
-        ed = (TRACKEDIT*) GetWindowLong(win,DWL_USER);
+        ed = (TRACKEDIT*) GetWindowLongPtr(win,DWLP_USER);
         
         ed->ew.doc->sr[ed->ew.param].bank = GetDlgItemInt(win,3001,0,0);
         

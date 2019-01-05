@@ -18,7 +18,7 @@ duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     switch(msg)
     {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         
         // the function apparently
         // passes in the associated rom file's pointer.
@@ -36,7 +36,7 @@ duproom(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         case IDOK: // they picked the OK button
             
-            doc = (FDOC*) GetWindowLong(win,DWL_USER);
+            doc = (FDOC*) GetWindowLongPtr(win,DWLP_USER);
             
             i = GetDlgItemInt(win,IDC_EDIT1,0,0); // get the source room/map number
             

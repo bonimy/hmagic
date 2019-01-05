@@ -28,6 +28,12 @@
     );
 
     extern BOOL
+    PatchLogic_SerializePatches
+    (
+        CP2C(FDOC) p_doc
+    );
+
+    extern BOOL
     PatchLogic_DeserializePatches
     (
         CP2(FDOC) p_doc

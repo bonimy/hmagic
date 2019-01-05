@@ -140,7 +140,7 @@ rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_INITDIALOG:
         
-        SetWindowLong(win, DWL_USER, lparam);
+        SetWindowLongPtr(win, DWLP_USER, lparam);
         
         doc = (FDOC*) lparam;
         
@@ -161,7 +161,7 @@ rompropdlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 
                 // -----------------------------
                 
-                doc = (FDOC*) GetWindowLong(win, DWL_USER);
+                doc = (FDOC*) GetWindowLongPtr(win, DWLP_USER);
                 
                 GetDlgItemText(win, IDC_EDIT1, title_buf, 22);
                 

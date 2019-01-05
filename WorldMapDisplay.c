@@ -344,7 +344,7 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_SIZE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -360,15 +360,15 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,si.nMax,32);
         break;
     case WM_VSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->ew.param?8:16,32);
         break;
     case WM_HSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->ew.param?8:16,32);
         break;
     case WM_LBUTTONDOWN:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->dtool) break;
         if(ed->tool!=1 && ed->selflag) {
             Wmapselectwrite(ed);
@@ -381,7 +381,7 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         goto mousemove;
     case WM_RBUTTONDOWN:
     case WM_MOUSEMOVE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
 mousemove:
         
         n=ed->mapscrollh<<5;
@@ -798,7 +798,7 @@ maperror:
         }
         break;
     case WM_LBUTTONUP:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->dtool>1 && ed->dtool<4) {
             Wmapselectionrect(ed,&rc);
             InvalidateRect(win,&rc,0);
@@ -837,7 +837,7 @@ maperror:
     
     case WM_PAINT:
         
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (WMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -847,7 +847,7 @@ maperror:
         break;
     
     case WM_KEYDOWN:
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (WMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         i=ed->selmark;
         if(ed->tool!=3 || i==-1 || ed->marknum==9) break;
         if(wparam>=65 && wparam<71) { wparam-=55; goto digit; }

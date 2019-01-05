@@ -194,7 +194,7 @@
             if(j >= zw->end)
                 break;
             
-            k = ((int)(zw->buf[j]) + 32768) * p_ed->height >> 16;
+            k = ((int) (zw->buf[j]) + 32768) * p_ed->height >> 16;
             
             if(!l)
                 MoveToEx(dc, i, k, 0), l = 1;

@@ -47,16 +47,16 @@ editroomprop(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     case WM_INITDIALOG:
         rom=dunged->ew.doc->rom;
         hc=GetDlgItem(win, IDC_COMBO1);
-        for(i=0;i<8;i++) SendMessage(hc,CB_ADDSTRING,0,(long)ef_str[i]);
+        for(i=0;i<8;i++) SendMessage(hc,CB_ADDSTRING,0, (LPARAM) ef_str[i]);
         SendMessage(hc,CB_SETCURSEL,dunged->hbuf[4],0);
         hc=GetDlgItem(win,IDC_COMBO2);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(long)tag_str[i]);
+        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING, 0, (LPARAM) tag_str[i]);
         SendMessage(hc,CB_SETCURSEL,dunged->hbuf[5],0);
         hc=GetDlgItem(win,IDC_COMBO3);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(long)tag_str[i]);
+        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(LPARAM) tag_str[i]);
         SendMessage(hc,CB_SETCURSEL,dunged->hbuf[6],0);
-        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[2]);
-        SendDlgItemMessage(win,IDC_BUTTON3,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[3]);
+        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[2]);
+        SendDlgItemMessage(win,IDC_BUTTON3,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[3]);
         hs=dunged->hsize;
         SetDlgItemInt(win,IDC_EDIT6,dunged->hbuf[7]&3,0);       // Hole/warp plane
         SetDlgItemInt(win,IDC_EDIT15,(dunged->hbuf[7]>>2)&3,0); // Staircase plane 1
