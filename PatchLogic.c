@@ -822,10 +822,10 @@
 
 // =============================================================================
 
-    // \task While the delegation of responsibilities to subroutines has been
-    // significantly improved in this source file, I feel that the refactoring
-    // that has been done has made the code slightly more fragile, so it
-    // should be checked for robustness, and perhaps given even further
+    // \task[med] While the delegation of responsibilities to subroutines has
+    // been significantly improved in this source file, I feel that the
+    // refactoring that has been done has made the code slightly more fragile,
+    // so it should be checked for robustness, and perhaps given even further
     // division of labor and clarity of logic. In particular, there are still
     // a number of vaguely named variables in play, and that should be
     // remedied. On the plus side, there don't appear to be any memory leaks.
@@ -1061,8 +1061,8 @@
 // =============================================================================
 
     /**
-        \task These types and the HackDatabase array below are first draft
-        attempts at providing a higher level model of the serialized hack
+        \task[high] These types and the HackDatabase array below are first
+        draft attempts at providing a higher level model of the serialized hack
         database file format.
     */
     typedef
@@ -1127,7 +1127,7 @@
 
 // =============================================================================
 
-    // \task Serialization logic seems to need work still.
+    // \task[high] Serialization logic seems to need work still.
     extern BOOL
     PatchLogic_SerializePatches
     (
@@ -1445,7 +1445,7 @@
         }
         
         /**
-            \task There are SERIOUS problems with this code. It depends
+            \task[high] There are SERIOUS problems with this code. It depends
             upon certain expectations of the layout of the document
             structure, including size and ordering.
             Case in point, a raw constant like the one in this
@@ -1529,7 +1529,7 @@
                 0
             );
             
-            // \task Code smell here...
+            // \task[high] Code smell here...
             k = (int) mod->filename;
             
             mod->filename = (char*) malloc(k + 1);

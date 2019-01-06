@@ -39,7 +39,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 // =============================================================================
 
     // Root document window procedure.
-    HM_DeclareWndProc(superdlgproc);
+    HM_DeclareWndProc(SuperDlg);
 
     // Root document window procedure.
     HM_DeclareWndProc(docproc);
@@ -92,7 +92,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(overmapproc);
 
     // Super Dialog procedure.
-    HM_DeclareDlgProc(overdlgproc);
+    HM_DeclareDlgProc(OverworldDlg);
 
     // Child frame window procedure.
     HM_DeclareWndProc(overproc);

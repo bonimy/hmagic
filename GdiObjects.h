@@ -39,6 +39,9 @@
     extern HANDLE
     shade_brush[8];
 
+    extern HBRUSH
+    super_dlg_brush;
+
 // =============================================================================
 
     extern HGDIOBJ
@@ -53,6 +56,9 @@
 
     extern HCURSOR
     sizecsor[5];
+
+    extern HCURSOR
+    null_cursor;
 
 // =============================================================================
 

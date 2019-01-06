@@ -825,7 +825,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     
     if((t & 24) == 24)
     {
-        // \task Used with only with Link's graphics dialog, seemingly.
+        // \task[low] Used with only with Link's graphics dialog, seemingly.
         
         b3 = ed->ew.doc->blks[225].buf;
         
@@ -839,7 +839,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     }
     else if(t & 16)
     {
-        // \task 2bpp graphics? Not sure.
+        // \task[low] 2bpp graphics? Not sure.
         // Used with the dungeon map screen (not the maps themselves)
         
         if(d >= 0x180)
@@ -861,7 +861,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     }
     else if(t & 8)
     {
-        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // \task[low] Used with a lot of the tilemap screens, title screen in particular.
 
         if(d >= 0x100)
             goto noblock;
@@ -1163,7 +1163,7 @@ DrawDungeonBlank(DUNGEDIT * const p_ed,
     
     uint8_t * const drawbuf = p_ed->map_bits;
     
-    // \task I hate writing code like this. But basically, these bitmaps are
+    // \task[low] I hate writing code like this. But basically, these bitmaps are
     // drawn upside down.
     uint8_t * b2 = ( drawbuf + (511 * 512) + p_x - (p_y * 512) );
     
@@ -2514,7 +2514,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
 // =============================================================================
 
 /// Compact way of calling DefWindowProc().
-// \task Move this to Wrappers.c / .h
+// \task[low] Move this to Wrappers.c / .h
 LRESULT
 HM_DefWindowProc(MSG const p_packed_msg)
 {
@@ -3332,7 +3332,7 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                 if(p_ed->selobj == 1)
                     break;
                 
-                // \task Perhaps a swaple24b() is in order.
+                // \task[med] Perhaps a swaple24b() is in order.
                 // or like... hm_memswap
                 i = ldle24b(p_ed->ebuf + p_ed->selobj - 3);
                 
@@ -3581,7 +3581,7 @@ selfirst:
             if(dm_k == 0xff)
                 dm_k = 0x13f;
             
-            // \task Just a gentle reminder that if we change this to
+            // \task[low] Just a gentle reminder that if we change this to
             // an unsigned type we will probably have problems
             // (due to integer promotion rules).
             if(dm_k == u16_neg1)
@@ -3703,7 +3703,7 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
             
             dm_k = _;
             
-            // \task This logic doesn't work. Just disabling it for
+            // \task[low] This logic doesn't work. Just disabling it for
             // now until we can figure out what the original intent
             // was.
 #if 0

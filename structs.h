@@ -28,7 +28,7 @@
     // There are just too many of these warnings to address at the moment
     // having to deal with truncation from int to short or char. They should
     // Get tackled eventually (and carefully).
-    // \task Do this at some point.
+    // \task[low] Do this at some point.
 #if 1
     #pragma warning(disable:4242)
     #pragma warning(disable:4244)
@@ -905,6 +905,8 @@ typedef struct
         HBRUSH * m_brush;
         
         HCURSOR * m_cursor;
+        
+        int m_wnd_extra;
         
         ATOM m_atom;
         

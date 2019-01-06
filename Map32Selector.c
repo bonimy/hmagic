@@ -9,6 +9,7 @@
 
     #include "HMagicEnum.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
     #include "MetatileLogic.h"
@@ -93,7 +94,7 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         wparam = 0;
     
-    // \task Is the fallthrough here intentional?
+    // \task[med] Is the fallthrough here intentional?
     
     case 4000:
         SetDlgItemInt(win,IDC_EDIT1,wparam,0);
@@ -189,9 +190,10 @@ editblock32(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 {
                     hc2 = GetDlgItem(hc2, ID_SuperDlg);
                     
-                    hc=GetDlgItem(hc2,3000);
+                    hc=GetDlgItem(hc2, SD_Over_Map32_Selector);
                     InvalidateRect(hc,0,0);
-                    hc=GetDlgItem(hc2,3001);
+                    
+                    hc=GetDlgItem(hc2, SD_Over_Display);
                     InvalidateRect(hc,0,0);
                 }
             }
@@ -317,10 +319,16 @@ blksel32proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         m = ( (ed->sel_scroll + (lparam >> 21) ) << 2) + ( (j - i) >> 5);
         
-        if(m<0 || m>=(ed->schflag?ed->schnum:0x22a8)) break;
-        if(ed->schflag) m=ed->schbuf[m];
-        SetDlgItemInt(ed->dlg,3005,m,0);
+        if(m<0 || m>=(ed->schflag?ed->schnum:0x22a8))
+            break;
+        
+        if(ed->schflag)
+            m=ed->schbuf[m];
+        
+        SetDlgItemInt(ed->dlg, SD_Over_MetaTileIndexEdit, m, 0);
+        
         break;
+    
     case WM_LBUTTONDBLCLK:
         ShowDialog(hinstance,(LPSTR)IDD_DIALOG7,framewnd,editblock32,GetWindowLongPtr(win,GWLP_USERDATA));
         break;

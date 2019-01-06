@@ -8,6 +8,7 @@
 
     #include "prototypes.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
     #include "MetatileLogic.h"
@@ -199,9 +200,10 @@ updflag:
                 {
                     hc2 = GetDlgItem(hc2, ID_SuperDlg);
                     
-                    hc=GetDlgItem(hc2,3000);
+                    hc=GetDlgItem(hc2, SD_Over_Map32_Selector);
                     InvalidateRect(hc,0,0);
-                    hc=GetDlgItem(hc2,3001);
+                    
+                    hc=GetDlgItem(hc2, SD_Over_Display);
                     InvalidateRect(hc,0,0);
                 }
             }

@@ -53,7 +53,7 @@
             if(p_ed->sell == p_ed->selr)
             {
                 /*
-                    \task This logic deletes the whole sample if there is
+                    \task[high] This logic deletes the whole sample if there is
                     is not a selected region of width greater than zero. We
                     really ought to change this behavior, as there is no
                     undo feature currently, and this isn't even intuitive

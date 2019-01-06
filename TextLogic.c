@@ -309,7 +309,7 @@ Savetext(FDOC * const doc)
     // Index of which message we're dealing with.
     size_t m_i = 0;
     
-    // \task Can b2 overflow or is this just... fantasy?
+    // \task[high] Can b2 overflow or is this just... fantasy?
     unsigned char b2[2048];
     
     unsigned char * rom = doc->rom;
@@ -555,7 +555,7 @@ Makezeldastring
             
             for(l = 0; l < NUM_Zchars; l += 1)
             {
-                // \task It's wasteful iterating through all of the zchar
+                // \task[high] It's wasteful iterating through all of the zchar
                 // strings when we only need to look at the ones bounded
                 // by brackets.
                 
@@ -985,7 +985,7 @@ error:
         
         new_capacity = ( (p_count / 2048) + 1) * 2048;
         
-        // \task We want something like AString_Expand() to optionally resize
+        // \task[high] We want something like AString_Expand() to optionally resize
         // only if necessary.
         AString_Resize(p_dest,
                        new_capacity);
@@ -1300,7 +1300,7 @@ error:
             {
                 if( ! z_alphabet[k][0] )
                 {
-                    // \task We don't really know what happens for these
+                    // \task[high] We don't really know what happens for these
                     // characters if they're used in game. These are the ones
                     // on the upper edge of the zchar range.
                     exit(-1);

@@ -126,7 +126,7 @@
                 
                 if(oed->hpal)
                 {
-                    // \task Test this in 256-color mode.
+                    // \task[low] Test this in 256-color mode.
                     newobj = CreateSolidBrush
                     (
                         PALETTEINDEX( *(WORD*) &oed->pal[i + (j << 4)] )

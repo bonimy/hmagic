@@ -952,27 +952,62 @@ addexit:
                 ed->ecopy[k]=-1;
                 InvalidateRect(win,0,0);
             }
-        } else {
-            if(ed->disp&8) {
+        }
+        else
+        {
+            if(ed->disp&8)
+            {
                 l=(lparam>>20)+(ed->mapscrollv<<1);
                 k=((lparam&65535)>>4)+(ed->mapscrollh<<1);
+                
                 if(ed->mapsize) q=63; else q=31;
+                
                 if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ovlmap[(ed->disp&1)?((k&31)+((l&31)<<5) + 0x1000):k+(l<<6)],0);
-            } else {
+                
+                SetDlgItemInt
+                (
+                    ed->dlg,
+                    SD_Over_MetaTileIndexEdit,
+                    ed->ovlmap[(ed->disp&1)?((k&31)+((l&31)<<5) + 0x1000):k+(l<<6)],
+                    0
+                );
+            }
+            else
+            {
                 l=(lparam>>21)+ed->mapscrollv;
                 k=((lparam&65535)>>5)+ed->mapscrollh;
                 if(ed->mapsize) q=31; else q=15;
                 if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ov->buf[k+(l<<5)],0);
+                
+                SetDlgItemInt
+                (
+                    ed->dlg,
+                    SD_Over_MetaTileIndexEdit,
+                    ed->ov->buf[k+(l<<5)],0
+                );
             }
         }
         break;
+    
     case WM_GETDLGCODE:
+        
         return DLGC_WANTCHARS;
+    
     case WM_CHAR:
         
-        if(wparam==26) {overdlgproc(GetParent(win),WM_COMMAND,3014,0);break;}
+        if(wparam == 26)
+        {
+            OverworldDlg
+            (
+                GetParent(win),
+                WM_COMMAND,
+                SD_OverUndoButton,
+                0
+            );
+            
+            break;
+        }
+        
         i=ed->selobj;
         
         if(i == -1)

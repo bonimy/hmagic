@@ -131,7 +131,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         AString_InitSized(&amsg, ted_len + 1);
         
-        // \task This sequence has code smell, it would be nice if
+        // \task[med] This sequence has code smell, it would be nice if
         // we could directly initialize ascii text message from
         // a dialog control... maybe. That way we could get the
         // length correct ahead of time.
@@ -142,7 +142,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         Makezeldastring(doc, &amsg, &zmsg);
         
-        // \task Lack of a better criterion for now.
+        // \task[med] Lack of a better criterion for now.
         if(zmsg.m_text != NULL)
         {
             char * text_buf = NULL;
@@ -176,7 +176,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 
                 // -----------------------------
                 
-                // \task Eliminate raw hex constant.
+                // \task[high] Eliminate raw hex constant.
                 if( (j + m + de_base - de_bound) > 0xc8d9)
                 {
                     MessageBeep(0);
@@ -195,7 +195,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                        zmsg.m_text,
                        m);
                 
-                // \task Eliminate raw hex constant.
+                // \task[high] Eliminate raw hex constant.
                 num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
                 
                 for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
@@ -232,7 +232,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         {
             char * text_buf = NULL;
             
-            // \task What the hell was this intended to do? Update:
+            // \task[high] What the hell was this intended to do? Update:
             // I think this tries to select the place in the edit window
             // where the error occurred?
             int e_i = text_error - text_buf;
@@ -322,7 +322,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         // Index into dictionary entry table.
         size_t d_i = 0;
         
-        // \task Eliminate raw hex constant.
+        // \task[high] Eliminate raw hex constant.
         // Number of dictionary entries.
         size_t num_des =
         (

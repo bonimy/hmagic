@@ -7,15 +7,16 @@
 // Abbreviations: lmap = level map i.e. the dungeon maps you see when you hit X.
 // 
 
-// \task A note to merge the changes in the standalone project file
+// \task[high] A note to merge the changes in the standalone project file
 // for Epoch 2 into the repo.
 
 /**
     
-    \task Would like to have the text of markers on the overworld map not be clipped
-    by the background region (the grey area outside of which we paint)
+    \task[med] Would like to have the text of markers on the overworld map not
+    be clipped by the background region
+    (the grey area outside of which we paint)
 
-    \task Remaining things Puzzledude claims are borked:
+    \task[high] Remaining things Puzzledude claims are borked:
 
     -overworld items are bugged if you edit them and save, same for whirlpools
     -pretty much all options: empty all... (dungeons rooms, exits, entrances)
@@ -38,7 +39,7 @@
 
 
 /** 
-    \task Epoch3 change list
+    \task[high] Epoch3 change list
     
     - Fixed infamous monologue storage problem that could randomly corrupt the
     contents of the following bank and cause strange problems later in the game.
@@ -112,7 +113,7 @@ offsets_ty offsets = { 0 };
 // =============================================================================
 
 /// Currently we only support the US rom.
-// \task Eventually the FDOC should have a private copy of this structure
+// \task[med] Eventually the FDOC should have a private copy of this structure
 // so that each rom can load individuated offsets.
 void
 LoadOffsets(void)
@@ -235,7 +236,11 @@ DPCEDIT * dpce = 0;
 
 OVEREDIT * oved = 0;
 
-SSBLOCK **ssblt = 0;
+    /**
+        \task[med] Having this as a global is non-reentrant, causes memory leaks,
+        and in general smells bad.
+    */
+    SSBLOCK **ssblt = 0;
 
 char sprname[0x11c][16];
 
@@ -253,7 +258,7 @@ status_proc(HWND   p_win,
             WPARAM p_wp,
             LPARAM p_lp)
 {
-    // \task Perhaps make this a macro for Window procedures?
+    // \task[med] Perhaps make this a macro for Window procedures?
     (void) p_win, p_msg, p_wp, p_lp;
     
     switch(p_msg)
@@ -620,7 +625,7 @@ CreateNotificationBox(HWND const p_parent)
 
 // =============================================================================
 
-// \task Dummied out except for staging1 for now.
+// \task[med] Dummied out except for staging1 for now.
 
 #if 0
 
@@ -3028,7 +3033,7 @@ Drawblock(OVEREDIT const * const ed,
     
     if((t & 24) == 24)
     {
-        // \task Used with only with Link's graphics dialog,
+        // \task[med] Used with only with Link's graphics dialog,
         // seemingly. Need a name(s) for these bits.
         
         b3 = ed->ew.doc->blks[225].buf;
@@ -3043,7 +3048,7 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 16)
     {
-        // \task 2bpp graphics? Not sure.
+        // \task[med] 2bpp graphics? Not sure.
         // Used with the dungeon map screen (not the maps themselves)
         // Need a name for this bit.
         
@@ -3066,7 +3071,7 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 8)
     {
-        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // \task[med] Used with a lot of the tilemap screens, title screen in particular.
         // Need a name for this bit.
         
         if(d >= 0x100)
@@ -4272,9 +4277,9 @@ Paintspr(HDC const p_dc,
     
     // -----------------------------
     
-    // \task Looks like the problems with Items (secrets) leaving artifacts
-    // was fixed. This routine should probably be gradually phased out as
-    // we apparently have better alternatives now.
+    // \task[high] Looks like the problems with Items (secrets) leaving
+    // artifacts was fixed. This routine should probably be gradually phased 
+    // out as we apparently have better alternatives now.
     
     // Probably not strictly necessary, but the program doesn't make a point
     // to set it anywhere more general.

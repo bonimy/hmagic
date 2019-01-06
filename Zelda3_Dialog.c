@@ -192,7 +192,7 @@
 
 // =============================================================================
 
-    // \task Move these functions to Wrappers.c, or begin subdividing the
+    // \task[med] Move these functions to Wrappers.c, or begin subdividing the
     // wrapper functions into logical units if that translation unit gets too big.
     extern HTREEITEM
     HM_TreeView_InsertSubroot
@@ -293,7 +293,7 @@
 // =============================================================================
 
     /**
-        \task The name of this is misleading b/c it currently only deals in
+        \task[high] The name of this is misleading b/c it currently only deals in
         whether the node is graphically considered to have child nodes.
     */
     extern BOOL
@@ -370,7 +370,7 @@
             item.cChildren = 1;
         }
         
-        // \task Finish this implementation. this is just placeholder stuff.
+        // \task[high] Finish this implementation. this is just placeholder stuff.
         return TVI_ROOT;
     }
 

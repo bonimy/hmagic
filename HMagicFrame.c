@@ -991,8 +991,6 @@
                 
                 // This is LDA $0128, BEQ... another primitive file check 
                 // (as though romhackers would never change such things... >_> <_<
-                // \task Change this so that it can be clicked through if the
-                // user knows for a fact that it is a Z3 rom.
                 if( ldle32b(rom + 0x200) != 0xf00128ad)
                 {
                     BOOL response = HM_YesNo_MsgBox
@@ -1230,7 +1228,7 @@
                     *(USHORT*)(rom + 0x65148) = 0xe047;
                     *(USHORT*)(rom + 0x65292) = 0xe0f4;
                     
-                    // \task look into these 32-bit constants.
+                    // \task[med] look into these 32-bit constants.
                     *(int*)(rom + 0x137d) = 0xd4bf1b79;
                     *(USHORT*)(rom + 0x1381) = 0x856e;
                     *(int*)(rom + 0x1386) = 0xe5e702e1;

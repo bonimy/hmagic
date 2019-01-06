@@ -904,8 +904,6 @@ hm_strndup(char const * const p_str,
 
 // =============================================================================
 
-    // \task Finish this. It's supposed to be a way to add to concatenate to
-    // a buffer dynamically.
     extern int
     ascatf
     (

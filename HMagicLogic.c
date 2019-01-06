@@ -12,9 +12,6 @@ uint8_t volflag = 0;
 
 uint8_t activeflag = 255;
 
-// \task Strongly believe this should be const ... but we will have to more
-// closely examine the logic that touches this to know if it needs two rounds
-// of sprintf or what have you.
 char const
 vererror_str[] =
 "This file was edited with a newer version of Gigasoft Hyrule Magic. "

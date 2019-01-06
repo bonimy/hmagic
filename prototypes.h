@@ -157,14 +157,17 @@ Paintdungeon(DUNGEDIT * const ed,
 void
 Updatesize(HWND win);
 
-HWND
-CreateSuperDialog(SUPERDLG * const dlgtemp,
-                  HWND       const owner,
-                  int        const x,
-                  int        const y,
-                  int        const w,
-                  int        const h,
-                  LPARAM     const lparam);
+    extern HWND
+    CreateSuperDialog
+    (
+        SUPERDLG * const dlgtemp,
+        HWND       const owner,
+        int        const x,
+        int        const y,
+        int        const w,
+        int        const h,
+        LPARAM     const lparam
+    );
 
 void
 Unloadovl(FDOC *doc);

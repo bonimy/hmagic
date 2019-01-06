@@ -142,7 +142,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         free(ed);
         break;
     
-    // \task What is this constant?
+    // \task[med] What is this constant?
     case 4000:
         ed=(WMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         j=wparam;

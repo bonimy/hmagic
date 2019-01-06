@@ -30,6 +30,9 @@
     HANDLE
     shade_brush[8];
 
+    HBRUSH
+    super_dlg_brush;
+
 // =============================================================================
 
     HGDIOBJ
@@ -44,6 +47,10 @@
 
     HCURSOR
     sizecsor[5];
+
+    // \note Adding this is a bit of a hack to accomodate the Dungeon map
+    // window.
+    HCURSOR null_cursor = 0;
 
 // =============================================================================
 
@@ -117,6 +124,12 @@
         {
             shade_brush[i] = CreateSolidBrush(i * 0x1f1f1f);
         }
+        
+        super_dlg_brush = (HBRUSH)
+        (
+            wver ? COLOR_WINDOW + 1
+                 : COLOR_BTNFACE + 1
+        );
         
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         // Pens
@@ -201,6 +214,8 @@
         {
             DeleteObject( shade_brush[i] );
         }
+        
+        DeleteObject(super_dlg_brush);
     }
 
 // =============================================================================

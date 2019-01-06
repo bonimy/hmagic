@@ -556,7 +556,7 @@ void Getstringobjsize(char const * str, RECT *rc)
 const static char obj4_h[4]={5,7,11,15};
 const static char obj4_w[4]={8,16,24,32};
 
-// \task This can probably be moved to DungeonMap.c
+// \task[low] This can probably be moved to DungeonMap.c
 void Getdungobjsize(int chk,RECT*rc,int n,int o,int p)
 {
     // Loads object sizes
@@ -1000,7 +1000,7 @@ Drawmap(unsigned char  const * const rom,
                     case 1:
                         tofront4x7(dm_x);
                     
-                    // \task falls through. Intentional?
+                    // \task[low] falls through. Intentional?
                     default:
                         
                         dm_rd = (uint16_t*)
@@ -1304,8 +1304,8 @@ rows4:
                     m=5;
                     tmp=dm_wr;
                     while(m--) {
-                        // \task Endianness issues with derived pointers like
-                        // this. These will be tough to track down.
+                        // \task[med] Endianness issues with derived pointers
+                        // like this. These will be tough to track down.
                         dm_wr[2]=dm_wr[9]=dm_rd[1];
                         dm_wr[73]=(dm_wr[66]=dm_rd[2])|0x4000;
                         dm_wr[137]=(dm_wr[130]=dm_rd[4])|0x4000;
@@ -2143,7 +2143,7 @@ case99:
                     dm_wr += 64;
                 }
                 
-                // \task We can track down endianness issues by searching
+                // \task[med] We can track down endianness issues by searching
                 // for like, "dm_rd[" and "dm_wr" perhaps.
                 dm_rd = (uint16_t*) (rom + 0x218e);
                 
@@ -2172,7 +2172,7 @@ case99:
                 while(m--) {
                     n=l;
                     while(n--)
-                        // \task This look an error in the context of using
+                        // \task[med] This look an error in the context of using
                         // comma delimited statements. What gets assigned to
                         // dm_wr at the end?
                         *dm_wr = *dm_rd, dm_wr += 64;
@@ -2523,7 +2523,7 @@ LoadHeader(DUNGEDIT * const ed,
         // if is less than 14 bytes from i.
         m = ldle16b_i(rom + 0x27502, j);
         
-        // \task When merging with other branches, note that
+        // \task[med] When merging with other branches, note that
         // m and i are compared. If one is 16-bit, for example,
         // and the other is 32-bit, that is a big potential
         // problem.

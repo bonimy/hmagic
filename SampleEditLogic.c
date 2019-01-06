@@ -56,9 +56,12 @@
 
 // =============================================================================
 
-    // \task Move this to a file called SampleEditLogic.c once it is created.
-    // It is business logic and has nothing to do with any window class or
-    // object.
+    /**
+        \task[low] Move this to a file called SampleEditLogic.c once it is
+        created.
+        It is business logic and has nothing to do with any window class or
+        object.
+    */
     extern void
     SampleEdit_CopyToClipboard(SAMPEDIT const * const p_ed)
     {

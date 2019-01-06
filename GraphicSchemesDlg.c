@@ -12,9 +12,10 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     static unsigned char *rom;
     
-    // \task While it is true that this is a modal dialog, this still has
+    // \task[low] While it is true that this is a modal dialog, this still has
     // a bit of code smell to it. Consider refactoring this into something
     // managed by the caller and e.g. passed in via lparam.
+    // (in particular calling out the static variables here)
     static EDITCOMMON ec;
     
     static int gfxnum,sprgfx,palnum;

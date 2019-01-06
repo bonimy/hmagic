@@ -623,7 +623,7 @@ Openroom(DUNGEDIT * const ed,
     {
         if(ed->layering == bg2_ofs[i])
         {
-            // \task Is this buggy? What if the value is not in this list?
+            // \task[med] Is this buggy? What if the value is not in this list?
             // Probably not the case in a vanilla rom, but still...
             SendDlgItemMessage(win, ID_DungBG2Settings, CB_SETCURSEL, i, 0);
             
@@ -1010,7 +1010,7 @@ changeroom:
                 n = ed->hsize;
             }
             
-            // \task Should this actually be a signed load?
+            // \task[med] Should this actually be a signed load?
             if( ldle16b(rom + 0x27780) + (i + n - k) > 0 )
             {
                 MessageBox(framewnd,
@@ -1434,7 +1434,7 @@ editdungprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             Openroom(ed, k);
         }
         
-        // \task Investigate this. Do all dungeons really set the backdrop color
+        // \task[low] Investigate this. Do all dungeons really set the backdrop color
         // to pure black?
         ed->pal[0] = blackcolor;
         
@@ -1583,7 +1583,6 @@ newroom:
         
         case ID_DungShowBG1:
             
-            // \task What's with these bitpatterns? enumerate them?
             ed->disp &= SD_DungHideBG1;
             
             if(IsDlgButtonChecked(win, ID_DungShowBG1) == BST_CHECKED)
@@ -1703,7 +1702,7 @@ no_obj:
             
             rom = ed->ew.doc->rom;
             
-            // \task consider a different check for this. The enumerations
+            // \task[med] consider a different check for this. The enumerations
             // could change order.
             if(wparam > ID_DungEntrXScroll)
             {

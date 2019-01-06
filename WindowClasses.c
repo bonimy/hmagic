@@ -108,13 +108,6 @@
 
 // =============================================================================
 
-    // \task Adding this is a bit of a hack to accomodate the Dungeon map
-    // window. Perhaps move this into the GDI objects module, even though
-    // it doesn't actually reprsent any allocated GDI resource.
-    HCURSOR null_cursor = 0;
-
-// =============================================================================
-
     /**
         Dialog control windows
     */
@@ -209,6 +202,23 @@
         {
             dungselproc,
             "DUNGSEL"
+        },
+        {
+            SuperDlg,
+            "SUPERDLG",
+            0,
+            &super_dlg_brush,
+            &normal_cursor,
+
+            // \note This class "needs" extra allocation merely because it
+            // stores a copy of the structure that was used to create it, and
+            // it maintains that structure as the super dialog is resized,
+            // etc. While it is possible that the program could be rewritten
+            // to not require this extra space, it's probably not worth doing
+            // so right now. To be clear, the issue is that GWLP_USERDATA
+            // is already occupied by a pointer to the SDCREATE structure of
+            // the dialog.
+            DWLP_USER + sizeof(LONG_PTR)
         }
     };
 
@@ -320,6 +330,8 @@
             wc.lpfnWndProc   = cfc->m_proc;
             wc.lpszClassName = cfc->m_class_name;
             
+            wc.cbWndExtra = cfc->m_wnd_extra;
+            
             cfc->m_atom = RegisterClass(&wc);
         }
     }
@@ -359,45 +371,10 @@
     extern BOOL
     HM_RegisterClasses(HINSTANCE const p_inst)
     {
-        WNDCLASS wc = { 0 };
-        
-        ATOM atom;
-        
-        // -----------------------------
-        
-        wc.style = 0;
-        wc.cbClsExtra = 0;
-        wc.cbWndExtra = 0;
-        wc.hInstance = p_inst;
-        
-    #if 1
-        wc.hIcon = alt_icon;
-    #else
-        wc.hIcon = main_icon;
-    #endif
-        
-        // \task Move all GDI initialization to a specific routine. In
-        // particular, I'm talking about just loading the cursor here.
-        wc.hCursor = normal_cursor;
-        
         HM_RegisterFrameClasses(p_inst);
         HM_RegisterControlClasses(p_inst);
         
         HM_RegisterSubclasses(p_inst);
-        
-        // For the ... super dialog?
-        wc.lpfnWndProc = superdlgproc;
-        wc.lpszClassName = "SUPERDLG";
-        
-        wc.hbrBackground = (HBRUSH)
-        (
-            wver ? COLOR_WINDOW + 1
-                 : COLOR_BTNFACE + 1
-        );
-        
-        wc.cbWndExtra = 12;
-        
-        atom = RegisterClass(&wc);
         
         return TRUE;
     }

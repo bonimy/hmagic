@@ -14,47 +14,47 @@
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"
 
-// \task Moving exits on the OW editor should trigger a modified flag, but it
+// \task[high] Moving exits on the OW editor should trigger a modified flag, but it
 // doesn't according to Zarby.
 
 // =============================================================================
 
 SD_ENTRY over_sd[] = 
 {
-    {"BLKSEL32","",152,70,0,0,3000,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
-    {"OVERWORLD","",0,92,160,0,3001,WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_HSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,10},
-    {"BUTTON","Draw",0,0,60,20,3002,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_GROUP|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Select",64,0,60,20,3003,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Rectangle",128,0,60,20,3004,WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Frame 1",192,0,60,20,3008,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Entrance",64,72,60,20,3013,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Copy",408,48,40,20,3021,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Paste",448,48,40,20,3022,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Warp Swch",335,0,60,20,3028,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Undo",0,48,60,20,3014,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Addr.Calc",64,48,60,20,3015,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Sprite",320,72,60,20,3016,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Background",128,48,80,20,3011,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BLKSEL32","",152,70,0,0, SD_Over_Map32_Selector, WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,11},
+    {"OVERWORLD","",0,92,160,0, SD_Over_Display, WS_TABSTOP|WS_BORDER|WS_CHILD|WS_VSCROLL|WS_HSCROLL|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,10},
+    {"BUTTON","Draw",0,0,60,20, SD_Over_DrawButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_GROUP|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Select",64,0,60,20, SD_Over_SelectButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Rectangle",128,0,60,20, SD_Over_RectangleToolButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|BS_AUTORADIOBUTTON|BS_PUSHLIKE|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Frame 1",192,0,60,20, SD_Over_FrameAdvanceButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Entrance",64,72,60,20, SD_OverEntranceButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Copy",408,48,40,20, SD_OverCopyButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Paste",448,48,40,20, SD_OverPasteButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Warp Swch",335,0,60,20, SD_OverWarpButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Undo",0,48,60,20, SD_OverUndoButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Addr.Calc",64,48,60,20, SD_OverAddressCalcButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Sprite",320,72,60,20, SD_OverSpriteButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Background",128,48,80,20, SD_OverBackgroundCheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Grid",208,48,50,20, SD_OverGrid32CheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
-    {"BUTTON","Markers",258,48,70,20,3019,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
+    {"BUTTON","Markers",258,48,70,20, SD_OverMarkersCheckBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
     {"BUTTON","Overlay",328,48,70,20, SD_OverOverlayChkBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_AUTOCHECKBOX,0,0},
-    {"BUTTON","Exit",0,72,60,20,3023,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Properties",256,0,60,20,3024,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","Hole",128,72,60,20,3025,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Transport",192,72,60,20,3026,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","Item",256,72,60,20,3027,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
-    {"BUTTON","",400,0,20,20,3029,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"BUTTON","",425,0,20,20,3030,BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Exit",0,72,60,20, SD_OverExitButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Properties",256,0,60,20, SD_OverPropertiesButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","Hole",128,72,60,20, SD_OverHoleButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Transport",192,72,60,20, SD_OverTransportButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","Item",256,72,60,20, SD_OverItemButton, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|BS_PUSHLIKE|BS_AUTORADIOBUTTON,0,0},
+    {"BUTTON","",400,0,20,20, SD_OverLeftArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"BUTTON","",425,0,20,20, SD_OverRightArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","",450,0,20,20, SD_OverUpArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"BUTTON","",475,0,20,20, SD_OverDownArrow, BS_BITMAP|WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"COMBOBOX","",329,24,70,80,3020,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
-    {"EDIT","0",56,0,0,20,3005,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,3},
-    {"STATIC","GFX#:",0,24,40,20,3006,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",50,24,30,20,3007,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Palette:",90,24,40,20,3009,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",130,24,30,20,3010,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
-    {"STATIC","Spr GFX#:",165,24,55,20,3017,WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
-    {"EDIT","",220,24,30,20,3018,WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"COMBOBOX","",329,24,70,80, SD_OverPhaseComboBox, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS|CBS_DROPDOWNLIST|WS_VSCROLL,0,0},
+    {"EDIT","0",56,0,0,20, SD_Over_MetaTileIndexEdit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,3},
+    {"STATIC","GFX#:",0,24,40,20, SD_Over_GfxLabel, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",50,24,30,20, SD_Over_GfxEdit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Palette:",90,24,40,20, SD_Over_PaletteLabel, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",130,24,30,20, SD_OverPaletteEdit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
+    {"STATIC","Spr GFX#:",165,24,55,20, SD_OverSpriteGfxLabel, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
+    {"EDIT","",220,24,30,20, SD_OverSpriteGfxEdit, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"STATIC","Spr pal:",255,24,45,20, SD_OverSprTileSetStatic, WS_VISIBLE|WS_CHILD|WS_CLIPSIBLINGS,0,0},
     {"EDIT","",300,24,25,20, SD_OverSprTileSetEditCtl, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_BORDER|WS_CLIPSIBLINGS,WS_EX_CLIENTEDGE,0},
     {"BUTTON","Search",56,20,0,20, SD_OverMapSearchBtn, WS_VISIBLE|WS_TABSTOP|WS_CHILD|WS_CLIPSIBLINGS,0,3},
@@ -76,7 +76,7 @@ SD_ENTRY over_sd[] =
 SUPERDLG overdlg =
 {
     "",
-    overdlgproc,
+    OverworldDlg,
     WS_CHILD | WS_VISIBLE,
     560,
     140,
@@ -181,7 +181,7 @@ foundblk:
 // =============================================================================
 
 BOOL CALLBACK
-overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
+OverworldDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     text_buf_ty text_buf = { 0 };
     
@@ -279,22 +279,22 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         else
             ed->mapsize = 0;
         
-        EnableWindow( GetDlgItem(win, 3007), j < 0x80); //graphics number
-        EnableWindow( GetDlgItem(win, 3010), j < 0x80); //palette number
+        EnableWindow( GetDlgItem(win, SD_Over_GfxEdit), j < 0x80); //graphics number
+        EnableWindow( GetDlgItem(win, SD_OverPaletteEdit), j < 0x80);
         
         if(j < 0x80)
         {
             // Determines whether the up/down/left/right arrows are grayed out or not.
-            EnableWindow(GetDlgItem(win, 3029), j & 7);
-            EnableWindow(GetDlgItem(win, 3030), (j + (ed->mapsize ? 2 : 1)) & 7);
+            EnableWindow(GetDlgItem(win, SD_OverLeftArrow), j & 7);
+            EnableWindow(GetDlgItem(win, SD_OverRightArrow), (j + (ed->mapsize ? 2 : 1)) & 7);
             EnableWindow(GetDlgItem(win, SD_OverUpArrow), j & 0x38);
             EnableWindow(GetDlgItem(win, SD_OverDownArrow), (j + (ed->mapsize ? 16 : 8)) & 0x38);
         }
         else
         {
             //Disable the directional arrows if it's an overlay or special area.
-            EnableWindow(GetDlgItem(win, 3029), 0);
-            EnableWindow(GetDlgItem(win, 3030), 0);
+            EnableWindow(GetDlgItem(win, SD_OverLeftArrow), 0);
+            EnableWindow(GetDlgItem(win, SD_OverRightArrow), 0);
             EnableWindow(GetDlgItem(win, SD_OverUpArrow), 0);
             EnableWindow(GetDlgItem(win, SD_OverDownArrow), 0);
         }
@@ -304,14 +304,14 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             SendDlgItemMessage
             (
                 win,
-                3029 + i,
+                SD_OverLeftArrow + i,
                 BM_SETIMAGE,
                 IMAGE_BITMAP,
                 (LPARAM) arrows_imgs[i]
             );
         
         //The GFX# box is set here.
-        SetDlgItemInt(win, 3007, m, 0);
+        SetDlgItemInt(win, SD_Over_GfxEdit, m, 0);
         
         //Write down the first eight blocksets this area will use
         for(i = 0; i < 8; i++)
@@ -408,7 +408,7 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         b2 = rom + 0x75504 + (m << 2);
         
         // Set the palette number, visible in the dialog's edit box.
-        SetDlgItemInt(win, 3010, m, 0);
+        SetDlgItemInt(win, SD_OverPaletteEdit, m, 0);
         
         if(b2[0] < 128)
             Loadpal(ed,rom,0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[0]]), 0x29, 7, 3);
@@ -429,8 +429,9 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         dw_default_bd = HM_RgbFrom5bpc( ldle16b(rom + 0x7564f) );
         
-        // \task SePH asked about this part where the backdrop is handled.
-        // See if it can be fixed.
+        // \task[high] SePH asked about this part where the backdrop is handled.
+        // See if it can be fixed. In particular, can we add a way to edit
+        // these colors in the program?
         if(j & 0x40)
         {
             ed->pal[0] = dw_default_bd;
@@ -503,7 +504,9 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         for( ; i < 0x57f; i++)
             ed->selsch[i] = 0xff;
         
-        for(i = 3000; i < 3002; i++)
+        // \task[med] This forces the enumeration into a certain order. That has
+        // fragile code smell.
+        for(i = SD_Over_Map32_Selector; i < SD_Over_DrawButton; i++)
         {
             hc = GetDlgItem(win, i);
             
@@ -520,13 +523,13 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) &(ed->bs));
         Updatesize(hc);
         
-        CheckDlgButton(win,3003,BST_CHECKED);
-        CheckDlgButton(win,3019,BST_CHECKED);
+        CheckDlgButton(win, SD_Over_SelectButton, BST_CHECKED);
+        CheckDlgButton(win, SD_OverMarkersCheckBox, BST_CHECKED);
         ed->tool = 1;
         ed->dtool = 0;
         ed->sprset = 1;
         
-        hc = GetDlgItem(win, 3020);
+        hc = GetDlgItem(win, SD_OverPhaseComboBox);
         
         if(j < 0x90)
         {
@@ -589,20 +592,26 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         }
         else
         {
-            ShowWindow(hc,SW_HIDE);
-            ShowWindow(GetDlgItem(win,3016),SW_HIDE);
+            ShowWindow(hc, SW_HIDE);
+            
+            ShowWindow
+            (
+                GetDlgItem(win, SD_OverSpriteButton),
+                SW_HIDE
+            );
         }
         
         if(j >= 0x80)
         {
-            ShowWindow(GetDlgItem(win,3027),SW_HIDE);
+            ShowWindow(GetDlgItem(win, SD_OverItemButton), SW_HIDE);
             ShowWindow(GetDlgItem(win, SD_OverOverlayChkBox), SW_HIDE);
         }
         
-        EnableWindow(GetDlgItem(win,3018),j<0x80);
+        EnableWindow(GetDlgItem(win, SD_OverSpriteGfxEdit), j < 0x80);
+        
         EnableWindow( GetDlgItem(win, SD_OverSprTileSetEditCtl), j < 0x80);
         
-        SetDlgItemInt(win,3018,ed->sprgfx[ed->sprset],0);
+        SetDlgItemInt(win, SD_OverSpriteGfxEdit, ed->sprgfx[ed->sprset],0);
         SetDlgItemInt(win, SD_OverSprTileSetEditCtl, ed->sprpal[ed->sprset], 0);
         
         Addgraphwin((DUNGEDIT*)ed,1);
@@ -611,14 +620,14 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     case 4002:
         
-        InvalidateRect(GetDlgItem(win,3000),0,0);
-        InvalidateRect(GetDlgItem(win,3001),0,0);
+        InvalidateRect(GetDlgItem(win, SD_Over_Map32_Selector),0,0);
+        InvalidateRect(GetDlgItem(win, SD_Over_Display), 0, 0);
         
         break;
     
     case 4000:
         
-        SetDlgItemInt(win,3005,wparam,0);
+        SetDlgItemInt(win, SD_Over_MetaTileIndexEdit, wparam, 0);
         
         break;
     
@@ -631,29 +640,30 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         switch(wparam)
         {
-        case 3002:
+        
+        case SD_Over_DrawButton:
             
             Overtoolchg(ed, 0, win);
             
             break;
         
-        case 3003:
+        case SD_Over_SelectButton:
             
             Overtoolchg(ed, 1, win);
             
             break;
         
-        case 3004:
+        case SD_Over_RectangleToolButton:
             
             Overtoolchg(ed, 2, win);
             
             break;
         
-        case 3005 | (EN_CHANGE << 16):
+        case SD_Over_MetaTileIndexEdit | (EN_CHANGE << 16):
             
             if(ed->disp & 8)
             {
-                i = GetDlgItemInt(win, 3005, 0, 0);
+                i = GetDlgItemInt(win, SD_Over_MetaTileIndexEdit, 0, 0);
                 
                 if(i != ed->bs.sel)
                 {
@@ -666,31 +676,35 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             }
             else
             {
-                i = GetDlgItemInt(win, 3005, 0, 0);
+                i = GetDlgItemInt(win, SD_Over_MetaTileIndexEdit, 0, 0);
                 
                 if(i < 0)
-                    SetDlgItemInt(win, 3005, 0, 0);
+                    SetDlgItemInt(win, SD_Over_MetaTileIndexEdit, 0, 0);
                 else if(i > 0x22a7)
-                    SetDlgItemInt(win, 3005, 0x22a7, 0);
+                    SetDlgItemInt(win, SD_Over_MetaTileIndexEdit, 0x22a7, 0);
                 else
-                    Changeselect(GetDlgItem(win,3000),GetDlgItemInt(win,3005,0,0));
+                    Changeselect
+                    (
+                        GetDlgItem(win, SD_Over_Map32_Selector),
+                        GetDlgItemInt(win, SD_Over_MetaTileIndexEdit, 0, 0)
+                    );
             }
             
             break;
         
-        case 3007 | (EN_CHANGE << 16):
+        case SD_Over_GfxEdit | (EN_CHANGE << 16):
             
             if(ed->ew.param > 0x7f)
                 break;
             
             rom = ed->ew.doc->rom;
-            m = GetDlgItemInt(win, 3007, 0, 0);
+            m = GetDlgItemInt(win, SD_Over_GfxEdit, 0, 0);
             
             if(ed->gfxnum != m)
             {
                 if(m > 79 || m < 0)
                 {
-                    SetDlgItemInt(win, 3007, 79, 0);
+                    SetDlgItemInt(win, SD_Over_GfxEdit, 79, 0);
                     break;
                 }
                 
@@ -715,14 +729,14 @@ overdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                     Getblocks(ed->ew.doc,m);
                 }
 updscrn:
-                InvalidateRect(GetDlgItem(win,3000),0,0);
+                InvalidateRect(GetDlgItem(win, SD_Over_Map32_Selector),0,0);
 updmap:
-                InvalidateRect(GetDlgItem(win,3001),0,0);
+                InvalidateRect(GetDlgItem(win, SD_Over_Display), 0, 0);
             }
             
             break;
         
-        case 3008:
+        case SD_Over_FrameAdvanceButton:
             
             ed->anim++;
             
@@ -737,15 +751,16 @@ updmap:
             
             goto updscrn;
         
-        case 3013:
+        case SD_OverEntranceButton:
             
-            Overtoolchg(ed,3,win);
+            Overtoolchg(ed, 3, win);
             
             break;
         
-        case 3011:
+        case SD_OverBackgroundCheckBox:
+            
             ed->disp &= -2;
-            ed->disp |= IsDlgButtonChecked(win, 3011);
+            ed->disp |= IsDlgButtonChecked(win, SD_OverBackgroundCheckBox);
             
             goto updmap;
         
@@ -756,10 +771,10 @@ updmap:
             
             goto updscrn;
         
-        case 3019:
+        case SD_OverMarkersCheckBox:
             
             ed->disp &= -5;
-            ed->disp |= IsDlgButtonChecked(win, 3019) << 2;
+            ed->disp |= IsDlgButtonChecked(win, SD_OverMarkersCheckBox) << 2;
             
             goto updscrn;
         
@@ -769,20 +784,29 @@ updmap:
             ed->disp &= -9;
             ed->disp |= IsDlgButtonChecked(win, SD_OverOverlayChkBox) << 3;
             
-            ShowWindow(GetDlgItem(win,3000),(ed->disp&8)?SW_HIDE:SW_SHOW);
+            ShowWindow
+            (
+                GetDlgItem(win, SD_Over_Map32_Selector),
+                (ed->disp & 8) ? SW_HIDE : SW_SHOW
+            );
             
             ShowWindow(GetDlgItem(win, SD_OverMap16_Selector),
                        (ed->disp & 8) ? SW_SHOW : SW_HIDE);
             
             goto updmap;
         
-        case 3010 | (EN_CHANGE << 16):
+        case SD_OverPaletteEdit | (EN_CHANGE << 16):
             
             if(ed->ew.param > 0x7f)
                 break;
             
             rom = ed->ew.doc->rom;
-            b2 = rom + 0x75504 + ((rom[0x7d1c + ed->ew.param] = GetDlgItemInt(win, 3010, 0, 0)) << 2);
+            
+            b2 = rom + 0x75504 + ((rom[0x7d1c + ed->ew.param] = GetDlgItemInt
+            (
+                win,
+                SD_OverPaletteEdit, 0, 0)) << 2
+            );
             
             if(b2[0] < 128)
                 Loadpal(ed, rom, 0x1be86c + (((unsigned short*)(rom + 0xdec13))[b2[0]]), 0x29, 7, 3);
@@ -797,7 +821,7 @@ updmap:
             
             break;
         
-        case 3014:
+        case SD_OverUndoButton:
             
             if(ed->selflag)
             {
@@ -821,24 +845,24 @@ updmap:
             
             goto updmap;
         
-        case 3015:
+        case SD_OverAddressCalcButton:
             
-            Overtoolchg(ed,4,win);
+            Overtoolchg(ed, 4, win);
             
             break;
         
-        case 3016:
+        case SD_OverSpriteButton:
             
             Overtoolchg(ed, 5, win);
             
             break;
         
-        case 3018 | (EN_CHANGE << 16):
+        case SD_OverSpriteGfxEdit | (EN_CHANGE << 16):
             
             if(ed->ew.param > 0x7f)
                 break;
             
-            m = GetDlgItemInt(win, 3018, 0, 0);
+            m = GetDlgItemInt(win, SD_OverSpriteGfxEdit, 0, 0);
             
             if(ed->ew.param>=0x40)
                 n = 2;
@@ -849,7 +873,7 @@ updmap:
             {
                 if(m > 79 || m < 0)
                 {
-                    SetDlgItemInt(win, 3018, 79, 0);
+                    SetDlgItemInt(win, SD_OverSpriteGfxEdit, 79, 0);
                     break;
                 }
                 
@@ -914,7 +938,7 @@ updsprpal:
             
             break;
         
-        case 3020 | (CBN_SELCHANGE << 16):
+        case SD_OverPhaseComboBox | (CBN_SELCHANGE << 16):
             
             if((n = ed->ecopy[ed->sprset]) != -1)
             {
@@ -957,14 +981,14 @@ updsprpal:
             
             loadovermap(ed->ov->buf + 1024, getbgmap(ed,ed->ew.param,n), 1, ed->ew.doc->rom);
             
-            SetDlgItemInt(win,3018,ed->sprgfx[(ed->ew.param>=0x40)?2:n],0);
+            SetDlgItemInt(win, SD_OverSpriteGfxEdit, ed->sprgfx[(ed->ew.param>=0x40)?2:n],0);
             SetDlgItemInt(win, SD_OverSprTileSetEditCtl, ed->sprpal[(ed->ew.param>=0x40)?2:n],0);
             
             m = ed->sprgfx[n];
             
             goto updsprgfx;
         
-        case 3021:
+        case SD_OverCopyButton:
             
             if(ed->selflag)
             {
@@ -973,7 +997,7 @@ updsprpal:
                 
                 copy_w = ed->rectright - ed->rectleft;
                 copy_h = ed->rectbot-ed->recttop;
-                copybuf = malloc(copy_w * copy_h << 1);
+                copybuf = (uint16_t*) malloc(copy_w * copy_h << 1);
                 
                 k = ed->rectleft + (ed->recttop << 5);
                 l = 0;
@@ -992,44 +1016,53 @@ updsprpal:
             
             break;
         
-        case 3022:
+        case SD_OverPasteButton:
             
             Overtoolchg(ed,6,win);
             
             break;
         
-        case 3023:
+        case SD_OverExitButton:
             
             Overtoolchg(ed,7,win);
             
             break;
         
-        case 3024:
+        case SD_OverPropertiesButton:
             
             oved = ed;
-            ShowDialog(hinstance,(LPSTR)IDD_DIALOG11,framewnd,editovprop,0);
+            
+            ShowDialog
+            (
+                hinstance,
+                (LPSTR) IDD_DIALOG11,
+                framewnd,
+                editovprop,
+                0
+            );
             
             break;
         
-        case 3025:
+        case SD_OverHoleButton:
             
             Overtoolchg(ed,8,win);
             
             break;
         
-        case 3026:
+        case SD_OverTransportButton:
             
             Overtoolchg(ed,9,win);
             
             break;
         
-        case 3027:
+        case SD_OverItemButton:
             
             Overtoolchg(ed,10,win);
             
             break;
         
-        case 3028:
+        case SD_OverWarpButton:
+            
             ov = ed->ew.doc->overworld;
             j = ed->ew.param^0x40;
             
@@ -1038,8 +1071,8 @@ updsprpal:
             
             goto overlaunch;
         
-        case 3029:
-        case 3030:
+        case SD_OverLeftArrow:
+        case SD_OverRightArrow:
         case SD_OverUpArrow:
         case SD_OverDownArrow:
             
@@ -1052,7 +1085,7 @@ updsprpal:
 overlaunch:
             
             rom = ed->ew.doc->rom;
-            wparam = (wparam - 3029) ^ 1;
+            wparam = (wparam - SD_OverLeftArrow) ^ 1;
             
             if(ed->mapsize)
                 if(wparam == 0)
@@ -1106,7 +1139,7 @@ search2:
                 
                 if(GetKeyState(VK_CONTROL) & 128)
                 {
-                    // \task Test this out. What does it do?
+                    // \task[low] Test this out. What does it do?
                     ed->schbuf = (uint16_t*) malloc(0x4550);
                     SetCursor(wait_cursor);
                     rom=ed->ew.doc->rom;
@@ -1235,7 +1268,9 @@ schok:
                             if(b4[j] == l)
                                 ed->schbuf[m++] = l;
                         }
-sc2done:
+                        
+                    sc2done:
+                        
                         k = m;
                         
                         free(b4);
@@ -1249,8 +1284,10 @@ sc2done:
                         SetWindowText((HWND)lparam, "Show all");
                         ShowWindow(GetDlgItem(win, SD_OverAdjustSearchBtn), SW_SHOW);
                     }
-updsel32:
-                    hc = GetDlgItem(win, 3000);
+                    
+                updsel32:
+                    
+                    hc = GetDlgItem(win, SD_Over_Map32_Selector);
                     InvalidateRect(hc, 0, 1);
                     Updatesize(hc);
                 }
@@ -1296,3 +1333,5 @@ updsel32:
     
     return FALSE;
 }
+
+// =============================================================================
