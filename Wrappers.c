@@ -301,48 +301,58 @@ HM_GetMouseData(MSG const p_packed_msg)
 
 // =============================================================================
 
-BOOL
-HM_DrawRectangle(HDC  const p_device_context,
-                 RECT const p_rect)
-{
-    return Rectangle(p_device_context,
-                     p_rect.left,
-                     p_rect.top,
-                     p_rect.right,
-                     p_rect.bottom);
-}
+    BOOL
+    HM_DrawRectangle
+    (
+        HDC  const p_device_context,
+        RECT const p_rect
+    )
+    {
+        return Rectangle
+        (
+            p_device_context,
+            p_rect.left,
+            p_rect.top,
+            p_rect.right,
+            p_rect.bottom
+        );
+    }
 
 // =============================================================================
 
-SCROLLINFO
-HM_GetVertScrollInfo(HWND const p_win)
-{
-    SCROLLINFO si = { 0 };
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_VERT, &si);
-    
-    return si;
-}
+    SCROLLINFO
+    HM_GetVertScrollInfo(HWND const p_win)
+    {
+        SCROLLINFO si = { 0 };
+        
+        // -----------------------------
+        
+        si.cbSize = sizeof(SCROLLINFO);
+        
+        si.fMask = SIF_ALL;
+         
+        GetScrollInfo(p_win, SB_VERT, &si);
+        
+        return si;
+    }
 
 // =============================================================================
 
-SCROLLINFO
-HM_GetHorizScrollInfo(HWND const p_win)
-{
-    SCROLLINFO si = { 0 };
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_HORZ, &si);
-    
-    return si;
-}
+    SCROLLINFO
+    HM_GetHorizScrollInfo(HWND const p_win)
+    {
+        SCROLLINFO si = { 0 };
+        
+        // -----------------------------
+        
+        si.cbSize = sizeof(SCROLLINFO);
+        
+        si.fMask = SIF_ALL;
+         
+        GetScrollInfo(p_win, SB_HORZ, &si);
+        
+        return si;
+    }
 
 // =============================================================================
 

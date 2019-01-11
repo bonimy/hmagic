@@ -210,7 +210,12 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 doc->text_bufz[m_i] = zmsg;
             }
             
-            Makeasciistring(doc, &zmsg, &amsg);
+            TextLogic_ZStringToAString
+            (
+                doc,
+                &zmsg,
+                &amsg
+            );
             
             asprintf(&text_buf,
                      "%03d: %s",
@@ -274,9 +279,12 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             
             AString_Init(&asc_msg);
             
-            Makeasciistring(p_doc,
-                            &p_doc->text_bufz[m_i],
-                            &asc_msg);
+            TextLogic_ZStringToAString
+            (
+                p_doc,
+                &p_doc->text_bufz[m_i],
+                &asc_msg
+            );
             
             dummy_len = strlen(asc_msg.m_text);
             
@@ -352,7 +360,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                                       rom + de_offset,
                                       de_bound - de_base);
             
-            Makeasciistring(p_doc, &zmsg, &amsg);
+            TextLogic_ZStringToAString(p_doc, &zmsg, &amsg);
             
             asprintf(&text_buf, "%03d: %s", d_i, amsg.m_text);
             
@@ -482,13 +490,23 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                                               rom + dict_entry_offset,
                                               (k - l) );
                     
-                    Makeasciistring(doc, &zmsg, &asc_msg);
+                    TextLogic_ZStringToAString
+                    (
+                        doc,
+                        &zmsg,
+                        &asc_msg
+                    );
                     
                     ZTextMessage_Free(&zmsg);
                 }
                 else
                 {
-                    Makeasciistring(doc, &doc->text_bufz[i], &asc_msg);
+                    TextLogic_ZStringToAString
+                    (
+                        doc,
+                        &doc->text_bufz[i],
+                        &asc_msg
+                    );
                 }
                 
                 SetDlgItemText(win, ID_TextEditWindow, asc_msg.m_text);

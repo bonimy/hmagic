@@ -479,18 +479,25 @@ updsize:
             p[k]=-128;
             p[l]=-128;
             Get3dpt(ed,p[0],p[1],p[2],&pt);
+            
             p[l]=128;
+            
             Get3dpt(ed,p[0],p[1],p[2],&pt2);
+            
             p[k]=128;
+            
             Get3dpt(ed,p[0],p[1],p[2],&pt3);
-            SelectObject(hdc,white_pen);
+            
+            SelectObject(hdc, white_pen);
             
             if( (j < 3) ^ fronttest(&pt,&pt2,&pt3) )
             {
-                text_buf_ty buf = { 0 };
+                char text_buf[2] = { 0 };
                 
                 m=0;
-                for(;;) {
+                
+                for( ; ; )
+                {
                     if(e[l]) goto nextaxis;
                     if(p[i]<0) p[i]=-144; else p[i]=144;
                     p[k]=-128;
@@ -512,10 +519,21 @@ updsize:
                     rotvec2d(&pt,&pt3);
                     LineTo(hdc,pt3.x+pt2.x,pt3.y+pt2.y);
                     p[l]=0;
+                    
                     Get3dpt(ed,p[0],p[1],p[2],&pt2);
-                    buf[0]=xyz_text[l];
-                    buf[1]=0;
-                    Paintspr(hdc,pt2.x,pt2.y,0,0,ed->width);
+                    
+                    text_buf[0] = xyz_text[l];
+                    text_buf[1] = '\0';
+                    
+                    PaintSprName
+                    (
+                        hdc,
+                        pt2.x,
+                        pt2.y,
+                        NULL,
+                        text_buf
+                    );
+                    
                     e[l]=1;
 nextaxis:
                     if(m==1) break;
@@ -524,6 +542,7 @@ nextaxis:
                     l=m;
                     m=1;
                 }
+                
                 continue;
             }
             for(m=-128;m<=128;m+=16) {
@@ -612,24 +631,51 @@ nextaxis:
         
         if(ed->selpt!=-1)
         {
-            j=*(unsigned short*)(ed->buf+2+ed->objsel) - 0xff8c + 3*ed->selpt;
+            j = *(unsigned short*)(ed->buf+2+ed->objsel) - 0xff8c + 3*ed->selpt;
+            
             if(!ed->tool)
             {
-                extern char buffer[0x400];
+                char * text_buf = NULL;
                 
-                SelectObject(hdc,green_pen);
-                wsprintf(buffer,"X: %02X Y: %02X Z: %02X",ed->buf[j]+128,ed->buf[j+1]+128,ed->buf[j+2]+128);
-                Paintspr(hdc,0,0,0,0,ed->width);
+                // -----------------------------
+                
+                SelectObject(hdc, green_pen);
+                
+                asprintf
+                (
+                    &text_buf,
+                    "X: %02X Y: %02X Z: %02X",
+                    ed->buf[j] + 128,
+                    ed->buf[j + 1] + 128,
+                    ed->buf[j + 2] + 128
+                );
+                
+                PaintSprName
+                (
+                    hdc,
+                    0,
+                    0,
+                    NULL,
+                    text_buf
+                );
+                
+                free(text_buf);
+                
                 Get3dpt(ed,ed->buf[j],-ed->buf[j+1],-128,&pt);
                 MoveToEx(hdc,pt.x,pt.y,0);
+                
                 Get3dpt(ed,ed->buf[j],-ed->buf[j+1],128,&pt);
                 LineTo(hdc,pt.x,pt.y);
+                
                 Get3dpt(ed,ed->buf[j],-128,ed->buf[j+2],&pt);
                 MoveToEx(hdc,pt.x,pt.y,0);
+                
                 Get3dpt(ed,ed->buf[j],128,ed->buf[j+2],&pt);
                 LineTo(hdc,pt.x,pt.y);
+                
                 Get3dpt(ed,-128,-ed->buf[j+1],ed->buf[j+2],&pt);
                 MoveToEx(hdc,pt.x,pt.y,0);
+                
                 Get3dpt(ed,128,-ed->buf[j+1],ed->buf[j+2],&pt);
                 LineTo(hdc,pt.x,pt.y);
             }

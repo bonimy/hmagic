@@ -3,7 +3,11 @@
 
     #define HMAGIC_PROTOTYPES_HEADER_GUARD
 
-#include "structs.h"
+    #include "structs.h"
+
+    #include "Wrappers.h"
+
+// =============================================================================
 
     extern LPARAM
     ShowDialog
@@ -15,12 +19,24 @@
         LPARAM    const param
     );
 
-void
-PaintSprName(HDC hdc,
-             int x,
-             int y,
-             RECT const * const p_clip,
-             char const * const p_name);
+    /**
+        \param p_y  Position of the entity relative to upper bound of the clip
+        rectangle. If the upper left coordinate of the entity is above said
+        rectangle, this value will be negative.
+        
+        \param p_window_size this subroutine assumes that the content
+        (paintable) dimensions of the window are square. That is, its height is
+        the same as its width.
+    */
+    void
+    PaintSprName
+    (
+        HDC          const p_hdc,
+        int          const p_x,
+        int          const p_y,
+        RECT const * const p_clip,
+        char const * const p_name
+    );
 
 void
 Drawblock(OVEREDIT const * const ed,
@@ -169,31 +185,17 @@ Updatesize(HWND win);
         LPARAM     const lparam
     );
 
-void
-Unloadovl(FDOC *doc);
+    extern void
+    Unloadovl
+    (
+        CP2(FDOC) doc
+    );
 
 void
 Stopsong(void);
 
 void
 Drawdot(HDC hdc, RECT * rc, int q, int n, int o);
-
-/**
-    \param p_y  Position of the entity relative to upper bound of the clip
-    rectangle. If the upper left coordinate of the entity is above said
-    rectangle, this value will be negative.
-    
-    \param p_window_size this subroutine assumes that the content (paintable)
-    dimensions of the window are square. That is, its height is the same
-    as its width.
-*/
-void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         size_t const p_window_size);
 
 // \note Not sure whether to make a task for these or not. While it appears
 // at first glance to be dungeon related, this is type punning, and the

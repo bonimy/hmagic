@@ -4119,15 +4119,19 @@ okovl:
 
 // =============================================================================
 
-void Unloadovl(FDOC *doc)
-{
-    // if the overlays are loaded, free the overlay buffer.
-    if(doc->o_loaded == 1)
-        free(doc->ovlbuf);
-    
-    // the overlays are regarded as not being loaded. 
-    doc->o_loaded = 0;
-}
+    extern void
+    Unloadovl
+    (
+        CP2(FDOC) doc
+    )
+    {
+        // if the overlays are loaded, free the overlay buffer.
+        if(doc->o_loaded == 1)
+            free(doc->ovlbuf);
+        
+        // the overlays are regarded as not being loaded. 
+        doc->o_loaded = 0;
+    }
 
 // =============================================================================
 
@@ -4228,95 +4232,45 @@ TEXTMETRIC textmetric;
 
 // =============================================================================
 
-// \note More re-entrant version of another function in that it
-// doesn't write using a global text buffer.
-void
-PaintSprName(HDC p_dc,
-             int x,
-             int y,
-             RECT const * const p_clip,
-             char const * const p_name)
-{
-    size_t len = strlen(p_name);
-    
-    // -----------------------------
-    
-    // Probably not strictly necessary, but the program doesn't make a point
-    // to set it anywhere more general.
-    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-    
-    SetTextColor(p_dc, 0);
-    
-    ExtTextOut(p_dc, x + 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x - 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x + 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x - 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    
-#if 0
-    SetTextColor(p_dc, 0xffbf3f);
-#else
-    SetTextColor(p_dc, 0xfefefe);
-#endif
-    
-    ExtTextOut(p_dc,x, y, ETO_CLIPPED, p_clip, p_name, len, NULL);
-}
-
-// =============================================================================
-
-void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         size_t const p_window_size)
-{
-    size_t const len = strlen(buffer);
-    
-    size_t final_len = (signed) len;
-    
-    // -----------------------------
-    
-    // \task[high] Looks like the problems with Items (secrets) leaving
-    // artifacts was fixed. This routine should probably be gradually phased 
-    // out as we apparently have better alternatives now.
-    
-    // Probably not strictly necessary, but the program doesn't make a point
-    // to set it anywhere more general.
-    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-    
-    if( (len * textmetric.tmAveCharWidth) + p_x > (p_window_size - p_hscroll) )
-        final_len = (p_window_size - p_hscroll - p_x) / textmetric.tmAveCharWidth;
-    
+    // \note More re-entrant version of another function in that it
+    // doesn't write using a global text buffer.
+    void
+    PaintSprName
+    (
+        HDC          const p_dc,
+        int          const p_x,
+        int          const p_y,
+        RECT const * const p_clip,
+        char const * const p_name
+    )
     {
-        char text_buf[0x100];
+        size_t len = strlen(p_name);
         
-        sprintf(text_buf, "x = %d, y = %d, n = %d, o = %d, w = %d",
-                p_x, p_y, p_hscroll, p_vscroll, p_window_size);
+        unsigned const options = ETO_CLIPPED;
         
-        SetDlgItemText(debug_window, IDC_STATIC2, text_buf);
+        // -----------------------------
+        
+        // Probably not strictly necessary, but the program doesn't make a point
+        // to set it anywhere more general.
+        SetTextAlign(p_dc, TA_LEFT | TA_TOP);
+        
+        SetTextColor(p_dc, 0);
+        
+        // Draw a black outline for the text
+        
+        ExtTextOut(p_dc, p_x + 1, p_y + 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x - 1, p_y - 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x + 1, p_y - 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x - 1, p_y + 1, options, p_clip, p_name, len, NULL);
+        
+    #if 0
+        SetTextColor(p_dc, 0xffbf3f);
+    #else
+        SetTextColor(p_dc, 0xfefefe);
+    #endif
+        
+        ExtTextOut(p_dc, p_x, p_y, ETO_CLIPPED, p_clip, p_name, len, NULL);
     }
-    
-    if(final_len > len)
-    {
-        final_len = len;
-    }
-    
-    SetTextColor(p_dc, 0);
-    
-    TextOut(p_dc, p_x + 1, p_y + 1, buffer, final_len);
-    TextOut(p_dc, p_x - 1, p_y - 1, buffer, final_len);
-    TextOut(p_dc, p_x + 1, p_y - 1, buffer, final_len);
-    TextOut(p_dc, p_x - 1, p_y + 1, buffer, final_len);
-    
-#if 0
-    SetTextColor(p_dc, 0xffbf3f);
-#else
-    SetTextColor(p_dc, 0xfefefe);
-#endif
-    
-    TextOut(p_dc, p_x, p_y, buffer, final_len);
-}
 
 // =============================================================================
 

@@ -1261,7 +1261,7 @@ error:
 // =============================================================================
 
     extern void
-    Makeasciistring
+    TextLogic_ZStringToAString
     (
         CP2C(FDOC)         doc,
         CP2C(ZTextMessage) p_zmsg,
@@ -1298,7 +1298,7 @@ error:
             
             if(k < NUM_Zchars)
             {
-                if( ! z_alphabet[k][0] )
+                if( IsZero( z_alphabet[k][0] ) )
                 {
                     // \task[high] We don't really know what happens for these
                     // characters if they're used in game. These are the ones

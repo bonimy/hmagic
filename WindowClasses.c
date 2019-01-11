@@ -11,44 +11,127 @@
 
 // =============================================================================
 
-    static WNDPROC
-    DefaultEditProc;
+    static BOOL
+    NumEdit_ValidCharacter
+    (
+        unsigned short const p_c
+    )
+    {
+        enum { backspace_char = '\x08' };
+        
+        // -----------------------------
+        
+        // Only pass numeric and backspace characters on to the
+        // standard edit window proc.
+        if( ('0' <= p_c) && (p_c <= '9') )
+        {
+            return TRUE;
+        }
+        else if( Is(p_c, backspace_char) )
+        {
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+// =============================================================================
+
+    static void
+    NumEdit_OnPaste
+    (
+        HWND const p_win
+    )
+    {
+        BOOL const open_clipboard = OpenClipboard(p_win);
+        
+        HANDLE h_clipboard = NULL;
+        
+        char * text = NULL;
+        
+        size_t i   = 0;
+        size_t len = 0;
+        
+        // -----------------------------
+        
+        if( IsFalse(open_clipboard) )
+        {
+            goto error;
+        }
+        
+        h_clipboard = GetClipboardData(CF_TEXT);
+        
+        if( IsNull(h_clipboard) )
+        {
+            goto error;
+        }
+        
+        text = (char*) GlobalLock(h_clipboard);
+        
+        if( IsNull(text) )
+        {
+            goto error;
+        }
+        
+        len = strlen(text);
+        
+        for(i = 0; i < len; i += 1)
+        {
+            if( NumEdit_ValidCharacter( text[i] ) )
+            {
+                PostMessage(p_win, WM_CHAR, text[i], 0);
+            }
+        }
+        
+        GlobalUnlock(h_clipboard);
+        
+        CloseClipboard();
+        
+        return;
+        
+    error:
+
+        if(open_clipboard)
+        {
+            CloseClipboard();
+        }
+    }
 
 // =============================================================================
 
     HM_DeclareWndProc(NumEditProc)
     {
+        WNDPROC base_class_proc = (WNDPROC) GetClassLongPtr(p_win, 0);
+        
+        // -----------------------------
+        
+        if( IsNull(base_class_proc) )
+        {
+            return DefWindowProc(p_win, p_msg, p_wp, p_lp);
+        }
+
         switch(p_msg)
         {
         
         default:
             
             break;
+        
+        case WM_PASTE:
             
+            NumEdit_OnPaste(p_win);
+            
+            return 0;
+
         case WM_CHAR:
             
-            if(always)
+            if( IsFalse(NumEdit_ValidCharacter( (unsigned short) p_wp) ) )
             {
-                enum { backspace_char = '\x08' };
-                
-                unsigned short c = (unsigned short) p_wp;
-                
-                // Only pass numeric and backspace characters on to the
-                // standard edit window proc.
-                if('0' <= c && c <= '9')
-                {
-                    break;
-                }
-                else if(backspace_char == c)
-                {
-                    break;
-                }
-                
                 return 0;
             }
         }
         
-        return DefaultEditProc(p_win, p_msg, p_wp, p_lp);
+        return CallWindowProc(base_class_proc, p_win, p_msg, p_wp, p_lp);
     }
 
 // =============================================================================
@@ -357,12 +440,39 @@
         // that only accepts numerical characters.
         if( GetClassInfo(p_inst, WC_EDIT, &wc) )
         {
-            DefaultEditProc = wc.lpfnWndProc;
+            HWND dummy_num_edit;
             
+            WNDPROC EditProc = wc.lpfnWndProc;
+            
+            // -----------------------------
+            
+            wc.cbClsExtra    = sizeof(LONG_PTR);
             wc.lpszClassName = "NumEdit";
-            wc.lpfnWndProc = NumEditProc;
+            wc.lpfnWndProc   = NumEditProc;
             
             atom = RegisterClass(&wc);
+            
+            dummy_num_edit = CreateWindow
+            (
+                "NumEdit",
+                "Dummy",
+                0,
+                0, 0,
+                0, 0,
+                NULL,
+                NULL,
+                hinstance,
+                NULL
+            );
+            
+            SetClassLongPtr
+            (
+                dummy_num_edit,
+                0,
+                (LONG_PTR) EditProc
+            );
+            
+            DestroyWindow(dummy_num_edit);
         }
     }
 

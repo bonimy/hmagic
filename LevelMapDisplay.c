@@ -1,6 +1,8 @@
 
     #include "structs.h"
 
+    #include "Wrappers.h"
+
     #include "GdiObjects.h"
 
     #include "LevelMapLogic.h"
@@ -80,16 +82,21 @@ LevelMapDisplay_OnPaint(LMAPEDIT const * const p_ed,
         
         k = (p_ed->basements + p_ed->curfloor) * 25;
         
-        if(p_ed->tool==2 && p_ed->bosspos>=k && p_ed->bosspos<k+25)
+        if
+        (
+            (p_ed->tool == 2)
+         && (p_ed->bosspos >= k)
+         && (p_ed->bosspos < k + 25)
+        )
         {
             HGDIOBJ const oldobj = SelectObject(hdc, red_brush);
             
-            l=p_ed->bosspos-k;
+            l = (p_ed->bosspos - k);
             
-            rc.left=((l%5)<<4)+20+(p_ed->bossofs>>8);
-            rc.top=((l/5)<<4)+4+(p_ed->bossofs&255);
-            rc.right=rc.left+16;
-            rc.bottom=rc.top+16;
+            rc.left  = ( (l % 5) << 4) + 20 + (p_ed->bossofs >> 8);
+            rc.top   = ( (l / 5) << 4) +  4 + (p_ed->bossofs & 255);
+            rc.right = rc.left+16;
+            rc.bottom= rc.top+16;
             
             Drawdot(hdc,&rc,0x1f0,0,0);
             SelectObject(hdc, oldobj);
@@ -98,37 +105,47 @@ LevelMapDisplay_OnPaint(LMAPEDIT const * const p_ed,
         oldfont = SelectObject(hdc, trk_font);
         SetBkMode(hdc,TRANSPARENT);
         
-        for(j = 0; j < 5; j++)
+        // Draw the room numbers on a 5x5 grid.
+        for(j = 0; j < 5; j += 1)
         {
             int i = 0;
             
-            for(i=0;i<5;i++)
+            // -----------------------------
+            
+            for(i = 0; i < 5; i += 1)
             {
-                l=p_ed->rbuf[k];
-                rc.left=(i<<4)+24;
-                rc.top=(j<<4)+8;
+                l = p_ed->rbuf[k];
                 
-                if(p_ed->tool==1 && k==p_ed->sel)
+                rc.left = (i << 4) + 24;
+                rc.top  = (j << 4) + 8;
+                
+                if( (p_ed->tool == 1) && (k == p_ed->sel) )
                 {
                     HGDIOBJ const oldobj2 = SelectObject(hdc, green_pen);
                     HGDIOBJ const oldobj3 = SelectObject(hdc, black_brush);
                     
-                    rc.right=rc.left+16;
-                    rc.bottom=rc.top+16;
+                    // -----------------------------
                     
-                    Rectangle(hdc,rc.left,rc.top,rc.right,rc.bottom);
+                    rc.right  = rc.left + 16;
+                    rc.bottom = rc.top + 16;
                     
-                    SelectObject(hdc,oldobj2);
-                    SelectObject(hdc,oldobj3);
+                    HM_DrawRectangle(hdc, rc);
+                    
+                    SelectObject(hdc, oldobj2);
+                    SelectObject(hdc, oldobj3);
                 }
                 
                 if(l != 15)
                 {
-                    extern char buffer[0x400];
+                    char * buffer;
 
-                    wsprintf(buffer, "%02X", l);
+                    // -----------------------------
                     
-                    Paintspr(hdc,rc.left,rc.top,0,0,0x1f0);
+                    asprintf(&buffer, "%02X", l);
+                    
+                    PaintSprName(hdc, rc.left, rc.top, NULL, buffer);
+                    
+                    free(buffer);
                 }
                 
                 k++;

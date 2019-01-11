@@ -22,12 +22,15 @@
     Savetext(FDOC * const doc);
 
     extern void
-    Makezeldastring(CP2C(FDOC)        p_doc,
-                    CP2C(AString)     p_amsg,
-                    CP2(ZTextMessage) p_zmsg);
+    Makezeldastring
+    (
+        CP2C(FDOC)        p_doc,
+        CP2C(AString)     p_amsg,
+        CP2(ZTextMessage) p_zmsg
+    );
 
     extern void
-    Makeasciistring
+    TextLogic_ZStringToAString
     (
         CP2C(FDOC)            doc,
         CP2C(ZTextMessage)    p_zmsg,
