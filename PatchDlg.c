@@ -5,6 +5,8 @@
 
     #include "Callbacks.h"
 
+    #include "Wrappers.h"
+
     #include "PatchEnum.h"
     #include "PatchLogic.h"
 
@@ -71,75 +73,93 @@ PatchDlg_Init
 /// Macros to help make file filters more human readable. name and ext
 /// are expected to be strings.
 #define FILTER(name, ext) name "\0" ext "\0"
-#define FILTER_TERMINATE() "\0";
+#define FILTER_TERMINATE(x) "\0";
 
 // =============================================================================
 
-void
-PatchDlg_AddModule(PATCHLOAD * const p_ed,
-                   HWND        const p_win)
-{
-    FDOC * const doc = p_ed->ew.doc;
-    
-    ASMHACK * mod = doc->modules;
-    
-    char patchname[MAX_PATH] = { 0 };
-    
-    OPENFILENAME ofn;
+CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
+                          FILTER("FSNASM module files", "*.OBJ")
+                          FILTER("All Files", "*.*")
+                          FILTER_TERMINATE("");
 
-    // -----------------------------
-    
-    ofn.lStructSize = sizeof(ofn);
-    
-    ofn.hwndOwner = p_win;
-    ofn.hInstance = hinstance;
-    
-    ofn.lpstrFilter = FILTER("FSNASM source files", "*.ASM")
-                      FILTER("FSNASM module files", "*.OBJ")
-                      FILTER("All Files", "*.*")
-                      FILTER_TERMINATE();
-    
-    ofn.lpstrCustomFilter=0;
-    ofn.nFilterIndex=1;
-    ofn.lpstrFile = patchname;
-    
-    patchname[0] = 0;
-    
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrFileTitle=0;
-    ofn.lpstrInitialDir=0;
-    
-    ofn.lpstrTitle = "Load patch";
-    
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-    
-    ofn.lpstrDefExt = 0;
-    ofn.lpfnHook = 0;
-    
-    if( ! GetOpenFileName(&ofn) )
+
+// =============================================================================
+
+    void
+    PatchDlg_AddModule(PATCHLOAD * const p_ed,
+                       HWND        const p_win)
     {
-        return;
+        FDOC * const doc = p_ed->ew.doc;
+        
+        ASMHACK * mod = doc->modules;
+        
+        char patchname[MAX_PATH] = { 0 };
+        
+        char patch_dir[MAX_PATH] = { 0 };
+        
+        OPENFILENAME ofn = { 0 };
+    
+        // -----------------------------
+        
+        ofn.lStructSize = sizeof(ofn);
+        
+        ofn.hwndOwner = p_win;
+        ofn.hInstance = hinstance;
+        
+        ofn.lpstrFilter = patch_filter;
+        
+        ofn.lpstrCustomFilter=0;
+        ofn.nFilterIndex=1;
+        ofn.lpstrFile = patchname;
+        
+        patchname[0] = 0;
+        
+        ofn.nMaxFile = MAX_PATH;
+        ofn.lpstrInitialDir = patch_dir;
+        
+        ofn.lpstrTitle = "Load patch";
+        
+        ofn.Flags =
+        (
+            OFN_FILEMUSTEXIST | OFN_HIDEREADONLY
+          | OFN_ALLOWMULTISELECT | OFN_EXPLORER
+        );
+        
+        ofn.lpstrDefExt = 0;
+        ofn.lpfnHook = 0;
+        
+        // \task Make a wrapper for this, especially now that we're 
+        // multiselecting. Specifically, we need a file count and a
+        // list of pointers to the file names in the reverse order
+        // as presented in the structure, as this reflects the order
+        // in which they were selected.
+        if( ! GetOpenFileName(&ofn) )
+        {
+            return;
+        }
+        
+        for(i = 0; i < num_files; i += 1)
+        {
+            doc->nummod++;
+        
+            doc->modules = (ASMHACK*) realloc(doc->modules,
+                                              sizeof(ASMHACK) * doc->nummod);
+            
+            mod = (doc->modules + doc->nummod - 1);
+            
+            mod->filename = _strdup(patchname);
+            
+            mod->flag = 0;
+            
+            SendDlgItemMessage(p_win,
+                               ID_Patch_ModulesListBox,
+                               LB_ADDSTRING,
+                               0,
+                               (LPARAM) patchname);
+        }
+        
+        doc->p_modf = 1;
     }
-    
-    doc->nummod++;
-    
-    doc->modules = (ASMHACK*) realloc(doc->modules,
-                                      sizeof(ASMHACK) * doc->nummod);
-    
-    mod = (doc->modules + doc->nummod - 1);
-    
-    mod->filename = _strdup(patchname);
-    
-    mod->flag = 0;
-    
-    SendDlgItemMessage(p_win,
-                       ID_Patch_ModulesListBox,
-                       LB_ADDSTRING,
-                       0,
-                       (LPARAM) patchname);
-    
-    doc->p_modf=1;
-}
 
 // =============================================================================
 
