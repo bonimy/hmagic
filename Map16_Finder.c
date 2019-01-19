@@ -20,16 +20,16 @@ findblks(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     int i,j;
     switch(msg) {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(OVEREDIT*)lparam;
         ed->schpush=-1;
         ed->schtyped=0;
         hc=GetDlgItem(win,IDC_CUSTOM1);
-        SetWindowLong(hc,GWL_USERDATA,lparam);
+        SetWindowLongPtr(hc,GWLP_USERDATA,lparam);
         Updatesize(hc);
         break;
     case WM_COMMAND:
-        ed=(OVEREDIT*)GetWindowLong(win,DWL_USER);
+        ed=(OVEREDIT*)GetWindowLongPtr(win,DWLP_USER);
         switch(wparam) {
         case IDC_BUTTON1:
             for(i=0x1d5;i<0x3aa;i++) ed->selsch[i]=255;

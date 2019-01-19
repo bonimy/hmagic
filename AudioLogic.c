@@ -349,7 +349,7 @@ Mixbuffer(void)
     unsigned char*d;
     static char v1,v2;
     
-    // \task Nitpicky, but why are all these static. Just makes things even
+    // \task[low] Nitpicky, but why are all these static. Just makes things even
     // less re-entrant for no apparent reason.
     static unsigned short f;
     static unsigned envx,
@@ -434,7 +434,7 @@ Mixbuffer(void)
             __asm add envclklo, eax
             __asm adc envclk, edx
 #else
-            // \task Not exactly equivalent. does carry really matter here?
+            // \task[med] Not exactly equivalent. does carry really matter here?
             // Do regression test.
             {
                 uint64_t w = envclkadd;
@@ -469,7 +469,7 @@ Mixbuffer(void)
             __asm sbb envx,edx
             
 #else
-            // \task not exactly equivalent? (sbb vs. sub) Do regression test.
+            // \task[med] not exactly equivalent? (sbb vs. sub) Do regression test.
             {
                 signed borrow = 0;
                 

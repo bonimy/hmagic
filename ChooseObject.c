@@ -515,10 +515,16 @@ dpcdlgproc(HWND win,
     RECT rc = empty_rect;
     HWND hc;
     BLOCKSEL8*bs;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_QUERYNEWPALETTE:
-        Setpalette(win,dunged->hpal);
+        
+        SetPalette(win,dunged->hpal);
+        
         return 1;
+    
     case WM_PALETTECHANGED:
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
         InvalidateRect(GetDlgItem(win,IDC_CUSTOM2),0,0);
@@ -528,8 +534,8 @@ dpcdlgproc(HWND win,
         dpce->sel=0;
         dpce->flag=0;
         dpce->bs.ed=(OVEREDIT*)dunged;
-        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[0]);
-        SendDlgItemMessage(win,IDC_BUTTON8,BM_SETIMAGE,IMAGE_BITMAP,(int)arrows_imgs[1]);
+        SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[0]);
+        SendDlgItemMessage(win,IDC_BUTTON8,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[1]);
         memcpy(dpce->buf,dunged->ew.doc->rom + 0x1b52,0x342e);
         
         hdc = GetDC(win);
@@ -756,7 +762,7 @@ dungselproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         if(wparam>=48 && wparam<58) {
             wparam-=48;
 digscr:
-            ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+            ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
             ed->typednum=((ed->typednum<<4)|wparam)&0xfff;
             i=ed->typednum;
             if(!(ed->ed->selchk&1))
@@ -772,7 +778,7 @@ digscr:
         }
         break;
     case WM_VSCROLL:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+        ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
         j=i=ed->scroll;
         switch(wparam&65535) {
         case SB_LINEDOWN:
@@ -830,7 +836,7 @@ scroll:
     
     case WM_PAINT:
         
-        ed = (CHOOSEDUNG*) GetWindowLong(win, GWL_USERDATA);
+        ed = (CHOOSEDUNG*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -841,7 +847,7 @@ scroll:
     
     case WM_LBUTTONDOWN:
         
-        ed=(CHOOSEDUNG*)GetWindowLong(win,GWL_USERDATA);
+        ed=(CHOOSEDUNG*)GetWindowLongPtr(win,GWLP_USERDATA);
         SetFocus(win);
         i=ed->sel-(ed->scroll<<2);
         if(i>=0 && i<16) {
@@ -869,181 +875,202 @@ scroll:
 
 // =============================================================================
 
-/// Procedure for the Dungeon object selector dialog box.
-BOOL CALLBACK choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-    HWND hc;
-    HDC hdc;
-    CHOOSEDUNG *ed;
-    DUNGEDIT *de;
-    RECT rc;
-    SCROLLINFO si;
-    HPALETTE oldpal;
-    HWND *p;
-    
-    int i;
-    
-    switch(msg)
+    /// Procedure for the Dungeon object selector dialog box.
+    BOOL CALLBACK
+    choosedung(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     {
-    
-    case WM_QUERYNEWPALETTE:
-        ed=(CHOOSEDUNG*)GetWindowLong(win,DWL_USER);
-        Setpalette(win,ed->ed->hpal);
+        HWND hc;
+        HDC hdc;
+        CHOOSEDUNG *ed;
+        DUNGEDIT *de;
+        RECT rc;
+        SCROLLINFO si;
+        HPALETTE oldpal;
+        HWND *p;
         
-        return 1;
-    
-    case WM_PALETTECHANGED:
-        InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
+        int i;
         
-        break;
-    
-    case WM_INITDIALOG:
+        // -----------------------------
         
-        ed = (CHOOSEDUNG*) calloc(1, sizeof(CHOOSEDUNG) );
-        
-        ed->dlg=win;
-        
-        de = ed->ed = (DUNGEDIT*) lparam;
-        
-        if(de->selchk & 1)
+        switch(msg)
         {
-            getdoor(de->buf + de->selobj, de->ew.doc->rom);
+        
+        case WM_QUERYNEWPALETTE:
             
-            i = dm_k * 42 + 0x1b8 + dm_l;
-        }
-        else
-        {
-            getobj(de->buf+de->selobj);
+            ed = (CHOOSEDUNG*) GetWindowLongPtr(win, DWLP_USER);
             
-            if(dm_k<0xf8)
-                i = dm_k + 0x40;
-            else if(dm_k<0x100)
-                i = ( (dm_k - 0xf8) << 4) + dm_l + 0x138;
-            else
-                i = dm_k - 0x100;
-        }
+            SetPalette(win, ed->ed->hpal);
+            
+            return 1;
         
-        ed->sel=i;
-        ed->typednum=0;
-        
-        i >>= 2;
-        
-        if(de->selchk&1)
-        {
-            if(i>0x94)
-                i=0x94;
-        }
-        else if(i>0x6a)
-            i=0x6a;
-        
-        ed->scroll=i;
-        hdc = GetDC(win);
-        
-        hc = GetDlgItem(win, IDC_CUSTOM1);
-        
-        rc = HM_GetClientRect(hc);
-        
-        ed->w = rc.right;
-        ed->h = rc.bottom;
-        
-        ed->bufdc = CreateCompatibleDC(hdc);
-        ed->bufbmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
-        
-        ReleaseDC(win,hdc);
-        SetBkMode(ed->bufdc,TRANSPARENT);
-        SelectObject(ed->bufdc,ed->bufbmp);
-        SetWindowLong(win,DWL_USER,(long)ed);
-        SetWindowLong(hc,GWL_USERDATA,(long)ed);
-        si.cbSize=sizeof(si);
-        si.fMask=SIF_PAGE|SIF_RANGE|SIF_POS;
-        si.nPos=ed->scroll;
-        
-        if(de->selchk&1)
-        {
-            si.nMin=0x6e;
-            si.nMax=0x97;
-        }
-        else
-        {
-            si.nMin=0;
-            si.nMax=0x6d;
-        }
-        
-        si.nPage=4;
-        SetScrollInfo(hc,SB_VERT,&si,0);
-        SelectObject(ed->bufdc,black_brush);
-        Rectangle(ed->bufdc,0,0,ed->w,ed->h);
-        oldpal=SelectPalette(objdc,de->hpal,0);
-        SelectPalette(ed->bufdc,de->hpal,0);
-        SelectPalette(objdc,oldpal,1);
-        SelectPalette(ed->bufdc,oldpal,1);
-        EnableWindow(GetDlgItem(win,IDC_BUTTON1),dp_tab[ed->sel]);
-upddisp:
-        
-        for(i = 0; i < 16; i++)
-        {
-            Updateobjdisplay(ed, i);
-        }
-        
-        InvalidateRect(hc, 0, 0);
-        
-        break;
-    
-    case WM_DESTROY:
-        
-        ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
-        
-        DeleteDC(ed->bufdc);
-        DeleteObject(ed->bufbmp);
-        
-        free(ed);
-        
-        break;
-    
-    case WM_COMMAND: // handle dialogue commands
-        
-        switch(wparam)
-        {
-        case IDOK:
-            ed = (CHOOSEDUNG*) GetWindowLong(win,DWL_USER);
-            EndDialog(win, ed->sel);
+        case WM_PALETTECHANGED:
+            
+            InvalidateRect(GetDlgItem(win,IDC_CUSTOM1),0,0);
             
             break;
         
-        case IDCANCEL:
-            EndDialog(win,-1);
+        case WM_INITDIALOG:
             
-            break;
-        
-        case IDC_BUTTON1:
-            ed = (CHOOSEDUNG*) GetWindowLong(win, DWL_USER);
-            dunged = ed->ed;
+            ed = (CHOOSEDUNG*) calloc(1, sizeof(CHOOSEDUNG) );
             
-            if(DialogBoxParam(hinstance,(LPSTR)IDD_DIALOG22,win,dpcdlgproc,ed->sel))
+            ed->dlg=win;
+            
+            de = ed->ed = (DUNGEDIT*) lparam;
+            
+            if(de->selchk & 1)
             {
-                p = dunged->ew.doc->ents;
+                getdoor(de->buf + de->selobj, de->ew.doc->rom);
                 
-                for(i=0;i<168;i++,p++)
-                {
-                    if(*p)
-                    {
-                        de = (DUNGEDIT*) GetWindowLong(*p, GWL_USERDATA);
-                        Updatemap(de);
-                        InvalidateRect( GetDlgItem(de->dlg, ID_DungEditWindow),
-                                       0,
-                                       0);
-                    }
-                }
+                i = dm_k * 42 + 0x1b8 + dm_l;
+            }
+            else
+            {
+                getobj(de->buf+de->selobj);
                 
-                hc=GetDlgItem(win,IDC_CUSTOM1);
-                
-                goto upddisp;
+                if(dm_k<0xf8)
+                    i = dm_k + 0x40;
+                else if(dm_k<0x100)
+                    i = ( (dm_k - 0xf8) << 4) + dm_l + 0x138;
+                else
+                    i = dm_k - 0x100;
             }
             
+            ed->sel=i;
+            ed->typednum=0;
+            
+            i >>= 2;
+            
+            if(de->selchk&1)
+            {
+                if(i>0x94)
+                    i=0x94;
+            }
+            else if(i>0x6a)
+                i=0x6a;
+            
+            ed->scroll=i;
+            hdc = GetDC(win);
+            
+            hc = GetDlgItem(win, IDC_CUSTOM1);
+            
+            rc = HM_GetClientRect(hc);
+            
+            ed->w = rc.right;
+            ed->h = rc.bottom;
+            
+            ed->bufdc = CreateCompatibleDC(hdc);
+            ed->bufbmp = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+            
+            ReleaseDC(win,hdc);
+            
+            SetBkMode(ed->bufdc,TRANSPARENT);
+            SelectObject(ed->bufdc,ed->bufbmp);
+            
+            SetWindowLongPtr(win,DWLP_USER, (LPARAM) ed);
+            SetWindowLongPtr(hc,GWLP_USERDATA, (LPARAM) ed);
+            
+            si.cbSize=sizeof(si);
+            si.fMask=SIF_PAGE|SIF_RANGE|SIF_POS;
+            si.nPos=ed->scroll;
+            
+            if(de->selchk&1)
+            {
+                si.nMin=0x6e;
+                si.nMax=0x97;
+            }
+            else
+            {
+                si.nMin=0;
+                si.nMax=0x6d;
+            }
+            
+            si.nPage=4;
+            SetScrollInfo(hc,SB_VERT,&si,0);
+            SelectObject(ed->bufdc,black_brush);
+            Rectangle(ed->bufdc,0,0,ed->w,ed->h);
+            oldpal=SelectPalette(objdc,de->hpal,0);
+            SelectPalette(ed->bufdc,de->hpal,0);
+            SelectPalette(objdc,oldpal,1);
+            SelectPalette(ed->bufdc,oldpal,1);
+            
+            EnableWindow(GetDlgItem(win,IDC_BUTTON1),dp_tab[ed->sel]);
+            
+    upddisp:
+            
+            for(i = 0; i < 16; i++)
+            {
+                Updateobjdisplay(ed, i);
+            }
+            
+            InvalidateRect(hc, 0, 0);
+            
             break;
+        
+        case WM_DESTROY:
+            
+            ed = (CHOOSEDUNG*) GetWindowLongPtr(win,DWLP_USER);
+            
+            DeleteDC(ed->bufdc);
+            DeleteObject(ed->bufbmp);
+            
+            free(ed);
+            
+            break;
+        
+        case WM_COMMAND: // handle dialogue commands
+            
+            switch(wparam)
+            {
+            case IDOK:
+                ed = (CHOOSEDUNG*) GetWindowLongPtr(win,DWLP_USER);
+                EndDialog(win, ed->sel);
+                
+                break;
+            
+            case IDCANCEL:
+                EndDialog(win,-1);
+                
+                break;
+            
+            case IDC_BUTTON1:
+                ed = (CHOOSEDUNG*) GetWindowLongPtr(win, DWLP_USER);
+                dunged = ed->ed;
+                
+                if
+                (
+                    DialogBoxParam
+                    (
+                        hinstance,
+                        (LPSTR) IDD_DIALOG22,
+                        win,
+                        dpcdlgproc,
+                        ed->sel
+                    )
+                )
+                {
+                    p = dunged->ew.doc->ents;
+                    
+                    for(i = 0; i < 168; i++, p++)
+                    {
+                        if(*p)
+                        {
+                            de = (DUNGEDIT*) GetWindowLongPtr(*p, GWLP_USERDATA);
+                            Updatemap(de);
+                            InvalidateRect( GetDlgItem(de->dlg, ID_DungEditWindow),
+                                           0,
+                                           0);
+                        }
+                    }
+                    
+                    hc=GetDlgItem(win,IDC_CUSTOM1);
+                    
+                    goto upddisp;
+                }
+                
+                break;
+            }
         }
+        return FALSE;
     }
-    return FALSE;
-}
 
 // =============================================================================

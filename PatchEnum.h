@@ -16,8 +16,15 @@
         ID_Patch_AddModuleButton,
         ID_Patch_RemoveModuleButton,
         ID_Patch_BuildButton,
-
+        
         ID_Patch_AfterLast,
+    };
+
+// =============================================================================
+
+    enum
+    {
+        FLG_Patch_Disabled = 1
     };
 
 // =============================================================================

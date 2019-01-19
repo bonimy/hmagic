@@ -125,13 +125,13 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         ZTextMessage zmsg = { 0 };
         
-        AsciiTextMessage amsg = { 0 };
+        AString amsg = { 0 };
         
         // -----------------------------
         
-        AsciiTextMessage_InitSized(&amsg, ted_len + 1);
+        AString_InitSized(&amsg, ted_len + 1);
         
-        // \task This sequence has code smell, it would be nice if
+        // \task[med] This sequence has code smell, it would be nice if
         // we could directly initialize ascii text message from
         // a dialog control... maybe. That way we could get the
         // length correct ahead of time.
@@ -142,7 +142,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         Makezeldastring(doc, &amsg, &zmsg);
         
-        // \task Lack of a better criterion for now.
+        // \task[med] Lack of a better criterion for now.
         if(zmsg.m_text != NULL)
         {
             char * text_buf = NULL;
@@ -176,13 +176,13 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 
                 // -----------------------------
                 
-                // \task Eliminate raw hex constant.
+                // \task[high] Eliminate raw hex constant.
                 if( (j + m + de_base - de_bound) > 0xc8d9)
                 {
                     MessageBeep(0);
                     
                     ZTextMessage_Free(&zmsg);
-                    AsciiTextMessage_Free(&amsg);
+                    AString_Free(&amsg);
                     
                     return;
                 }
@@ -195,7 +195,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                        zmsg.m_text,
                        m);
                 
-                // \task Eliminate raw hex constant.
+                // \task[high] Eliminate raw hex constant.
                 num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
                 
                 for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
@@ -210,7 +210,12 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                 doc->text_bufz[m_i] = zmsg;
             }
             
-            Makeasciistring(doc, &zmsg, &amsg);
+            TextLogic_ZStringToAString
+            (
+                doc,
+                &zmsg,
+                &amsg
+            );
             
             asprintf(&text_buf,
                      "%03d: %s",
@@ -232,7 +237,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         {
             char * text_buf = NULL;
             
-            // \task What the hell was this intended to do? Update:
+            // \task[high] What the hell was this intended to do? Update:
             // I think this tries to select the place in the edit window
             // where the error occurred?
             int e_i = text_error - text_buf;
@@ -244,7 +249,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             return;
         }
         
-        AsciiTextMessage_Free(&amsg);
+        AString_Free(&amsg);
         
         doc->t_modf = 1;
     }
@@ -263,7 +268,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         
         size_t m_i = 0;
         
-        AsciiTextMessage asc_msg = { 0 };
+        AString asc_msg = { 0 };
         
         // -----------------------------
         
@@ -272,11 +277,14 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             size_t dummy_len = 0;
             int    write_len = 0;
             
-            AsciiTextMessage_Init(&asc_msg);
+            AString_Init(&asc_msg);
             
-            Makeasciistring(p_doc,
-                            &p_doc->text_bufz[m_i],
-                            &asc_msg);
+            TextLogic_ZStringToAString
+            (
+                p_doc,
+                &p_doc->text_bufz[m_i],
+                &asc_msg
+            );
             
             dummy_len = strlen(asc_msg.m_text);
             
@@ -293,7 +301,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
             free(text_buf);
         }
         
-        AsciiTextMessage_Free(&asc_msg);
+        AString_Free(&asc_msg);
     }
 
 // =============================================================================
@@ -315,14 +323,14 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
 
         text_offsets_ty const * const to = &offsets.text;
         
-        AsciiTextMessage amsg = { 0 };
+        AString amsg = { 0 };
         
         ZTextMessage zmsg = { 0 };
         
         // Index into dictionary entry table.
         size_t d_i = 0;
         
-        // \task Eliminate raw hex constant.
+        // \task[high] Eliminate raw hex constant.
         // Number of dictionary entries.
         size_t num_des =
         (
@@ -352,7 +360,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
                                       rom + de_offset,
                                       de_bound - de_base);
             
-            Makeasciistring(p_doc, &zmsg, &amsg);
+            TextLogic_ZStringToAString(p_doc, &zmsg, &amsg);
             
             asprintf(&text_buf, "%03d: %s", d_i, amsg.m_text);
             
@@ -367,7 +375,7 @@ TextDlg_SetText(TEXTEDIT * const p_ed,
         }
         
         ZTextMessage_Free(&zmsg);
-        AsciiTextMessage_Free(&amsg);
+        AString_Free(&amsg);
     }
 
 // =============================================================================
@@ -408,7 +416,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     unsigned char *rom;
     
-    AsciiTextMessage asc_msg = { 0 } ;
+    AString asc_msg = { 0 } ;
     
     text_offsets_ty const * const to = &offsets.text;
     
@@ -482,13 +490,23 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                                               rom + dict_entry_offset,
                                               (k - l) );
                     
-                    Makeasciistring(doc, &zmsg, &asc_msg);
+                    TextLogic_ZStringToAString
+                    (
+                        doc,
+                        &zmsg,
+                        &asc_msg
+                    );
                     
                     ZTextMessage_Free(&zmsg);
                 }
                 else
                 {
-                    Makeasciistring(doc, &doc->text_bufz[i], &asc_msg);
+                    TextLogic_ZStringToAString
+                    (
+                        doc,
+                        &doc->text_bufz[i],
+                        &asc_msg
+                    );
                 }
                 
                 SetDlgItemText(win, ID_TextEditWindow, asc_msg.m_text);
@@ -538,7 +556,7 @@ TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         break;
     }
     
-    AsciiTextMessage_Free(&asc_msg);
+    AString_Free(&asc_msg);
     
     return FALSE;
 }

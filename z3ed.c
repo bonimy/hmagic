@@ -7,15 +7,16 @@
 // Abbreviations: lmap = level map i.e. the dungeon maps you see when you hit X.
 // 
 
-// \task A note to merge the changes in the standalone project file
+// \task[high] A note to merge the changes in the standalone project file
 // for Epoch 2 into the repo.
 
 /**
     
-    \task Would like to have the text of markers on the overworld map not be clipped
-    by the background region (the grey area outside of which we paint)
+    \task[med] Would like to have the text of markers on the overworld map not
+    be clipped by the background region
+    (the grey area outside of which we paint)
 
-    \task Remaining things Puzzledude claims are borked:
+    \task[high] Remaining things Puzzledude claims are borked:
 
     -overworld items are bugged if you edit them and save, same for whirlpools
     -pretty much all options: empty all... (dungeons rooms, exits, entrances)
@@ -38,7 +39,7 @@
 
 
 /** 
-    \task Epoch3 change list
+    \task[high] Epoch3 change list
     
     - Fixed infamous monologue storage problem that could randomly corrupt the
     contents of the following bank and cause strange problems later in the game.
@@ -74,6 +75,8 @@
 #include "Callbacks.h"
 #include "Wrappers.h"
 
+#include "GdiObjects.h"
+
 #include "HMagicEnum.h"
 #include "HMagicLogic.h"
 #include "HMagicUtility.h"
@@ -95,11 +98,7 @@
 #include "AudioLogic.h"
 #include "SampleEnum.h"
 
-#include "TrackerLogic.h"
-
-// \task Probably will move this once the worldmap super dialog procedure gets
-// its own file.
-#include "WorldMapLogic.h"
+    #include "TrackerLogic.h"
 
     #include "TileMapLogic.h"
 
@@ -114,7 +113,7 @@ offsets_ty offsets = { 0 };
 // =============================================================================
 
 /// Currently we only support the US rom.
-// \task Eventually the FDOC should have a private copy of this structure
+// \task[med] Eventually the FDOC should have a private copy of this structure
 // so that each rom can load individuated offsets.
 void
 LoadOffsets(void)
@@ -219,46 +218,12 @@ const short bg3blkofs[4] = {221,222,220,0};
 
 RECT const empty_rect = { 0, 0, 0, 0 };
 
-HPEN green_pen,
-     null_pen,
-     white_pen,
-     blue_pen,
-     black_pen,
-     gray_pen = 0,
-     tint_pen = 0;
-
-HBRUSH black_brush,
-       white_brush,
-       green_brush,
-       yellow_brush,
-       purple_brush,
-       red_brush,
-       blue_brush,
-       gray_brush,
-       tint_br = 0;
-
-HGDIOBJ trk_font;
-
-HCURSOR normal_cursor,
-        forbid_cursor,
-        wait_cursor;
-
-HCURSOR sizecsor[5];
-
-HBITMAP arrows_imgs[4];
-
-HANDLE shade_brush[8];
-
 // The handle to the program
 HINSTANCE hinstance;
 
 HWND framewnd, clientwnd;
 
 RGBQUAD darkcolor={80,136,144,0};
-
-RGBQUAD const blackcolor={0,0,0,0};
-
-BITMAPINFOHEADER zbmih={sizeof(BITMAPINFOHEADER),32,32,1,8,BI_RGB,0,0,0,256,0};
 
 SDCREATE *firstdlg = 0, *lastdlg = 0;
 
@@ -271,7 +236,11 @@ DPCEDIT * dpce = 0;
 
 OVEREDIT * oved = 0;
 
-SSBLOCK **ssblt = 0;
+    /**
+        \task[med] Having this as a global is non-reentrant, causes memory leaks,
+        and in general smells bad.
+    */
+    SSBLOCK **ssblt = 0;
 
 char sprname[0x11c][16];
 
@@ -279,7 +248,7 @@ HM_TextResource area_names;
 
 HDC objdc;
 
-HBITMAP objbmp;
+HACCEL actab;
 
 // =============================================================================
 
@@ -289,7 +258,7 @@ status_proc(HWND   p_win,
             WPARAM p_wp,
             LPARAM p_lp)
 {
-    // \task Perhaps make this a macro for Window procedures?
+    // \task[med] Perhaps make this a macro for Window procedures?
     (void) p_win, p_msg, p_wp, p_lp;
     
     switch(p_msg)
@@ -656,7 +625,7 @@ CreateNotificationBox(HWND const p_parent)
 
 // =============================================================================
 
-// \task Dummied out except for staging1 for now.
+// \task[med] Dummied out except for staging1 for now.
 
 #if 0
 
@@ -1297,7 +1266,7 @@ BOOL CALLBACK port(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     switch(msg) 
     {
     case WM_INITDIALOG:
-        SetWindowLong( win, DWL_USER, lparam);
+        SetWindowLongPtr( win, DWLP_USER, lparam);
         
         srcdoc = firstdoc;
     
@@ -1511,7 +1480,15 @@ Updatesize(HWND win)
 // existed long before MFC, so this code probably predates it.
 // On the other hand, most of this code doesn't run unless the program
 // is executing on the win32s platform.
-int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param)
+extern LPARAM
+ShowDialog
+(
+    HINSTANCE const hinst,
+    LPSTR     const id,
+    HWND      const p_owner,
+    DLGPROC   const dlgproc,
+    LPARAM    const param
+)
 {
     HGLOBAL hgl;
     
@@ -1523,9 +1500,14 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     HWND win;
     
     unsigned short *p, *q;
-    int x, y, bw, bh, i, j, k, l;
+    int bw, bh, i, j, k, l;
+
+    LPARAM x = HM_NullLP();
+    LPARAM y = HM_NullLP();
     
     MSG msg;
+    
+    HWND owner = p_owner;
     
     TEXTMETRIC tm;
     RECT rect;
@@ -1535,9 +1517,15 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     const static char *cls_def[] = {"BUTTON","EDIT","STATIC","LISTBOX","SCROLLBAR","COMBOBOX"};
     
-    if(!wver)
+    // -----------------------------
+    
+    if( ! wver )
         return DialogBoxParam(hinst, id, owner, dlgproc, param);
     
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    // We end up here if we're running on Win32S
+    // (32-bit windows emulated on 16-bit Windows)
     rc = FindResource(hinst, id, RT_DIALOG);
     
     if(!rc)
@@ -1566,11 +1554,13 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     WideCharToMultiByte(CP_ACP, 0, p, -1, buffer, 512, 0, 0);
     
-    while(GetWindowLong(owner, GWL_STYLE) & WS_CHILD)
+    while( GetWindowLongPtr(owner, GWLP_STYLE) & WS_CHILD)
+    {
         owner = GetParent(owner);
+    }
     
     win = CreateWindowEx(k, (LPSTR) 32770, buffer, l & ~WS_VISIBLE, 0, 0, 100, 100, owner, 0, hinst, 0);
-    SetWindowLong(win,DWL_DLGPROC,(int)dlgproc);
+    SetWindowLongPtr(win, DWLP_DLGPROC, (LONG_PTR) dlgproc);
     p+=1+lstrlenW(p);
     
     if(l & DS_SETFONT)
@@ -1579,22 +1569,22 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         HGDIOBJ oldobj;
         
-        x = -*p * GetDeviceCaps(dc, LOGPIXELSY) / 72;
+        x = (LPARAM) ( -*p * GetDeviceCaps(dc, LOGPIXELSY) / 72 );
         
         if(j)
         {
             WideCharToMultiByte(CP_ACP,0,p+3,-1,buffer,512,0,0);
-            font=CreateFont(x,0,0,0,p[1],p[2],0,0,0,0,0,0,0,buffer);
+            font=CreateFont((int) x, 0,0,0,p[1],p[2],0,0,0,0,0,0,0,buffer);
             p+=4+lstrlenW(p+3);
         }
         else
         {
             WideCharToMultiByte(CP_ACP,0,p+1,-1,buffer,512,0,0);
-            font=CreateFont(x,0,0,0,0,0,0,0,0,0,0,0,0,buffer);
+            font=CreateFont(x, 0,0,0,0,0,0,0,0,0,0,0,0,buffer);
             p+=2+lstrlenW(p+1);
         }
         
-        SendMessage(win,WM_SETFONT,(int)font,1);
+        SendMessage(win,WM_SETFONT,(WPARAM)font,1);
         
         oldobj = SelectObject(dc, font);
         
@@ -1604,26 +1594,30 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         ReleaseDC(win, dc);
         
-        SetWindowLong(win, 12, tm.tmAveCharWidth + (tm.tmHeight << 16) + 1);
+        SetWindowLongPtr(win, 12, tm.tmAveCharWidth + (tm.tmHeight << 16) + 1);
     }
     else
     {
         font=0;
         bw=GetDialogBaseUnits();
-        SetWindowLong(win,12,bw);
+        SetWindowLongPtr(win,12,bw);
         bh=bw>>16;
         bw&=65535;
     }
-    rect.left=dt->x;
-    rect.top=dt->y;
-    rect.right=dt->cx;
-    rect.bottom=dt->cy;
-    MapDialogRect(win,&rect);
-    rect.right+=rect.left;
-    rect.bottom+=rect.top;
-    AdjustWindowRect(&rect,l,0);
-    rect.right-=rect.left;
-    rect.bottom-=rect.top;
+    rect.left   = dt->x;
+    rect.top    = dt->y;
+    rect.right  = dt->cx;
+    rect.bottom = dt->cy;
+    
+    MapDialogRect(win, &rect);
+    
+    rect.right  += rect.left;
+    rect.bottom += rect.top;
+    
+    AdjustWindowRect(&rect, l, 0);
+    
+    rect.right  -= rect.left;
+    rect.bottom -= rect.top;
     
     if(l & DS_CENTER)
     {
@@ -1631,11 +1625,15 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         rect.top  = ( GetSystemMetrics(SM_CYSCREEN) - rect.bottom ) >> 1;
     }
     
-    SetWindowPos(win,0,rect.left,rect.top,rect.right,rect.bottom,SWP_NOZORDER|SWP_NOACTIVATE);
+    SetWindowPos(win,
+                 0,
+                 rect.left,  rect.top,
+                 rect.right, rect.bottom,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
     
     q = p;
     
-    for(i=dt->cdit;i;i--)
+    for(i = dt->cdit; i; i--)
     {
         HWND child_win = NULL;
         
@@ -1666,7 +1664,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         {
             bw=p[1]-128;
             
-            x = (int) cls_def[bw];
+            x = (LPARAM) cls_def[bw];
             p += 2;
             
             if(bw==1)
@@ -1676,7 +1674,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         {
             WideCharToMultiByte(CP_ACP,0,p,-1,buffer,256,0,0);
             
-            x=(int)buffer,p+=1+lstrlenW(p);
+            x = (LPARAM) buffer,p+=1+lstrlenW(p);
             bw=6;
         }
         
@@ -1689,7 +1687,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         else
         {
             WideCharToMultiByte(CP_ACP,0,p,-1,buffer+256,256,0,0);
-            y=(int)buffer+256,p+=1+lstrlenW(p);
+            y = (LPARAM) buffer + 256, p += 1 + lstrlenW(p);
         }
         
         rect.left   = dit->x;
@@ -1701,13 +1699,13 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         bh=l&31;
         
         if(bw==2 && (bh==SS_ICON))
-            bh=y,y=(int)"";
+            bh = y, y = (LPARAM) "";
         else
             bh=0;
         
         child_win = CreateWindowEx(k,
-                                   (LPSTR)x,
-                                   (LPSTR)y,
+                                   (LPSTR) x,
+                                   (LPSTR) y,
                                    l,
                                    rect.left,
                                    rect.top,
@@ -1720,7 +1718,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         
         SendMessage(child_win,
                     WM_SETFONT,
-                    (int) font,
+                    (WPARAM) font,
                     1);
         
         if(bh)
@@ -1736,7 +1734,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     hc = GetNextDlgTabItem(win,0,0);
     
-    if( SendMessage(win, WM_INITDIALOG, (int) hc, param) )
+    if( SendMessage(win, WM_INITDIALOG, (WPARAM) hc, param) )
     {
         hc = GetNextDlgTabItem(win, 0, 0);
         
@@ -1745,7 +1743,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     
     ShowWindow(win, SW_SHOW);
     
-    x = EnableWindow(owner, 0);
+    x = (LPARAM) EnableWindow(owner, 0);
     
     while((!GetWindowWord(win,18)) && GetMessage(&msg,0,0,0))
     {
@@ -1756,7 +1754,7 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
         }
     }
     
-    y=GetWindowWord(win,22);
+    y = GetWindowWord(win,22);
     p=q;
     
     for(i=dt->cdit;i;i--)
@@ -1807,7 +1805,8 @@ int ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param
     }
     
     DestroyWindow(win);
-    EnableWindow(owner,!x);
+    EnableWindow(owner, !x);
+    
     return y;
 }
 
@@ -1828,7 +1827,7 @@ Editwin(FDOC       * const doc,
     
     MDICREATESTRUCT mdic;
     
-    EDITWIN * const a = (EDITWIN*) calloc(1, size);
+    CP2(EDITWIN) a = (EDITWIN*) calloc(1, size);
     
     // -----------------------------
     
@@ -1843,10 +1842,13 @@ Editwin(FDOC       * const doc,
     
     mdic.x = mdic.y = mdic.cx = mdic.cy = CW_USEDEFAULT;
     
-    mdic.style = WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
-               | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+    mdic.style = 
+    (
+        WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
+      | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
+    );
     
-    mdic.lParam = (long) a;
+    mdic.lParam = (LPARAM) a;
     
     hc = (HWND) SendMessage(clientwnd, WM_MDICREATE, 0, (LPARAM) &mdic);
     
@@ -2478,7 +2480,7 @@ nochange:
     rom[0xcbad] = (uint8_t) (j >> 16);
     stle16b(rom + 0xcba2, (j & 0xffff) );
     
-    for(i = 0; i < 19; i++)
+    for(i = 0; i < 19; i += 1)
     {
         blah = (int*) (rom + 0x26cc0 + i*3);
         
@@ -2486,14 +2488,14 @@ nochange:
         *blah |= cpuaddr(l[i + 641]);
     }
     
-    for(i = 0; i < 8; i++)
+    for(i = 0; i < 8; i += 1)
     {
         blah = (int*) (rom + l[640] + i*3);
         *blah &= 0xff000000;
         *blah |= cpuaddr(l[i+660]);
     }
     
-    for(i = 0; i < 7; i++)
+    for(i = 0; i < 7; i += 1)
     {
         if(!(rom[0x1386 + i] & 128))
             continue;
@@ -2504,10 +2506,12 @@ nochange:
         rom[0x138f + i] = (uint8_t) (j >> 16);
     }
     
-    for(i = 676; i < max; i++)
+    for(i = 676; i < max; i += 1)
     {
-        if( l[i] != doc->segs[i-676] )
+        if( l[i] != doc->segs[i - 676] )
+        {
             doc->p_modf = 1;
+        }
         
         doc->segs[i - 676] = l[i];
     }
@@ -2516,10 +2520,12 @@ nochange:
     {
         j = l[num];
         
-        for(i = 0; i < 320; i++)
+        for(i = 0; i < 320; i += 1)
         {
             if(l[i + 320] == j)
+            {
                 t[i] = door_ofs;
+            }
         }
     }
     
@@ -2870,23 +2876,32 @@ void CALLBACK testfunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
 
 // =============================================================================
 
-HACCEL actab;
-
 extern void
 ProcessMessage(MSG * msg)
 {
     RECT rc;
+    
     SDCREATE *sdc;
-    if(!TranslateMDISysAccel(clientwnd,msg)) {
-        if(!TranslateAccelerator(framewnd,actab,msg)) {
-            if(msg->message==WM_MOUSEMOVE) {
+    
+    if( ! TranslateMDISysAccel(clientwnd, msg) )
+    {
+        if( ! TranslateAccelerator(framewnd, actab, msg) )
+        {
+            if(msg->message == WM_MOUSEMOVE)
+            {
                 GetWindowRect(msg->hwnd,&rc);
                 mouse_x=LOWORD(msg->lParam)+rc.left;
                 mouse_y=HIWORD(msg->lParam)+rc.top;     
             }
-            for(sdc=firstdlg;sdc;sdc=sdc->next)
-                if(IsDialogMessage(sdc->win,msg)) break;
-            if(!sdc) {
+            
+            for(sdc = firstdlg; sdc; sdc = sdc->next)
+            {
+                if(IsDialogMessage(sdc->win,msg))
+                    break;
+            }
+            
+            if( ! sdc )
+            {
                 TranslateMessage(msg);
                 DispatchMessage(msg);
             }
@@ -3018,7 +3033,7 @@ Drawblock(OVEREDIT const * const ed,
     
     if((t & 24) == 24)
     {
-        // \task Used with only with Link's graphics dialog,
+        // \task[med] Used with only with Link's graphics dialog,
         // seemingly. Need a name(s) for these bits.
         
         b3 = ed->ew.doc->blks[225].buf;
@@ -3033,7 +3048,7 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 16)
     {
-        // \task 2bpp graphics? Not sure.
+        // \task[med] 2bpp graphics? Not sure.
         // Used with the dungeon map screen (not the maps themselves)
         // Need a name for this bit.
         
@@ -3056,7 +3071,7 @@ Drawblock(OVEREDIT const * const ed,
     }
     else if(t & 8)
     {
-        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // \task[med] Used with a lot of the tilemap screens, title screen in particular.
         // Need a name for this bit.
         
         if(d >= 0x100)
@@ -3641,22 +3656,6 @@ Paintdungeon(DUNGEDIT * const ed,
 
 // =============================================================================
 
-void
-Setpalette(HWND const win, HPALETTE const pal)
-{
-    HDC const hdc = GetDC(win);
-    
-    HPALETTE const oldpal = SelectPalette(hdc, pal, 0);
-    
-    RealizePalette(hdc);
-    
-    SelectPalette(hdc, oldpal, 1);
-    
-    ReleaseDC(win, hdc);
-    
-    return;
-}
-
 void Updateblk8sel(BLOCKSEL8 *ed, int num)
 {
     int i=num+(ed->scroll<<4);
@@ -3711,7 +3710,7 @@ void InitBlksel8(HWND hc,BLOCKSEL8*bs,HPALETTE hpal,HDC hdc)
     SelectPalette(objdc,oldpal,1);
     SelectPalette(bs->bufdc,oldpal,1);
     
-    SetWindowLong(hc, GWLP_USERDATA, (LONG_PTR) bs);
+    SetWindowLongPtr(hc, GWLP_USERDATA, (LONG_PTR) bs);
     
     Updatesize(hc);
 }
@@ -3736,23 +3735,46 @@ void Changeblk8sel(HWND win,BLOCKSEL8*ed)
 BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     HWND hc;
-    int i,j,k;
-    switch(msg) {
+    
+    int i, j, k;
+    
+    switch(msg)
+    {
+    
     case WM_INITDIALOG:
-        hc=GetDlgItem(win,IDC_LIST1);
-        j=(lparam&512)?0x11c:256;
-        for(i=0;i<j;i++) {
-            SendMessage(hc,LB_SETITEMDATA,k=SendMessage(hc,LB_ADDSTRING,0,(long)sprname[i]),i);
-            if(i==(lparam&511)) SendMessage(hc,LB_SETCURSEL,k,0);
+        
+        hc = GetDlgItem(win, IDC_LIST1);
+        
+        j = (lparam & 512)
+          ? 0x11c
+          : 256;
+        
+        for(i = 0 ; i < j; i++)
+        {
+            k = HM_ListBox_AddString(hc, sprname[i]);
+            
+            HM_ListBox_SetItemData(hc, k, i);
+            
+            if( i == (lparam & 511) )
+            {
+                HM_ListBox_SelectItem(hc, k);
+            }
         }
+        
         SendMessage(hc,LB_SETTOPINDEX,SendMessage(hc,LB_GETCURSEL,0,0),0);
+        
         break;
+    
     case WM_COMMAND:
-        switch(wparam) {
+        
+        switch(wparam)
+        {
+        
         case IDOK:
             hc=GetDlgItem(win,IDC_LIST1);
             EndDialog(win,SendMessage(hc,LB_GETITEMDATA,SendMessage(hc,LB_GETCURSEL,0,0),0));
             break;
+        
         case IDCANCEL:
             EndDialog(win,-1);
             break;
@@ -3761,17 +3783,21 @@ BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     return FALSE;
 }
 
-BOOL CALLBACK getnumber(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+getnumber(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     int i,j;
-    if(msg==WM_INITDIALOG) {
-        SetWindowLong(win,DWL_USER,lparam);
+    
+    if(msg == WM_INITDIALOG)
+    {
+        SetWindowLongPtr(win, DWLP_USER,lparam);
         SetWindowText(win,((LPSTR*)lparam)[1]);
         SetDlgItemText(win,IDC_STATIC2,((LPSTR*)lparam)[2]);
         SetFocus(GetDlgItem(win,IDC_EDIT1));
-    } else if(msg==WM_COMMAND) if(wparam==IDOK) {
+    }
+    else if(msg==WM_COMMAND) if(wparam==IDOK) {
         i=GetDlgItemInt(win,IDC_EDIT1,0,0);
-        j=*(int*)GetWindowLong(win,DWL_USER);
+        j=*(int*)GetWindowLongPtr(win, DWLP_USER);
         if(i<0 || i>j) {
             wsprintf(buffer,"Please enter a number between 0 and %d",j);
             MessageBox(framewnd,buffer,"Bad error happened",MB_OK);
@@ -3786,7 +3812,14 @@ int __stdcall askinteger(int max,char*caption,char*text)
 {
     (void) caption, text;
     
-    return ShowDialog(hinstance,(LPSTR)IDD_DIALOG4,framewnd,getnumber,(int)&max);
+    return ShowDialog
+    (
+        hinstance,
+        (LPSTR) IDD_DIALOG4,
+        framewnd,
+        getnumber,
+        (LPARAM) &max
+    );
 }
 
 // =============================================================================
@@ -3901,9 +3934,13 @@ void
 Updpal(void*ed)
 {
     if(ed == dispwnd && ( (DUNGEDIT*) ed)->hpal)
-        Setpalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
+    {
+        SetPalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
+    }
     else
+    {
         SendMessage(( (DUNGEDIT*) ed)->dlg, 4002, 0, 0);
+    }
 }
 
 void Setdispwin(DUNGEDIT *ed)
@@ -3911,7 +3948,8 @@ void Setdispwin(DUNGEDIT *ed)
     if(ed != dispwnd)
     {
         dispwnd = ed;
-        Setpalette(framewnd, ed->hpal);
+        
+        SetPalette(framewnd, ed->hpal);
     }
 }
 
@@ -4081,15 +4119,19 @@ okovl:
 
 // =============================================================================
 
-void Unloadovl(FDOC *doc)
-{
-    // if the overlays are loaded, free the overlay buffer.
-    if(doc->o_loaded == 1)
-        free(doc->ovlbuf);
-    
-    // the overlays are regarded as not being loaded. 
-    doc->o_loaded = 0;
-}
+    extern void
+    Unloadovl
+    (
+        CP2(FDOC) doc
+    )
+    {
+        // if the overlays are loaded, free the overlay buffer.
+        if(doc->o_loaded == 1)
+            free(doc->ovlbuf);
+        
+        // the overlays are regarded as not being loaded. 
+        doc->o_loaded = 0;
+    }
 
 // =============================================================================
 
@@ -4158,7 +4200,6 @@ int Editblocks(OVEREDIT *ed, int num, HWND win)
     
     // -----------------------------
     
-    // \task Pointer problem on 64-bit (and just generally)
     x[0] = (LPARAM) ed;
     
     if(num == 17)
@@ -4191,97 +4232,45 @@ TEXTMETRIC textmetric;
 
 // =============================================================================
 
-// \note More re-entrant version of another function in that it
-// doesn't write using a global text buffer.
-void
-PaintSprName(HDC p_dc,
-             int x,
-             int y,
-             RECT const * const p_clip,
-             char const * const p_name)
-{
-    size_t len = strlen(p_name);
-    
-    // -----------------------------
-    
-    // Probably not strictly necessary, but the program doesn't make a point
-    // to set it anywhere more general.
-    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-    
-    SetTextColor(p_dc, 0);
-    
-    ExtTextOut(p_dc, x + 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x - 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x + 1, y - 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    ExtTextOut(p_dc, x - 1, y + 1, ETO_CLIPPED, p_clip, p_name, len, NULL);
-    
-#if 0
-    SetTextColor(p_dc, 0xffbf3f);
-#else
-    SetTextColor(p_dc, 0xfefefe);
-#endif
-    
-    ExtTextOut(p_dc,x, y, ETO_CLIPPED, p_clip, p_name, len, NULL);
-}
-
-// =============================================================================
-
-void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         size_t const p_window_size)
-{
-    size_t const len = strlen(buffer);
-    
-    size_t final_len = (signed) len;
-    
-    // -----------------------------
-    
-    // \task Small nitpick, but "secrets" drawn at the far right
-    // edge of the screen can leave a half circle artifact.
-    // also the very bottom of the screen. This is owing to their
-    // being 8 pixel aligned. Certainly fixable but will have to look
-    // a bit in depth.
-    
-    // Probably not strictly necessary, but the program doesn't make a point
-    // to set it anywhere more general.
-    SetTextAlign(p_dc, TA_LEFT | TA_TOP);
-    
-    if( (len * textmetric.tmAveCharWidth) + p_x > (p_window_size - p_hscroll) )
-        final_len = (p_window_size - p_hscroll - p_x) / textmetric.tmAveCharWidth;
-    
+    // \note More re-entrant version of another function in that it
+    // doesn't write using a global text buffer.
+    void
+    PaintSprName
+    (
+        HDC          const p_dc,
+        int          const p_x,
+        int          const p_y,
+        RECT const * const p_clip,
+        char const * const p_name
+    )
     {
-        char text_buf[0x100];
+        size_t len = strlen(p_name);
         
-        sprintf(text_buf, "x = %d, y = %d, n = %d, o = %d, w = %d",
-                p_x, p_y, p_hscroll, p_vscroll, p_window_size);
+        unsigned const options = ETO_CLIPPED;
         
-        SetDlgItemText(debug_window, IDC_STATIC2, text_buf);
+        // -----------------------------
+        
+        // Probably not strictly necessary, but the program doesn't make a point
+        // to set it anywhere more general.
+        SetTextAlign(p_dc, TA_LEFT | TA_TOP);
+        
+        SetTextColor(p_dc, 0);
+        
+        // Draw a black outline for the text
+        
+        ExtTextOut(p_dc, p_x + 1, p_y + 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x - 1, p_y - 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x + 1, p_y - 1, options, p_clip, p_name, len, NULL);
+        ExtTextOut(p_dc, p_x - 1, p_y + 1, options, p_clip, p_name, len, NULL);
+        
+    #if 0
+        SetTextColor(p_dc, 0xffbf3f);
+    #else
+        SetTextColor(p_dc, 0xfefefe);
+    #endif
+        
+        ExtTextOut(p_dc, p_x, p_y, ETO_CLIPPED, p_clip, p_name, len, NULL);
     }
-    
-    if(final_len > len)
-    {
-        final_len = len;
-    }
-    
-    SetTextColor(p_dc, 0);
-    
-    TextOut(p_dc, p_x + 1, p_y + 1, buffer, final_len);
-    TextOut(p_dc, p_x - 1, p_y - 1, buffer, final_len);
-    TextOut(p_dc, p_x + 1, p_y - 1, buffer, final_len);
-    TextOut(p_dc, p_x - 1, p_y + 1, buffer, final_len);
-    
-#if 0
-    SetTextColor(p_dc, 0xffbf3f);
-#else
-    SetTextColor(p_dc, 0xfefefe);
-#endif
-    
-    TextOut(p_dc, p_x, p_y, buffer, final_len);
-}
 
 // =============================================================================
 
@@ -4475,10 +4464,6 @@ SD_ENTRY persp_sd[]={
 
 SUPERDLG sampdlg={
     "",sampdlgproc,WS_CHILD|WS_VISIBLE,300,100,23,samp_sd
-};
-
-SUPERDLG overdlg={
-    "",overdlgproc,WS_CHILD|WS_VISIBLE,560,140, SD_OverNumControls, over_sd
 };
 
 SUPERDLG trackdlg = {
@@ -4784,13 +4769,246 @@ LoadSpriteNamesFile(void)
 
 // =============================================================================
 
-int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
+    void
+    HMagic_MessageLoop(void)
+    {
+        MSG msg;
+        
+        while( GetMessage(&msg, 0, 0, 0) )
+        {
+            if(debug_box && (msg.hwnd == debug_box) )
+            {
+                if(msg.message == WM_LBUTTONDOWN && ! always)
+                {
+                    HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
+                    
+                    char class_name[0x200];
+                    
+                    GetClassName(below, class_name, 0x200);
+                    
+                    msg.hwnd = below;
+                    
+                    DispatchMessage(&msg);
+                    
+                    continue;
+                }
+            }
+            
+            if(msg.message == WM_MOUSEWHEEL)
+            {
+                POINT pt;
+                GetCursorPos(&pt);
+                
+                msg.hwnd = WindowFromPoint(pt);
+                
+                DispatchMessage(&msg);
+                
+                continue;
+            }
+            
+            ProcessMessage(&msg);
+        }
+    }
+
+// =============================================================================
+
+void
+HMagic_TearDown(void)
+{
+    uint8_t * b;
+    uint8_t * b2;
+
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    
+    HANDLE h = INVALID_HANDLE_VALUE;
+    
+    // -----------------------------
+    
+    if(cfg_modf)
+    {
+        DWORD write_bytes = 0;
+        
+        // Descriptor for the configuration section.
+        uint8_t desc[5];
+        
+        SetCurrentDirectory(currdir);
+        h=CreateFile("HMAGIC.CFG",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
+        
+        if(cfg_flag & CFG_SPRNAMES_LOADED)
+        {
+            j=0;
+            
+            for(i = 0; i < 0x11c; i++)
+                j += strlen(sprname[i]) + 1;
+            
+            b2 = b = (unsigned char*) malloc(j + 5);
+            *b2=0;
+            
+            stle32b(b2 + 1, j);
+            
+            b2 += 5;
+            
+            for(i=0;i<0x11c;i++)
+            {
+                k=strlen(sprname[i]);
+                (*b2) = (unsigned char) k;
+                b2++;
+                memcpy(b2,sprname[i],k);
+                b2+=k;
+            }
+            
+            // \note Writes a sprite names file if you hold shift while
+            // saving. Okay then...
+            if(GetKeyState(VK_SHIFT) & 128)
+            {
+                HANDLE const h2 = CreateFile("SPRNAME.DAT",
+                                             GENERIC_WRITE,
+                                             0,
+                                             0,
+                                             CREATE_ALWAYS,
+                                             0,
+                                             0);
+                
+                WriteFile(h2, b, j + 5, &write_bytes, 0);
+                
+                CloseHandle(h2);
+            }
+            
+            WriteFile(h, b, j + 5, &write_bytes, 0);
+            free(b);
+        }
+        
+        if(cfg_flag & CFG_MRU_LOADED)
+        {
+            j = 0;
+            
+            // Calculate total length required for an MRU section.
+            for(i = 0; i < 4; i++)
+            {
+                if( !mrulist[i] )
+                    break;
+                
+                j += strlen(mrulist[i]) + 1;
+            }
+            
+            b2 = b = (unsigned char*) malloc(j + 6);
+            
+            b2[0] = 1;
+            
+            stle32b(b2 + 1, j + 1);
+            
+            // Write how many MRU entries follow. Note that this could be
+            // zero, in which case the overall written out section is only
+            // 6 bytes long.
+            b2[5] = (unsigned char) i;
+            
+            b2 += 6;
+            
+            for(i = 0; i < 4; i++)
+            {
+                if(!mrulist[i])
+                    break;
+                
+                k = strlen(mrulist[i]);
+                
+                (*b2) = (unsigned char) k;
+                
+                b2++;
+                
+                memcpy(b2, mrulist[i], k);
+                
+                b2 += k;
+            }
+            
+            WriteFile(h, b, j + 6, &write_bytes, 0);
+            
+            free(b);
+        }
+        
+        if(cfg_flag & CFG_SNDVOL_LOADED)
+        {
+            uint8_t section[2];
+            
+            // -----------------------------
+            
+            desc[0] = 2;
+            
+            stle32b(desc + 1, 2);
+            
+            stle16b(section, soundvol);
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            WriteFile(h, section, 2, &write_bytes, 0);
+        }
+        
+        if(cfg_flag & CFG_MIDI_LOADED)
+        {
+            int i = 0;
+            
+            uint8_t entry[2];
+            
+            // -----------------------------
+            
+            desc[0] = 3;
+            
+            stle32b(desc + 1, 100);
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            
+            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+            {
+                stle16b(entry, midi_inst[i]);
+                
+                WriteFile(h, entry, 2, &write_bytes, 0);
+            }
+            
+            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
+            {
+                stle16b(entry, midi_trans[i]);
+                
+                WriteFile(h, entry, 2, &write_bytes, 0);
+            }
+        }
+        
+        if(cfg_flag & CFG_ASM_LOADED)
+        {
+            desc[0] = 4;
+            
+            stle32b(desc + 1, strlen(asmpath) );
+            
+            WriteFile(h, desc, 5, &write_bytes, 0);
+            WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);
+        }
+        
+        CloseHandle(h);
+    }
+    
+    Exitsound();
+    
+    HM_TearDownGDI();
+    
+    FreeMRU();
+    
+    HM_TextResource_Free(&entrance_names);
+    HM_TextResource_Free(&area_names);
+}
+
+// =============================================================================
+
+int WINAPI
+WinMain
+(
+    HINSTANCE p_inst,
+    HINSTANCE pinst,
+    LPSTR     cmdline,
+    int       cmdshow
+)
 {
     HMENU hmenu;
     
-    HANDLE h,h2;
-    
-    MSG msg;
+    HANDLE h;
     
     // device context handle
     HDC hdc;
@@ -4800,122 +5018,80 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
         k,
         l;
     
-    unsigned char *b, *b2;
+    (void) pinst, cmdline;
     
     // -----------------------------
     
-    (void) pinst, cmdline;
-    
     i = GetVersion();
-    
-    LoadOffsets();
     
     // Appears to be a check to see if we're running Win32s
     // (32-bit runtime for Windows 3.1)
     // There's probably someone in a remote bunker somewhere that is... idk.
     wver = ( (i < 0) && ( (i & 255) == 3) );
     
-    // both are globals
-    black_brush = (HBRUSH) GetStockObject(BLACK_BRUSH);
-    white_brush = (HBRUSH) GetStockObject(WHITE_BRUSH);
+    // set the global instance variable to this program.
+    hinstance = p_inst;
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
     
     InitCommonControls();
     
-    // set the global instance variable to this program.
-    hinstance=hinst;
+    HM_InitGDI(p_inst);
     
-    HM_RegisterClasses(hinst);
+    HM_RegisterClasses(p_inst);
+    
+    // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+    
+    LoadOffsets();
     
     //  postmsgfunc=&PostMessage;
     //  wsprintf(buffer,"%08X",hinstance);
     //  MessageBox(framewnd,buffer,"blah",MB_OK);
     
-    hmenu = LoadMenu(hinst,MAKEINTRESOURCE(IDR_MENU1));
+    hmenu = LoadMenu(p_inst, MAKEINTRESOURCE(IDR_MENU1));
     
     // load the one menu we have :)
     
     // file is the first menu.
     filemenu = GetSubMenu(hmenu,0);
     
-    framewnd=CreateWindowEx(WS_EX_LEFT,
-                            "ZEFRAME",
-                            "Hyrule Magic",
-                            WS_OVERLAPPEDWINDOW|WS_CLIPCHILDREN,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            CW_USEDEFAULT,
-                            0,
-                            hmenu,
-                            hinst,
-                            0);
+    framewnd = CreateWindowEx
+    (
+        WS_EX_LEFT,
+        "ZEFRAME",
+        "Hyrule Magic",
+        (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN),
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        0,
+        hmenu,
+        p_inst,
+        0
+    );
     
     ShowWindow(framewnd, cmdshow);
     
-    actab=LoadAccelerators(hinstance,MAKEINTRESOURCE(IDR_ACCELERATOR1));
+    actab = LoadAccelerators(hinstance,
+                             MAKEINTRESOURCE(IDR_ACCELERATOR1) );
     
-    green_brush = CreateSolidBrush(0xff00);
-    purple_brush = CreateSolidBrush(0xff00ff);
-    yellow_brush = CreateSolidBrush(0xffff);
-    red_brush = CreateSolidBrush(0xff);
-    blue_brush = CreateSolidBrush(0xff0000);
-    gray_brush = CreateSolidBrush(0x608060);
+    hdc = GetDC(framewnd);
     
-    green_pen = CreatePen(PS_SOLID,0,0xff00);
+    if( GetDeviceCaps(hdc, RASTERCAPS) & RC_PALETTE )
+    {
+        palmode = 1;
+    }
     
-    null_pen  = (HPEN) GetStockObject(NULL_PEN);
-    white_pen = (HPEN) GetStockObject(WHITE_PEN);
+    objdc = CreateCompatibleDC(hdc);
+    objbmp = CreateCompatibleBitmap(hdc,512,512);
     
-    blue_pen  = (HPEN) CreatePen(PS_SOLID, 0, 0xff0000);
+    SelectObject(objdc, objbmp);
+    SelectObject(objdc, trk_font);
     
-    black_pen = (HPEN) GetStockObject(BLACK_PEN);
+    GetTextMetrics(objdc, &textmetric);
     
-    for(i=0;i<8;i++)
-        shade_brush[i]=CreateSolidBrush(i * 0x1f1f1f);
-    
-    forbid_cursor=LoadCursor(0,IDC_NO);
-    
-    arrows_imgs[0]=LoadBitmap(0,(LPSTR)OBM_LFARROW);
-    arrows_imgs[1]=LoadBitmap(0,(LPSTR)OBM_RGARROW);
-    arrows_imgs[2]=LoadBitmap(0,(LPSTR)OBM_UPARROW);
-    arrows_imgs[3]=LoadBitmap(0,(LPSTR)OBM_DNARROW);
-    
-    sizecsor[0] = LoadCursor(0,IDC_SIZENESW);
-    sizecsor[1] = LoadCursor(0,IDC_SIZENS);
-    sizecsor[2] = LoadCursor(0,IDC_SIZENWSE);
-    sizecsor[3] = LoadCursor(0,IDC_SIZEWE);
-    sizecsor[4] = normal_cursor;
-    
-    wait_cursor = LoadCursor(0, IDC_WAIT);
-    
-#if 0
-    trk_font = GetStockObject(ANSI_FIXED_FONT);
-#else
-    trk_font = CreateFont(16, 0,
-                          0, 0,
-                          0,
-                          FALSE, FALSE, FALSE,
-                          DEFAULT_CHARSET,
-                          OUT_OUTLINE_PRECIS,
-                          CLIP_DEFAULT_PRECIS,
-                          DEFAULT_QUALITY,
-#if 0
-                          | ANTIALIASED_QUALITY,
-#endif
-                          FIXED_PITCH, "Consolas");
-#endif
-
-    hdc=GetDC(framewnd);
-    
-    if(GetDeviceCaps(hdc,RASTERCAPS)&RC_PALETTE)
-        palmode=1;
-    
-    objdc=CreateCompatibleDC(hdc);
-    objbmp=CreateCompatibleBitmap(hdc,512,512);
-    SelectObject(objdc,objbmp);
-    SelectObject(objdc,trk_font);
-    GetTextMetrics(objdc,&textmetric);
-    ReleaseDC(framewnd,hdc);
+    ReleaseDC(framewnd, hdc);
     
     for(i = 0; i < 256; i++)
     {
@@ -4934,8 +5110,10 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
                    0,
                    0);
     
-    for(j=0;j<4;j++)
-        mrulist[j]=0;
+    for(j = 0; j < 4; j += 1)
+    {
+        mrulist[j] = 0;
+    }
     
     if(h != INVALID_HANDLE_VALUE)
     {
@@ -5189,220 +5367,9 @@ int WINAPI WinMain(HINSTANCE hinst,HINSTANCE pinst,LPSTR cmdline,int cmdshow)
     debug_window = CreateNotificationWindow(framewnd);
     debug_box    = CreateNotificationBox(framewnd);
     
-    while(GetMessage(&msg,0,0,0))
-    {
-        if(debug_box && (msg.hwnd == debug_box) )
-        {
-            if(msg.message == WM_LBUTTONDOWN && ! always)
-            {
-                HWND const below = GetWindow(msg.hwnd, GW_HWNDNEXT);
-                
-                char class_name[0x200];
-                
-                GetClassName(below, class_name, 0x200);
-                
-                msg.hwnd = below;
-                
-                DispatchMessage(&msg);
-                
-                continue;
-            }
-        }
-        
-        if(msg.message == WM_MOUSEWHEEL)
-        {
-            POINT pt;
-            GetCursorPos(&pt);
-            
-            msg.hwnd = WindowFromPoint(pt);
-            
-            DispatchMessage(&msg);
-            
-            continue;
-        }
-        
-        ProcessMessage(&msg);
-    }
+    HMagic_MessageLoop();
     
-    if(cfg_modf)
-    {
-        DWORD write_bytes = 0;
-        
-        // Descriptor for the configuration section.
-        uint8_t desc[5];
-        
-        SetCurrentDirectory(currdir);
-        h=CreateFile("HMAGIC.CFG",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
-        
-        if(cfg_flag & CFG_SPRNAMES_LOADED)
-        {
-            j=0;
-            
-            for(i = 0; i < 0x11c; i++)
-                j += strlen(sprname[i]) + 1;
-            
-            b2 = b = (unsigned char*) malloc(j + 5);
-            *b2=0;
-            
-            stle32b(b2 + 1, j);
-            
-            b2 += 5;
-            
-            for(i=0;i<0x11c;i++)
-            {
-                k=strlen(sprname[i]);
-                (*b2) = (unsigned char) k;
-                b2++;
-                memcpy(b2,sprname[i],k);
-                b2+=k;
-            }
-            
-            // \note Writes a sprite names file if you hold shift while
-            // saving. Okay then...
-            if(GetKeyState(VK_SHIFT) & 128)
-            {
-                h2 = CreateFile("SPRNAME.DAT",GENERIC_WRITE,0,0,CREATE_ALWAYS,0,0);
-                
-                WriteFile(h2, b, j + 5, &write_bytes, 0);
-                
-                CloseHandle(h2);
-            }
-            
-            WriteFile(h, b, j + 5, &write_bytes, 0);
-            free(b);
-        }
-        
-        if(cfg_flag & CFG_MRU_LOADED)
-        {
-            j = 0;
-            
-            // Calculate total length required for an MRU section.
-            for(i = 0; i < 4; i++)
-            {
-                if( !mrulist[i] )
-                    break;
-                
-                j += strlen(mrulist[i]) + 1;
-            }
-            
-            b2 = b = (unsigned char*) malloc(j + 6);
-            
-            b2[0] = 1;
-            
-            stle32b(b2 + 1, j + 1);
-            
-            // Write how many MRU entries follow. Note that this could be
-            // zero, in which case the overall written out section is only
-            // 6 bytes long.
-            b2[5] = (unsigned char) i;
-            
-            b2 += 6;
-            
-            for(i = 0; i < 4; i++)
-            {
-                if(!mrulist[i])
-                    break;
-                
-                k = strlen(mrulist[i]);
-                
-                (*b2) = (unsigned char) k;
-                
-                b2++;
-                
-                memcpy(b2, mrulist[i], k);
-                
-                b2 += k;
-            }
-            
-            WriteFile(h, b, j + 6, &write_bytes, 0);
-            
-            free(b);
-        }
-        
-        if(cfg_flag & CFG_SNDVOL_LOADED)
-        {
-            uint8_t section[2];
-            
-            // -----------------------------
-            
-            desc[0] = 2;
-            
-            stle32b(desc + 1, 2);
-            
-            stle16b(section, soundvol);
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            WriteFile(h, section, 2, &write_bytes, 0);
-        }
-        
-        if(cfg_flag & CFG_MIDI_LOADED)
-        {
-            int i = 0;
-            
-            uint8_t entry[2];
-            
-            // -----------------------------
-            
-            desc[0] = 3;
-            
-            stle32b(desc + 1, 100);
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            
-            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
-            {
-                stle16b(entry, midi_inst[i]);
-                
-                WriteFile(h, entry, 2, &write_bytes, 0);
-            }
-            
-            for(i = 0; i < MIDI_ARR_WORDS; i += 1)
-            {
-                stle16b(entry, midi_trans[i]);
-                
-                WriteFile(h, entry, 2, &write_bytes, 0);
-            }
-        }
-        
-        if(cfg_flag & CFG_ASM_LOADED)
-        {
-            desc[0] = 4;
-            
-            stle32b(desc + 1, strlen(asmpath) );
-            
-            WriteFile(h, desc, 5, &write_bytes, 0);
-            WriteFile(h, asmpath, strlen(asmpath), &write_bytes, 0);
-        }
-        
-        CloseHandle(h);
-    }
-    
-    Exitsound();
-    
-    DeleteObject(arrows_imgs[0]);
-    DeleteObject(arrows_imgs[1]);
-    DeleteObject(arrows_imgs[2]);
-    DeleteObject(arrows_imgs[3]);
-    
-    DeleteObject(objdc);
-    DeleteObject(objbmp);
-    
-    DeleteObject(green_brush);
-    DeleteObject(purple_brush);
-    DeleteObject(yellow_brush);
-    DeleteObject(red_brush);
-    DeleteObject(blue_brush);
-    DeleteObject(gray_brush);
-    DeleteObject(green_pen);
-    DeleteObject(blue_pen);
-    
-    for(i=0;i<8;i++)
-        DeleteObject(shade_brush[i]);
-    
-    FreeMRU();
-    
-    HM_TextResource_Free(&entrance_names);
-    HM_TextResource_Free(&area_names);
+    HMagic_TearDown();
     
     return 0;
 }

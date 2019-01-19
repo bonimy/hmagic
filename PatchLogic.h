@@ -10,10 +10,34 @@
 // =============================================================================
 
     extern int
-    Buildpatches(FDOC * const doc);
+    Patch_Build
+    (
+        FDOC * const doc
+    );
 
     extern void
-    Removepatches(FDOC * const doc);
+    Removepatches
+    (
+        FDOC * const doc
+    );
+
+    extern int
+    Doc_FreePatchInputs
+    (
+        CP2(FDOC) doc
+    );
+
+    extern BOOL
+    PatchLogic_SerializePatches
+    (
+        CP2C(FDOC) p_doc
+    );
+
+    extern BOOL
+    PatchLogic_DeserializePatches
+    (
+        CP2(FDOC) p_doc
+    );
 
 // =============================================================================
 

@@ -17,7 +17,7 @@ BOOL CALLBACK lmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     int i,j,k,l,m;
     switch(msg) {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(LMAPEDIT*)lparam;
         rom=ed->ew.doc->rom;
         ed->hpal=0;
@@ -33,8 +33,8 @@ BOOL CALLBACK lmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         if(i&512) CheckDlgButton(win,3009,BST_CHECKED);
         ed->bossroom=((short*)(rom + 0x56807))[m];
         ed->bossofs=((short*)(rom + 0x56e5d))[m];
-        SendDlgItemMessage(win,3006,BM_SETIMAGE,IMAGE_BITMAP,(long)arrows_imgs[2]);
-        SendDlgItemMessage(win,3007,BM_SETIMAGE,IMAGE_BITMAP,(long)arrows_imgs[3]);
+        SendDlgItemMessage(win,3006,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[2]);
+        SendDlgItemMessage(win,3007,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[3]);
         CheckDlgButton(win,3011,BST_CHECKED);
         ed->tool=0;
         i=25*(ed->floors+ed->basements);
@@ -77,10 +77,12 @@ BOOL CALLBACK lmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->sel=0;
         if(!ed->floors) ed->curfloor=-1;
         hc=GetDlgItem(win,3010);
-        SetWindowLong(hc,GWL_USERDATA,(int)ed);
+        SetWindowLongPtr(hc,GWLP_USERDATA, (LONG_PTR) ed);
         ed->blkscroll=0;
         hc=GetDlgItem(win,3004);
-        SetWindowLong(hc,GWL_USERDATA,(int)ed);
+        
+        SetWindowLongPtr(hc,GWLP_USERDATA, (LONG_PTR) ed);
+        
         Updatesize(hc);
         Addgraphwin((DUNGEDIT*)ed,2);
 paintfloor:
@@ -90,7 +92,7 @@ updscrn:
         InvalidateRect(hc,0,0);
         break;
     case WM_COMMAND:
-        ed=(LMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         if(!ed) break;
         rom=ed->ew.doc->rom;
         if(ed->init) break;
@@ -173,7 +175,7 @@ updscrn:
         break;
     case WM_DESTROY:
         
-        ed=(LMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(LMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         
         Delgraphwin((DUNGEDIT*)ed);
         

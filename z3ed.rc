@@ -202,6 +202,15 @@ END
 IDR_SPRNAMES            RCDATA                  "sprname.dat"
 IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
 IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON2               ICON                    "icon2.ico"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -221,7 +230,7 @@ LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO
 BEGIN
-    IDD_DIALOG1, DIALOG
+    IDD_ABOUT_DLG, DIALOG
     BEGIN
     END
 
@@ -297,7 +306,7 @@ BEGIN
     BEGIN
     END
 
-    IDD_DIALOG23, DIALOG
+    IDD_FSNASM_RESULTS_DLG, DIALOG
     BEGIN
     END
 END
@@ -309,7 +318,7 @@ END
 // Dialog
 //
 
-IDD_DIALOG1 DIALOG 0, 0, 186, 111
+IDD_ABOUT_DLG DIALOG 0, 0, 186, 111
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
 FONT 8, "MS Sans Serif"
@@ -729,7 +738,7 @@ BEGIN
     EDITTEXT        IDC_EDIT8,219,182,19,12,ES_AUTOHSCROLL
 END
 
-IDD_DIALOG23 DIALOG 0, 0, 186, 138
+IDD_FSNASM_RESULTS_DLG DIALOG 0, 0, 186, 138
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Errors"
 FONT 8, "MS Sans Serif"
@@ -738,6 +747,7 @@ BEGIN
     LTEXT           "The following bad errors happened during execution of FSNASM:",IDC_STATIC,7,7,172,18
     EDITTEXT        IDC_EDIT1,8,28,172,87,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
 END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -859,6 +869,7 @@ BEGIN
 END
 
 #endif    // APSTUDIO_INVOKED
+
 
 /////////////////////////////////////////////////////////////////////////////
 //

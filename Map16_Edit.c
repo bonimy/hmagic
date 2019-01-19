@@ -18,7 +18,7 @@ blkedit16proc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     int i;
     switch(msg) {
     case WM_LBUTTONDOWN:
-        ed=(BLOCKEDIT16*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT16*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=((lparam&65535)<<1)/ed->w+((((lparam>>16)<<2)/ed->h)&2);
         ed->blks[i]=ed->bs.sel|ed->bs.flags;
         oldpal=SelectPalette(objdc,ed->bs.ed->hpal,1);
@@ -29,12 +29,12 @@ blkedit16proc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         InvalidateRect(win,0,0);
         break;
     case WM_RBUTTONDOWN:
-        ed=(BLOCKEDIT16*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT16*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=((lparam&65535)<<1)/ed->w+((((lparam>>16)<<2)/ed->h)&2);
         SendMessage(GetParent(win),4000,ed->blks[i],0);
         break;
     case WM_PAINT:
-        ed=(BLOCKEDIT16*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKEDIT16*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         hdc=BeginPaint(win,&ps);
         oldpal=SelectPalette(hdc,ed->bs.ed->hpal,1);

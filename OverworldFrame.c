@@ -10,7 +10,7 @@
 LRESULT CALLBACK
 overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+    OVEREDIT * const ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
     
     switch(msg)
     {
@@ -65,7 +65,7 @@ overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         if(ed)
         {
-            HM_MdiActivateData d = HM_GetMdiActivateData(wparam, lparam);
+            HM_MdiActivateData d = HM_MDI_GetActivateData(wparam, lparam);
             
             if(d.m_activating != win)
             {
@@ -97,7 +97,7 @@ overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             
             OVEREDIT * const new_ed = (OVEREDIT*) (mdi_cs->lParam);
             
-            SetWindowLong(win, GWL_USERDATA, (long) new_ed);
+            SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) new_ed);
             
             ShowWindow(win, SW_SHOW);
             
@@ -107,7 +107,7 @@ overproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                                             0,
                                             0,
                                             0,
-                                            (long) new_ed);
+                                            (LPARAM) new_ed);
         }
         
         break;

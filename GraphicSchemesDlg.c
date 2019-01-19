@@ -12,9 +12,10 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     static unsigned char *rom;
     
-    // \task While it is true that this is a modal dialog, this still has
+    // \task[low] While it is true that this is a modal dialog, this still has
     // a bit of code smell to it. Consider refactoring this into something
     // managed by the caller and e.g. passed in via lparam.
+    // (in particular calling out the static variables here)
     static EDITCOMMON ec;
     
     static int gfxnum,sprgfx,palnum;
@@ -30,9 +31,13 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     const static int stuff_ofs[4]={0x54b7,0x51d3,0x4f8f,0x74894};
     unsigned i;
     int j,k,l;
+    
     static HDC hdc;
     static HWND hc;
-    switch(msg) {
+    
+    switch(msg)
+    {
+    
     case WM_INITDIALOG:
         
         memset(&ec,0,sizeof(ec));
@@ -66,6 +71,9 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ReleaseDC(win,hdc);
         
         Setdispwin( (DUNGEDIT*) &ec);
+        
+        // \task This line is a test.
+        PostMessage(win, WM_SETICON, 0, (LPARAM) main_icon);
         
 loadnewgfx:
         
@@ -102,7 +110,7 @@ updscrn:
         DeleteObject(bs.bufbmp);
         Delgraphwin( (DUNGEDIT*) &ec);
 
-        for(i = 0; i < 8; i++)
+        for(i = 0; i < 15; i++)
         {
             Releaseblks(ec.ew.doc,
                         ec.blocksets[i] );

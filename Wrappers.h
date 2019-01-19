@@ -8,6 +8,44 @@
 // =============================================================================
 
     /**
+        Convenience macro to avoid accidental assignment when testing for
+        equality of two entities.
+    */
+    #define Is(x, y) ( (x) == (y) )
+
+    /**
+        Convenience macro for testing for a true condition.
+    */
+    #define IsTrue(x) Is( (x), TRUE)
+
+    /**
+        Convenience macro for testing for a false condition.
+    */
+    #define IsFalse(x) Is( (x), FALSE)
+
+    /**
+        Convenience macro for testing whether a variable is equal to zero.
+    */
+    #define IsZero(x) Is( (x), 0 )
+
+    /**
+        Convenience macro for testing whether a variable is not equal to zero.
+    */
+    #define IsNonZero(x) ( ! IsZero(x) )
+
+    /**
+        Convenience macro for testing whether a pointer is a NULL pointer.
+    */
+    #define IsNull(x) ( Is(x, NULL) )
+
+    /**
+        Convenience macro for testing whether a pointer is non-NULL.
+    */
+    #define IsNonNull(x) ( ! IsNull(x) )
+
+// =============================================================================
+
+    /**
         Convenience macro for declarations. Also horizontal code golf.
         Read "constant pointer to constant x"
     */
@@ -18,6 +56,32 @@
         Read "constant pointer to x"
     */
     #define CP2(x) x * const
+
+// =============================================================================
+
+    /**
+        Convenicne macro for calculating the number of elements in an array
+        of indeterminate size, but whose size is known at compile time.
+        
+        E.g. int foo[] = { 1, 2, 4, 6, 9, 10 }; has 6 elements and this macro
+        will resolve to 6 in that case.
+    */
+    #define MACRO_ArrayLength(arr) ( sizeof(arr) / sizeof(arr[0]) )
+
+// =============================================================================
+
+// Not supported in the C compiler until VS 2013
+#if defined _MSC_VER
+
+#if ! defined __cplusplus
+
+#if _MSC_VER < 1800
+    #define va_copy(d, s) ((d) = (s))
+#endif
+
+#endif
+
+#endif
 
 // =============================================================================
 
@@ -139,8 +203,6 @@ struct
     HM_MouseWheelData
     HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp);
 
-    HM_MdiActivateData
-    HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp);
 
     BOOL
     HM_DrawRectangle(HDC const p_device_context,
@@ -199,8 +261,19 @@ struct
     LPARAM
     HM_NullLP(void);
 
-    unsigned long
-    HM_NumPadKeyDownFilter(MSG const p_packed_msg);
+    extern unsigned long
+    HM_NumPadKeyDownFilter
+    (
+        MSG const p_packed_msg
+    );
+
+    extern BOOL
+    HM_YesNo_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    );
 
     void*
     hm_memdup(void const * const p_arr,
@@ -214,21 +287,87 @@ struct
     HM_CheckEmbeddedStr(void const * const p_buffer,
                         char const * const p_string);
 
+// =============================================================================
+
+    BOOL
+    HM_FileExists
+    (
+        char const * const p_filename,
+        HANDLE     * const p_handle
+    );
+
+// =============================================================================
+
     int __stdcall
     askinteger(int max, char *caption, char *text);
+
+// =============================================================================
 
     /**
         Variadic version of vsprintf that allocates the required buffer
     */
     extern int
-    vasprintf(char       ** const p_buf_out,
-              const char  * const p_fmt,
-              va_list       const p_var_args);
+    vasprintf
+    (
+        char       ** const p_buf_out,
+        const char  * const p_fmt,
+        va_list       const p_var_args
+    );
 
     extern int
-    asprintf(char       ** const p_buf_out,
-             const char *  const p_fmt,
-             ...);
+    asprintf
+    (
+        char       ** const p_buf_out,
+        const char *  const p_fmt,
+        ...
+    );
+
+// =============================================================================
+
+    extern int
+    vascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        va_list       const p_var_args
+    );
+
+    extern int
+    ascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        ...
+    );
+
+// =============================================================================
+
+    extern HM_MdiActivateData
+    HM_MDI_GetActivateData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    );
+
+    extern HWND
+    HM_MDI_GetActiveChild
+    (
+        HWND const p_mdi_client_wnd
+    );
+
+    extern LRESULT
+    HM_MDI_ActivateChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    );
+
+    extern void
+    HM_MDI_DestroyChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    );
 
 // =============================================================================
 
@@ -319,6 +458,36 @@ struct
 
 // =============================================================================
 
+    extern int
+    HM_ListBox_AddString
+    (
+        HWND    const p_listbox,
+        LPCSTR  const p_string
+    );
 
+    extern int
+    HM_ListBox_SetItemData
+    (
+        HWND   const p_listbox,
+        int    const p_item_index,
+        LPARAM const p_data
+    );
+
+    extern int
+    HM_ListBox_SelectItem
+    (
+        HWND const p_listbox,
+        int  const p_item_index
+    );
+
+// =============================================================================
+
+#if ! defined GWLP_STYLE
+    enum { GWLP_STYLE = GWL_STYLE};
+#endif
+
+#if ! defined GWLP_EXSTYLE
+    enum { GWLP_EXSTYLE = GWL_EXSTYLE };
+#endif
 
 #endif

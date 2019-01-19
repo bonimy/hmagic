@@ -5,6 +5,7 @@
 
     #include "HMagicUtility.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
 // =============================================================================
@@ -143,23 +144,23 @@ Overselchg(OVEREDIT const * const ed,
 
 // =============================================================================
 
-void
-Overtoolchg(OVEREDIT * const ed,
-            int        const i,
-            HWND       const win)
-{
-    HWND hc=GetDlgItem(win,3001);
-    
-    if(tool_ovt[i]!=tool_ovt[ed->tool])
-        InvalidateRect(hc,0,0);
-    else
+    void
+    Overtoolchg(OVEREDIT * const ed,
+                int        const i,
+                HWND       const win)
+    {
+        HWND hc = GetDlgItem(win, SD_Over_Display);
+        
+        if(tool_ovt[i] != tool_ovt[ed->tool])
+            InvalidateRect(hc,0,0);
+        else
+            Overselchg(ed,hc);
+        
+        ed->tool=i;
+        ed->selobj=-1;
+        
         Overselchg(ed,hc);
-    
-    ed->tool=i;
-    ed->selobj=-1;
-    
-    Overselchg(ed,hc);
-}
+    }
 
 // =============================================================================
 

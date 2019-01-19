@@ -1,442 +1,455 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{7ddfa0c5-6fd7-4066-9613-f64ce873ef56}</UniqueIdentifier>
-      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    <Filter Include="Main">
+      <UniqueIdentifier>{1564f12a-30ba-4b9b-b77e-85be8e81ecd0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{b8493160-7bfd-42a7-800d-556e0d3f7fe8}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="Main\Resource Files">
       <UniqueIdentifier>{9533aaf5-1597-4a63-8498-6d8be28c07d0}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
-    <Filter Include="Source Files\Dungeon">
-      <UniqueIdentifier>{f2927367-4d0a-4a4a-8cd8-27ee57c25a5f}</UniqueIdentifier>
+    <Filter Include="Main\Header Files">
+      <UniqueIdentifier>{b8493160-7bfd-42a7-800d-556e0d3f7fe8}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl</Extensions>
     </Filter>
-    <Filter Include="Header Files\Dungeon">
+    <Filter Include="Main\Header Files\Dungeon">
       <UniqueIdentifier>{396b39a9-803a-4cc8-964b-6a33fb281617}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\General">
+    <Filter Include="Main\Header Files\General">
       <UniqueIdentifier>{4004e306-2cf4-4403-b46f-faf456ebae03}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Palette">
-      <UniqueIdentifier>{ebc2c0db-d173-4a91-af9b-7d0da47ef26d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Palette">
+    <Filter Include="Main\Header Files\Palette">
       <UniqueIdentifier>{0210680b-1104-4d60-a0fe-94c1b11b9948}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Overworld">
-      <UniqueIdentifier>{959f21f3-a601-4368-86a2-e3ddb71fcc9a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Overworld">
+    <Filter Include="Main\Header Files\Overworld">
       <UniqueIdentifier>{ca0b16c5-4e9d-4998-ab64-8ef8c7cdcb3a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\World Map">
-      <UniqueIdentifier>{d1ea3d90-19ef-4438-aa8b-390ed2ff1d6d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\World Map">
+    <Filter Include="Main\Header Files\World Map">
       <UniqueIdentifier>{58cf0cac-dac6-4170-b976-ad641d1d821e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Text">
-      <UniqueIdentifier>{69311a16-0edf-426b-ae12-2a126aee6436}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Text">
+    <Filter Include="Main\Header Files\Text">
       <UniqueIdentifier>{075436c0-d378-4417-ad89-50c35a892a05}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\ScreenEditors">
+    <Filter Include="Main\Header Files\ScreenEditors">
       <UniqueIdentifier>{04c462b1-f565-4fdc-97a1-74049127cb14}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Audio">
-      <UniqueIdentifier>{f5b74ea8-f24d-4a6c-aeaf-78bf54d4fe35}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Audio">
+    <Filter Include="Main\Header Files\Audio">
       <UniqueIdentifier>{7430f52d-ff48-462a-97b2-29ad77e7c39d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\CG">
-      <UniqueIdentifier>{27991fd2-24f4-4994-a599-3c2e714da32b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Level Map">
-      <UniqueIdentifier>{d72b4565-6d04-489b-a64b-aff1fae792b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\LevelMap">
+    <Filter Include="Main\Header Files\LevelMap">
       <UniqueIdentifier>{015b4dc1-c607-48cc-9c3c-901e7abc7ca2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\TileMap">
-      <UniqueIdentifier>{038a7cd4-ae6d-4d55-96f3-5e15899f3d75}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\TileMap">
+    <Filter Include="Main\Header Files\TileMap">
       <UniqueIdentifier>{0c1be90c-b0b0-4f11-8a77-dba728c42fb4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\ASM">
-      <UniqueIdentifier>{db967dbe-a087-4c29-9d52-de40d3e94078}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Graphics">
-      <UniqueIdentifier>{453411eb-317d-4046-88bc-06472c41a3b8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\CG">
+    <Filter Include="Main\Header Files\CG">
       <UniqueIdentifier>{b6290e24-6515-4b00-a613-0fc0847826d7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Graphics">
+    <Filter Include="Main\Header Files\Graphics">
       <UniqueIdentifier>{0f260b6c-831e-4ebf-ad4d-46fa49cb0cb1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\ASM">
+    <Filter Include="Main\Header Files\ASM">
       <UniqueIdentifier>{31b0dc9d-3b66-4747-a0f6-108fcc72dad5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\General">
+    <Filter Include="Main\MDI-Frame">
+      <UniqueIdentifier>{f8cc8db2-33ce-47b8-b8b9-b132165e1d72}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document">
+      <UniqueIdentifier>{5b0b3aa3-5c9d-4adb-9717-759805f55ea2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Dungeon">
+      <UniqueIdentifier>{f2927367-4d0a-4a4a-8cd8-27ee57c25a5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Text">
+      <UniqueIdentifier>{69311a16-0edf-426b-ae12-2a126aee6436}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\World Map">
+      <UniqueIdentifier>{d1ea3d90-19ef-4438-aa8b-390ed2ff1d6d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\TileMap">
+      <UniqueIdentifier>{038a7cd4-ae6d-4d55-96f3-5e15899f3d75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Palette">
+      <UniqueIdentifier>{ebc2c0db-d173-4a91-af9b-7d0da47ef26d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Level Map">
+      <UniqueIdentifier>{d72b4565-6d04-489b-a64b-aff1fae792b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Graphics">
+      <UniqueIdentifier>{453411eb-317d-4046-88bc-06472c41a3b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Overworld">
+      <UniqueIdentifier>{959f21f3-a601-4368-86a2-e3ddb71fcc9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\CG">
+      <UniqueIdentifier>{27991fd2-24f4-4994-a599-3c2e714da32b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\Audio">
+      <UniqueIdentifier>{f5b74ea8-f24d-4a6c-aeaf-78bf54d4fe35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\MDI-Frame\Document\ASM">
+      <UniqueIdentifier>{db967dbe-a087-4c29-9d52-de40d3e94078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\General">
       <UniqueIdentifier>{c6c83a33-b6ff-4840-aeb1-58a5ba2a1110}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="z3ed.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DungeonMap.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="ChooseObject.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="DungeonDlg.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="DungonHeader.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="PaletteFrame.c">
-      <Filter>Source Files\Palette</Filter>
+      <Filter>Main\MDI-Frame\Document\Palette</Filter>
     </ClCompile>
     <ClCompile Include="PaletteEdit.c">
-      <Filter>Source Files\Palette</Filter>
+      <Filter>Main\MDI-Frame\Document\Palette</Filter>
     </ClCompile>
     <ClCompile Include="PaletteSelector.c">
-      <Filter>Source Files\Palette</Filter>
-    </ClCompile>
-    <ClCompile Include="DocumentFrame.c">
-      <Filter>Source Files</Filter>
+      <Filter>Main\MDI-Frame\Document\Palette</Filter>
     </ClCompile>
     <ClCompile Include="OverworldMap.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="OverworldEdit.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="DungeonFrame.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="OverworldDlg.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="OverworldFrame.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="WorldMapDisplay.c">
-      <Filter>Source Files\World Map</Filter>
+      <Filter>Main\MDI-Frame\Document\World Map</Filter>
     </ClCompile>
     <ClCompile Include="WorldMapLogic.c">
-      <Filter>Source Files\World Map</Filter>
+      <Filter>Main\MDI-Frame\Document\World Map</Filter>
     </ClCompile>
     <ClCompile Include="WorldMapDlg.c">
-      <Filter>Source Files\World Map</Filter>
+      <Filter>Main\MDI-Frame\Document\World Map</Filter>
     </ClCompile>
     <ClCompile Include="WorldMapFrame.c">
-      <Filter>Source Files\World Map</Filter>
+      <Filter>Main\MDI-Frame\Document\World Map</Filter>
     </ClCompile>
     <ClCompile Include="DungeonLogic.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="TextLogic.c">
-      <Filter>Source Files\Text</Filter>
+      <Filter>Main\MDI-Frame\Document\Text</Filter>
     </ClCompile>
     <ClCompile Include="Map16_SearchDlg.c">
-      <Filter>Source Files\Overworld</Filter>
-    </ClCompile>
-    <ClCompile Include="Zelda3_Dialog.c">
-      <Filter>Source Files</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="TextDlg.c">
-      <Filter>Source Files\Text</Filter>
-    </ClCompile>
-    <ClCompile Include="HMagicFrame.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HMagicLogic.c">
-      <Filter>Source Files</Filter>
+      <Filter>Main\MDI-Frame\Document\Text</Filter>
     </ClCompile>
     <ClCompile Include="TextFrame.c">
-      <Filter>Source Files\Text</Filter>
-    </ClCompile>
-    <ClCompile Include="HMagicConfigDlg.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HMagicUtility.c">
-      <Filter>Source Files</Filter>
+      <Filter>Main\MDI-Frame\Document\Text</Filter>
     </ClCompile>
     <ClCompile Include="SoundDevSelectDlg.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="AudioLogic.c">
-      <Filter>Source Files\Audio</Filter>
-    </ClCompile>
-    <ClCompile Include="SuperDlg.c">
-      <Filter>Source Files</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="SampleEditDlg.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="EditExitDlg.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="EditWhirlpoolDlg.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="AudioFrame.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="SampleDisplay.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="SampleEditLogic.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="TrackEditFrame.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="TrackEditDlg.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="TrackerLogic.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="PerspectiveFrame.c">
-      <Filter>Source Files\CG</Filter>
+      <Filter>Main\MDI-Frame\Document\CG</Filter>
     </ClCompile>
     <ClCompile Include="LevelMapFrame.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="Map32Selector.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="MetatileLogic.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="Map16Selector.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="LevelMapDlg.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="LevelMapDisplay.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="LevelMapLogic.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="LevelMapBlocks.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="TileMapDisplay.c">
-      <Filter>Source Files\TileMap</Filter>
+      <Filter>Main\MDI-Frame\Document\TileMap</Filter>
     </ClCompile>
     <ClCompile Include="TileMapLogic.c">
-      <Filter>Source Files\TileMap</Filter>
+      <Filter>Main\MDI-Frame\Document\TileMap</Filter>
     </ClCompile>
     <ClCompile Include="TileMapDlg.c">
-      <Filter>Source Files\TileMap</Filter>
+      <Filter>Main\MDI-Frame\Document\TileMap</Filter>
     </ClCompile>
     <ClCompile Include="TileMapFrame.c">
-      <Filter>Source Files\TileMap</Filter>
+      <Filter>Main\MDI-Frame\Document\TileMap</Filter>
     </ClCompile>
     <ClCompile Include="PatchDlg.c">
-      <Filter>Source Files\ASM</Filter>
+      <Filter>Main\MDI-Frame\Document\ASM</Filter>
     </ClCompile>
     <ClCompile Include="MusicDlg.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="PerspectiveDlg.c">
-      <Filter>Source Files\CG</Filter>
+      <Filter>Main\MDI-Frame\Document\CG</Filter>
     </ClCompile>
     <ClCompile Include="BlockDlg.c">
-      <Filter>Source Files\Graphics</Filter>
+      <Filter>Main\MDI-Frame\Document\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Map8Selector.c">
-      <Filter>Source Files\Graphics</Filter>
+      <Filter>Main\MDI-Frame\Document\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Map8_Edit.c">
-      <Filter>Source Files\Graphics</Filter>
+      <Filter>Main\MDI-Frame\Document\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="ErrorsDlg.c">
-      <Filter>Source Files\ASM</Filter>
+      <Filter>Main\MDI-Frame\Document\ASM</Filter>
     </ClCompile>
     <ClCompile Include="Map32_Edit.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="Map16_Edit.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="PerspectiveDisplay.c">
-      <Filter>Source Files\CG</Filter>
+      <Filter>Main\MDI-Frame\Document\CG</Filter>
     </ClCompile>
     <ClCompile Include="PerspectiveLogic.c">
-      <Filter>Source Files\CG</Filter>
+      <Filter>Main\MDI-Frame\Document\CG</Filter>
     </ClCompile>
     <ClCompile Include="OverworldPropsDlg.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="GraphicSchemesDlg.c">
-      <Filter>Source Files\Graphics</Filter>
+      <Filter>Main\MDI-Frame\Document\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="BossLocationsDlg.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
     </ClCompile>
     <ClCompile Include="ScreenEditorLogic.c">
-      <Filter>Source Files\Level Map</Filter>
+      <Filter>Main\MDI-Frame\Document\Level Map</Filter>
     </ClCompile>
     <ClCompile Include="GraphicsLogic.c">
-      <Filter>Source Files\Graphics</Filter>
+      <Filter>Main\MDI-Frame\Document\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="PatchLogic.c">
-      <Filter>Source Files\ASM</Filter>
+      <Filter>Main\MDI-Frame\Document\ASM</Filter>
     </ClCompile>
     <ClCompile Include="Map16_Finder.c">
-      <Filter>Source Files\Overworld</Filter>
+      <Filter>Main\MDI-Frame\Document\Overworld</Filter>
     </ClCompile>
     <ClCompile Include="Tracker.c">
-      <Filter>Source Files\Audio</Filter>
+      <Filter>Main\MDI-Frame\Document\Audio</Filter>
     </ClCompile>
     <ClCompile Include="AboutDlg.c">
-      <Filter>Source Files\General</Filter>
+      <Filter>Main\General</Filter>
     </ClCompile>
     <ClCompile Include="WindowClasses.c">
-      <Filter>Source Files\General</Filter>
+      <Filter>Main\General</Filter>
     </ClCompile>
     <ClCompile Include="Wrappers.c">
-      <Filter>Source Files\General</Filter>
+      <Filter>Main\General</Filter>
     </ClCompile>
     <ClCompile Include="RomProperties.c">
-      <Filter>Source Files\General</Filter>
+      <Filter>Main\General</Filter>
     </ClCompile>
     <ClCompile Include="AsmPatchFrame.c">
-      <Filter>Source Files\ASM</Filter>
+      <Filter>Main\MDI-Frame\Document\ASM</Filter>
     </ClCompile>
     <ClCompile Include="DuplicateRoomDlg.c">
-      <Filter>Source Files\Dungeon</Filter>
+      <Filter>Main\MDI-Frame\Document\Dungeon</Filter>
+    </ClCompile>
+    <ClCompile Include="GdiObjects.c">
+      <Filter>Main\General</Filter>
+    </ClCompile>
+    <ClCompile Include="z3ed.c">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicFrame.c">
+      <Filter>Main\MDI-Frame</Filter>
+    </ClCompile>
+    <ClCompile Include="DocumentFrame.c">
+      <Filter>Main\MDI-Frame\Document</Filter>
+    </ClCompile>
+    <ClCompile Include="Zelda3_Dialog.c">
+      <Filter>Main\MDI-Frame\Document</Filter>
+    </ClCompile>
+    <ClCompile Include="SuperDlg.c">
+      <Filter>Main\MDI-Frame\Document</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicUtility.c">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicLogic.c">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="HMagicConfigDlg.c">
+      <Filter>Main</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
+      <Filter>Main\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="structs.h">
-      <Filter>Header Files</Filter>
+      <Filter>Main\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DungeonEnum.h">
-      <Filter>Header Files\Dungeon</Filter>
+      <Filter>Main\Header Files\Dungeon</Filter>
     </ClInclude>
     <ClInclude Include="Callbacks.h">
-      <Filter>Header Files\General</Filter>
+      <Filter>Main\Header Files\General</Filter>
     </ClInclude>
     <ClInclude Include="prototypes.h">
-      <Filter>Header Files\General</Filter>
+      <Filter>Main\Header Files\General</Filter>
     </ClInclude>
     <ClInclude Include="Wrappers.h">
-      <Filter>Header Files\General</Filter>
+      <Filter>Main\Header Files\General</Filter>
     </ClInclude>
     <ClInclude Include="GdiObjects.h">
-      <Filter>Header Files\General</Filter>
+      <Filter>Main\Header Files\General</Filter>
     </ClInclude>
     <ClInclude Include="PaletteEdit.h">
-      <Filter>Header Files\Palette</Filter>
+      <Filter>Main\Header Files\Palette</Filter>
     </ClInclude>
     <ClInclude Include="OverworldEdit.h">
-      <Filter>Header Files\Overworld</Filter>
+      <Filter>Main\Header Files\Overworld</Filter>
     </ClInclude>
     <ClInclude Include="OverworldEnum.h">
-      <Filter>Header Files\Overworld</Filter>
+      <Filter>Main\Header Files\Overworld</Filter>
     </ClInclude>
     <ClInclude Include="WorldMapLogic.h">
-      <Filter>Header Files\World Map</Filter>
+      <Filter>Main\Header Files\World Map</Filter>
     </ClInclude>
     <ClInclude Include="DungeonLogic.h">
-      <Filter>Header Files\Dungeon</Filter>
+      <Filter>Main\Header Files\Dungeon</Filter>
     </ClInclude>
     <ClInclude Include="TextEnum.h">
-      <Filter>Header Files\Text</Filter>
+      <Filter>Main\Header Files\Text</Filter>
     </ClInclude>
     <ClInclude Include="TextLogic.h">
-      <Filter>Header Files\Text</Filter>
+      <Filter>Main\Header Files\Text</Filter>
     </ClInclude>
     <ClInclude Include="ScreenEditorLogic.h">
-      <Filter>Header Files\ScreenEditors</Filter>
+      <Filter>Main\Header Files\ScreenEditors</Filter>
     </ClInclude>
     <ClInclude Include="HMagicLogic.h">
-      <Filter>Header Files</Filter>
+      <Filter>Main\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HMagicEnum.h">
-      <Filter>Header Files</Filter>
+      <Filter>Main\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HMagicUtility.h">
-      <Filter>Header Files</Filter>
+      <Filter>Main\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AudioLogic.h">
-      <Filter>Header Files\Audio</Filter>
+      <Filter>Main\Header Files\Audio</Filter>
     </ClInclude>
     <ClInclude Include="SampleEnum.h">
-      <Filter>Header Files\Audio</Filter>
+      <Filter>Main\Header Files\Audio</Filter>
     </ClInclude>
     <ClInclude Include="SampleEditLogic.h">
-      <Filter>Header Files\Audio</Filter>
+      <Filter>Main\Header Files\Audio</Filter>
     </ClInclude>
     <ClInclude Include="TrackerLogic.h">
-      <Filter>Header Files\Audio</Filter>
+      <Filter>Main\Header Files\Audio</Filter>
     </ClInclude>
     <ClInclude Include="MetatileLogic.h">
-      <Filter>Header Files\Overworld</Filter>
+      <Filter>Main\Header Files\Overworld</Filter>
     </ClInclude>
     <ClInclude Include="LevelMapLogic.h">
-      <Filter>Header Files\LevelMap</Filter>
+      <Filter>Main\Header Files\LevelMap</Filter>
     </ClInclude>
     <ClInclude Include="TileMapLogic.h">
-      <Filter>Header Files\TileMap</Filter>
+      <Filter>Main\Header Files\TileMap</Filter>
     </ClInclude>
     <ClInclude Include="PerspectiveLogic.h">
-      <Filter>Header Files\CG</Filter>
+      <Filter>Main\Header Files\CG</Filter>
     </ClInclude>
     <ClInclude Include="GraphicsLogic.h">
-      <Filter>Header Files\Graphics</Filter>
+      <Filter>Main\Header Files\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="PatchLogic.h">
-      <Filter>Header Files\ASM</Filter>
+      <Filter>Main\Header Files\ASM</Filter>
     </ClInclude>
     <ClInclude Include="PatchEnum.h">
-      <Filter>Header Files\ASM</Filter>
+      <Filter>Main\Header Files\ASM</Filter>
     </ClInclude>
     <ClInclude Include="Zelda3_Enum.h">
-      <Filter>Header Files\General</Filter>
+      <Filter>Main\Header Files\General</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">
-      <Filter>Resource Files</Filter>
+      <Filter>Main\Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico">
-      <Filter>Resource Files</Filter>
+      <Filter>Main\Resource Files</Filter>
     </CustomBuild>
     <CustomBuild Include="test2.bmp">
-      <Filter>Resource Files</Filter>
+      <Filter>Main\Resource Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="sprname.dat" />
+    <CustomBuild Include="sprname.dat">
+      <Filter>Main\Resource Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <None Include="text_resources\entrance_names.txt">
-      <Filter>Resource Files</Filter>
+      <Filter>Main\Resource Files</Filter>
     </None>
     <None Include="text_resources\area_names.txt">
-      <Filter>Resource Files</Filter>
+      <Filter>Main\Resource Files</Filter>
+    </None>
+    <None Include="icon2.ico">
+      <Filter>Main\Resource Files</Filter>
     </None>
   </ItemGroup>
 </Project>

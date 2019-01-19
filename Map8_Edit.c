@@ -15,7 +15,7 @@ blkedit8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_PAINT:
         
-        ed = (BLKEDIT8*)GetWindowLong(win,GWL_USERDATA);
+        ed = (BLKEDIT8*)GetWindowLongPtr(win,GWLP_USERDATA);
         
         if(!ed) break;
         

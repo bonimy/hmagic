@@ -101,7 +101,7 @@ trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_SIZE:
         
-        ed = (TRACKEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (TRACKEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(!ed)
             break;
@@ -120,14 +120,14 @@ trackerproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_VSCROLL:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->scroll=Handlescroll(win,wparam,ed->scroll,ed->page,SB_VERT,ed->len,textmetric.tmHeight);
         break;
     case WM_RBUTTONDOWN:
     case WM_LBUTTONDOWN:
         SetFocus(win);
         SetCapture(win);
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->withcapt=1;
 selchg:
         j=(lparam>>16)/textmetric.tmHeight+ed->scroll;
@@ -216,19 +216,19 @@ modfrow:
         ed->ew.doc->m_modf=1;
         goto updrow;
     case WM_MOUSEMOVE:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->withcapt) goto selchg;
         break;
     case WM_RBUTTONUP:
     case WM_LBUTTONUP:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->withcapt) ReleaseCapture(),ed->withcapt=0;
         break;
     case WM_GETDLGCODE:
         return DLGC_WANTALLKEYS;
     case WM_SYSKEYDOWN:
         if(!(lparam&0x20000000)) break;
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         switch(wparam) {
         case VK_F12:
             ed->debugflag=!ed->debugflag;
@@ -314,7 +314,7 @@ modfrow:
                 
                 Updatesize(control);
                 
-                ed2 = (TRACKEDIT*) GetWindowLong(control, GWL_USERDATA);
+                ed2 = (TRACKEDIT*) GetWindowLongPtr(control, GWLP_USERDATA);
                 
                 CopyMemory(ed2->tbl + mark_start,
                            ed2->tbl + mark_end + 1,
@@ -416,7 +416,7 @@ modfrow:
         }
         break;
     case WM_KEYDOWN:
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         switch(wparam) {
         case VK_DOWN:
             if(ed->sel==ed->len) break;
@@ -623,7 +623,7 @@ digkey:
     
     case WM_PAINT:
         
-        ed=(TRACKEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(TRACKEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         hdc=BeginPaint(win,&ps);
         
         j=(ps.rcPaint.bottom+textmetric.tmHeight-1)/textmetric.tmHeight+ed->scroll;

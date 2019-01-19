@@ -17,12 +17,12 @@ blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     int i,j,k,n;
     switch(msg) {
 //  case WM_DESTROY:
-//      ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+//      ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
 //      DeleteDC(ed->bufdc);
 //      DeleteObject(ed->bufbmp);
 //      break;
     case WM_SIZE:
-        ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -32,7 +32,7 @@ blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         SetScrollInfo(win,SB_VERT,&si,1);
         break;
     case WM_VSCROLL:
-        ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
         j=i=ed->scroll;
         switch(wparam&65535) {
         case SB_BOTTOM:
@@ -91,11 +91,11 @@ blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_RBUTTONDOWN:
-        ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
         j=17;
         goto edit;
     case WM_LBUTTONDBLCLK:
-        ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
         i=(ed->scroll<<4)+((lparam&65535)<<4)/ed->w+((((lparam>>16)<<4)/ed->h)<<4);
         if(ed->dfl==16) if(i<0x180) j=256+(i>>7); else break;
         else if(ed->dfl==8) if(i<0x100) j=259; else break;
@@ -132,12 +132,12 @@ blksel8proc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         break;
     
     case WM_LBUTTONDOWN:
-        ed=(BLOCKSEL8*)GetWindowLong(win,GWL_USERDATA);
+        ed=(BLOCKSEL8*)GetWindowLongPtr(win,GWLP_USERDATA);
         SendMessage(GetParent(win),4000,(ed->scroll<<4)+((lparam&65535)<<4)/ed->w+((((lparam>>16)<<4)/ed->h)<<4)+ed->flags,0);
         break;
     case WM_PAINT:
         
-        ed = (BLOCKSEL8*) GetWindowLong(win, GWL_USERDATA);
+        ed = (BLOCKSEL8*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(!ed)
             break;

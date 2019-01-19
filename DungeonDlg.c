@@ -204,7 +204,7 @@ SUPERDLG dungdlg =
     WS_CHILD|WS_VISIBLE,
     600,
     200,
-    ID_DungNumControls,
+    MACRO_ArrayLength(dung_sd),
     dung_sd
 };
 
@@ -272,19 +272,57 @@ SUPERDLG dungdlg =
 
     enum
     {
-        ID_DungOverlayHideCount = sizeof(overlay_hide) / sizeof(unsigned),
+        ID_DungOverlayHideCount = MACRO_ArrayLength(overlay_hide),
     };
 
+// =============================================================================
+
+    // music offsets?
+    const static unsigned char mus_ofs[] =
+    {
+        255,
+         0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+        32, 33, 34,
+
+        240, 241, 242, 243
+    };
+
+// =============================================================================
+
+    const static char *bg2_str[] =
+    {
+        "Off",
+        "Parallaxing",
+        "Dark",
+        "On top",
+        "Translucent",
+        "Parallaxing2",
+        "Normal",
+        "Addition",
+        "Dark room"
+    };
+    
+    const static char *coll_str[] =
+    {
+        "One",
+        "Both",
+        "Both w/scroll",
+        "Moving floor",
+        "Moving water"
+    };
 
 // =============================================================================
 
 // Specific configurations that are checked involving BG2 settings.
 // Dunno what they signify yet.
-const static unsigned char bg2_ofs[]={
+static unsigned char const
+bg2_ofs[] =
+{
     0, 0x20, 0x40, 0x60, 0x80, 0xa0, 0xc0, 0xe0, 0x01
 };
 
-const static short nxtmap[4]={-1,1,-16,16};
+static short const nxtmap[4] = { -1, 1, -16, 16};
 
 // =============================================================================
 
@@ -585,7 +623,7 @@ Openroom(DUNGEDIT * const ed,
     {
         if(ed->layering == bg2_ofs[i])
         {
-            // \task Is this buggy? What if the value is not in this list?
+            // \task[med] Is this buggy? What if the value is not in this list?
             // Probably not the case in a vanilla rom, but still...
             SendDlgItemMessage(win, ID_DungBG2Settings, CB_SETCURSEL, i, 0);
             
@@ -972,7 +1010,7 @@ changeroom:
                 n = ed->hsize;
             }
             
-            // \task Should this actually be a signed load?
+            // \task[med] Should this actually be a signed load?
             if( ldle16b(rom + 0x27780) + (i + n - k) > 0 )
             {
                 MessageBox(framewnd,
@@ -1226,65 +1264,28 @@ editdungprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 
 // =============================================================================
 
-BOOL CALLBACK
-dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    int j, // the "entrance" number. not a room number. Is used to retrieve the room #
-        k, // the room number retrieved using j.
-        i, // 
-        l,
-        m,
-        n;
-    
-    HWND hc;
-    
-    DUNGEDIT *ed;
-    
-    uint8_t *buf2;
-    
-    unsigned char *rom;
-    
-//  const static int inf_ofs[5]={0x14813,0x14f59,0x15063,0x14e4f,0x14d45};
-//  const static int inf_ofs2[5]={0x156be,0x15bb4,0x15bc2,0x15bfa,0x15bec};
-    
-    // music offsets?
-    const static unsigned char mus_ofs[] =
+    static void
+    DungeonDlg_OnInitDialog
+    (
+        HWND   const    p_win,
+        LPARAM const    p_lp,
+        CP2(DUNGEDIT *) p_ed_return
+    )
     {
-        255,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,240,241,242,243
-    };
-    
-    const static char *bg2_str[] =
-    {
-        "Off",
-        "Parallaxing",
-        "Dark",
-        "On top",
-        "Translucent",
-        "Parallaxing2",
-        "Normal",
-        "Addition",
-        "Dark room"
-    };
-    
-    const static char *coll_str[] =
-    {
-        "One",
-        "Both",
-        "Both w/scroll",
-        "Moving floor",
-        "Moving water"
-    };
-    
-    // message handling for the window.
-    
-    switch(msg)
-    {
-    
-    case WM_INITDIALOG:
         
-        SetWindowLong(win, DWL_USER, lparam);
+        int i = 0;
+        int j = 0;
         
-        ed = (DUNGEDIT*) lparam;
+        CP2(DUNGEDIT) ed = (DUNGEDIT*) p_lp;
+        
+        rom_cty buf2 = NULL;
+        rom_cty rom  = ed->ew.doc->rom;
+        
+        // -----------------------------
+        
+        p_ed_return[0] = ed;
+        
+        SetWindowLongPtr(p_win, DWLP_USER, (LONG_PTR) ed);
         
         // get the 'room' we're looking at.
         j = ed->ew.param;
@@ -1295,7 +1296,7 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         ed->init = 1;
         
         // pass this win to ed's dialogue.
-        ed->dlg = win;
+        ed->dlg = p_win;
         
         // void the HPALETTE in ed.
         ed->hpal = 0;
@@ -1305,7 +1306,7 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             // Only certain controls are necessary for working with a dungeon
             // overlay or layout, so hide the rest.
             for(i = 0; i < ID_DungOverlayHideCount; i++)
-                ShowWindow( GetDlgItem(win, overlay_hide[i]), SW_HIDE );
+                ShowWindow( GetDlgItem(p_win, overlay_hide[i]), SW_HIDE );
             
             if(j < 0x9f)
                 buf2 = rom + romaddr( *(int*) (rom + 0x26b1c + j * 3) );
@@ -1325,7 +1326,7 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             
             *(short*)(ed->buf)=15;
             
-            memcpy(ed->buf+2,buf2,i+2);
+            memcpy(ed->buf + 2, buf2, i + 2);
             ed->hbuf[0] = 0;
             ed->hbuf[1] = 1;
             ed->hbuf[2] = 0;
@@ -1333,20 +1334,26 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             ed->hbuf[4] = 0;
             ed->gfxtmp = 0;
             
-            CheckDlgButton(win, ID_DungShowBG1, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowBG2, BST_CHECKED);
+            CheckDlgButton(p_win, ID_DungShowBG1, BST_CHECKED);
+            CheckDlgButton(p_win, ID_DungShowBG2, BST_CHECKED);
             
-            Initroom(ed,win);
+            Initroom(ed, p_win);
         }
         else
         {
             // not an overlay
+            uint16_t k = ldle16b_i
+            (
+                rom + (j >= 0x85 ? 0x15b6e : 0x14813),
+                j >= 0x85 ? (j - 0x85) : j
+            );
             
-            k = ldle16b_i(rom + (j >= 0x85 ? 0x15b6e : 0x14813),
-                          j >= 0x85 ? (j - 0x85) : j );
+            uint16_t l = 0;
+            
+            // -----------------------------
             
             // read in the room number, put it to screen.
-            SetDlgItemInt(win, ID_DungEntrRoomNumber, k, 0);
+            SetDlgItemInt(p_win, ID_DungEntrRoomNumber, k, 0);
             
             i = (k & 0x1f0) << 5;
             l = (k & 0x00f) << 9;
@@ -1354,37 +1361,37 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             if(j >= 0x85)
             {
                 // these are the starting location maps
-                SetDlgItemInt(win, ID_DungEntrYCoord, ((short*) (rom + 0x15ac6) )[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15ad4) )[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x15ab8) )[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x15aaa) )[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15af0) )[j], 0);
-                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x15ae2) )[j], 0);
+                SetDlgItemInt(p_win, ID_DungEntrYCoord, ((short*) (rom + 0x15ac6) )[j] - i, 0);
+                SetDlgItemInt(p_win, ID_DungEntrXCoord, ((short*) (rom + 0x15ad4) )[j] - l, 0);
+                SetDlgItemInt(p_win, ID_DungEntrYScroll, ((short*) (rom + 0x15ab8) )[j] - i, 0);
+                SetDlgItemInt(p_win, ID_DungEntrXScroll, ((short*) (rom + 0x15aaa) )[j] - l, 0);
+                SetDlgItemInt(p_win, ID_DungEntrCameraX, ((short*) (rom + 0x15af0) )[j], 0);
+                SetDlgItemInt(p_win, ID_DungEntrCameraY, ((short*) (rom + 0x15ae2) )[j], 0);
             }
             else
             {
                 // these are normal rooms
-                SetDlgItemInt(win, ID_DungEntrYCoord, ((short*) (rom + 0x14f59))[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXCoord, ((short*) (rom + 0x15063))[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrYScroll, ((short*) (rom + 0x14e4f))[j] - i, 0);
-                SetDlgItemInt(win, ID_DungEntrXScroll, ((short*) (rom + 0x14d45))[j] - l, 0);
-                SetDlgItemInt(win, ID_DungEntrCameraX, ((short*) (rom + 0x15277))[j], 0);
-                SetDlgItemInt(win, ID_DungEntrCameraY, ((short*) (rom + 0x1516d))[j], 0);
+                SetDlgItemInt(p_win, ID_DungEntrYCoord, ((short*) (rom + 0x14f59))[j] - i, 0);
+                SetDlgItemInt(p_win, ID_DungEntrXCoord, ((short*) (rom + 0x15063))[j] - l, 0);
+                SetDlgItemInt(p_win, ID_DungEntrYScroll, ((short*) (rom + 0x14e4f))[j] - i, 0);
+                SetDlgItemInt(p_win, ID_DungEntrXScroll, ((short*) (rom + 0x14d45))[j] - l, 0);
+                SetDlgItemInt(p_win, ID_DungEntrCameraX, ((short*) (rom + 0x15277))[j], 0);
+                SetDlgItemInt(p_win, ID_DungEntrCameraY, ((short*) (rom + 0x1516d))[j], 0);
             }
             
             // the show BG1, BG2, Sprite, check boxes.
             // make them initially checked.
-            CheckDlgButton(win, ID_DungShowBG1, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowBG2, BST_CHECKED);
-            CheckDlgButton(win, ID_DungShowSprites, BST_CHECKED);
+            CheckDlgButton(p_win, ID_DungShowBG1, BST_CHECKED);
+            CheckDlgButton(p_win, ID_DungShowBG2, BST_CHECKED);
+            CheckDlgButton(p_win, ID_DungShowSprites, BST_CHECKED);
             
             for(i = 0; i < 4; i++)
                 // map in the arrow bitmaps for those buttons at the top l.eft
-                SendDlgItemMessage(win, ID_DungLeftArrow + i, BM_SETIMAGE, IMAGE_BITMAP, (int) arrows_imgs[i]);
+                SendDlgItemMessage(p_win, ID_DungLeftArrow + i, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM) arrows_imgs[i]);
             
             for(i = 0; i < 40; i++)
                 // map in the names of the music tracks
-                SendDlgItemMessage(win, ID_DungEntrSong, CB_ADDSTRING, 0, (int) mus_str[i]);
+                SendDlgItemMessage(p_win, ID_DungEntrSong, CB_ADDSTRING, 0, (LPARAM) mus_str[i]);
             
             // if j is a starting location, use 0x15bc9, otherwise 0x1582e as an offset.
             l = rom[ (j >= 0x85 ? 0x15bc9 : 0x1582e) + j ];
@@ -1393,28 +1400,28 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             {
                 if(mus_ofs[i] == l)
                 {
-                    SendDlgItemMessage(win, ID_DungEntrSong, CB_SETCURSEL, i, 0);
+                    SendDlgItemMessage(p_win, ID_DungEntrSong, CB_SETCURSEL, i, 0);
                     
                     break;
                 }
             }
             
             for(i = 0; i < 9; i++)
-                SendDlgItemMessage(win, ID_DungBG2Settings, CB_ADDSTRING, 0, (int) bg2_str[i]);
+                SendDlgItemMessage(p_win, ID_DungBG2Settings, CB_ADDSTRING, 0, (LPARAM) bg2_str[i]);
             
             for(i = 0; i < 5; i++)
-                SendDlgItemMessage(win, ID_DungCollSettings, CB_ADDSTRING, 0, (int) coll_str[i]);
+                SendDlgItemMessage(p_win, ID_DungCollSettings, CB_ADDSTRING, 0, (LPARAM) coll_str[i]);
             
             for(i = 0; i < 15; i++)
             {
-                SendDlgItemMessage(win,
+                SendDlgItemMessage(p_win,
                                    ID_DungEntrPalaceID,
                                    CB_ADDSTRING,
                                    0,
-                                   (int) level_str[i]);
+                                   (LPARAM) level_str[i]);
             }
             
-            SendDlgItemMessage(win,
+            SendDlgItemMessage(p_win,
                                ID_DungEntrPalaceID,
                                CB_SETCURSEL,
                                ( (rom[ (j >= 0x85 ? 0x15b91 : 0x1548b) + j] + 2) >> 1) & 0x7f,
@@ -1422,12 +1429,12 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             
             ed->gfxtmp = rom[(j >= 0x85 ? 0x15b83 : 0x15381) + j];
             
-            SetDlgItemInt(win, ID_DungEntrTileSet, ed->gfxtmp, 0);
+            SetDlgItemInt(p_win, ID_DungEntrTileSet, ed->gfxtmp, 0);
             
             Openroom(ed, k);
         }
         
-        // \task Investigate this. Do all dungeons really set the backdrop color
+        // \task[low] Investigate this. Do all dungeons really set the backdrop color
         // to pure black?
         ed->pal[0] = blackcolor;
         
@@ -1457,6 +1464,65 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         Addgraphwin(ed, 1);
         Updatemap(ed);
+    }
+
+// =============================================================================
+
+    static void
+    DungeonDlg_OnDestroy
+    (
+        CP2C(DUNGEDIT) p_ed
+    )
+    {
+        int i = 0;
+        
+        // -----------------------------
+        
+        for(i = 0; i < 15; i += 1)
+        {
+            Releaseblks(p_ed->ew.doc,
+                        p_ed->blocksets[i] );
+        }
+        
+        Releaseblks(p_ed->ew.doc, 0x79);
+        Releaseblks(p_ed->ew.doc, 0x7a);
+    }
+
+// =============================================================================
+
+BOOL CALLBACK
+dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+    int j, // the "entrance" number. not a room number. Is used to retrieve the room #
+        k, // the room number retrieved using j.
+        i, // 
+        l,
+        m,
+        n;
+    
+    HWND hc;
+    
+    DUNGEDIT * ed = (DUNGEDIT*) GetWindowLongPtr(win, DWLP_USER);
+    
+    uint8_t *buf2;
+    
+    unsigned char *rom;
+    
+    // const static int inf_ofs[5]={0x14813,0x14f59,0x15063,0x14e4f,0x14d45};
+    // const static int inf_ofs2[5]={0x156be,0x15bb4,0x15bc2,0x15bfa,0x15bec};
+    
+    // -----------------------------
+    
+    // message handling for the window.
+    
+    switch(msg)
+    {
+    
+    case WM_INITDIALOG:
+        
+        DungeonDlg_OnInitDialog(win, lparam, &ed);
+        
+        rom = ed->ew.doc->rom;
         
         goto updpal3;
     
@@ -1467,8 +1533,6 @@ dungdlgproc(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
         break;
     
     case WM_COMMAND:
-        
-        ed = (DUNGEDIT*) GetWindowLong(win, DWL_USER);
         
         if(!ed || ed->init)
             break;
@@ -1519,7 +1583,6 @@ newroom:
         
         case ID_DungShowBG1:
             
-            // \task What's with these bitpatterns? enumerate them?
             ed->disp &= SD_DungHideBG1;
             
             if(IsDlgButtonChecked(win, ID_DungShowBG1) == BST_CHECKED)
@@ -1639,7 +1702,7 @@ no_obj:
             
             rom = ed->ew.doc->rom;
             
-            // \task consider a different check for this. The enumerations
+            // \task[med] consider a different check for this. The enumerations
             // could change order.
             if(wparam > ID_DungEntrXScroll)
             {
@@ -2054,6 +2117,12 @@ foundexit:
             
             SendMessage(ed->ew.doc->editwin, 4000, rom[0x15e28 + i] + 0x20000,0);
         }
+        
+        break;
+        
+    case WM_DESTROY:
+        
+        DungeonDlg_OnDestroy(ed);
         
         break;
     }

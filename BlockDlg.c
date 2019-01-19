@@ -85,8 +85,9 @@ blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_QUERYNEWPALETTE:
         
-        ed = (BLKEDIT8*) GetWindowLong(win, DWL_USER);
-        Setpalette(win, ed->oed->hpal);
+        ed = (BLKEDIT8*) GetWindowLongPtr(win, DWLP_USER);
+        
+        SetPalette(win, ed->oed->hpal);
         
         break;
     
@@ -100,11 +101,11 @@ blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     case WM_INITDIALOG:
         
         ed = malloc(sizeof(BLKEDIT8));
-        SetWindowLong(win, DWL_USER, (int) ed);
+        SetWindowLongPtr(win, DWLP_USER, (LONG_PTR) ed);
         
         oed = (OVEREDIT*) *(int*) lparam;
         hc = GetDlgItem(win, IDC_CUSTOM1);
-        SetWindowLong(hc,GWL_USERDATA,(long) ed);
+        SetWindowLongPtr(hc,GWLP_USERDATA, (LONG_PTR) ed);
         
         i = ((short*) lparam)[2];
         ed->oed = oed;
@@ -159,7 +160,7 @@ blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_DESTROY:
         
-        ed = (BLKEDIT8*) GetWindowLong(win, DWL_USER);
+        ed = (BLKEDIT8*) GetWindowLongPtr(win, DWLP_USER);
         
         // \note This line commented out in the original source
         // for(i=0;i<256;i++) DeleteObject(ed->brush[i]);
@@ -171,7 +172,7 @@ blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     case WM_COMMAND:
         
-        ed = (BLKEDIT8*) GetWindowLong(win, DWL_USER);
+        ed = (BLKEDIT8*) GetWindowLongPtr(win, DWLP_USER);
         
         switch(wparam)
         {

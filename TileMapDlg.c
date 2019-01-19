@@ -23,7 +23,7 @@ tmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     HDC hdc;
     switch(msg) {
     case WM_INITDIALOG:
-        SetWindowLong(win,DWL_USER,lparam);
+        SetWindowLongPtr(win,DWLP_USER,lparam);
         ed=(TMAPEDIT*)lparam;
         ed->hpal=0;
         ed->bmih=zbmih;
@@ -163,12 +163,14 @@ loaded:
         CheckDlgButton(win,3012,BST_CHECKED);
         CheckDlgButton(win,3013,BST_CHECKED);
         hc=GetDlgItem(win,3000);
-        SetWindowLong(hc,GWL_USERDATA,(long)ed);
+        
+        SetWindowLongPtr(hc,GWLP_USERDATA, (LONG_PTR) ed);
+        
         Updatesize(hc);
         SetDlgItemInt(win,3008,0,0);
         break;
     case WM_DESTROY:
-        ed=(TMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         ed->ew.doc->tmaps[ed->ew.param]=0;
         Delgraphwin((DUNGEDIT*)ed);
         DeleteDC(ed->bs.bufdc);
@@ -187,7 +189,7 @@ loaded:
         InvalidateRect(GetDlgItem(win,3001),0,0);
         break;
     case 4000:
-        ed=(TMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         i=wparam&0x3ff;
         hc=GetDlgItem(win,3001);
         Changeblk8sel(hc,&(ed->bs));
@@ -195,7 +197,7 @@ loaded:
         Changeblk8sel(hc,&(ed->bs));
         break;
     case WM_COMMAND:
-        ed=(TMAPEDIT*)GetWindowLong(win,DWL_USER);
+        ed=(TMAPEDIT*)GetWindowLongPtr(win,DWLP_USER);
         bs=&(ed->bs);
         switch(wparam) {
         case (EN_CHANGE<<16)+3008:

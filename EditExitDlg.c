@@ -1,6 +1,7 @@
 
     #include "structs.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
 // =============================================================================
@@ -90,8 +91,10 @@ editexit(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
             break;
         case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
+            
+            hc = GetDlgItem(oved->dlg, SD_Over_Display);
             Overselchg(oved,hc);
+            
             rom=oved->ew.doc->rom;
             i=oved->selobj;
             l = rom[0x15e28 + i] = GetDlgItemInt(win,IDC_EDIT12,0,0);

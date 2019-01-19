@@ -28,7 +28,7 @@
     // There are just too many of these warnings to address at the moment
     // having to deal with truncation from int to short or char. They should
     // Get tackled eventually (and carefully).
-    // \task Do this at some point.
+    // \task[low] Do this at some point.
 #if 1
     #pragma warning(disable:4242)
     #pragma warning(disable:4244)
@@ -186,7 +186,7 @@ struct
 
 // =============================================================================
 
-/// Ascii encoded text (aka monologue) message
+/// Ascii encoded STRING
 typedef
 struct
 {
@@ -202,7 +202,7 @@ struct
     /// Ascii encoded text
     char * m_text;
     
-} AsciiTextMessage;
+} AString;
 
 // =============================================================================
 
@@ -280,8 +280,29 @@ typedef struct tagFDOC
     */
     ZTextMessage * text_bufz;
     
+    /**
+        The number of modules that are currently loaded. These do not represent
+        actualized changes to the rom, just objects that, when applied, might
+        change the rom. In particular this counts the number of *.asm or *.obj
+        files that are in loaded into the program to be applied to the rom.
+    */
     unsigned short nummod;
+    
+    /**
+        This is the number of changes that have been actualized on the rom,
+        and counts the number of PATCH objects we have allocated. Each of these
+        PATCH structures contains the state of the rom prior to the changes
+        that were applied. These are stored to file as a backup mechanism
+        if a rom is saved by the program, in a file with the naming convention
+        ${filepath}${filename}.${extension}.hmd
+        
+        The convention described above uses syntax similar to bash on Linux.
+    */
     unsigned short numpatch;
+    
+    /**
+        The number
+    */
     unsigned short numseg;
     
     FILETIME lastbuild;
@@ -829,6 +850,11 @@ typedef struct
     
 } ZCHANNEL;
 
+// =============================================================================
+
+    /**
+        This is meant to represent the binary layout of a wav file.
+    */
     typedef
     struct
     {
@@ -862,6 +888,32 @@ typedef struct
 
 // =============================================================================
 
+    /**
+        Contains customization information for Window classes. This has
+        less information than the full up structure used by Microsoft, but
+        just enough that we can specify what is usually important to us.
+    */
+    typedef
+    struct
+    {
+        WNDPROC m_proc;
+        
+        char const * const m_class_name;
+        
+        UINT m_style;
+        
+        HBRUSH * m_brush;
+        
+        HCURSOR * m_cursor;
+        
+        int m_wnd_extra;
+        
+        ATOM m_atom;
+        
+    } HM_WindowClass;
+
+// =============================================================================
+
 typedef
 struct tag_dungeon_offsets_ty
 {
@@ -882,7 +934,7 @@ struct tag_overworld_offsets_ty
 // =============================================================================
 
 typedef
-struct
+struct tag_text_codes_ty
 {
     /// Start of the zchar codes.
     uint8_t zchar_base;
@@ -916,7 +968,7 @@ struct
 // =============================================================================
 
 typedef
-struct
+struct tag_text_offsets_ty
 {
     /**
         The primary CPU bank that the Text module in the rom operates from.
@@ -963,7 +1015,7 @@ struct
 // =============================================================================
 
 typedef
-struct
+struct tag_offsets_ty
 {
     dungeon_offsets_ty dungeon;
     

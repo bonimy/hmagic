@@ -59,6 +59,7 @@
       <PreprocessorDefinitions>WIN32;_WIN32_WINNT=_WIN32_WINNT_WIN2K;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BrowseInformation>true</BrowseInformation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -109,6 +110,7 @@
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>Winmm.lib;comctl32.lib;msimg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -129,6 +131,7 @@
     <ClCompile Include="EditExitDlg.c" />
     <ClCompile Include="EditWhirlpoolDlg.c" />
     <ClCompile Include="ErrorsDlg.c" />
+    <ClCompile Include="GdiObjects.c" />
     <ClCompile Include="GraphicSchemesDlg.c" />
     <ClCompile Include="GraphicsLogic.c" />
     <ClCompile Include="HMagicConfigDlg.c" />
@@ -236,6 +239,7 @@
     <ResourceCompile Include="z3ed.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="icon2.ico" />
     <None Include="text_resources\area_names.txt" />
     <None Include="text_resources\entrance_names.txt" />
   </ItemGroup>

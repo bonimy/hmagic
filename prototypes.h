@@ -3,20 +3,40 @@
 
     #define HMAGIC_PROTOTYPES_HEADER_GUARD
 
-#include "structs.h"
+    #include "structs.h"
 
-int
-ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param);
+    #include "Wrappers.h"
 
-void
-Setpalette(HWND const win, HPALETTE const pal);
+// =============================================================================
 
-void
-PaintSprName(HDC hdc,
-             int x,
-             int y,
-             RECT const * const p_clip,
-             char const * const p_name);
+    extern LPARAM
+    ShowDialog
+    (
+        HINSTANCE const hinst,
+        LPSTR     const id,
+        HWND      const p_owner,
+        DLGPROC   const dlgproc,
+        LPARAM    const param
+    );
+
+    /**
+        \param p_y  Position of the entity relative to upper bound of the clip
+        rectangle. If the upper left coordinate of the entity is above said
+        rectangle, this value will be negative.
+        
+        \param p_window_size this subroutine assumes that the content
+        (paintable) dimensions of the window are square. That is, its height is
+        the same as its width.
+    */
+    void
+    PaintSprName
+    (
+        HDC          const p_hdc,
+        int          const p_x,
+        int          const p_y,
+        RECT const * const p_clip,
+        char const * const p_name
+    );
 
 void
 Drawblock(OVEREDIT const * const ed,
@@ -153,40 +173,29 @@ Paintdungeon(DUNGEDIT * const ed,
 void
 Updatesize(HWND win);
 
-HWND
-CreateSuperDialog(SUPERDLG * const dlgtemp,
-                  HWND       const owner,
-                  int        const x,
-                  int        const y,
-                  int        const w,
-                  int        const h,
-                  LPARAM     const lparam);
+    extern HWND
+    CreateSuperDialog
+    (
+        SUPERDLG * const dlgtemp,
+        HWND       const owner,
+        int        const x,
+        int        const y,
+        int        const w,
+        int        const h,
+        LPARAM     const lparam
+    );
 
-void
-Unloadovl(FDOC *doc);
+    extern void
+    Unloadovl
+    (
+        CP2(FDOC) doc
+    );
 
 void
 Stopsong(void);
 
 void
 Drawdot(HDC hdc, RECT * rc, int q, int n, int o);
-
-/**
-    \param p_y  Position of the entity relative to upper bound of the clip
-    rectangle. If the upper left coordinate of the entity is above said
-    rectangle, this value will be negative.
-    
-    \param p_window_size this subroutine assumes that the content (paintable)
-    dimensions of the window are square. That is, its height is the same
-    as its width.
-*/
-void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         size_t const p_window_size);
 
 // \note Not sure whether to make a task for these or not. While it appears
 // at first glance to be dungeon related, this is type punning, and the
@@ -232,7 +241,7 @@ Editwin(FDOC       * const doc,
         LPARAM       const param,
         int          const size);
 
-void
-HM_RegisterClasses(HINSTANCE p_inst);
+    extern BOOL
+    HM_RegisterClasses(HINSTANCE p_inst);
 
 #endif

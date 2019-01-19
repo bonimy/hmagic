@@ -91,7 +91,8 @@ Updatesprites(void)
             if(win)
             {
                 win=GetDlgItem(GetDlgItem(win, ID_SuperDlg), ID_DungEditWindow);
-                ed=(DUNGEDIT*)GetWindowLong(win,GWL_USERDATA);
+                
+                ed = (DUNGEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
                 
                 if( ! (ed->disp & SD_OverShowMarkers) )
                     break;
