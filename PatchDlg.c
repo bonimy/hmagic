@@ -99,9 +99,15 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
 // =============================================================================
 
     void
-    PatchDlg_AddModule(PATCHLOAD * const p_ed,
-                       HWND        const p_win)
+    PatchDlg_AddModule
+    (
+        PATCHLOAD * const p_ed,
+        HWND        const p_win
+    )
     {
+        int i         = 0;
+        int num_files = 0;
+        
         FDOC * const doc = p_ed->ew.doc;
         
         ASMHACK * mod = doc->modules;
@@ -146,6 +152,9 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         // list of pointers to the file names in the reverse order
         // as presented in the structure, as this reflects the order
         // in which they were selected.
+        
+        MessageBox(p_win, "This code doesn't work chief", "Fix it", MB_OK);
+        
         if( ! GetOpenFileName(&ofn) )
         {
             return;
