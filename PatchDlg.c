@@ -83,6 +83,80 @@ PatchDlg_Init
 
 // =============================================================================
 
+    static void
+    MultiSelectFileDialogHook_OnNotify
+    (
+        HWND   const p_dlg_win,
+        LPARAM const p_lp
+    )
+    {
+        CP2C(OFNOTIFY) notification = (OFNOTIFY*) p_lp;
+        
+        UINT const code = notification->hdr.code;
+        
+        char files_buf[MAX_PATH * 2] = { 0 };
+        
+        size_t files_len = 5;
+        
+        // -----------------------------
+        
+        switch(code)
+        {
+        
+        case CDN_SELCHANGE:
+            
+            files_len = SendMessage
+            (
+                GetParent(p_dlg_win),
+                CDM_GETFILEPATH,
+                MAX_PATH * 2,
+                (LPARAM) files_buf
+            );
+            
+            files_len = SendMessage
+            (
+                GetParent(p_dlg_win),
+                CDM_GETSPEC,
+                MAX_PATH * 2,
+                (LPARAM) files_buf
+            );
+            
+            files_len = 4;
+            
+            break;
+        }
+    }
+
+// =============================================================================
+
+    static UINT_PTR CALLBACK
+    MultiSelectFileDialogHook
+    (
+        HWND p_win,
+        UINT p_msg,
+        WPARAM p_wp,
+        LPARAM p_lp
+    )
+    {
+        switch(p_msg)
+        {
+            
+        case WM_NOTIFY:
+            
+            MultiSelectFileDialogHook_OnNotify
+            (
+                p_win,
+                p_lp
+            );
+            
+            break;
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
 /// Macros to help make file filters more human readable. name and ext
 /// are expected to be strings.
 #define FILTER(name, ext) name "\0" ext "\0"
@@ -94,7 +168,6 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
                           FILTER("FSNASM module files", "*.OBJ")
                           FILTER("All Files", "*.*")
                           FILTER_TERMINATE("");
-
 
 // =============================================================================
 
@@ -129,7 +202,8 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         
         ofn.lpstrCustomFilter=0;
         ofn.nFilterIndex=1;
-        ofn.lpstrFile = patchname;
+        
+        ofn.lpstrFile = (LPSTR) calloc(1, MAX_PATH);
         
         patchname[0] = 0;
         
@@ -145,7 +219,11 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         );
         
         ofn.lpstrDefExt = 0;
-        ofn.lpfnHook = 0;
+        
+        // Hook the dialog's window procedure.
+        ofn.Flags |= OFN_ENABLEHOOK;
+        ofn.lpfnHook = MultiSelectFileDialogHook;
+        
         
         // \task Make a wrapper for this, especially now that we're 
         // multiselecting. Specifically, we need a file count and a

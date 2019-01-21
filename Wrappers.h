@@ -57,6 +57,12 @@
     */
     #define CP2(x) x * const
 
+    /**
+        Convenience macro for declarations. Also horizontal code golf.
+        Read "pointer to a constant x"
+    */
+    #define P2C(x) x const *
+
 // =============================================================================
 
     /**

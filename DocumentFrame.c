@@ -226,16 +226,49 @@ dontsave:
 
     // Window procedure for the document window with the large tree control.
     LRESULT CALLBACK
-    docproc(HWND win,UINT msg, WPARAM wparam,LPARAM p_lp)
+    docproc
+    (
+        HWND   win,
+        UINT   msg,
+        WPARAM p_wp,
+        LPARAM p_lp
+    )
     {
+        HWND const dlg = GetDlgItem(win, ID_SuperDlg);
+        
         FDOC * param;
+        
+        // -----------------------------
         
         switch(msg)
         {
     
         case WM_MDIACTIVATE:
+        {
+            HM_MdiActivateData ad = HM_MDI_GetActivateData(p_wp, p_lp);
             
-            activedoc = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+            // -----------------------------
+            
+            if( Is(win, ad.m_activating) )
+            {
+                activedoc = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+                
+                SetFocus(dlg);
+            }
+            
+            goto default_case;
+        }
+        
+        case WM_SETFOCUS:
+            
+            SetFocus(dlg);
+            
+            goto default_case;
+        
+        case WM_MDIRESTORE:
+            
+            SetActiveWindow(dlg);
+            SetFocus(dlg);
             
             goto default_case;
         
@@ -254,7 +287,7 @@ dontsave:
             
             param = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
             
-            DefMDIChildProc(win,msg,wparam, p_lp);
+            DefMDIChildProc(win, msg, p_wp, p_lp);
             
             if( IsNull(param) )
             {
@@ -265,7 +298,7 @@ dontsave:
             (
                 param->editwin,
                 WM_GETMINMAXINFO,
-                wparam,
+                p_wp,
                 p_lp
             );
             
@@ -292,7 +325,7 @@ dontsave:
         default:
         default_case:
             
-            return DefMDIChildProc(win, msg, wparam, p_lp);
+            return DefMDIChildProc(win, msg, p_wp, p_lp);
         }
         
         return 0;
