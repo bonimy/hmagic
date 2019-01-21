@@ -685,6 +685,25 @@ HM_NullLP(void)
 
 // =============================================================================
 
+    extern void
+    HM_OK_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    )
+    {
+        MessageBox
+        (
+            p_win,
+            p_prompt,
+            p_title_bar,
+            MB_OK
+        );
+    }
+
+// =============================================================================
+
     extern BOOL
     HM_YesNo_MsgBox
     (

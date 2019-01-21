@@ -267,6 +267,14 @@ struct
         MSG const p_packed_msg
     );
 
+    extern void
+    HM_OK_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    );
+
     extern BOOL
     HM_YesNo_MsgBox
     (

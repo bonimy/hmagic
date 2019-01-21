@@ -34,6 +34,7 @@
 #define IDR_ENTRANCE_NAMES              134
 #define IDR_AREA_NAMES                  135
 #define IDI_ICON2                       136
+#define IDR_TEST_TOOLTIP                137
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002
@@ -117,6 +118,7 @@
 #define IDC_CUSTOM3                     1042
 #define IDC_STATIC1                     1043
 #define IDC_TELEPATH_EDIT               1044
+#define IDC_TEST_TOOLTIP                1045
 #define ID_Z3_OPEN                      40001
 #define ID_Z3_SAVE                      40002
 #define ID_Z3_SAVEAS                    40003
@@ -165,9 +167,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        137
+#define _APS_NEXT_RESOURCE_VALUE        138
 #define _APS_NEXT_COMMAND_VALUE         40059
-#define _APS_NEXT_CONTROL_VALUE         1045
+#define _APS_NEXT_CONTROL_VALUE         1046
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
