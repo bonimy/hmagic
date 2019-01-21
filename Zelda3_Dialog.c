@@ -29,9 +29,15 @@
             0, 0, 0, 0,
             ID_Z3Dlg_TreeView,
             (
-                WS_VISIBLE | WS_TABSTOP | WS_BORDER | WS_CHILD
-              | TVS_HASBUTTONS | TVS_LINESATROOT | TVS_HASLINES
-              | TVS_SHOWSELALWAYS | TVS_DISABLEDRAGDROP
+                WS_VISIBLE
+              | WS_TABSTOP
+              | WS_BORDER
+              | WS_CHILD
+              | TVS_HASBUTTONS
+              | TVS_LINESATROOT
+              | TVS_HASLINES
+              | TVS_SHOWSELALWAYS
+              | TVS_DISABLEDRAGDROP
             ),
             WS_EX_CLIENTEDGE,
             FLG_SDCH_FOWH
@@ -312,14 +318,49 @@
         
         p_item->hItem = p_item_handle;
         
-        r = SendMessage(p_treeview,
-                        TVM_GETITEM,
-                        0,
-                        (LPARAM) p_item);
+        r = SendMessage
+        (
+            p_treeview,
+            TVM_GETITEM,
+            0,
+            (LPARAM) p_item
+        );
         
         // (The message above returns what is intended to be interpreted as
         // a boolean)
         return (r == 1);
+    }
+
+// =============================================================================
+
+    extern LPARAM
+    HM_TreeView_GetItemParam
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_item_handle
+    )
+    {
+        LRESULT r = 0;
+        
+        TVITEM item = { 0 };
+        
+        // -----------------------------
+        
+        item.mask = TVIF_PARAM;
+        
+        item.hItem = p_item_handle;
+        
+        r = SendMessage
+        (
+            p_treeview,
+            TVM_GETITEM,
+            0,
+            (LPARAM) &item
+        );
+        
+        // (The message above returns what is intended to be interpreted as
+        // a boolean)
+        return item.lParam;
     }
 
 // =============================================================================
@@ -340,10 +381,13 @@
         
         p_item->hItem = p_item_handle;
         
-        r = SendMessage(p_treeview,
-                        TVM_SETITEM,
-                        0,
-                        (LPARAM) p_item);
+        r = SendMessage
+        (
+            p_treeview,
+            TVM_SETITEM,
+            0,
+            (LPARAM) p_item
+        );
         
         // (The message above returns what is intended to be interpreted as
         // a boolean)
@@ -540,7 +584,52 @@
 
 // =============================================================================
 
-    void
+    extern BOOL
+    HM_TreeView_SelectItem
+    (
+        HWND      const p_treeview,
+        HTREEITEM const p_item
+    )
+    {
+        BOOL r = FALSE;
+        
+        // -----------------------------
+        
+        r = SendMessage
+        (
+            p_treeview,
+            TVM_SELECTITEM,
+            TVGN_CARET,
+            (LPARAM) p_item
+        );
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern HTREEITEM
+    HM_TreeView_GetNextSelected
+    (
+        HWND const p_treeview
+    )
+    {
+        HTREEITEM item = (HTREEITEM) SendMessage
+        (
+            p_treeview,
+            TVM_GETNEXTITEM,
+            TVGN_CARET,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return item;
+    }
+
+// =============================================================================
+
+    BOOL
     Z3Dlg_OnInit
     (
         HWND   const p_win,
@@ -580,7 +669,13 @@
         
         tvi.hInsertAfter = TVI_LAST;
         
-        tvi.item.mask = (TVIF_CHILDREN | TVIF_PARAM | TVIF_TEXT | TVIF_STATE);
+        tvi.item.mask =
+        (
+            TVIF_CHILDREN
+          | TVIF_PARAM
+          | TVIF_TEXT
+          | TVIF_STATE
+        );
         
         tvi.item.state     = 0;
         tvi.item.stateMask = TVIS_BOLD;
@@ -778,6 +873,20 @@
         HM_TreeView_SetParam(hc, player_gfx_root, 0xc0000);
         HM_TreeView_SetParam(hc, patch_root, 0xd0000);
         HM_TreeView_SetParam(hc, gfx_schemes_root, 0xe0000);
+        
+#if 1
+        PostMessage
+        (
+            p_win,
+            WM_SETFOCUS,
+            HM_NullWP(),
+            HM_NullLP()
+        );
+        
+#endif
+        // HM_TreeView_SelectItem(hc, ow_root);
+        
+        return FALSE;
     }
 
 // =============================================================================
@@ -794,6 +903,8 @@ z3dlgproc(HWND win,
     
     int i,k;
     
+    BOOL r = FALSE;
+    
     TVINSERTSTRUCT tvi;
     TVHITTESTINFO hti;
     TVITEM*itemstr;
@@ -807,14 +918,16 @@ z3dlgproc(HWND win,
     OVEREDIT*oed;
     
     // "Notification message header" ?
-    NMHDR const * notific;
+    P2C(NMHDR) notific;
     
-    unsigned char*rom;
+    unsigned char * rom;
     
     uint16_t item_id       = 0;
     uint16_t item_category = u16_neg1;
     
     uint32_t item_param = u32_neg1;
+    
+    HWND const treeview = GetDlgItem(win, ID_Z3Dlg_TreeView);
     
     char buf[0x200];
     
@@ -826,10 +939,20 @@ z3dlgproc(HWND win,
     
     switch(msg)
     {
-    
+       
     case WM_INITDIALOG:
         
-        Z3Dlg_OnInit(win, lparam);
+        return Z3Dlg_OnInit(win, lparam);
+    
+    case WM_ACTIVATE:
+        
+        SetActiveWindow(treeview);
+        
+        break;
+        
+    case WM_SETFOCUS:
+        
+        SetFocus(treeview);
         
         break;
     
@@ -844,6 +967,42 @@ z3dlgproc(HWND win,
             
             switch(notific->code)
             {
+                
+            case TVN_KEYDOWN:
+                
+                /*
+                    \task[med] The treeview control causes a system beep
+                    if it receives a spacebar key input, as well as for other
+                    keys. This has to do with incremental search using characters,
+                    I believe. This indicates that spacebar would be treated
+                    as part of a search, but since none of our nodes
+                    have a title that starts with a space character, it beeps.
+                    
+                    Ideally I'd like to use the Return / Enter keys to perform
+                    this, but I'm not sure if it's even possible without
+                    directly hooking this common control. Trying to catch
+                    the Enter key has not met with any success yet.
+                */
+                {
+                    P2C(NMTVKEYDOWN) tv_key = (NMTVKEYDOWN*) lparam;
+                    
+                    if
+                    (
+                        Is(tv_key->wVKey, VK_SPACE)
+                     || Is(tv_key->wVKey, VK_RETURN)
+                    )
+                    {
+                        HTREEITEM item = HM_TreeView_GetNextSelected(treeview);
+                        
+                        item_param = HM_TreeView_GetItemParam(treeview, item);
+                        
+                        r = TRUE;
+                        
+                        goto open_edt;
+                    }
+                }
+                
+                break;
             
             case NM_RCLICK:
                 
@@ -1294,5 +1453,5 @@ open_edt:
         goto open_edt;
     }
     
-    return FALSE;
+    return r;
 }
