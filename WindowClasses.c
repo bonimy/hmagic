@@ -136,6 +136,56 @@
 
 // =============================================================================
 
+    HM_DeclareWndProc(HM_CustomTreeViewProc)
+    {
+        WNDPROC base_class_proc = (WNDPROC) GetClassLongPtr(p_win, 0);
+        
+        // -----------------------------
+        
+        if( IsNull(base_class_proc) )
+        {
+            return DefWindowProc(p_win, p_msg, p_wp, p_lp);
+        }
+
+        switch(p_msg)
+        {
+        
+        default:
+            
+            break;
+        
+        case WM_GETDLGCODE:
+
+            return DLGC_WANTALLKEYS;
+
+        case WM_KEYUP:
+
+            switch(p_wp)
+            {
+            case VK_RETURN:
+                return TRUE;
+            }
+
+        case WM_CHAR:
+
+            switch(p_wp)
+            {
+            
+            default:
+                break;
+            
+            case VK_SPACE:
+            case VK_RETURN:
+                
+                return FALSE;
+            }
+        }
+        
+        return CallWindowProc(base_class_proc, p_win, p_msg, p_wp, p_lp);
+    }
+
+// =============================================================================
+
     HM_WindowClass frame_classes[] =
     {
         {
@@ -473,6 +523,45 @@
             );
             
             DestroyWindow(dummy_num_edit);
+        }
+
+        // Subclass the standard edit control with a different window procedure
+        // that only accepts numerical characters.
+        if( GetClassInfo(p_inst, WC_TREEVIEW, &wc) )
+        {
+            HWND dummy_win;
+            
+            WNDPROC old_proc = wc.lpfnWndProc;
+            
+            // -----------------------------
+            
+            wc.cbClsExtra    = sizeof(LONG_PTR);
+            wc.lpszClassName = "HMagic-TreeView";
+            wc.lpfnWndProc   = HM_CustomTreeViewProc;
+            
+            atom = RegisterClass(&wc);
+            
+            dummy_win = CreateWindow
+            (
+                "HMagic-TreeView",
+                "Dummy",
+                0,
+                0, 0,
+                0, 0,
+                NULL,
+                NULL,
+                hinstance,
+                NULL
+            );
+            
+            SetClassLongPtr
+            (
+                dummy_win,
+                0,
+                (LONG_PTR) old_proc
+            );
+            
+            DestroyWindow(dummy_win);
         }
     }
 

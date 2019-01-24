@@ -24,7 +24,7 @@
     SD_ENTRY z3_sd[] =
     {
         {
-            WC_TREEVIEW,
+            "HMagic-TreeView",
             "",
             0, 0, 0, 0,
             ID_Z3Dlg_TreeView,
@@ -892,10 +892,13 @@
 // =============================================================================
 
 BOOL CALLBACK
-z3dlgproc(HWND win,
-          UINT msg,
-          WPARAM wparam,
-          LPARAM lparam)
+z3dlgproc
+(
+    HWND win,
+    UINT   p_msg,
+    WPARAM p_wp,
+    LPARAM p_lp
+)
 {
     FDOC*doc;
     
@@ -937,19 +940,43 @@ z3dlgproc(HWND win,
     _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );      
 #endif
     
-    switch(msg)
+    switch(p_msg)
     {
        
     case WM_INITDIALOG:
         
-        return Z3Dlg_OnInit(win, lparam);
+        return Z3Dlg_OnInit(win, p_lp);
     
     case WM_ACTIVATE:
         
         SetActiveWindow(treeview);
         
         break;
+    
+    case WM_GETDLGCODE:
         
+        return DLGC_WANTALLKEYS;
+    
+    case WM_KEYDOWN:
+        
+        switch(p_wp)
+        {
+        
+        case VK_RETURN:
+            
+            SendMessage
+            (
+                treeview,
+                p_msg,
+                p_wp,
+                p_lp
+            );
+            
+            break;
+        }
+        
+        break;
+    
     case WM_SETFOCUS:
         
         SetFocus(treeview);
@@ -958,9 +985,9 @@ z3dlgproc(HWND win,
     
     case WM_NOTIFY:
         
-        notific = (NMHDR*) lparam;
+        notific = (NMHDR*) p_lp;
         
-        switch(wparam)
+        switch(p_wp)
         {
         
         case ID_Z3Dlg_TreeView:
@@ -984,17 +1011,30 @@ z3dlgproc(HWND win,
                     the Enter key has not met with any success yet.
                 */
                 {
-                    P2C(NMTVKEYDOWN) tv_key = (NMTVKEYDOWN*) lparam;
+                    P2C(NMTVKEYDOWN) tv_key = (NMTVKEYDOWN*) p_lp;
                     
                     if
                     (
                         Is(tv_key->wVKey, VK_SPACE)
-                     || Is(tv_key->wVKey, VK_RETURN)
+                     |  Is(tv_key->wVKey, VK_RETURN)
                     )
                     {
                         HTREEITEM item = HM_TreeView_GetNextSelected(treeview);
                         
                         item_param = HM_TreeView_GetItemParam(treeview, item);
+                        
+                        if( Is(item_param, 0) )
+                        {
+                            SendMessage
+                            (
+                                treeview,
+                                TVM_EXPAND,
+                                TVE_TOGGLE,
+                                (LPARAM) item
+                            );
+                            
+                            return TRUE;
+                        }
                         
                         r = TRUE;
                         
@@ -1448,7 +1488,7 @@ open_edt:
     
     case 4000:
         
-        item_param = wparam;
+        item_param = p_wp;
         
         goto open_edt;
     }
