@@ -73,6 +73,8 @@
         \author MathOnNapkins (of the documentation)
         \credit sephiroth3 (or whoever designed this scheme)
         
+        The prefix "FLG_SDCH_" should be read "Flag - Super Dialog Child"
+        
         Far-orientation flags for SuperDlg children. What does far-oriented
         mean, you ask? In typical creation and placement of controls,
         the x and y coordinates would be considered as absolute placements,

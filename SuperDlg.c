@@ -1,23 +1,46 @@
 
     #include "structs.h"
 
+    #include "Wrappers.h"
+
     #include "HMagicEnum.h"
+
+// =============================================================================
+
+    /// Dimensions for a Super Dialog Entry (child window).
+    typedef
+    struct
+    {
+        /// X coordinate.
+        int x;
+        
+        /// Y coordinate.
+        int y;
+        
+        /// Width.
+        int w;
+        
+        /// Height.
+        int h;
+        
+    }
+    SDE_Dimensions;
 
 // =============================================================================
 
     extern HWND
     CreateSuperDialog
     (
-        SUPERDLG * const dlgtemp,
-        HWND       const owner,
-        int        const x,
-        int        const y,
-        int        const w,
-        int        const h,
-        LPARAM     const lparam
+        CP2(SUPERDLG)       dlgtemp,
+        HWND          const owner,
+        int           const x,
+        int           const y,
+        int           const w,
+        int           const h,
+        LPARAM        const lparam
     )
     {
-        SDCREATE * const sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
+        CP2(SDCREATE) sdc = (SDCREATE*) calloc(1, sizeof(SDCREATE));
         
         HWND hc;
         
@@ -29,20 +52,71 @@
         sdc->w = w;
         sdc->h = h;
         
-        hc = CreateWindowEx(0,
-                            "SUPERDLG",
-                            dlgtemp->title,
-                            dlgtemp->style,
-                            x,
-                            y,
-                            w,
-                            h,
-                            owner,
-                            (HMENU) ID_SuperDlg,
-                            hinstance,
-                            (void*) sdc);
+        hc = CreateWindowEx
+        (
+            0,
+            "SUPERDLG",
+            dlgtemp->title,
+            dlgtemp->style,
+            x,
+            y,
+            w,
+            h,
+            owner,
+            (HMENU) ID_SuperDlg,
+            hinstance,
+            (void*) sdc
+        );
         
         return hc;
+    }
+
+// =============================================================================
+
+    static void
+    SuperDlg_SizeChild
+    (
+        P2C(SD_ENTRY)             p_sde,
+        CP2(SDE_Dimensions)       p_dim,
+        int                 const p_parent_width,
+        int                 const p_parent_height
+    )
+    {
+        if(p_sde->flags & FLG_SDCH_FOX)
+        {
+            p_dim->x = (p_parent_width - p_sde->x);
+        }
+        else
+        {
+            p_dim->x = p_sde->x;
+        }
+        
+        if(p_sde->flags & FLG_SDCH_FOW)
+        {
+            p_dim->w = (p_parent_width - p_sde->w - p_dim->x);
+        }
+        else
+        {
+            p_dim->w = p_sde->w;
+        }
+        
+        if(p_sde->flags & FLG_SDCH_FOY)
+        {
+            p_dim->y = (p_parent_height - p_sde->y);
+        }
+        else
+        {
+            p_dim->y = p_sde->y;
+        }
+        
+        if(p_sde->flags & FLG_SDCH_FOH)
+        {
+            p_dim->h = (p_parent_height - p_sde->h - p_dim->y);
+        }
+        else
+        {
+            p_dim->h = p_sde->h;
+        }
     }
 
 // =============================================================================
@@ -54,9 +128,9 @@
         LPARAM const p_lp
     )
     {
-        CREATESTRUCT const * const cs = (CREATESTRUCT*) p_lp;
+        CP2C(CREATESTRUCT) cs = (CREATESTRUCT*) p_lp;
         
-        SDCREATE * const sdc = (SDCREATE*) cs->lpCreateParams;
+        CP2(SDCREATE) sdc = (SDCREATE*) cs->lpCreateParams;
         
         int i = 0;
         
@@ -67,52 +141,36 @@
         
         // -----------------------------
         
-        SetWindowLongPtr(p_win,
-                         GWLP_USERDATA,
-                         (LONG_PTR) sdc);
+        SetWindowLongPtr
+        (
+            p_win,
+            GWLP_USERDATA,
+            (LONG_PTR) sdc
+        );
         
+        /**
+            \note The widths and heights of the controls can be negative
+            at creation time, and this is owing to the fact that we don't yet
+            have size information on the dialog itself at this point. So don't
+            worry too much about the negative dimensions, it will be sorted
+            out by the WM_SIZE message that will be issued soon after
+            creation.
+        */
         for(i = 0; i < sdc->dlgtemp->numsde; i += 1)
         {
-            // X and Y coordinates of the super dialog entry.
-            int sde_x = 0;
-            int sde_y = 0;
-            
-            // width and height of the super dialog entry.
-            // Can be negative, which doesn't appear to be documented
-            // as acceptable for CreateDialogEx().
-            /**
-                \task[high] Try to find
-                any reference on this on the internet. Update: This is
-                apparently not kosher, but doesn't hurt anything,
-                And the subsequent WM_SIZE issued later on corrects it
-                before the end user can observe the problem.
-            */
-            int sde_w = 0;
-            int sde_h = 0;
+            SDE_Dimensions sde_dim = { 0};
             
             HWND sde_win;
             
             // -----------------------------
             
-            if(sde[i].flags & FLG_SDCH_FOX)
-                sde_x = (w - sde[i].x);
-            else
-                sde_x = sde[i].x;
-            
-            if(sde[i].flags & FLG_SDCH_FOW)
-                sde_w = (w - sde[i].w - sde_x);
-            else
-                sde_w = sde[i].w;
-            
-            if(sde[i].flags & FLG_SDCH_FOY)
-                sde_y = (h - sde[i].y);
-            else
-                sde_y = sde[i].y;
-            
-            if(sde[i].flags & FLG_SDCH_FOH)
-                sde_h = (h - sde[i].h - sde_y);
-            else
-                sde_h = sde[i].h;
+            SuperDlg_SizeChild
+            (
+                &sde[i],
+                &sde_dim,
+                w,
+                h
+            );
             
             sde_win = CreateWindowEx
             (
@@ -120,10 +178,10 @@
                 sde[i].cname,
                 sde[i].caption,
                 sde[i].style,
-                sde_x,
-                sde_y,
-                sde_w,
-                sde_h,
+                sde_dim.x,
+                sde_dim.y,
+                sde_dim.w,
+                sde_dim.h,
                 p_win,
                 (HMENU) (sde[i].id),
                 hinstance,
@@ -132,17 +190,23 @@
             
             if(sde_win != NULL)
             {
-                SendMessage(sde_win,
-                            WM_SETFONT,
-                            (WPARAM) GetStockObject(ANSI_VAR_FONT),
-                            0);
+                SendMessage
+                (
+                    sde_win,
+                    WM_SETFONT,
+                    (WPARAM) GetStockObject(ANSI_VAR_FONT),
+                    0
+                );
             }
             else
             {
-                MessageBox(p_win,
-                           "Failed to create SD entry. Why?",
-                           "Error",
-                           MB_OK);
+                MessageBox
+                (
+                    p_win,
+                    "Failed to create SD entry. Why?",
+                    "Error",
+                    MB_OK
+                );
             }
         }
         
@@ -151,15 +215,23 @@
         sdc->next = 0;
         
         if(lastdlg)
+        {
             lastdlg->next = sdc;
+        }
         else
+        {
             firstdlg = sdc;
+        }
         
         lastdlg = sdc;
         
-        sdc->dlgtemp->proc(p_win,
-                           WM_INITDIALOG,
-                           0, sdc->lparam);
+        sdc->dlgtemp->proc
+        (
+            p_win,
+            WM_INITDIALOG,
+            0,
+            sdc->lparam
+        );
     }
 
 // =============================================================================
@@ -185,42 +257,26 @@
         {
             HWND const sd_child = GetDlgItem(p_win, sde[i].id);
             
-            int sde_x = 0;
-            int sde_y = 0;
-            
-            int sde_w = 0;
-            int sde_h = 0;
+            SDE_Dimensions sde_dim = { 0 };
             
             // -----------------------------
             
-            if(sde[i].flags & FLG_SDCH_FOX)
-                sde_x = (w - sde[i].x);
-            else
-                sde_x = sde[i].x;
-            
-            if(sde[i].flags & FLG_SDCH_FOW)
-                sde_w = (w - sde[i].w - sde_x);
-            else
-                sde_w = sde[i].w;
-            
-            if(sde[i].flags & FLG_SDCH_FOY)
-                sde_y = (h - sde[i].y);
-            else
-                sde_y = sde[i].y;
-            
-            if(sde[i].flags & FLG_SDCH_FOH)
-                sde_h = (h - sde[i].h - sde_y);
-            else
-                sde_h = sde[i].h;
+            SuperDlg_SizeChild
+            (
+                &sde[i],
+                &sde_dim,
+                w,
+                h
+            );
             
             SetWindowPos
             (
                 sd_child,
                 0,
-                sde_x,
-                sde_y,
-                sde_w,
-                sde_h,
+                sde_dim.x,
+                sde_dim.y,
+                sde_dim.w,
+                sde_dim.h,
                 SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE
             );
         }
