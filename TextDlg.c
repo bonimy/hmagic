@@ -168,8 +168,12 @@ SD_ENTRY text_sd[] =
                     // dictionary entry.
                     int const m = zmsg.m_len;
                     
-                    int num_dict = 0;
-                     
+                    int const num_dict = 
+                    (
+                        rom_addr_split(to->bank, ldle16b(rom + dict_loc) )
+                      - dict_loc
+                    ) >> 1;
+                    
                     // Index into dictionary entries.
                     int d_i = 0;
                     
@@ -208,9 +212,6 @@ SD_ENTRY text_sd[] =
                     memcpy(rom + rom_addr_split(to->bank, de_base),
                            zmsg.m_text,
                            m);
-                    
-                    // \task[high] Eliminate raw hex constant.
-                    num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
                     
                     for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
                     {
@@ -344,7 +345,8 @@ SD_ENTRY text_sd[] =
         // Index into dictionary entry table.
         size_t d_i = 0;
         
-        // \task[high] Eliminate raw hex constant.
+        // \task[high] This should be rewritten to make more sense and feel
+        // less convoluted.
         // Number of dictionary entries.
         size_t num_des =
         (
