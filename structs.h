@@ -979,6 +979,11 @@ struct tag_text_offsets_ty
     unsigned dictionary;
     
     /**
+        Upper limit rom address of all of the dictionary region.
+    */
+    unsigned dictionary_bound;
+    
+    /**
         Location of the table that has parameter counts for various monologue
         commands.
     */

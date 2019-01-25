@@ -137,7 +137,9 @@ LoadOffsets(void)
     
     t->bank          = 0x0e;
 
-    t->dictionary    = 0x74703;
+    t->dictionary       = 0x74703;
+    t->dictionary_bound = 0x748D9;
+    
     t->param_counts  = 0x7536b;
 
     t->region1       = 0xe0000;

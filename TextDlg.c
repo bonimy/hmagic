@@ -69,191 +69,205 @@ SD_ENTRY text_sd[] =
 
 // =============================================================================
 
-    enum
+    SUPERDLG textdlg =
     {
-        NUM_TextDlg_NumControls = sizeof(text_sd) / sizeof(SD_ENTRY)
+        "",
+        TextDlg,
+        WS_CHILD | WS_VISIBLE,
+        600, 200,
+        MACRO_ArrayLength(text_sd),
+        text_sd
     };
 
 // =============================================================================
 
-SUPERDLG textdlg =
-{
-    "",
-    TextDlg,
-    WS_CHILD | WS_VISIBLE,
-    600, 200,
-    NUM_TextDlg_NumControls,
-    text_sd
-};
-
-// =============================================================================
-
-static void
-TextDlg_SetText(TEXTEDIT * const p_ed,
-                HWND       const p_win)
-{
-    // Message index (if any is selected)
-    int m_i = SendDlgItemMessage(p_win,
-                                 ID_TextEntriesListControl,
-                                 LB_GETCURSEL,
-                                 0,
-                                 0);
-    
-    FDOC * const doc = p_ed->ew.doc;
-    
-    uint8_t * const rom = doc->rom;
-    
-    text_offsets_ty const * const to = &offsets.text;
-    
-    unsigned const dict_loc = to->dictionary;
-    
-    // -----------------------------
-    
-    if(m_i != LB_ERR)
+    static void
+    TextDlg_SetText
+    (
+        CP2(TEXTEDIT)       p_ed,
+        HWND          const p_win
+    )
     {
-        HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
+        // Message index (if any is selected)
+        int m_i = SendDlgItemMessage(p_win,
+                                     ID_TextEntriesListControl,
+                                     LB_GETCURSEL,
+                                     0,
+                                     0);
         
-        // abbreviation of text edit window.
-        HWND const ted_win = GetDlgItem(p_win, ID_TextEditWindow);
-
-        // Add one for a null terminator, because the API call doesn't
-        // take one into consideration, however the subsequent API to get
-        // the text requires your self reported buffer size to leave room
-        // for one, otherwise you will be missing a character when you
-        // read it out.
-        size_t const ted_len = ( GetWindowTextLength(ted_win) + 1 );
+        FDOC * const doc = p_ed->ew.doc;
         
-        ZTextMessage zmsg = { 0 };
+        uint8_t * const rom = doc->rom;
         
-        AString amsg = { 0 };
+        CP2C(text_offsets_ty) to = &offsets.text;
+        
+        unsigned const dict_loc = to->dictionary;
         
         // -----------------------------
         
-        AString_InitSized(&amsg, ted_len + 1);
-        
-        // \task[med] This sequence has code smell, it would be nice if
-        // we could directly initialize ascii text message from
-        // a dialog control... maybe. That way we could get the
-        // length correct ahead of time.
-        GetDlgItemText(p_win,
-                       ID_TextEditWindow,
-                       amsg.m_text,
-                       amsg.m_len);
-        
-        Makezeldastring(doc, &amsg, &zmsg);
-        
-        // \task[med] Lack of a better criterion for now.
-        if(zmsg.m_text != NULL)
+        if(m_i != LB_ERR)
         {
-            char * text_buf = NULL;
+            HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
+            
+            // abbreviation of text edit window.
+            HWND const ted_win = GetDlgItem(p_win, ID_TextEditWindow);
+    
+            // Add one for a null terminator, because the API call doesn't
+            // take one into consideration, however the subsequent API to get
+            // the text requires your self reported buffer size to leave room
+            // for one, otherwise you will be missing a character when you
+            // read it out.
+            size_t const ted_len = ( GetWindowTextLength(ted_win) + 1 );
+            
+            ZTextMessage zmsg = { 0 };
+            
+            AString amsg = { 0 };
             
             // -----------------------------
             
-            if(p_ed->num)
+            AString_InitSized(&amsg, ted_len + 1);
+            
+            // \task[med] This sequence has code smell, it would be nice if
+            // we could directly initialize ascii text message from
+            // a dialog control... maybe. That way we could get the
+            // length correct ahead of time.
+            GetDlgItemText
+            (
+                p_win,
+                ID_TextEditWindow,
+                amsg.m_text,
+                amsg.m_len
+            );
+            
+            Makezeldastring(doc, &amsg, &zmsg);
+            
+            // \task[med] Lack of a better criterion for now.
+            if(zmsg.m_text != NULL)
             {
-                // Note that this logic assumes that the dictionary
-                // data directly follows its pointer table.
-                uint16_t j = ldle16b
-                (
-                    rom
-                  + rom_addr_split(to->bank, ldle16b(rom + dict_loc) - 2)
-                );
-                
-                // Dictionary entry base and bound. (Bound is one byte past
-                // the end of the dictionary entry.
-                int const de_base  = ldle16b_i(rom + dict_loc, m_i);
-                int const de_bound = ldle16b_i(rom + dict_loc, m_i + 1);
-                int const de_delta = (de_bound - de_base);
-                
-                // Code golf for the length in zchars of the revised
-                // dictionary entry.
-                int const m = zmsg.m_len;
-                
-                int num_dict = 0;
-                 
-                // Index into dictionary entries.
-                int d_i = 0;
+                char * text_buf = NULL;
                 
                 // -----------------------------
                 
-                // \task[high] Eliminate raw hex constant.
-                if( (j + m + de_base - de_bound) > 0xc8d9)
+                if(p_ed->num)
                 {
-                    MessageBeep(0);
+                    // Note that this logic assumes that the dictionary
+                    // data directly follows its pointer table.
+                    uint16_t j = ldle16b
+                    (
+                        rom
+                      + rom_addr_split(to->bank, ldle16b(rom + dict_loc) - 2)
+                    );
                     
+                    // Dictionary entry base and bound. (Bound is one byte past
+                    // the end of the dictionary entry.
+                    int const de_base  = ldle16b_i(rom + dict_loc, m_i);
+                    int const de_bound = ldle16b_i(rom + dict_loc, m_i + 1);
+                    int const de_delta = (de_bound - de_base);
+                    
+                    // Code golf for the length in zchars of the revised
+                    // dictionary entry.
+                    int const m = zmsg.m_len;
+                    
+                    int num_dict = 0;
+                     
+                    // Index into dictionary entries.
+                    int d_i = 0;
+                    
+                    // One past the point where the dictionary data would end
+                    // if we hypothetically adjusted the dictionary the way
+                    // the user is requesting. If the resulting
+                    // pool of dictionary entries is too large for the amount
+                    // that has been set aside in the original rom, we
+                    // reject the edit.
+                    unsigned const trial_bound = rom_addr_split
+                    (
+                        to->bank,
+                        j + m + de_base - de_bound
+                    );
+                    
+                    // -----------------------------
+                    
+                    if(trial_bound > to->dictionary_bound)
+                    {
+                        // \task[low] Really we should give the user
+                        // more indication as to how much space they have
+                        // to work with. Ideally, we'd let them have a 
+                        // larger dictionary via an ASM hack.
+                        MessageBeep(0);
+                        
+                        ZTextMessage_Free(&zmsg);
+                        AString_Free(&amsg);
+                        
+                        return;
+                    }
+                    
+                    memcpy(rom + rom_addr_split(to->bank, de_base + m),
+                           rom + rom_addr_split(to->bank, de_bound),
+                           j - de_bound);
+                    
+                    memcpy(rom + rom_addr_split(to->bank, de_base),
+                           zmsg.m_text,
+                           m);
+                    
+                    // \task[high] Eliminate raw hex constant.
+                    num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
+                    
+                    for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
+                    {
+                        addle16b_i(rom + dict_loc, d_i, (m - de_delta) );
+                    }
+                }
+                else
+                {
+                    ZTextMessage_Free( &doc->text_bufz[m_i] );
+                    
+                    doc->text_bufz[m_i] = zmsg;
+                }
+                
+                TextLogic_ZStringToAString
+                (
+                    doc,
+                    &zmsg,
+                    &amsg
+                );
+                
+                asprintf(&text_buf,
+                         "%03d: %s",
+                         m_i,
+                         amsg.m_text);
+                
+                if(p_ed->num)
+                {
                     ZTextMessage_Free(&zmsg);
-                    AString_Free(&amsg);
-                    
-                    return;
                 }
                 
-                memcpy(rom + rom_addr_split(to->bank, de_base + m),
-                       rom + rom_addr_split(to->bank, de_bound),
-                       j - de_bound);
+                SendMessage(hc, LB_DELETESTRING, m_i, 0);
+                SendMessage(hc, LB_INSERTSTRING, m_i, (LPARAM) text_buf);
+                SendMessage(hc, LB_SETCURSEL, m_i, 0);
                 
-                memcpy(rom + rom_addr_split(to->bank, de_base),
-                       zmsg.m_text,
-                       m);
-                
-                // \task[high] Eliminate raw hex constant.
-                num_dict = ( ldle16b(rom + dict_loc) - 0xc703 ) >> 1;
-                
-                for(d_i = (m_i + 1); d_i < num_dict; d_i += 1)
-                {
-                    addle16b_i(rom + dict_loc, d_i, (m - de_delta) );
-                }
+                free(text_buf);
             }
             else
             {
-                ZTextMessage_Free( &doc->text_bufz[m_i] );
+                char * text_buf = NULL;
                 
-                doc->text_bufz[m_i] = zmsg;
+                // \task[high] What the hell was this intended to do? Update:
+                // I think this tries to select the place in the edit window
+                // where the error occurred?
+                int e_i = text_error - text_buf;
+                
+                SendMessage(ted_win, EM_SETSEL, e_i, e_i);
+                
+                SetFocus(ted_win);
+                
+                return;
             }
             
-            TextLogic_ZStringToAString
-            (
-                doc,
-                &zmsg,
-                &amsg
-            );
+            AString_Free(&amsg);
             
-            asprintf(&text_buf,
-                     "%03d: %s",
-                     m_i,
-                     amsg.m_text);
-            
-            if(p_ed->num)
-            {
-                ZTextMessage_Free(&zmsg);
-            }
-            
-            SendMessage(hc, LB_DELETESTRING, m_i, 0);
-            SendMessage(hc, LB_INSERTSTRING, m_i, (LPARAM) text_buf);
-            SendMessage(hc, LB_SETCURSEL, m_i, 0);
-            
-            free(text_buf);
+            doc->t_modf = 1;
         }
-        else
-        {
-            char * text_buf = NULL;
-            
-            // \task[high] What the hell was this intended to do? Update:
-            // I think this tries to select the place in the edit window
-            // where the error occurred?
-            int e_i = text_error - text_buf;
-            
-            SendMessage(ted_win, EM_SETSEL, e_i, e_i);
-            
-            SetFocus(ted_win);
-            
-            return;
-        }
-        
-        AString_Free(&amsg);
-        
-        doc->t_modf = 1;
     }
-}
 
 // =============================================================================
 
