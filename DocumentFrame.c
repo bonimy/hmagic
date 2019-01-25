@@ -252,8 +252,6 @@ dontsave:
             if( Is(win, ad.m_activating) )
             {
                 activedoc = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
-                
-                SetFocus(dlg);
             }
             
             goto default_case;
@@ -261,13 +259,6 @@ dontsave:
         
         case WM_SETFOCUS:
             
-            SetFocus(dlg);
-            
-            goto default_case;
-        
-        case WM_MDIRESTORE:
-            
-            SetActiveWindow(dlg);
             SetFocus(dlg);
             
             goto default_case;

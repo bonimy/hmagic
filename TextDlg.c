@@ -421,160 +421,186 @@ SD_ENTRY text_sd[] =
 
 // =============================================================================
 
-extern BOOL CALLBACK
-TextDlg(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    TEXTEDIT * ed;
-    
-    FDOC *doc;
-    
-    int i, k, l;
-    
-    unsigned char *rom;
-    
-    AString asc_msg = { 0 } ;
-    
-    text_offsets_ty const * const to = &offsets.text;
-    
-    unsigned const dict_loc = to->dictionary;
-    
-    // -----------------------------
-    
-    switch(msg)
+    extern BOOL CALLBACK
+    TextDlg
+    (
+        HWND   p_win,
+        UINT   p_msg,
+        WPARAM p_wp,
+        LPARAM p_lp)
     {
-    
-    case WM_INITDIALOG:
+        unsigned char *rom;
         
-        SetWindowLongPtr(win, DWLP_USER, lparam);
+        int i, k, l;
         
-        ed = (TEXTEDIT*) lparam;
+        TEXTEDIT * ed = NULL;
         
-        CheckDlgButton(win, ID_TextEditTextRadio, BST_CHECKED);
+        FDOC *doc;
         
-        ed->dlg = win;
-        ed->num = 0;
+        AString asc_msg = { 0 };
         
-        doc = ed->ew.doc;
+        HWND const text_edit = GetDlgItem(p_win, ID_TextEditWindow);
         
-        if( ! doc->t_loaded)
+        text_offsets_ty const * const to = &offsets.text;
+        
+        unsigned const dict_loc = to->dictionary;
+        
+        // -----------------------------
+        
+        switch(p_msg)
         {
-            LoadText(doc);
-        }
         
-        TextDlg_ListStrings(ed, win);
-        
-        break;
-    
-    case WM_CLOSE:
-        
-        return 1;
-    
-    case WM_COMMAND:
-        
-        ed = (TEXTEDIT*) GetWindowLongPtr(win, DWLP_USER);
-        
-        if(!ed)
+        case WM_INITDIALOG:
+            
+            SetWindowLongPtr(p_win, DWLP_USER, p_lp);
+            
+            ed = (TEXTEDIT*) p_lp;
+            
+            CheckDlgButton(p_win, ID_TextEditTextRadio, BST_CHECKED);
+            
+            ed->dlg = p_win;
+            ed->num = 0;
+            
+            doc = ed->ew.doc;
+            
+            if( ! doc->t_loaded)
+            {
+                LoadText(doc);
+            }
+            
+            TextDlg_ListStrings(ed, p_win);
+            
             break;
         
-        doc = ed->ew.doc;
-        
-        rom = doc->rom;
-        
-        switch(wparam)
-        {
-        
-        case ID_TextEntriesListControl | (LBN_DBLCLK << 16):
+        case WM_SETFOCUS:
             
-            i = SendMessage((HWND) lparam, LB_GETCURSEL, 0, 0);
+            SetFocus(text_edit);
             
-            if(i != LB_ERR)
+            break;
+        
+        case WM_CLOSE:
+            
+            return 1;
+        
+        case WM_COMMAND:
+            
+            ed = (TEXTEDIT*) GetWindowLongPtr(p_win, DWLP_USER);
+            
+            if(!ed)
+                break;
+            
+            doc = ed->ew.doc;
+            
+            rom = doc->rom;
+            
+            switch(p_wp)
             {
-                if(ed->num)
+
+            case HM_EN_KILLFOCUS(ID_TextEditWindow):
+                
+                // \task[high] Disabled. Was test code.
+                // SetDlgItemText(debug_window, IDC_STATIC3, "3");
+                
+                break;
+            
+            case ID_TextEntriesListControl | (LBN_DBLCLK << 16):
+                
+                i = SendMessage((HWND) p_lp, LB_GETCURSEL, 0, 0);
+                
+                if(i != LB_ERR)
                 {
-                    int dict_entry_offset = 0;
+                    if(ed->num)
+                    {
+                        int dict_entry_offset = 0;
+                        
+                        ZTextMessage zmsg = { 0 };
+                        
+                        // -----------------------------
+                        
+                        l = ldle16b_i(rom + dict_loc, i);
+                        k = ldle16b_i(rom + dict_loc, i + 1);
+                        
+                        dict_entry_offset = rom_addr_split(to->bank, l);
+                        
+                        ZTextMessage_AppendStream(&zmsg,
+                                                  rom + dict_entry_offset,
+                                                  (k - l) );
+                        
+                        TextLogic_ZStringToAString
+                        (
+                            doc,
+                            &zmsg,
+                            &asc_msg
+                        );
+                        
+                        ZTextMessage_Free(&zmsg);
+                    }
+                    else
+                    {
+                        TextLogic_ZStringToAString
+                        (
+                            doc,
+                            &doc->text_bufz[i],
+                            &asc_msg
+                        );
+                    }
                     
-                    ZTextMessage zmsg = { 0 };
-                    
-                    // -----------------------------
-                    
-                    l = ldle16b_i(rom + dict_loc, i);
-                    k = ldle16b_i(rom + dict_loc, i + 1);
-                    
-                    dict_entry_offset = rom_addr_split(to->bank, l);
-                    
-                    ZTextMessage_AppendStream(&zmsg,
-                                              rom + dict_entry_offset,
-                                              (k - l) );
-                    
-                    TextLogic_ZStringToAString
-                    (
-                        doc,
-                        &zmsg,
-                        &asc_msg
-                    );
-                    
-                    ZTextMessage_Free(&zmsg);
+                    SetDlgItemText(p_win, ID_TextEditWindow, asc_msg.m_text);
                 }
                 else
                 {
-                    TextLogic_ZStringToAString
-                    (
-                        doc,
-                        &doc->text_bufz[i],
-                        &asc_msg
-                    );
+                    SetDlgItemText(p_win, ID_TextEditWindow, 0);
                 }
                 
-                SetDlgItemText(win, ID_TextEditWindow, asc_msg.m_text);
+                break;
+            
+            case ID_TextSetTextButton:
+                
+                TextDlg_SetText(ed, p_win);
+                
+                break;
+            
+            case ID_TextEditTextRadio:
+                
+                ed->num = 0;
+                
+                SendDlgItemMessage
+                (
+                    p_win,
+                    ID_TextEntriesListControl,
+                    LB_RESETCONTENT,
+                    0,
+                    0
+                );
+                
+                TextDlg_ListStrings(ed, p_win);
+    
+                break;
+            
+            case ID_TextEditDictionaryRadio:
+                
+                ed->num = 1;
+                
+                SendDlgItemMessage
+                (
+                    p_win,
+                    ID_TextEntriesListControl,
+                    LB_RESETCONTENT,
+                    0,
+                    0
+                );
+                
+                TextDlg_ListStrings(ed, p_win);
+                
+                break;
             }
-            else
-            {
-                SetDlgItemText(win, ID_TextEditWindow, 0);
-            }
-            
-            break;
-        
-        case ID_TextSetTextButton:
-            
-            TextDlg_SetText(ed, win);
-            
-            break;
-        
-        case ID_TextEditTextRadio:
-            
-            ed->num = 0;
-            
-            SendDlgItemMessage(win,
-                               ID_TextEntriesListControl,
-                               LB_RESETCONTENT,
-                               0,
-                               0);
-            
-            TextDlg_ListStrings(ed, win);
-
-            break;
-        
-        case ID_TextEditDictionaryRadio:
-            
-            ed->num = 1;
-            
-            SendDlgItemMessage(win,
-                               ID_TextEntriesListControl,
-                               LB_RESETCONTENT,
-                               0,
-                               0);
-            
-            TextDlg_ListStrings(ed, win);
             
             break;
         }
         
-        break;
+        AString_Free(&asc_msg);
+        
+        return FALSE;
     }
-    
-    AString_Free(&asc_msg);
-    
-    return FALSE;
-}
 
 // =============================================================================

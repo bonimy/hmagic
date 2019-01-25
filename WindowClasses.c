@@ -158,6 +158,34 @@
 
             return DLGC_WANTALLKEYS;
 
+        case WM_SETFOCUS:
+            
+            {
+                static unsigned set_count = 0;
+                static char set_buf[0x40] = { 0 };
+                
+                set_count += 1;
+                sprintf(set_buf, "%u", set_count);
+                
+                SetDlgItemText(debug_window, IDC_STATIC6, set_buf);
+            }
+            
+            break;
+
+        case WM_KILLFOCUS:
+            
+            {
+                static unsigned kill_count = 0;
+                static char kill_buf[0x40] = { 0 };
+                
+                kill_count += 1;
+                sprintf(kill_buf, "%u", kill_count);
+                
+                SetDlgItemText(debug_window, IDC_STATIC4, kill_buf);
+            }
+            
+            break;
+
         case WM_KEYUP:
 
             switch(p_wp)

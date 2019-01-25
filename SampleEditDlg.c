@@ -38,14 +38,6 @@ SD_ENTRY samp_sd[]={
 
 // =============================================================================
 
-#define HM_EN_KILLFOCUS(id) ( (EN_KILLFOCUS << 16) | (id & 0xffff) )
-
-// =============================================================================
-
-#define HM_EN_CHANGE(id) ( (EN_CHANGE << 16) | (id & 0xffff) )
-
-// =============================================================================
-
     static void
     LoadInstrument(HWND             const p_win,
                    SAMPEDIT const * const ed)

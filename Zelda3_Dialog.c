@@ -874,18 +874,6 @@
         HM_TreeView_SetParam(hc, patch_root, 0xd0000);
         HM_TreeView_SetParam(hc, gfx_schemes_root, 0xe0000);
         
-#if 1
-        PostMessage
-        (
-            p_win,
-            WM_SETFOCUS,
-            HM_NullWP(),
-            HM_NullLP()
-        );
-        
-#endif
-        // HM_TreeView_SelectItem(hc, ow_root);
-        
         return FALSE;
     }
 
@@ -894,7 +882,7 @@
 BOOL CALLBACK
 z3dlgproc
 (
-    HWND win,
+    HWND   p_win,
     UINT   p_msg,
     WPARAM p_wp,
     LPARAM p_lp
@@ -930,7 +918,7 @@ z3dlgproc
     
     uint32_t item_param = u32_neg1;
     
-    HWND const treeview = GetDlgItem(win, ID_Z3Dlg_TreeView);
+    HWND const treeview = GetDlgItem(p_win, ID_Z3Dlg_TreeView);
     
     char buf[0x200];
     
@@ -945,17 +933,7 @@ z3dlgproc
        
     case WM_INITDIALOG:
         
-        return Z3Dlg_OnInit(win, p_lp);
-    
-    case WM_ACTIVATE:
-        
-        SetActiveWindow(treeview);
-        
-        break;
-    
-    case WM_GETDLGCODE:
-        
-        return DLGC_WANTALLKEYS;
+        return Z3Dlg_OnInit(p_win, p_lp);
     
     case WM_KEYDOWN:
         
@@ -980,6 +958,7 @@ z3dlgproc
     case WM_SETFOCUS:
         
         SetFocus(treeview);
+        SetDlgItemText(debug_window, IDC_STATIC1, "2");
         
         break;
     
@@ -1048,7 +1027,7 @@ z3dlgproc
                 
                 // Is joek. Put in a collapse all or expand all at some point
                 // maybe.
-                // MessageBox(win, "Hey don't do that!", "Really!", MB_OK);
+                // MessageBox(p_win, "Hey don't do that!", "Really!", MB_OK);
             
             case NM_DBLCLK:
                 
@@ -1088,7 +1067,7 @@ z3dlgproc
                 
 open_edt:
                 
-                doc = (FDOC*) GetWindowLongPtr(win, DWLP_USER);
+                doc = (FDOC*) GetWindowLongPtr(p_win, DWLP_USER);
                 
                 item_category = HIWORD(item_param);
                 item_id       = LOWORD(item_param);
@@ -1285,6 +1264,24 @@ open_edt:
                 
                 case 5:
                     
+                    // \task[high] This works, so restructure the rest of
+                    // this window procedure to handle other categories this
+                    // way. This prevents the treeview from stealing keyboard
+                    // focus back from the newly opened MDI child windows.
+                    // (treeviews are bastards!)
+                    if( Is(p_msg, WM_NOTIFY) )
+                    {
+                        PostMessage
+                        (
+                            p_win, 
+                            4000,
+                            item_param,
+                            0
+                        );
+
+                        break;
+                    }
+                    
                     if(doc->t_wnd)
                     {
                         SendMessage(clientwnd,
@@ -1304,7 +1301,7 @@ open_edt:
                         sizeof(TEXTEDIT)
                     );
                     
-                    break;
+                    return FALSE;
                 
                 case 7:
                     

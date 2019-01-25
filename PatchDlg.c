@@ -138,6 +138,10 @@ PatchDlg_Init
         LPARAM p_lp
     )
     {
+        UNREFERENCED_PARAMETER(p_wp);
+        
+        // -----------------------------
+        
         switch(p_msg)
         {
             
