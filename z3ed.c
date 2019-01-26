@@ -1816,56 +1816,59 @@ ShowDialog
 
 // =============================================================================
 
-HWND
-Editwin(FDOC       * const doc,
-        char const * const wclass,
-        char const * const title,
-        LPARAM       const param,
-        int          const size)
-{
-    char buf[1024];
-    
-    HWND hc;
-    
-    MDICREATESTRUCT mdic;
-    
-    CP2(EDITWIN) a = (EDITWIN*) calloc(1, size);
-    
-    // -----------------------------
-    
-    wsprintf(buf, "%s - %s", doc->filename, title);
-    
-    a->doc   = doc;
-    a->param = param;
-    
-    mdic.szClass = wclass;
-    mdic.szTitle = buf;
-    mdic.hOwner  = hinstance;
-    
-    mdic.x = mdic.y = mdic.cx = mdic.cy = CW_USEDEFAULT;
-    
-    mdic.style = 
+    extern HWND
+    Editwin
     (
-        WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
-      | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
-    );
-    
-    mdic.lParam = (LPARAM) a;
-    
-    hc = (HWND) SendMessage(clientwnd, WM_MDICREATE, 0, (LPARAM) &mdic);
-    
-    if(hc)
+        CP2(FDOC)  doc,
+        CP2C(char) wclass,
+        CP2C(char) title,
+        LPARAM     const param,
+        int        const size
+    )
     {
-        SendMessage(clientwnd, WM_MDIACTIVATE, (WPARAM) hc, 0);
-        SendMessage(clientwnd, WM_MDIREFRESHMENU, 0, 0);
+        char buf[1024];
+        
+        HWND hc;
+        
+        MDICREATESTRUCT mdic;
+        
+        CP2(EDITWIN) a = (EDITWIN*) calloc(1, size);
+        
+        // -----------------------------
+        
+        wsprintf(buf, "%s - %s", doc->filename, title);
+        
+        a->doc   = doc;
+        a->param = param;
+        
+        mdic.szClass = wclass;
+        mdic.szTitle = buf;
+        mdic.hOwner  = hinstance;
+        
+        mdic.x = mdic.y = mdic.cx = mdic.cy = CW_USEDEFAULT;
+        
+        mdic.style = 
+        (
+            WS_SYSMENU | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX
+          | WS_MAXIMIZEBOX | WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS
+        );
+        
+        mdic.lParam = (LPARAM) a;
+        
+        hc = (HWND) SendMessage(clientwnd, WM_MDICREATE, 0, (LPARAM) &mdic);
+        
+        if(hc)
+        {
+            SendMessage(clientwnd, WM_MDIACTIVATE, (WPARAM) hc, 0);
+            SendMessage(clientwnd, WM_MDIREFRESHMENU, 0, 0);
+        }
+        else
+        {
+            MessageBox(framewnd, "Edit window creation failed!", NULL, MB_OK);
+        }
+        
+        return hc;
     }
-    else
-    {
-        MessageBox(framewnd, "Edit window creation failed!", NULL, MB_OK);
-    }
-    
-    return hc;
-}
 
 // =============================================================================
 

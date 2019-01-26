@@ -234,14 +234,20 @@ loadoverovl(FDOC *doc, uint16_t *buf, int mapnum);
 void
 SetBS16(BLOCKSEL16*bs,int i,HWND hc);
 
-HWND
-Editwin(FDOC       * const doc,
-        char const * const wclass,
-        char const * const title,
-        LPARAM       const param,
-        int          const size);
+    extern HWND
+    Editwin
+    (
+        CP2(FDOC)  doc,
+        CP2C(char) wclass,
+        CP2C(char) title,
+        LPARAM     const param,
+        int        const size
+    );
 
     extern BOOL
-    HM_RegisterClasses(HINSTANCE p_inst);
+    HM_RegisterClasses
+    (
+        HINSTANCE const p_inst
+    );
 
 #endif

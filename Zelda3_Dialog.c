@@ -9,7 +9,10 @@
 
     #include "Zelda3_Enum.h"
 
+    #include "HMagicUtility.h"
+
     #include "OverworldEdit.h"
+    #include "OverworldEnum.h"
 
     #include "DungeonEnum.h"
     #include "DungeonLogic.h"
@@ -879,616 +882,776 @@
 
 // =============================================================================
 
-BOOL CALLBACK
-z3dlgproc
-(
-    HWND   p_win,
-    UINT   p_msg,
-    WPARAM p_wp,
-    LPARAM p_lp
-)
-{
-    FDOC*doc;
-    
-    HWND hc;
-    
-    int i,k;
-    
-    BOOL r = FALSE;
-    
-    TVINSERTSTRUCT tvi;
-    TVHITTESTINFO hti;
-    TVITEM*itemstr;
-    
-    HTREEITEM hitem;
-    
-    RECT rc;
-    
-    ZOVER*ov;
-    
-    OVEREDIT*oed;
-    
-    // "Notification message header" ?
-    P2C(NMHDR) notific;
-    
-    unsigned char * rom;
-    
-    uint16_t item_id       = 0;
-    uint16_t item_category = u16_neg1;
-    
-    uint32_t item_param = u32_neg1;
-    
-    HWND const treeview = GetDlgItem(p_win, ID_Z3Dlg_TreeView);
-    
-    char buf[0x200];
-    
-    // -----------------------------
-    
-#if defined _DEBUG
-    _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );      
-#endif
-    
-    switch(p_msg)
+    static BOOL
+    Z3Dlg_OnTreeViewNotify
+    (
+        HWND   const p_win,
+        LPARAM const p_lp
+    )
     {
-       
-    case WM_INITDIALOG:
+        BOOL r = FALSE;
         
-        return Z3Dlg_OnInit(p_win, p_lp);
-    
-    case WM_KEYDOWN:
+        uint32_t item_param = 0;
         
-        switch(p_wp)
+        RECT rc = { 0 };
+        
+        HWND const treeview = GetDlgItem(p_win, ID_Z3Dlg_TreeView);
+        
+        // "Notification message header" ?
+        CP2C(NMHDR) notific = (NMHDR*) p_lp;
+        
+        HTREEITEM hitem = NULL;
+        
+        TVINSERTSTRUCT tvi = { 0 };
+        
+        TVHITTESTINFO hti = { 0 };
+        
+        TVITEM * itemstr;
+        
+        // -----------------------------
+        
+        switch(notific->code)
         {
+            
+        case TVN_KEYDOWN:
+            
+            /*
+                \task[med] The treeview control causes a system beep
+                if it receives a spacebar key input, as well as for other
+                keys. This has to do with incremental search using characters,
+                I believe. This indicates that spacebar would be treated
+                as part of a search, but since none of our nodes
+                have a title that starts with a space character, it beeps.
+                
+                Ideally I'd like to use the Return / Enter keys to perform
+                this, but I'm not sure if it's even possible without
+                directly hooking this common control. Trying to catch
+                the Enter key has not met with any success yet.
+            */
+            {
+                P2C(NMTVKEYDOWN) tv_key = (NMTVKEYDOWN*) p_lp;
+                
+                if
+                (
+                    Is(tv_key->wVKey, VK_SPACE)
+                 |  Is(tv_key->wVKey, VK_RETURN)
+                )
+                {
+                    HTREEITEM item = HM_TreeView_GetNextSelected(treeview);
+                    
+                    item_param = HM_TreeView_GetItemParam(treeview, item);
+                    
+                    if( Is(item_param, 0) )
+                    {
+                        SendMessage
+                        (
+                            treeview,
+                            TVM_EXPAND,
+                            TVE_TOGGLE,
+                            (LPARAM) item
+                        );
+                        
+                        return TRUE;
+                    }
+                    
+                    r = TRUE;
+                    
+                    goto open_edit_window;
+                }
+            }
+            
+            break;
         
-        case VK_RETURN:
+        case NM_RCLICK:
+            
+            // Is joek. Put in a collapse all or expand all at some point
+            // maybe.
+            // MessageBox(p_win, "Hey don't do that!", "Really!", MB_OK);
+        
+        case NM_DBLCLK:
+            
+            GetWindowRect(notific->hwndFrom, &rc);
+            
+            hti.pt.x = mouse_x-rc.left;
+            hti.pt.y = mouse_y-rc.top;
+            
+            hitem = (HTREEITEM) SendMessage
+            (
+                notific->hwndFrom,
+                TVM_HITTEST,
+                0,
+                (LPARAM) &hti
+            );
+            
+            if( ! hitem )
+                break;
+            
+            if( ! (hti.flags & TVHT_ONITEM) )
+                break;
+            
+            itemstr = &(tvi.item);
+            itemstr->hItem = hitem;
+            itemstr->mask = TVIF_PARAM;
             
             SendMessage
             (
-                treeview,
-                p_msg,
-                p_wp,
-                p_lp
+                notific->hwndFrom,
+                TVM_GETITEM,
+                0,
+                (LPARAM) itemstr
+            );
+            
+            item_param = itemstr->lParam;
+                
+        open_edit_window:
+                
+            PostMessage
+            (
+                p_win,
+                4000,
+                item_param,
+                0
+            );
+
+            break;
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static BOOL
+    Z3Dlg_OpenOrActivateOverworldEditor
+    (
+        CP2(FDOC)       p_doc,
+        uint16_t  const p_item_id
+    )
+    {
+        BOOL r = FALSE;
+        
+        char * buf = NULL;
+        
+        CP2C(uint8_t) rom = p_doc->rom;
+        
+        uint16_t item_id = p_item_id;
+        
+        size_t i = 0;
+        
+        CP2(ZOVER) ov = p_doc->overworld;
+        
+        // -----------------------------
+        
+        if(item_id < 128)
+        {
+            item_id = rom[0x125ec + (item_id & 0x3f)] | (item_id & 0x40);
+        }
+        
+        for(i = 0; i < 4; i += 1)
+        {
+            size_t k = map_ind[i];
+            
+            // -----------------------------
+            
+            if
+            (
+                (item_id >= k)
+             && ov[item_id - k].win
+            )
+            {
+                HWND hc = NULL;
+                
+                HWND const child = ov[item_id - k].win;
+                
+                // -----------------------------
+                
+                CP2C(OVEREDIT) oed = (OVEREDIT*) GetWindowLongPtr
+                (
+                    child,
+                    GWLP_USERDATA
+                );
+                
+                if(i && ! (oed->mapsize) )
+                    continue;
+                
+                HM_MDI_ActivateChild(clientwnd, child);
+                
+                hc = GetDlgItem(oed->dlg, SD_Over_Display);
+                
+                SendMessage(hc, WM_HSCROLL, SB_THUMBPOSITION | ( (i & 1) << 20),0);
+                SendMessage(hc, WM_VSCROLL, SB_THUMBPOSITION | ( (i & 2) << 19),0);
+                
+                goto cleanup;
+            }
+        }
+        
+        asprintf
+        (
+            &buf,
+            "Area %02X - %s",
+            item_id,
+            area_names.m_lines[item_id]
+        );
+        
+        ov[item_id].win = Editwin
+        (
+            p_doc,
+            "ZEOVER",
+            buf,
+            item_id,
+            sizeof(OVEREDIT)
+        );
+        
+    cleanup:
+        
+        if(buf)
+        {
+            free(buf);
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static BOOL
+    Z3Dlg_OpenOrActivateDungeonEditor
+    (
+        CP2(FDOC)       p_doc,
+        uint16_t  const p_item_id
+    )
+    {
+        char * buf = NULL;
+        
+        BOOL r = FALSE;
+        
+        CP2C(uint8_t) rom = p_doc->rom;
+        
+        HWND hc = NULL;
+        
+        // -----------------------------
+        
+        // double clicked on a dungeon item
+        if(p_doc->ents[p_item_id])
+        {
+            HM_MDI_ActivateChild
+            (
+                clientwnd,
+                p_doc->ents[p_item_id]
+            );
+        }
+        else if(p_item_id < 0x8c)
+        {
+            uint16_t k = ldle16b_i
+            (
+                rom + (p_item_id >= 0x85 ? 0x15a64 : 0x14813),
+                p_item_id
+            );
+            
+            // -----------------------------
+            
+            if(p_doc->dungs[k])
+            {
+                MessageBox(framewnd,
+                           "The room is already open in another editor",
+                           "Bad error happened",
+                           MB_OK);
+                
+                ;
+            }
+            
+            if(p_item_id >= 0x85)
+            {
+                asprintf
+                (
+                    &buf,
+                    "Start location %02X",
+                    p_item_id - 0x85
+                );
+            }
+            else
+            {
+                asprintf
+                (
+                    &buf,
+                    "Entrance %02X - %s",
+                    p_item_id,
+                    entrance_names.m_lines[p_item_id]
+                );
+            }
+        }
+        else if(p_item_id < 0x9f)
+        {
+            asprintf(&buf, "Overlay %d", p_item_id - 0x8c);
+        }
+        else if(p_item_id < 0xa7)
+        {
+            asprintf(&buf, "Layout %d", p_item_id - 0x9f);
+        }
+        else
+        {
+            asprintf(&buf, "Watergate overlay");
+        }
+        
+        hc = Editwin
+        (
+            p_doc,
+            "ZEDUNGEON",
+            buf,
+            p_item_id,
+            sizeof(DUNGEDIT)
+        );
+        
+        if(hc)
+        {
+            DUNGEDIT * ed = (DUNGEDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
+            HWND map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
+        
+            Dungselectchg(ed, map_win, 1);
+        }
+        
+        free(buf);
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static BOOL
+    Z3Dlg_HandleTreeViewParameter
+    (
+        HWND     const p_win,
+        uint32_t const p_item_param
+    )
+    {
+        BOOL r = FALSE;
+        
+        char * buf = NULL;
+        
+        size_t i = 0;
+        size_t k = 0;
+        
+        CP2(FDOC) doc = (FDOC*) GetWindowLongPtr(p_win, DWLP_USER);
+        
+        uint8_t * rom = doc->rom;
+        
+        uint16_t item_id       = LOWORD(p_item_param);
+        uint16_t item_category = HIWORD(p_item_param);
+        
+        OVEREDIT * oed = NULL;
+        
+        // -----------------------------
+        
+        switch(item_category)
+        {
+
+            // double clicked on an overworld area
+        case 2:
+            
+            Z3Dlg_OpenOrActivateOverworldEditor
+            (
+                doc,
+                item_id
+            );
+            
+            break;
+        
+        case 3:
+            
+            Z3Dlg_OpenOrActivateDungeonEditor
+            (
+                doc,
+                item_id
+            );
+            
+            break;
+            
+        case 4:
+            
+            if(doc->mbanks[item_id])
+            {
+                 SendMessage
+                 (
+                    clientwnd,
+                    WM_MDIACTIVATE,
+                    (WPARAM) doc->mbanks[item_id],
+                    0
+                );
+                
+                break;
+            }
+            
+            if(item_id == 3)
+            {
+                doc->mbanks[3] = Editwin
+                (
+                    doc,
+                    "MUSBANK",
+                    "Wave editor",
+                    3,
+                    sizeof(SAMPEDIT)
+                );
+            }
+            else
+            {
+                asprintf
+                (
+                    &buf,
+                    "Song bank %d",
+                    item_id + 1
+                );
+                
+                doc->mbanks[item_id] = Editwin
+                (
+                    doc,
+                    "MUSBANK",
+                    buf,
+                    item_id,
+                    sizeof(MUSEDIT)
+                );
+            }
+            
+            break;
+        
+        case 6:
+            
+            if( doc->wmaps[item_id] )
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->wmaps[item_id],
+                            0);
+                
+                break;
+            }
+            
+            asprintf
+            (
+                &buf,
+                "World map %d",
+                item_id + 1
+            );
+            
+            doc->wmaps[item_id] = Editwin
+            (
+                doc,
+                "WORLDMAP",
+                buf,
+                item_id,
+                sizeof(WMAPEDIT)
+            );
+            
+            break;
+        
+        case 5:
+            
+            // \task[high] This works, so restructure the rest of
+            // this window procedure to handle other categories this
+            // way. This prevents the treeview from stealing keyboard
+            // focus back from the newly opened MDI child windows.
+            // (treeviews are bastards!)
+            if(doc->t_wnd)
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->t_wnd,
+                            0);
+                
+                break;
+            }
+            
+            doc->t_wnd = Editwin
+            (
+                doc,
+                "ZTXTEDIT",
+                "Text editor",
+                0,
+                sizeof(TEXTEDIT)
+            );
+            
+            return FALSE;
+        
+        case 7:
+            
+            if(doc->pals[item_id])
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->pals[item_id],
+                            0);
+                
+                break;
+            }
+            
+            k = 0;
+            
+            for(i = 0; i < 16; i += 1)
+            {
+                if(k + pal_num[i] > item_id)
+                    break;
+                
+                k += pal_num[i];
+            }
+            
+            asprintf
+            (
+                &buf,
+                "%s palette %d",
+                pal_text[i],
+                item_id - k
+            );
+            
+            doc->pals[item_id] = Editwin
+            (
+                doc,
+                "PALEDIT",
+                buf,
+                item_id | (i << 10) | ( (item_id - k) << 16),
+                sizeof(PALEDIT)
+            );
+            
+            break;
+        
+        case 8:
+            
+            if( doc->dmaps[item_id] )
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->dmaps[item_id],
+                            0);
+                
+                break;
+            }
+            
+            doc->dmaps[item_id] = Editwin
+            (
+                doc,
+                "LEVELMAP",
+                level_str[item_id + 1],
+                item_id,
+                sizeof(LMAPEDIT)
+            );
+            
+            break;
+        
+        case 9:
+            
+            activedoc = doc;
+            
+            ShowDialog(hinstance,
+                       MAKEINTRESOURCE(IDD_DIALOG17),
+                       framewnd,
+                       editbosslocs,
+                       item_id);
+            
+            break;
+        
+        case 10:
+            
+            if( doc->tmaps[item_id] )
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->tmaps[item_id],
+                            0);
+                
+                break;
+            }
+            
+            doc->tmaps[item_id] = Editwin
+            (
+                doc,
+                "TILEMAP",
+                screen_text[item_id],
+                item_id,
+                sizeof(TMAPEDIT)
+            );
+            
+            break;
+        
+        case 11:
+            
+            if(doc->perspwnd)
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->perspwnd,
+                            0);
+                
+                break;
+            }
+            
+            doc->perspwnd = Editwin(doc,
+                                    "PERSPEDIT",
+                                    "3D object editor",
+                                    0,
+                                    sizeof(PERSPEDIT) );
+            
+            break;
+        
+        case 12:
+            
+            oed = (OVEREDIT*) malloc( sizeof(OVEREDIT) );
+            
+            oed->bmih=zbmih;
+            oed->hpal=0;
+            oed->ew.doc=doc;
+            oed->gfxnum=0;
+            oed->paltype=3;
+            
+            if(palmode)
+                Setpalmode((DUNGEDIT*)oed);
+            
+            rom=doc->rom;
+            Getblocks(doc,225);
+            Loadpal(oed,rom,0x1bd308,0xf1,15,1);
+            Loadpal(oed,rom,0x1bd648,0xdc,4,1);
+            Loadpal(oed,rom,0x1bd630,0xd9,3,1);
+            Editblocks(oed,0xf0104,framewnd);
+            Releaseblks(doc,225);
+            
+            if(oed->hpal)
+                DeleteObject(oed->hpal);
+            
+            free(oed);
+            
+            break;
+        
+        case 13:
+            
+            if(doc->hackwnd)
+            {
+                SendMessage(clientwnd,
+                            WM_MDIACTIVATE,
+                            (WPARAM) doc->hackwnd,
+                            0);
+                
+                break;
+            }
+            
+            doc->hackwnd = Editwin(doc,
+                                   "PATCHLOAD",
+                                   "Patch modules",
+                                   0,
+                                   sizeof(PATCHLOAD) );
+            
+            break;
+        
+        case 14:
+            
+            // Graphic Themes
+            ShowDialog(hinstance,
+                       MAKEINTRESOURCE(IDD_GRAPHIC_THEMES),
+                       framewnd,
+                       editvarious,
+                       (LPARAM) doc);
+            
+            break;
+        }
+        
+        if(buf)
+        {
+            free(buf);
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    BOOL CALLBACK
+    z3dlgproc
+    (
+        HWND   p_win,
+        UINT   p_msg,
+        WPARAM p_wp,
+        LPARAM p_lp
+    )
+    {
+        BOOL r = FALSE;
+        
+        HWND const treeview = GetDlgItem(p_win, ID_Z3Dlg_TreeView);
+        
+        // -----------------------------
+        
+    #if defined _DEBUG
+        _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );      
+    #endif
+        
+        switch(p_msg)
+        {
+           
+        case WM_INITDIALOG:
+            
+            return Z3Dlg_OnInit(p_win, p_lp);
+        
+        case WM_KEYDOWN:
+            
+            switch(p_wp)
+            {
+            
+            case VK_RETURN:
+                
+                SendMessage
+                (
+                    treeview,
+                    p_msg,
+                    p_wp,
+                    p_lp
+                );
+                
+                break;
+            }
+            
+            break;
+        
+        case WM_SETFOCUS:
+            
+            SetFocus(treeview);
+            SetDlgItemText(debug_window, IDC_STATIC1, "2");
+            
+            break;
+        
+        case WM_NOTIFY:
+            
+            switch(p_wp)
+            {
+
+            default:
+                
+                HM_OK_MsgBox
+                (
+                    p_win,
+                    "Received notification",
+                    "Strange"
+                );
+                
+                break;
+            
+            case ID_Z3Dlg_TreeView:
+                
+                r = Z3Dlg_OnTreeViewNotify
+                (
+                    p_win,
+                    p_lp
+                );
+                
+                break;
+            }
+        
+        case 4000:
+            
+            Z3Dlg_HandleTreeViewParameter
+            (
+                p_win,
+                p_wp
             );
             
             break;
         }
         
-        break;
-    
-    case WM_SETFOCUS:
-        
-        SetFocus(treeview);
-        SetDlgItemText(debug_window, IDC_STATIC1, "2");
-        
-        break;
-    
-    case WM_NOTIFY:
-        
-        notific = (NMHDR*) p_lp;
-        
-        switch(p_wp)
-        {
-        
-        case ID_Z3Dlg_TreeView:
-            
-            switch(notific->code)
-            {
-                
-            case TVN_KEYDOWN:
-                
-                /*
-                    \task[med] The treeview control causes a system beep
-                    if it receives a spacebar key input, as well as for other
-                    keys. This has to do with incremental search using characters,
-                    I believe. This indicates that spacebar would be treated
-                    as part of a search, but since none of our nodes
-                    have a title that starts with a space character, it beeps.
-                    
-                    Ideally I'd like to use the Return / Enter keys to perform
-                    this, but I'm not sure if it's even possible without
-                    directly hooking this common control. Trying to catch
-                    the Enter key has not met with any success yet.
-                */
-                {
-                    P2C(NMTVKEYDOWN) tv_key = (NMTVKEYDOWN*) p_lp;
-                    
-                    if
-                    (
-                        Is(tv_key->wVKey, VK_SPACE)
-                     |  Is(tv_key->wVKey, VK_RETURN)
-                    )
-                    {
-                        HTREEITEM item = HM_TreeView_GetNextSelected(treeview);
-                        
-                        item_param = HM_TreeView_GetItemParam(treeview, item);
-                        
-                        if( Is(item_param, 0) )
-                        {
-                            SendMessage
-                            (
-                                treeview,
-                                TVM_EXPAND,
-                                TVE_TOGGLE,
-                                (LPARAM) item
-                            );
-                            
-                            return TRUE;
-                        }
-                        
-                        r = TRUE;
-                        
-                        goto open_edt;
-                    }
-                }
-                
-                break;
-            
-            case NM_RCLICK:
-                
-                // Is joek. Put in a collapse all or expand all at some point
-                // maybe.
-                // MessageBox(p_win, "Hey don't do that!", "Really!", MB_OK);
-            
-            case NM_DBLCLK:
-                
-                GetWindowRect(notific->hwndFrom, &rc);
-                
-                hti.pt.x = mouse_x-rc.left;
-                hti.pt.y = mouse_y-rc.top;
-                
-                hitem = (HTREEITEM) SendMessage
-                (
-                    notific->hwndFrom,
-                    TVM_HITTEST,
-                    0,
-                    (LPARAM) &hti
-                );
-                
-                if( ! hitem )
-                    break;
-                
-                if( ! (hti.flags & TVHT_ONITEM) )
-                    break;
-                
-                itemstr = &(tvi.item);
-                itemstr->hItem = hitem;
-                itemstr->mask = TVIF_PARAM;
-                
-                SendMessage
-                (
-                    notific->hwndFrom,
-                    TVM_GETITEM,
-                    0,
-                    (LPARAM) itemstr
-                );
-                
-                item_param = itemstr->lParam;
-                
-                
-open_edt:
-                
-                doc = (FDOC*) GetWindowLongPtr(p_win, DWLP_USER);
-                
-                item_category = HIWORD(item_param);
-                item_id       = LOWORD(item_param);
-                
-                switch(item_category)
-                {
-
-                    // double clicked on an overworld area
-                case 2:
-                    ov = doc->overworld;
-                    
-                    if(item_id < 128)
-                    {
-                        item_id = doc->rom[0x125ec + (item_id & 0x3f)]
-                                | (item_id & 0x40);
-                    }
-                    
-                    for(i = 0; i < 4; i += 1)
-                    {
-                        k = map_ind[i];
-                        
-                        if(item_id >= k && ov[item_id - k].win)
-                        {
-                            hc = ov[item_id - k].win;
-                            
-                            oed = (OVEREDIT*)GetWindowLongPtr(hc, GWLP_USERDATA);
-                            
-                            if(i && ! (oed->mapsize) )
-                                continue;
-                            
-                            SendMessage(clientwnd,
-                                        WM_MDIACTIVATE,
-                                        (WPARAM) hc,
-                                        0);
-                            
-                            hc = GetDlgItem(oed->dlg,3001);
-                            
-                            SendMessage(hc, WM_HSCROLL, SB_THUMBPOSITION | ( (i & 1) << 20),0);
-                            SendMessage(hc, WM_VSCROLL, SB_THUMBPOSITION | ( (i & 2) << 19),0);
-                            
-                            return FALSE;
-                        }
-                    }
-                    
-                    wsprintf(buf,
-                             "Area %02X - %s",
-                             item_id,
-                             area_names.m_lines[item_id]);
-                    
-                    ov[item_id].win = Editwin
-                    (
-                        doc,
-                        "ZEOVER",
-                        buf,
-                        item_id,
-                        sizeof(OVEREDIT)
-                    );
-                    
-                    break;
-                
-                case 3:
-                    
-                    // double clicked on a dungeon item
-                    if(doc->ents[item_id])
-                    {
-                        HM_MDI_ActivateChild(clientwnd, doc->ents[item_id]);
-                        
-                        break;
-                    }
-                    
-                    if(item_id < 0x8c)
-                    {
-                        k = ((short*)
-                        (
-                            doc->rom
-                          + (item_id >= 0x85 ? 0x15a64 : 0x14813) )
-                        )[item_id];
-                        
-                        if(doc->dungs[k])
-                        {
-                            MessageBox(framewnd,
-                                       "The room is already open in another editor",
-                                       "Bad error happened",
-                                       MB_OK);
-                            
-                            break;
-                        }
-                        
-                        if(item_id >= 0x85)
-                            wsprintf(buf,"Start location %02X", item_id - 0x85);
-                        else
-                        {
-                            wsprintf(buf,
-                                     "Entrance %02X - %s",
-                                     item_id,
-                                     entrance_names.m_lines[item_id]);
-                        }
-                    }
-                    else if(item_id < 0x9f)
-                        wsprintf(buf,"Overlay %d", item_id - 0x8c);
-                    else if(item_id < 0xa7)
-                        wsprintf(buf,"Layout %d", item_id - 0x9f);
-                    else
-                        wsprintf(buf,"Watergate overlay");
-                    
-                    hc = Editwin
-                    (
-                        doc,
-                        "ZEDUNGEON",
-                        buf,
-                        item_id,
-                        sizeof(DUNGEDIT)
-                    );
-                    
-                    if(hc)
-                    {
-                        DUNGEDIT * ed = (DUNGEDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
-                        HWND map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
-                    
-                        Dungselectchg(ed, map_win, 1);
-                    }
-                    
-                    break;
-                case 4:
-                    
-                    if(doc->mbanks[item_id])
-                    {
-                         SendMessage
-                         (
-                            clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->mbanks[item_id],
-                            0
-                        );
-                        
-                        break;
-                    }
-                    
-                    if(item_id == 3)
-                    {
-                        doc->mbanks[3] = Editwin
-                        (
-                            doc,
-                            "MUSBANK",
-                            "Wave editor",
-                            3,
-                            sizeof(SAMPEDIT)
-                        );
-                    }
-                    else
-                    {
-                        wsprintf(buf,
-                                 "Song bank %d",
-                                 item_id + 1);
-                        
-                        doc->mbanks[item_id] = Editwin
-                        (
-                            doc,
-                            "MUSBANK",
-                            buf,
-                            item_id,
-                            sizeof(MUSEDIT)
-                        );
-                    }
-                    
-                    break;
-                
-                case 6:
-                    
-                    if( doc->wmaps[item_id] )
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->wmaps[item_id],
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    wsprintf(buf,
-                             "World map %d",
-                             item_id + 1);
-                    
-                    doc->wmaps[item_id] = Editwin
-                    (
-                        doc,
-                        "WORLDMAP",
-                        buf,
-                        item_id,
-                        sizeof(WMAPEDIT)
-                    );
-                    
-                    break;
-                
-                case 5:
-                    
-                    // \task[high] This works, so restructure the rest of
-                    // this window procedure to handle other categories this
-                    // way. This prevents the treeview from stealing keyboard
-                    // focus back from the newly opened MDI child windows.
-                    // (treeviews are bastards!)
-                    if( Is(p_msg, WM_NOTIFY) )
-                    {
-                        PostMessage
-                        (
-                            p_win, 
-                            4000,
-                            item_param,
-                            0
-                        );
-
-                        break;
-                    }
-                    
-                    if(doc->t_wnd)
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->t_wnd,
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    doc->t_wnd = Editwin
-                    (
-                        doc,
-                        "ZTXTEDIT",
-                        "Text editor",
-                        0,
-                        sizeof(TEXTEDIT)
-                    );
-                    
-                    return FALSE;
-                
-                case 7:
-                    
-                    if(doc->pals[item_id])
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->pals[item_id],
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    k = 0;
-                    
-                    for(i = 0; i < 16; i += 1)
-                    {
-                        if(k + pal_num[i] > item_id)
-                            break;
-                        
-                        k += pal_num[i];
-                    }
-                    
-                    wsprintf(buf,
-                             "%s palette %d",
-                             pal_text[i],
-                             item_id - k);
-                    
-                    doc->pals[item_id] = Editwin
-                    (
-                        doc,
-                        "PALEDIT",
-                        buf,
-                        item_id | (i << 10) | ( (item_id - k) << 16),
-                        sizeof(PALEDIT)
-                    );
-                    
-                    break;
-                
-                case 8:
-                    
-                    if( doc->dmaps[item_id] )
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->dmaps[item_id],
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    doc->dmaps[item_id] = Editwin
-                    (
-                        doc,
-                        "LEVELMAP",
-                        level_str[item_id + 1],
-                        item_id,
-                        sizeof(LMAPEDIT)
-                    );
-                    
-                    break;
-                
-                case 9:
-                    
-                    activedoc = doc;
-                    
-                    ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_DIALOG17),
-                               framewnd,
-                               editbosslocs,
-                               item_id);
-                    
-                    break;
-                
-                case 10:
-                    
-                    if( doc->tmaps[item_id] )
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->tmaps[item_id],
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    doc->tmaps[item_id] = Editwin
-                    (
-                        doc,
-                        "TILEMAP",
-                        screen_text[item_id],
-                        item_id,
-                        sizeof(TMAPEDIT)
-                    );
-                    
-                    break;
-                
-                case 11:
-                    
-                    if(doc->perspwnd)
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->perspwnd,
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    doc->perspwnd = Editwin(doc,
-                                            "PERSPEDIT",
-                                            "3D object editor",
-                                            0,
-                                            sizeof(PERSPEDIT) );
-                    
-                    break;
-                
-                case 12:
-                    
-                    oed = (OVEREDIT*) malloc( sizeof(OVEREDIT) );
-                    
-                    oed->bmih=zbmih;
-                    oed->hpal=0;
-                    oed->ew.doc=doc;
-                    oed->gfxnum=0;
-                    oed->paltype=3;
-                    
-                    if(palmode)
-                        Setpalmode((DUNGEDIT*)oed);
-                    
-                    rom=doc->rom;
-                    Getblocks(doc,225);
-                    Loadpal(oed,rom,0x1bd308,0xf1,15,1);
-                    Loadpal(oed,rom,0x1bd648,0xdc,4,1);
-                    Loadpal(oed,rom,0x1bd630,0xd9,3,1);
-                    Editblocks(oed,0xf0104,framewnd);
-                    Releaseblks(doc,225);
-                    
-                    if(oed->hpal)
-                        DeleteObject(oed->hpal);
-                    
-                    free(oed);
-                    
-                    break;
-                
-                case 13:
-                    
-                    if(doc->hackwnd)
-                    {
-                        SendMessage(clientwnd,
-                                    WM_MDIACTIVATE,
-                                    (WPARAM) doc->hackwnd,
-                                    0);
-                        
-                        break;
-                    }
-                    
-                    doc->hackwnd = Editwin(doc,
-                                           "PATCHLOAD",
-                                           "Patch modules",
-                                           0,
-                                           sizeof(PATCHLOAD) );
-                    
-                    break;
-                
-                case 14:
-                    
-                    // Graphic Themes
-                    ShowDialog(hinstance,
-                               MAKEINTRESOURCE(IDD_GRAPHIC_THEMES),
-                               framewnd,
-                               editvarious,
-                               (LPARAM) doc);
-                    
-                    break;
-                }
-            }
-        }
-        
-        break;
-    
-    case 4000:
-        
-        item_param = p_wp;
-        
-        goto open_edt;
+        return r;
     }
-    
-    return r;
-}
+
+// =============================================================================
