@@ -621,6 +621,27 @@ HM_NullLP(void)
 // =============================================================================
 
     extern int
+    HM_ListBox_GetSelectedItem
+    (
+        HWND const p_listbox
+    )
+    {
+        int selected_item_index = SendMessage
+        (
+            p_listbox,
+            LB_GETCURSEL,
+            0,
+            0
+        );
+        
+        // -----------------------------
+        
+        return selected_item_index;
+    }
+
+// =============================================================================
+
+    extern int
     HM_ListBox_SelectItem
     (
         HWND const p_listbox,
@@ -638,6 +659,110 @@ HM_NullLP(void)
         // -----------------------------
         
         return r;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_InsertString
+    (
+        HWND       const p_listbox,
+        int        const p_insertion_index,
+        CP2C(char)       p_string
+    )
+    {
+        // The index at which the string was inserted.
+        int const inserted_where = SendMessage
+        (
+            p_listbox,
+            LB_INSERTSTRING,
+            p_insertion_index,
+            (LPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return inserted_where;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_DeleteString
+    (
+        HWND const p_listbox,
+        int  const p_deletion_index
+    )
+    {
+        int const remaining_string_count = SendMessage
+        (
+            p_listbox,
+            LB_DELETESTRING,
+            p_deletion_index,
+            0
+        );
+        
+        // -----------------------------
+        
+        return remaining_string_count;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_ListBox_ResetContent
+    (
+        HWND const p_listbox
+    )
+    {
+        SendMessage
+        (
+            p_listbox,
+            LB_RESETCONTENT,
+            0,
+            0
+        );
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetItemRect
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(RECT)       p_item_rect
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_GETITEMRECT,
+            p_item_index,
+            (LPARAM) p_item_rect
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_ListBox_SetHorizontalExtent
+    (
+        HWND const p_listbox,
+        int  const p_extent
+    )
+    {
+        SendMessage
+        (
+            p_listbox,
+            LB_SETHORIZONTALEXTENT,
+            p_extent,
+            HM_NullLP()
+        );
     }
 
 // =============================================================================
@@ -792,8 +917,8 @@ hm_strndup(char const * const p_str,
     BOOL
     HM_FileExists
     (
-        char const * const p_filename,
-        HANDLE     * const p_handle
+        CP2C(char)  p_filename,
+        CP2(HANDLE) p_handle
     )
     {
         HANDLE h = CreateFile(p_filename,
@@ -814,9 +939,12 @@ hm_strndup(char const * const p_str,
 // =============================================================================
 
     extern int
-    vasprintf(char       ** const p_buf_out,
-              const char  * const p_fmt,
-              va_list       const p_var_args)
+    vasprintf
+    (
+        CP2(char *)       p_buf_out,
+        CP2C(char)        p_fmt,
+        va_list     const p_var_args
+    )
     {
         va_list ap1;
         
@@ -839,20 +967,33 @@ hm_strndup(char const * const p_str,
             return -1;
         }
         
+        if(p_buf_out[0])
+        {
+            free(p_buf_out[0]);
+            
+            p_buf_out[0] = NULL;
+        }
+        
         (*p_buf_out) = buf;
         
-        return vsnprintf(buf,
-                         size,
-                         p_fmt,
-                         p_var_args);
+        return vsnprintf
+        (
+            buf,
+            size,
+            p_fmt,
+            p_var_args
+        );
     }
 
 // =============================================================================
 
     extern int
-    asprintf(char       ** const p_buf_out,
-             char const *  const p_fmt,
-             ...)
+    asprintf
+    (
+        CP2(char *) p_buf_out,
+        CP2C(char)  p_fmt,
+        ...
+    )
     {
         int r;
         

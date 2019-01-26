@@ -22,7 +22,14 @@ SD_ENTRY text_sd[] =
         "",
         0, 0, 0, 100,
         ID_TextEntriesListControl,
-        (WS_VISIBLE | WS_CHILD | LBS_NOTIFY | WS_VSCROLL | WS_CLIPCHILDREN),
+        (
+            WS_VISIBLE
+          | WS_CHILD
+          | LBS_NOTIFY
+          | WS_VSCROLL
+          | WS_HSCROLL
+          | WS_CLIPCHILDREN
+        ),
         WS_EX_CLIENTEDGE,
         FLG_SDCH_FOWH
     },
@@ -32,8 +39,17 @@ SD_ENTRY text_sd[] =
         10, 95, 10, 40,
         ID_TextEditWindow,
         (
-            WS_VISIBLE | WS_TABSTOP | WS_CHILD | WS_BORDER | WS_CLIPSIBLINGS
-          | ES_MULTILINE | WS_VSCROLL | ES_AUTOVSCROLL | WS_CLIPCHILDREN
+            WS_VISIBLE
+          | WS_TABSTOP
+          | WS_CHILD
+          | WS_BORDER
+          | WS_CLIPSIBLINGS
+          | ES_MULTILINE
+          | WS_VSCROLL
+          | WS_HSCROLL
+          | WS_CLIPCHILDREN
+          | ES_AUTOVSCROLL
+          | ES_AUTOHSCROLL
         ),
         WS_EX_CLIENTEDGE,
         (FLG_SDCH_FOWH | FLG_SDCH_FOY)
@@ -88,12 +104,14 @@ SD_ENTRY text_sd[] =
         HWND          const p_win
     )
     {
+        HWND const listbox = GetDlgItem
+        (
+            p_win,
+            ID_TextEntriesListControl
+        );
+        
         // Message index (if any is selected)
-        int m_i = SendDlgItemMessage(p_win,
-                                     ID_TextEntriesListControl,
-                                     LB_GETCURSEL,
-                                     0,
-                                     0);
+        int m_i = HM_ListBox_GetSelectedItem(listbox);
         
         FDOC * const doc = p_ed->ew.doc;
         
@@ -105,10 +123,8 @@ SD_ENTRY text_sd[] =
         
         // -----------------------------
         
-        if(m_i != LB_ERR)
+        if( IsNotListBoxError(m_i) )
         {
-            HWND const hc = GetDlgItem(p_win, ID_TextEntriesListControl);
-            
             // abbreviation of text edit window.
             HWND const ted_win = GetDlgItem(p_win, ID_TextEditWindow);
     
@@ -232,19 +248,24 @@ SD_ENTRY text_sd[] =
                     &amsg
                 );
                 
-                asprintf(&text_buf,
-                         "%03d: %s",
-                         m_i,
-                         amsg.m_text);
+                asprintf
+                (
+                    &text_buf,
+                    "%03d: %s",
+                    m_i,
+                    amsg.m_text
+                );
                 
                 if(p_ed->num)
                 {
                     ZTextMessage_Free(&zmsg);
                 }
                 
-                SendMessage(hc, LB_DELETESTRING, m_i, 0);
-                SendMessage(hc, LB_INSERTSTRING, m_i, (LPARAM) text_buf);
-                SendMessage(hc, LB_SETCURSEL, m_i, 0);
+                HM_ListBox_DeleteString(listbox, m_i);
+                
+                HM_ListBox_InsertString(listbox, m_i, text_buf);
+                
+                HM_ListBox_SelectItem(listbox, m_i);
                 
                 free(text_buf);
             }
@@ -275,22 +296,40 @@ SD_ENTRY text_sd[] =
     static void
     TextDlg_ListMonologueStrings
     (
-        FDOC const * const p_doc,
-        HWND         const p_listbox
+        CP2C(FDOC)       p_doc,
+        HWND       const p_listbox
     )
     {
         char * text_buf = NULL;
         
+        int max_item_width = 0;
+        
         size_t m_i = 0;
         
         AString asc_msg = { 0 };
+        
+        HDC const dc = GetDC(p_listbox);
+
+        HFONT const font = (HFONT) SendMessage
+        (p_listbox, WM_GETFONT, HM_NullWP(), HM_NullLP() );
+        
+        HGDIOBJ const old_font = SelectObject(dc, font);
         
         // -----------------------------
         
         for(m_i = 0; m_i < p_doc->t_number; m_i += 1)
         {
             size_t dummy_len = 0;
-            int    write_len = 0;
+            
+            int item_width = 0;
+            int insertion_index = 0;
+            int write_len = 0;
+            
+            RECT item_rect = { 0 };
+            
+            SIZE item_size = { 0 };
+            
+            // -----------------------------
             
             AString_Init(&asc_msg);
             
@@ -303,20 +342,71 @@ SD_ENTRY text_sd[] =
             
             dummy_len = strlen(asc_msg.m_text);
             
-            write_len = asprintf(&text_buf,
-                                 "%03d: %s",
-                                 m_i,
-                                 asc_msg.m_text);
+            write_len = asprintf
+            (
+                &text_buf,
+                "%03d: %s",
+                m_i,
+                asc_msg.m_text
+            );
             
-            SendMessage(p_listbox,
-                        LB_ADDSTRING,
-                        0,
-                        (LPARAM) text_buf);
+            insertion_index = HM_ListBox_AddString
+            (
+                p_listbox,
+                text_buf
+            );
             
-            free(text_buf);
+            Sleep(1);
+            
+            HM_ListBox_GetItemRect
+            (
+                p_listbox,
+                insertion_index,
+                &item_rect
+            );
+            
+            // \task[med] This technique doesn't actually work, trying
+            // something else found on StackOverflow, but adapting it.
+            item_width = (item_rect.right - item_rect.left);
+            
+            if(item_width > max_item_width)
+            {
+                max_item_width = item_width;
+            }
+            
+            // \task[med] This is the technique that works better, or
+            // should, intheory.
+            GetTextExtentPoint32(dc, text_buf, write_len, &item_size);
+            
+            item_width = item_size.cx;
+            
+            if(item_width > max_item_width)
+            {
+                max_item_width = item_width;
+            }
         }
         
+        // \task[med] We should adjust this dynamically as items are edited.
+        // that might take some careful consideration as to what design t
+        // employ.
+        HM_ListBox_SetHorizontalExtent
+        (
+            p_listbox,
+            max_item_width + 100
+        );
+        
+        // -~-~-~-~-~-~-~-~-~-~-~-~-~-~-
+        
+        SelectObject(dc, old_font);
+        
+        ReleaseDC(p_listbox, dc);
+        
         AString_Free(&asc_msg);
+        
+        if(text_buf)
+        {
+            free(text_buf);
+        }
     }
 
 // =============================================================================
@@ -328,15 +418,15 @@ SD_ENTRY text_sd[] =
         HWND         const p_listbox
     )                             
     {
-        uint8_t * const rom = p_doc->rom;
-        
         char * text_buf = NULL;
+        
+        CP2(uint8_t) rom = p_doc->rom;
         
         int de_offset = 0;
         
         uint16_t de_base = 0;
 
-        text_offsets_ty const * const to = &offsets.text;
+        CP2C(text_offsets_ty) to = &offsets.text;
         
         AString amsg = { 0 };
         
@@ -357,7 +447,6 @@ SD_ENTRY text_sd[] =
         // -----------------------------
         
         ZTextMessage_Init(&zmsg);
-        
         
         de_base = ldle16b(rom + to->dictionary);
         
@@ -380,14 +469,16 @@ SD_ENTRY text_sd[] =
             
             asprintf(&text_buf, "%03d: %s", d_i, amsg.m_text);
             
-            SendMessage(p_listbox,
-                        LB_ADDSTRING,
-                        0,
-                        (LPARAM) text_buf);
-            
-            free(text_buf);
+            HM_ListBox_AddString(p_listbox, text_buf);
             
             de_base = de_bound;
+        }
+        
+        if(text_buf)
+        {
+            free(text_buf);
+            
+            text_buf = NULL;
         }
         
         ZTextMessage_Free(&zmsg);
@@ -400,22 +491,20 @@ SD_ENTRY text_sd[] =
     TextDlg_ListStrings
     (
         TEXTEDIT const * const p_ed,
-        HWND             const p_win
+        HWND             const p_listbox
     )
     {
-        FDOC const * const doc = p_ed->ew.doc;
-        
-        HWND const ted_listbox = GetDlgItem(p_win, ID_TextEntriesListControl);
+        CP2C(FDOC) doc = p_ed->ew.doc;
         
         // -----------------------------
         
         if(p_ed->num)
         {
-            TextDlg_ListDictionaryStrings(doc, ted_listbox);
+            TextDlg_ListDictionaryStrings(doc, p_listbox);
         }
         else
         {
-            TextDlg_ListMonologueStrings(doc, ted_listbox);
+            TextDlg_ListMonologueStrings(doc, p_listbox);
         }
     }
 
@@ -440,6 +529,8 @@ SD_ENTRY text_sd[] =
         AString asc_msg = { 0 };
         
         HWND const text_edit = GetDlgItem(p_win, ID_TextEditWindow);
+        
+        HWND const listbox = GetDlgItem(p_win, ID_TextEntriesListControl);
         
         text_offsets_ty const * const to = &offsets.text;
         
@@ -468,7 +559,7 @@ SD_ENTRY text_sd[] =
                 LoadText(doc);
             }
             
-            TextDlg_ListStrings(ed, p_win);
+            TextDlg_ListStrings(ed, listbox);
             
             break;
         
@@ -495,19 +586,12 @@ SD_ENTRY text_sd[] =
             
             switch(p_wp)
             {
-
-            case HM_EN_KILLFOCUS(ID_TextEditWindow):
-                
-                // \task[high] Disabled. Was test code.
-                // SetDlgItemText(debug_window, IDC_STATIC3, "3");
-                
-                break;
             
             case ID_TextEntriesListControl | (LBN_DBLCLK << 16):
                 
-                i = SendMessage((HWND) p_lp, LB_GETCURSEL, 0, 0);
+                i = HM_ListBox_GetSelectedItem( (HWND) p_lp);
                 
-                if(i != LB_ERR)
+                if( IsNotListBoxError(i) )
                 {
                     if(ed->num)
                     {
@@ -564,16 +648,9 @@ SD_ENTRY text_sd[] =
                 
                 ed->num = 0;
                 
-                SendDlgItemMessage
-                (
-                    p_win,
-                    ID_TextEntriesListControl,
-                    LB_RESETCONTENT,
-                    0,
-                    0
-                );
+                HM_ListBox_ResetContent(listbox);
                 
-                TextDlg_ListStrings(ed, p_win);
+                TextDlg_ListStrings(ed, listbox);
     
                 break;
             
@@ -581,16 +658,9 @@ SD_ENTRY text_sd[] =
                 
                 ed->num = 1;
                 
-                SendDlgItemMessage
-                (
-                    p_win,
-                    ID_TextEntriesListControl,
-                    LB_RESETCONTENT,
-                    0,
-                    0
-                );
+                HM_ListBox_ResetContent(listbox);
                 
-                TextDlg_ListStrings(ed, p_win);
+                TextDlg_ListStrings(ed, listbox);
                 
                 break;
             }

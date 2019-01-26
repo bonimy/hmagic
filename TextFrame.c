@@ -8,10 +8,6 @@
     // So we can address the child window, which is a super dialog.
     #include "HMagicEnum.h"
 
-    // \task[high] Temporarily including to test something. Not actually
-    // needed currently.
-    #include "TextEnum.h"
-
 // =============================================================================
 
     static HWND
@@ -109,13 +105,7 @@
             SetFocus(dlg);
             
             break;
-
-        case WM_KILLFOCUS:
-            
-            { SetDlgItemText(debug_window, IDC_STATIC3, "1"); }
-            
-            break;
-
+        
         case WM_GETMINMAXINFO:
             
             DefMDIChildProc(p_win, p_msg, p_wp, p_lp);

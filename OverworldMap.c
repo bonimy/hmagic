@@ -20,6 +20,9 @@ uint8_t const map16ofs[] = {0, 1, 64, 65, 0, 1, 32, 33};
 
 // =============================================================================
 
+// \task[high] Moving exits on the OW editor should trigger a modified flag, but it
+// doesn't according to Zarby. And he's right, b/c callers of this mess don't set any special
+// flags.
 void changeposition(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dx,int dy,int sp,int map,int i,int q,int door1,int door2)
 {
     int a=(map&7)<<9,b=(map&56)<<6,d,e,f,g,h,j,k,l;
@@ -1219,40 +1222,55 @@ updent:
             
             break;
         }
-        if(ed->dtool) break;
-        if(ed->tool!=1 && ed->selflag) {
+        
+        if(ed->dtool)
+        {
+            break;
+        }
+        
+        if(ed->tool!=1 && ed->selflag)
+        {
             Overselectwrite(ed);
             Getselectionrect(ed,&rc);
             InvalidateRect(win,&rc,0);
         }
+        
         ed->dtool=ed->tool+1;
-        if(ed->tool!=6) SetCapture(win);
+        
+        if(ed->tool != 6)
+        {
+            SetCapture(win);
+        }
+        
         SetFocus(win);
+        
         goto mousemove;
     
     mousemove:
     case WM_MOUSEMOVE:
         
         {
-            HWND const par = GetParent(win);
+            HWND const parent = GetParent(win);
             
-            RECT const par_rect = HM_GetWindowRect(par);
+            RECT const parent_rect = HM_GetWindowRect(parent);
             
             HM_MouseMoveData const d =
             HM_GetMouseMoveData(win, wparam, lparam);
             
             POINT const rel_pos =
             {
-                d.m_screen_pos.x - par_rect.left,
-                d.m_screen_pos.y - par_rect.top
+                d.m_screen_pos.x - parent_rect.left,
+                d.m_screen_pos.y - parent_rect.top
             };
             
             LPARAM const new_lp = MAKELPARAM(rel_pos.x, rel_pos.y);
             
-            PostMessage(GetParent(win), msg, wparam, new_lp);
+            // -----------------------------
+            
+            PostMessage(parent, msg, wparam, new_lp);
         }
         
-        if(!ed->dtool)
+        if( ! ed->dtool )
         {
             break;
         }
@@ -1294,7 +1312,9 @@ updent:
                 ed->ov->modf=1;
                 break;
             }
-            if(msg==WM_LBUTTONDOWN) {
+            
+            if( Is(msg, WM_LBUTTONDOWN) )
+            {
                 memcpy(ed->undobuf,ed->ov->buf,0x800);
                 ed->undomodf=ed->ov->modf;
             }
@@ -1320,9 +1340,12 @@ updent:
         
         case 2:
         case 3:
-            k>>=5;
-            l>>=5;
-            if(msg==WM_LBUTTONDOWN) {
+            
+            k >>= 5;
+            l >>= 5;
+            
+            if(msg==WM_LBUTTONDOWN)
+            {
                 if(ed->selflag) if(k>=ed->rectleft && k<ed->rectright && l>=ed->recttop && l<ed->rectbot) {
                     ed->selx=k;
                     ed->sely=l;

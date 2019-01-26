@@ -109,6 +109,44 @@
 
 // =============================================================================
 
+    enum
+    {
+        Z3Dlg_TreeViewCategory_Overworld = 2,
+        Z3Dlg_TreeViewCategory_Dungeon,
+        Z3Dlg_TreeViewCategory_Music,
+        Z3Dlg_TreeViewCategory_Monologue,
+        Z3Dlg_TreeViewCategory_WorldMap,
+        Z3Dlg_TreeViewCategory_Palette,
+        Z3Dlg_TreeViewCategory_LevelMap,
+        Z3Dlg_TreeViewCategory_BossLocation,
+        Z3Dlg_TreeViewCategory_TileMap,
+        Z3Dlg_TreeViewCategory_Perspective,
+        Z3Dlg_TreeViewCategory_PlayerGraphics,
+        Z3Dlg_TreeViewCategory_Patch,
+        Z3Dlg_TreeViewCategory_GraphicSchemes
+    };
+
+// =============================================================================
+
+    LPARAM
+    Z3Dlg_TreeView_FormParam
+    (
+        uint16_t const p_item_category,
+        uint16_t const p_item_id
+    )
+    {
+        LPARAM r = 0;
+        
+        // -----------------------------
+        
+        r |= p_item_id;
+        r |= ( (uint32_t) p_item_category ) << 16;
+        
+        return r;
+    }
+
+// =============================================================================
+
     typedef
     struct tag_TreeViewNode
     {
@@ -302,7 +340,7 @@
 // =============================================================================
 
     /**
-        \task[high] The name of this is misleading b/c it currently only deals in
+        \task[med] The name of this is misleading b/c it currently only deals in
         whether the node is graphically considered to have child nodes.
     */
     extern BOOL
@@ -417,7 +455,7 @@
             item.cChildren = 1;
         }
         
-        // \task[high] Finish this implementation. this is just placeholder stuff.
+        // \task[med] Finish this implementation. this is just placeholder stuff.
         return TVI_ROOT;
     }
 
@@ -639,7 +677,7 @@
         LPARAM const p_lp
     )
     {
-        char buf[0x200];
+        char * buf = NULL;
         
         int i = 0;
         int j = 0;
@@ -687,13 +725,19 @@
         
         ow_root = HM_TreeView_InsertRoot(hc, "Overworld");
         
-        tvi.item.pszText = buf;
-        
         for(i = 0; i < 160; i += 1)
         {
             tvi.item.lParam = (i + 0x20000);
             
-            wsprintf(buf, "Area %02X - %s", i, area_names.m_lines[i]);
+            asprintf
+            (
+                &buf,
+                "Area %02X - %s",
+                i,
+                area_names.m_lines[i]
+            );
+            
+            tvi.item.pszText = buf;
             
             HM_TreeView_InsertItem(hc, ow_root, &tvi);
         }
@@ -702,48 +746,89 @@
         
         dung_root = HM_TreeView_InsertRoot(hc, "Dungeons");
         
-        tvi.item.pszText = buf;
-        
         for(i = 0; i < 133; i += 1)
         {
             tvi.item.lParam = (i + 0x30000);
             
-            wsprintf(buf,
-                     "Entrance %02X - %s",
-                     i,
-                     entrance_names.m_lines[i]);
+            asprintf
+            (
+                &buf,
+                "Entrance %02X - %s",
+                i,
+                entrance_names.m_lines[i]
+            );
+            
+            tvi.item.pszText = buf;
             
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 7; i += 1)
         {
-            tvi.item.lParam = (i + 0x30085);
+            asprintf
+            (
+                &buf,
+                "Starting location %02X",
+                i
+            );
             
-            wsprintf(buf, "Starting location %02X", i);
+            tvi.item.pszText = buf;
+            
+            tvi.item.lParam = Z3Dlg_TreeView_FormParam
+            (
+                Z3Dlg_TreeViewCategory_Dungeon,
+                i + 0x85
+            );
             
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 19; i += 1)
         {
-            tvi.item.lParam = (i + 0x3008c);
+            asprintf
+            (
+                &buf,
+                "Overlay %02X",
+                i
+            );
             
-            wsprintf(buf, "Overlay %02X", i);
+            tvi.item.pszText = buf;
+            
+            tvi.item.lParam = Z3Dlg_TreeView_FormParam
+            (
+                Z3Dlg_TreeViewCategory_Dungeon,
+                i + 0x8c
+            );
             
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
         for(i = 0; i < 8; i += 1)
         {
-            tvi.item.lParam = (i + 0x3009f);
+            asprintf
+            (
+                &buf,
+                "Layout %02X",
+                i
+            );
             
-            wsprintf(buf, "Layout %02X", i);
+            tvi.item.lParam = Z3Dlg_TreeView_FormParam
+            (
+                Z3Dlg_TreeViewCategory_Dungeon,
+                i + 0x9f
+            );
+            
+            tvi.item.pszText = buf;
             
             HM_TreeView_InsertItem(hc, dung_root, &tvi);
         }
         
-        tvi.item.lParam = 0x300a7;
+        tvi.item.lParam = Z3Dlg_TreeView_FormParam
+        (
+            Z3Dlg_TreeViewCategory_Dungeon,
+            0xa7
+        );
+        
         tvi.item.pszText = "Watergate overlay";
         
         HM_TreeView_InsertItem(hc, dung_root, &tvi);
@@ -752,18 +837,32 @@
         
         music_root = HM_TreeView_InsertRoot(hc, "Music");
         
-        tvi.item.pszText = buf;
-        
         for(i = 0; i < 3; i += 1)
         {
-            tvi.item.lParam = (i + 0x40000);
+            asprintf
+            (
+                &buf,
+                "Bank %d",
+                i + 1
+            );
             
-            wsprintf(buf, "Bank %d", i + 1);
+            tvi.item.lParam = Z3Dlg_TreeView_FormParam
+            (
+                Z3Dlg_TreeViewCategory_Music,
+                i
+            );
+            
+            tvi.item.pszText = buf;
             
             HM_TreeView_InsertItem(hc, music_root, &tvi);
         }
         
-        tvi.item.lParam  = 0x40003;
+        tvi.item.lParam = Z3Dlg_TreeView_FormParam
+        (
+            Z3Dlg_TreeViewCategory_Music,
+            3 // \task[low] Should name this constant somehow.
+        );
+        
         tvi.item.pszText = "Waves";
         
         HM_TreeView_InsertItem(hc, music_root, &tvi);
@@ -773,12 +872,20 @@
         world_map_root = HM_TreeView_InsertRoot(hc, "World maps");
         
         tvi.item.pszText = "Normal world";
-        tvi.item.lParam  = 0x60000;
+        tvi.item.lParam  = Z3Dlg_TreeView_FormParam
+        (
+            Z3Dlg_TreeViewCategory_WorldMap,
+            0 // \task[low] Should name this constant.
+        );
         
         HM_TreeView_InsertItem(hc, world_map_root, &tvi);
         
         tvi.item.pszText = "Dark world";
-        tvi.item.lParam  = 0x60001;
+        tvi.item.lParam  = Z3Dlg_TreeView_FormParam
+        (
+            Z3Dlg_TreeViewCategory_WorldMap,
+            1
+        );
         
         HM_TreeView_InsertItem(hc, world_map_root, &tvi);
         
@@ -786,7 +893,16 @@
         
         text_root = HM_TreeView_InsertRoot(hc, "Monologue");
         
-        HM_TreeView_SetParam(hc, text_root, 0x50000);
+        HM_TreeView_SetParam
+        (
+            hc,
+            text_root,
+            Z3Dlg_TreeView_FormParam
+            (
+                Z3Dlg_TreeViewCategory_Monologue,
+                0
+            )
+        );
         
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
@@ -806,16 +922,23 @@
                                                  pal_root,
                                                  pal_text[i]);
             
-            tvi.item.pszText = buf;
-            
             for(j = 0; j < l; j++)
             {
-                tvi.item.lParam = (k + 0x70000);
+                asprintf
+                (
+                    &buf,
+                    "%s pal %d",
+                    pal_text[i],
+                    j
+                );
                 
-                wsprintf(buf,
-                         "%s pal %d",
-                         pal_text[i],
-                         j);
+                tvi.item.pszText = buf;
+                
+                tvi.item.lParam = Z3Dlg_TreeView_FormParam
+                (
+                    Z3Dlg_TreeViewCategory_Palette,
+                    k
+                );
                 
                 HM_TreeView_InsertItem(hc, sub_root, &tvi);
                 
@@ -826,6 +949,9 @@
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
         palace_map_root = HM_TreeView_InsertRoot(hc, "Dungeon Maps");
+        
+        // \task[med] Finish applying the Category_... constants to the
+        // parameter values of the remaining treeview nodes.
         
         for(i = 0; i < 14; i += 1)
         {
@@ -848,7 +974,7 @@
             // Cast is to suppress a warning that is not very useful here.
             tvi.item.pszText = (LPSTR) locs_text[i];
             
-             HM_TreeView_InsertItem(hc, dung_props_root, &tvi);
+            HM_TreeView_InsertItem(hc, dung_props_root, &tvi);
         }
         
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
@@ -876,6 +1002,11 @@
         HM_TreeView_SetParam(hc, player_gfx_root, 0xc0000);
         HM_TreeView_SetParam(hc, patch_root, 0xd0000);
         HM_TreeView_SetParam(hc, gfx_schemes_root, 0xe0000);
+        
+        if(buf)
+        {
+            free(buf);
+        }
         
         return FALSE;
     }
@@ -1245,9 +1376,9 @@
         switch(item_category)
         {
 
-            // double clicked on an overworld area
-        case 2:
+        case Z3Dlg_TreeViewCategory_Overworld:
             
+            // double clicked on an overworld area
             Z3Dlg_OpenOrActivateOverworldEditor
             (
                 doc,
@@ -1256,7 +1387,7 @@
             
             break;
         
-        case 3:
+        case Z3Dlg_TreeViewCategory_Dungeon:
             
             Z3Dlg_OpenOrActivateDungeonEditor
             (
@@ -1266,16 +1397,14 @@
             
             break;
             
-        case 4:
+        case Z3Dlg_TreeViewCategory_Music:
             
             if(doc->mbanks[item_id])
             {
-                 SendMessage
-                 (
+                HM_MDI_ActivateChild
+                (
                     clientwnd,
-                    WM_MDIACTIVATE,
-                    (WPARAM) doc->mbanks[item_id],
-                    0
+                    doc->mbanks[item_id]
                 );
                 
                 break;
@@ -1313,14 +1442,44 @@
             
             break;
         
-        case 6:
+        case Z3Dlg_TreeViewCategory_Monologue:
+            
+            // \task[high] This works, so restructure the rest of
+            // this window procedure to handle other categories this
+            // way. This prevents the treeview from stealing keyboard
+            // focus back from the newly opened MDI child windows.
+            // (treeviews are bastards!)
+            if(doc->t_wnd)
+            {
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->t_wnd
+                );
+                
+                break;
+            }
+            
+            doc->t_wnd = Editwin
+            (
+                doc,
+                "ZTXTEDIT",
+                "Text editor",
+                0,
+                sizeof(TEXTEDIT)
+            );
+            
+            return FALSE;
+        
+        case Z3Dlg_TreeViewCategory_WorldMap:
             
             if( doc->wmaps[item_id] )
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->wmaps[item_id],
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->wmaps[item_id]
+                );
                 
                 break;
             }
@@ -1343,42 +1502,15 @@
             
             break;
         
-        case 5:
-            
-            // \task[high] This works, so restructure the rest of
-            // this window procedure to handle other categories this
-            // way. This prevents the treeview from stealing keyboard
-            // focus back from the newly opened MDI child windows.
-            // (treeviews are bastards!)
-            if(doc->t_wnd)
-            {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->t_wnd,
-                            0);
-                
-                break;
-            }
-            
-            doc->t_wnd = Editwin
-            (
-                doc,
-                "ZTXTEDIT",
-                "Text editor",
-                0,
-                sizeof(TEXTEDIT)
-            );
-            
-            return FALSE;
-        
-        case 7:
+        case Z3Dlg_TreeViewCategory_Palette:
             
             if(doc->pals[item_id])
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->pals[item_id],
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->pals[item_id]
+                );
                 
                 break;
             }
@@ -1412,14 +1544,15 @@
             
             break;
         
-        case 8:
+        case Z3Dlg_TreeViewCategory_LevelMap:
             
             if( doc->dmaps[item_id] )
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->dmaps[item_id],
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->dmaps[item_id]
+                );
                 
                 break;
             }
@@ -1435,7 +1568,7 @@
             
             break;
         
-        case 9:
+        case Z3Dlg_TreeViewCategory_BossLocation:
             
             activedoc = doc;
             
@@ -1447,14 +1580,15 @@
             
             break;
         
-        case 10:
+        case Z3Dlg_TreeViewCategory_TileMap:
             
             if( doc->tmaps[item_id] )
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->tmaps[item_id],
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->tmaps[item_id]
+                );
                 
                 break;
             }
@@ -1470,14 +1604,15 @@
             
             break;
         
-        case 11:
+        case Z3Dlg_TreeViewCategory_Perspective:
             
             if(doc->perspwnd)
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->perspwnd,
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->perspwnd
+                );
                 
                 break;
             }
@@ -1490,7 +1625,7 @@
             
             break;
         
-        case 12:
+        case Z3Dlg_TreeViewCategory_PlayerGraphics:
             
             oed = (OVEREDIT*) malloc( sizeof(OVEREDIT) );
             
@@ -1518,14 +1653,15 @@
             
             break;
         
-        case 13:
+        case Z3Dlg_TreeViewCategory_Patch:
             
             if(doc->hackwnd)
             {
-                SendMessage(clientwnd,
-                            WM_MDIACTIVATE,
-                            (WPARAM) doc->hackwnd,
-                            0);
+                HM_MDI_ActivateChild
+                (
+                    clientwnd,
+                    doc->hackwnd
+                );
                 
                 break;
             }
@@ -1538,7 +1674,7 @@
             
             break;
         
-        case 14:
+        case Z3Dlg_TreeViewCategory_GraphicSchemes:
             
             // Graphic Themes
             ShowDialog(hinstance,
@@ -1609,7 +1745,6 @@
         case WM_SETFOCUS:
             
             SetFocus(treeview);
-            SetDlgItemText(debug_window, IDC_STATIC1, "2");
             
             break;
         

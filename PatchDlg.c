@@ -49,37 +49,43 @@ SUPERDLG patchdlg =
 
 // =============================================================================
 
-void
-PatchDlg_Init
-(
-    HWND   const p_win,
-    LPARAM const p_lp
-)
-{
-    int i = 0;
-    int j = 0;
-    
-    PATCHLOAD * const ed = (PATCHLOAD*) p_lp;
-    
-    FDOC * const doc = ed->ew.doc;
-    
-    ASMHACK const * const mod = doc->modules;
-    
-    // -----------------------------
-    
-    ed->dlg = p_win;
-    
-    j = doc->nummod;
-    
-    for(i = 0; i < j; i++)
+    static void
+    PatchDlg_OnInitDialog
+    (
+        HWND   const p_win,
+        LPARAM const p_lp
+    )
     {
-        SendDlgItemMessage(p_win,
-                           ID_Patch_ModulesListBox,
-                           LB_ADDSTRING,
-                           0,
-                           (LPARAM) mod[i].filename);
+        int i = 0;
+        int j = 0;
+        
+        CP2(PATCHLOAD) ed = (PATCHLOAD*) p_lp;
+        
+        CP2(FDOC) doc = ed->ew.doc;
+        
+        CP2C(ASMHACK) mod = doc->modules;
+        
+        HWND const listbox = GetDlgItem
+        (
+            p_win,
+            ID_Patch_ModulesListBox
+        );
+        
+        // -----------------------------
+        
+        ed->dlg = p_win;
+        
+        j = doc->nummod;
+        
+        for(i = 0; i < j; i++)
+        {
+            HM_ListBox_AddString
+            (
+                listbox,
+                mod[i].filename
+            );
+        }
     }
-}
 
 // =============================================================================
 
@@ -193,8 +199,14 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         
         char patch_dir[MAX_PATH] = { 0 };
         
+        HWND const listbox = GetDlgItem
+        (
+            p_win,
+            ID_Patch_ModulesListBox
+        );
+        
         OPENFILENAME ofn = { 0 };
-    
+        
         // -----------------------------
         
         ofn.lStructSize = sizeof(ofn);
@@ -255,11 +267,11 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
             
             mod->flag = 0;
             
-            SendDlgItemMessage(p_win,
-                               ID_Patch_ModulesListBox,
-                               LB_ADDSTRING,
-                               0,
-                               (LPARAM) patchname);
+            HM_ListBox_AddString
+            (
+                listbox,
+                patchname
+            );
         }
         
         doc->p_modf = 1;
@@ -276,24 +288,26 @@ PatchDlg_RemoveModule
 {
     FDOC * const doc = p_ed->ew.doc;
     
-    int i = SendDlgItemMessage(p_win,
-                               ID_Patch_ModulesListBox,
-                               LB_GETCURSEL,
-                               0,
-                               0);
+    HWND const listbox = GetDlgItem
+    (
+        p_win,
+        ID_Patch_ModulesListBox
+    );
     
+    int const i = HM_ListBox_GetSelectedItem(listbox);
+        
     // -----------------------------
     
-    if(i == LB_ERR)
+    if( IsListBoxError(i) )
     {
         return;
     }
     
-    SendDlgItemMessage(p_win,
-                       ID_Patch_ModulesListBox,
-                       LB_DELETESTRING,
-                       i,
-                       (LPARAM) 0);
+    HM_ListBox_DeleteString
+    (
+        listbox,
+        i
+    );
     
     if(always)
     {
@@ -340,7 +354,11 @@ PatchDlg(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         SetWindowLongPtr(win, DWLP_USER, lparam);
         
-        PatchDlg_Init(win, lparam);
+        PatchDlg_OnInitDialog
+        (
+            win,
+            lparam
+        );
         
         break;
     

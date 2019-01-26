@@ -2187,8 +2187,6 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
     
     sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x / 8, d.m_rel_pos.y / 8);
     
-    SetDlgItemText(debug_window, IDC_STATIC2, info);
-    
     if(p_ed->withfocus & 2)
     {
         if

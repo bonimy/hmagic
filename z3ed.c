@@ -3737,7 +3737,8 @@ void Changeblk8sel(HWND win,BLOCKSEL8*ed)
 
 // =============================================================================
 
-BOOL CALLBACK choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL CALLBACK
+choosesprite(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
 {
     HWND hc;
     

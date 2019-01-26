@@ -987,8 +987,11 @@ error:
         
         // \task[high] We want something like AString_Expand() to optionally resize
         // only if necessary.
-        AString_Resize(p_dest,
-                       new_capacity);
+        AString_Resize
+        (
+            p_dest,
+            new_capacity
+        );
         
         for(i = 0; i < p_count; i += 1)
         {

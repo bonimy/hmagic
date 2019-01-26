@@ -14,9 +14,6 @@
 #include "OverworldEnum.h"
 #include "OverworldEdit.h"
 
-// \task[high] Moving exits on the OW editor should trigger a modified flag, but it
-// doesn't according to Zarby.
-
 // =============================================================================
 
 SD_ENTRY over_sd[] = 

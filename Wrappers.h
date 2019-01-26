@@ -488,11 +488,57 @@ struct
     );
 
     extern int
+    HM_ListBox_GetSelectedItem
+    (
+        HWND const p_listbox
+    );
+
+    extern int
     HM_ListBox_SelectItem
     (
         HWND const p_listbox,
         int  const p_item_index
     );
+
+    extern int
+    HM_ListBox_InsertString
+    (
+        HWND       const p_listbox,
+        int        const p_insertion_index,
+        CP2C(char)       p_string
+    );
+
+    extern int
+    HM_ListBox_DeleteString
+    (
+        HWND const p_listbox,
+        int  const p_deletion_index
+    );
+
+    extern void
+    HM_ListBox_ResetContent
+    (
+        HWND const p_listbox
+    );
+
+    extern int
+    HM_ListBox_GetItemRect
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(RECT)       p_item_rect
+    );
+
+    extern void
+    HM_ListBox_SetHorizontalExtent
+    (
+        HWND const p_listbox,
+        int  const p_extent
+    );
+
+    #define IsListBoxError(x) Is(x, LB_ERR)
+
+    #define IsNotListBoxError(x) IsFalse( IsListBoxError(x) )
 
 // =============================================================================
 
