@@ -14,6 +14,12 @@
     #define Is(x, y) ( (x) == (y) )
 
     /**
+        Convenience macro to avoid accidental assignment when testing for
+        inequality of two entities.
+    */
+    #define IsNot(x, y) ( (x) != (y) )
+
+    /**
         Convenience macro for testing for a true condition.
     */
     #define IsTrue(x) Is( (x), TRUE)
@@ -473,6 +479,12 @@ struct
 // =============================================================================
 
     extern int
+    HM_ListBox_GetCount
+    (
+        HWND const p_listbox
+    );
+
+    extern int
     HM_ListBox_AddString
     (
         HWND    const p_listbox,
@@ -515,6 +527,21 @@ struct
         int  const p_deletion_index
     );
 
+    extern int
+    HM_ListBox_GetText
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(char)       p_buffer
+    );
+
+    extern int
+    HM_ListBox_GetTextLength
+    (
+        HWND      const p_listbox,
+        int       const p_item_index
+    );
+
     extern void
     HM_ListBox_ResetContent
     (
@@ -534,6 +561,12 @@ struct
     (
         HWND const p_listbox,
         int  const p_extent
+    );
+
+    extern int
+    HM_ListBox_CalcMaxTextExtent
+    (
+        HWND const p_listbox
     );
 
     #define IsListBoxError(x) Is(x, LB_ERR)

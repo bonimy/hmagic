@@ -35,6 +35,8 @@
 #define IDR_AREA_NAMES                  135
 #define IDI_ICON2                       136
 #define IDR_TEST_TOOLTIP                137
+#define IDS_AUDIO_COPY_FAIL             138
+#define IDS_ERROR                       139
 #define IDC_TREE1                       1000
 #define IDC_EDIT1                       1001
 #define IDC_EDIT2                       1002

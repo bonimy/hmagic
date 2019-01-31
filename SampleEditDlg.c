@@ -103,7 +103,7 @@ SD_ENTRY samp_sd[]={
     SampleEditDlg_UpdateCopy(SAMPEDIT * const p_ed,
                              HWND       const p_win)
     {
-        ZWAVE const * const zw = p_ed->zw;
+        CP2C(ZWAVE) zw = p_ed->zw;
         
         HWND const copy_edit_ctl = GetDlgItem
         (
@@ -169,6 +169,10 @@ sampdlgproc(HWND p_win, UINT msg, WPARAM wparam, LPARAM lparam)
     ZWAVE *zw, *zw2;
     ZINST *zi;
     
+    HWND const sample_display = GetDlgItem(p_win, ID_Samp_Display);
+    
+    // -----------------------------
+    
     switch(msg)
     {
     
@@ -176,21 +180,23 @@ sampdlgproc(HWND p_win, UINT msg, WPARAM wparam, LPARAM lparam)
         
         SetWindowLongPtr(p_win, DWLP_USER, lparam);
         
-        ed=(SAMPEDIT*)lparam;
-        ed->dlg= p_win;
+        ed = (SAMPEDIT*)lparam;
         
-        if(!ed->ew.doc->m_loaded) Loadsongs(ed->ew.doc);
+        ed->dlg = p_win;
         
-        ed->init=1;
-        ed->editsamp=0;
-        ed->editinst=0;
-        ed->zoom=65536;
-        ed->scroll=0;
-        ed->flag=0;
+        if(!ed->ew.doc->m_loaded)
+            Loadsongs(ed->ew.doc);
+        
+        ed->init = 1;
+        ed->editsamp = 0;
+        ed->editinst = 0;
+        ed->zoom = 65536;
+        ed->scroll = 0;
+        ed->flag = 0;
         
         SetDlgItemInt(p_win, ID_Samp_SampleIndexEdit, 0, 0);
         
-        SetWindowLongPtr(GetDlgItem(p_win, ID_Samp_Display),
+        SetWindowLongPtr(sample_display,
                          GWLP_USERDATA,
                          (LONG_PTR) ed);
         
@@ -208,6 +214,12 @@ chgsamp:
         
         break;
     
+    case WM_SETFOCUS:
+        
+        SetFocus(sample_display);
+        
+        break;
+
     case WM_COMMAND:
         
         ed = (SAMPEDIT*) GetWindowLongPtr(p_win, DWLP_USER);

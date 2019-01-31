@@ -6,7 +6,10 @@
     #include "structs.h"
 
     extern void
-    SampleEdit_CopyToClipboard(SAMPEDIT const * const p_ed);
+    SampleEdit_CopyToClipboard
+    (
+        CP2C(SAMPEDIT) p_ed
+    );
 
     extern BOOL
     SampleEdit_PasteFromClipboard(SAMPEDIT * const p_ed);

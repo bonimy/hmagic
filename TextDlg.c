@@ -147,10 +147,9 @@ SD_ENTRY text_sd[] =
             // we could directly initialize ascii text message from
             // a dialog control... maybe. That way we could get the
             // length correct ahead of time.
-            GetDlgItemText
+            GetWindowText
             (
-                p_win,
-                ID_TextEditWindow,
+                ted_win,
                 amsg.m_text,
                 amsg.m_len
             );
@@ -271,12 +270,9 @@ SD_ENTRY text_sd[] =
             }
             else
             {
-                char * text_buf = NULL;
+                int e_i = text_error - amsg.m_text;
                 
-                // \task[high] What the hell was this intended to do? Update:
-                // I think this tries to select the place in the edit window
-                // where the error occurred?
-                int e_i = text_error - text_buf;
+                // -------------------------
                 
                 SendMessage(ted_win, EM_SETSEL, e_i, e_i);
                 
@@ -302,18 +298,9 @@ SD_ENTRY text_sd[] =
     {
         char * text_buf = NULL;
         
-        int max_item_width = 0;
-        
         size_t m_i = 0;
         
         AString asc_msg = { 0 };
-        
-        HDC const dc = GetDC(p_listbox);
-
-        HFONT const font = (HFONT) SendMessage
-        (p_listbox, WM_GETFONT, HM_NullWP(), HM_NullLP() );
-        
-        HGDIOBJ const old_font = SelectObject(dc, font);
         
         // -----------------------------
         
@@ -321,13 +308,7 @@ SD_ENTRY text_sd[] =
         {
             size_t dummy_len = 0;
             
-            int item_width = 0;
-            int insertion_index = 0;
             int write_len = 0;
-            
-            RECT item_rect = { 0 };
-            
-            SIZE item_size = { 0 };
             
             // -----------------------------
             
@@ -350,56 +331,14 @@ SD_ENTRY text_sd[] =
                 asc_msg.m_text
             );
             
-            insertion_index = HM_ListBox_AddString
+            HM_ListBox_AddString
             (
                 p_listbox,
                 text_buf
             );
-            
-            Sleep(1);
-            
-            HM_ListBox_GetItemRect
-            (
-                p_listbox,
-                insertion_index,
-                &item_rect
-            );
-            
-            // \task[med] This technique doesn't actually work, trying
-            // something else found on StackOverflow, but adapting it.
-            item_width = (item_rect.right - item_rect.left);
-            
-            if(item_width > max_item_width)
-            {
-                max_item_width = item_width;
-            }
-            
-            // \task[med] This is the technique that works better, or
-            // should, intheory.
-            GetTextExtentPoint32(dc, text_buf, write_len, &item_size);
-            
-            item_width = item_size.cx;
-            
-            if(item_width > max_item_width)
-            {
-                max_item_width = item_width;
-            }
         }
         
-        // \task[med] We should adjust this dynamically as items are edited.
-        // that might take some careful consideration as to what design t
-        // employ.
-        HM_ListBox_SetHorizontalExtent
-        (
-            p_listbox,
-            max_item_width + 100
-        );
-        
         // -~-~-~-~-~-~-~-~-~-~-~-~-~-~-
-        
-        SelectObject(dc, old_font);
-        
-        ReleaseDC(p_listbox, dc);
         
         AString_Free(&asc_msg);
         
@@ -490,11 +429,13 @@ SD_ENTRY text_sd[] =
     static void
     TextDlg_ListStrings
     (
-        TEXTEDIT const * const p_ed,
-        HWND             const p_listbox
+        CP2C(TEXTEDIT)       p_ed,
+        HWND           const p_listbox
     )
     {
         CP2C(FDOC) doc = p_ed->ew.doc;
+        
+        int max_extent = 0;
         
         // -----------------------------
         
@@ -506,6 +447,17 @@ SD_ENTRY text_sd[] =
         {
             TextDlg_ListMonologueStrings(doc, p_listbox);
         }
+        
+        max_extent = HM_ListBox_CalcMaxTextExtent(p_listbox);
+
+        // \task[med] We should adjust this dynamically as items are edited.
+        // that might take some careful consideration as to what design t
+        // employ.
+        HM_ListBox_SetHorizontalExtent
+        (
+            p_listbox,
+            max_extent + 50
+        );
     }
 
 // =============================================================================

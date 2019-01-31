@@ -63,9 +63,12 @@
         object.
     */
     extern void
-    SampleEdit_CopyToClipboard(SAMPEDIT const * const p_ed)
+    SampleEdit_CopyToClipboard
+    (
+        CP2C(SAMPEDIT) p_ed
+    )
     {
-        ZWAVE const * const zw = p_ed->zw;
+        CP2C(ZWAVE) zw = p_ed->zw;
         
         // (As measured in bytes)
         size_t data_len = (p_ed->selr - p_ed->sell) << 1;
@@ -83,6 +86,20 @@
         
         // -----------------------------
         
+        if( Is(zw->end, 0) )
+        {
+            HM_OK_MsgBox
+            (
+                framewnd,
+                (
+                    "Cannot copy a zero length sample.\n"
+                    "Nothing has been copied to the clipboard."
+                ),
+                "Error"
+            );
+            
+            return;
+        }
         if(data_len == 0)
         {
             // If there's nothing explicitly selected, copy everything

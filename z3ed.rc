@@ -220,6 +220,8 @@ IDI_ICON2               ICON                    "icon2.ico"
 STRINGTABLE
 BEGIN
     IDR_TEST_TOOLTIP        "From IDR"
+    IDS_AUDIO_COPY_FAIL     "Cannot copy a zero length sample.\nNothing has been copied to the clipboard."
+    IDS_ERROR               "Error"
 END
 
 STRINGTABLE

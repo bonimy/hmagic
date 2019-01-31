@@ -63,7 +63,28 @@
         
         if( Is(p_win, ad.m_activating) )
         {
+            HWND const focus_control = (HWND) GetProp
+            (
+                p_win,
+                "ControlWithFocus"
+            );
+            
+            // -----------------------------
+            
             activedoc = p_ed->ew.doc;
+            
+            if(focus_control)
+            {
+                SetFocus(focus_control);
+            }
+        }
+        else
+        {
+            HWND const focused_control = GetFocus();
+            
+            // -----------------------------
+            
+            SetProp(p_win, "ControlWithFocus", focused_control);
         }
     }
 

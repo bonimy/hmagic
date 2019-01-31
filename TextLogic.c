@@ -1263,6 +1263,12 @@ error:
 
 // =============================================================================
 
+    // C doesn't have cast to temporarily ignore const-ness, so this is the
+    // best I could come up with for the moment.
+    #define const_assign(x, type) ((type *) (&x))[0]
+
+// =============================================================================
+
     extern void
     TextLogic_ZStringToAString
     (
@@ -1275,7 +1281,7 @@ error:
         
         int i;
         
-        short k,m;
+        short m;
         
         uint16_t const zchar_len = p_zmsg->m_len;
         
@@ -1292,45 +1298,68 @@ error:
         
         for(i = 0; ; )
         {
-            if(z_i >= zchar_len)
-                break;
+            uint8_t const zchar = 0;
             
-            k = p_zmsg->m_text[z_i];
+            // -----------------------------
+            
+            if(z_i >= zchar_len)
+            {
+                break;
+            }
+            
+            const_assign(zchar, uint8_t) = p_zmsg->m_text[z_i];
             
             z_i += 1;
             
-            if(k < NUM_Zchars)
+            if(zchar < NUM_Zchars)
             {
-                if( IsZero( z_alphabet[k][0] ) )
+                if( IsZero( z_alphabet[zchar][0] ) )
                 {
-                    // \task[high] We don't really know what happens for these
-                    // characters if they're used in game. These are the ones
-                    // on the upper edge of the zchar range.
-                    exit(-1);
+                    // \task[med] Character codes 0x63-0x66 in the
+                    // USA rom are invalid, but I'm not entirely sure
+                    // what to do if they're encountered yet. Backburner'd.
+                    // For now just ignore such characters and continue
+                    // converting.
+                    continue;
                 }
-                else
-                {
-                    AString_AppendString(p_msg,
-                                         z_alphabet[k]);
-                }
+                
+                AString_AppendString
+                (
+                    p_msg,
+                    z_alphabet[zchar]
+                );
             }
             else if
             (
-                (k != tc->msg_terminator)
-             && (k >= tc->command_base)
-             && (k <  tc->command_bound)
+                IsNot(zchar, tc->msg_terminator)
+             && (zchar >= tc->command_base)
+             && (zchar <  tc->command_bound)
             )
             {
+                // Command code.
+                uint8_t const code = zchar;
+                
                 size_t n = 0;
                 
-                m = wsprintf(text_buf,"[%s",tcmd_str[k - tc->command_base]);
-                n = doc->rom[to->param_counts + k] - 1;
+                // -----------------------------
+                
+                m = wsprintf
+                (
+                    text_buf,
+                    "[%s",
+                    tcmd_str[code - tc->command_base]
+                );
+                
+                n = doc->rom[to->param_counts + code] - 1;
                 
                 while(n--)
                 {
-                    m += wsprintf(text_buf + m,
-                                  " %02X",
-                                  p_zmsg->m_text[z_i]);
+                    m += wsprintf
+                    (
+                        text_buf + m,
+                        " %02X",
+                        p_zmsg->m_text[z_i]
+                        );
                     
                     z_i += 1;
                 }
@@ -1339,23 +1368,26 @@ error:
                 
                 m += 1;
                 
-            longstring:
-                
                 n = 0;
                 
                 while(m--)
                 {
-                    AString_AppendChar(p_msg,
-                                       text_buf[n]);
+                    AString_AppendChar
+                    (
+                        p_msg,
+                        text_buf[n]
+                    );
                     
                     n += 1;
                 }
             }
             else
             {
-                m = wsprintf(text_buf, "[%02X]",k);
-                
-                goto longstring;
+                // \task[med] Similar to an invalid zchar, hitting this
+                // bit of code would indicate that there's some other
+                // invalid bit of data in the stream. We should definitely
+                // react to this in some way, but what way isn't clear.
+                continue;
             }
         }
     }

@@ -50,26 +50,10 @@
             if(zw->copy != -1)
                 break;
             
-            if(p_ed->sell == p_ed->selr)
+            if(p_ed->sell >= p_ed->selr)
             {
-                /*
-                    \task[high] This logic deletes the whole sample if there is
-                    is not a selected region of width greater than zero. We
-                    really ought to change this behavior, as there is no
-                    undo feature currently, and this isn't even intuitive
-                    behavior! Without a way to manually enter data, not to
-                    mention confirm modifications like many other sorts of
-                    editors in the program, this is a real problem.
-                */
-                
-                zw->end = 0;
-                
-                zw->buf = (short*) realloc(zw->buf, 2);
-                
-                zw->buf[0]=0;
-                zw->lopst=0;
-                
-                p_ed->sell=0;
+                // Do nothing as there's no valid selection.
+                break;
             }
             else
             {

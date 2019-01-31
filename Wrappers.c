@@ -567,11 +567,32 @@ HM_NullWP(void)
 
 // =============================================================================
 
-LPARAM
-HM_NullLP(void)
-{
-    return (LPARAM) 0;
-}
+    LPARAM
+    HM_NullLP(void)
+    {
+        return (LPARAM) 0;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetCount
+    (
+        HWND const p_listbox
+    )
+    {
+        int const item_count = SendMessage
+        (
+            p_listbox,
+            LB_GETCOUNT,
+            HM_NullWP(),
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return item_count;
+    }
 
 // =============================================================================
 
@@ -709,6 +730,51 @@ HM_NullLP(void)
 
 // =============================================================================
 
+    extern int
+    HM_ListBox_GetText
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(char)       p_buffer
+    )
+    {
+        int const text_length = SendMessage
+        (
+            p_listbox,
+            LB_GETTEXT,
+            p_item_index,
+            (LPARAM) p_buffer
+        );
+        
+        // -----------------------------
+        
+        return text_length;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetTextLength
+    (
+        HWND      const p_listbox,
+        int       const p_item_index
+    )
+    {
+        int const text_length = SendMessage
+        (
+            p_listbox,
+            LB_GETTEXTLEN,
+            p_item_index,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return text_length;
+    }
+
+// =============================================================================
+
     extern void
     HM_ListBox_ResetContent
     (
@@ -763,6 +829,81 @@ HM_NullLP(void)
             p_extent,
             HM_NullLP()
         );
+    }
+
+// =============================================================================
+    
+    extern int
+    HM_ListBox_CalcMaxTextExtent
+    (
+        HWND const p_listbox
+    )
+    {
+        size_t max_text_length = 0x400;
+        
+        char * text_buf = (char*) calloc(1, max_text_length);
+        
+        int i = 0;
+        
+        int const item_count = HM_ListBox_GetCount(p_listbox);
+        
+        int max_item_extent = 0;
+        
+        HFONT const font = (HFONT) SendMessage
+        (p_listbox, WM_GETFONT, HM_NullWP(), HM_NullLP() );
+        
+        HDC const dc = GetDC(p_listbox);
+
+        HGDIOBJ const old_font = SelectObject(dc, font);
+        
+        // -----------------------------
+        
+        for(i = 0; i < item_count; i += 1)
+        {
+            size_t text_length = HM_ListBox_GetTextLength(p_listbox, i);
+            
+            SIZE item_size = { 0 };
+            
+            RECT item_rect = { 0 };
+            
+            // -----------------------------
+            
+            if(text_length > max_text_length)
+            {
+                // Add some slop on the end so we shouldn't have to reallocate
+                // too often.
+                max_text_length = (text_length + 0x400);
+                
+                text_buf = (char*) realloc(text_buf, max_text_length);
+            }
+            
+            HM_ListBox_GetText(p_listbox, i, text_buf);
+            
+            GetTextExtentPoint32(dc, text_buf, text_length, &item_size);
+            
+            HM_ListBox_GetItemRect
+            (
+                p_listbox,
+                i,
+                &item_rect
+            );
+
+            if(item_size.cx > max_item_extent)
+            {
+                max_item_extent = item_size.cx;
+            }
+        }
+        
+        if(text_buf)
+        {
+            free(text_buf);
+        }
+        
+        SelectObject(dc, old_font);
+        
+        ReleaseDC(p_listbox, dc);
+        
+        return max_item_extent;
     }
 
 // =============================================================================
@@ -952,6 +1093,8 @@ hm_strndup(char const * const p_str,
         
         char * buf;
         
+        int r = 0;
+        
         // -----------------------------
         
         va_copy(ap1, p_var_args);
@@ -967,6 +1110,17 @@ hm_strndup(char const * const p_str,
             return -1;
         }
         
+        r = vsnprintf
+        (
+            buf,
+            size,
+            p_fmt,
+            p_var_args
+        );
+        
+        // \note This is done after the formatting of the newly allocated
+        // string, because if the original string was input to the new string
+        // we'll end up referencing freed memory which is bad-mmkay.
         if(p_buf_out[0])
         {
             free(p_buf_out[0]);
@@ -976,13 +1130,7 @@ hm_strndup(char const * const p_str,
         
         (*p_buf_out) = buf;
         
-        return vsnprintf
-        (
-            buf,
-            size,
-            p_fmt,
-            p_var_args
-        );
+        return r;
     }
 
 // =============================================================================
