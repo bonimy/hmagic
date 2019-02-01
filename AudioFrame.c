@@ -43,7 +43,51 @@
         return dlg;
     }
 
+// =============================================================================
 
+    static void
+    AudioFrame_On_MDI_Activate
+    (
+        HWND           const p_win,
+        WPARAM         const p_wp,
+        LPARAM         const p_lp,
+        CP2C(MUSEDIT)        p_ed
+    )
+    {
+        HM_MdiActivateData const ad = HM_MDI_GetActivateData
+        (
+            p_wp,
+            p_lp
+        );
+        
+        // -----------------------------
+        
+        if( Is(p_win, ad.m_activating) )
+        {
+            HWND const focus_control = (HWND) GetProp
+            (
+                p_win,
+                "ControlWithFocus"
+            );
+            
+            // -----------------------------
+            
+            activedoc = p_ed->ew.doc;
+            
+            if(focus_control)
+            {
+                SetFocus(focus_control);
+            }
+        }
+        else
+        {
+            HWND const focused_control = GetFocus();
+            
+            // -----------------------------
+            
+            SetProp(p_win, "ControlWithFocus", focused_control);
+        }
+    }
 
 // =============================================================================
 
@@ -51,23 +95,29 @@
     AudioFrameProc
     (
         HWND   p_win,
-        UINT   msg,
-        WPARAM wparam,
+        UINT   p_msg,
+        WPARAM p_wp,
         LPARAM p_lp
     )
     {
-        HWND dlg = GetDlgItem(p_win, ID_SuperDlg);
+        HWND const dlg = GetDlgItem(p_win, ID_SuperDlg);
         
-        MUSEDIT * ed;
+        CP2(MUSEDIT) ed = (MUSEDIT*) GetWindowLongPtr(p_win, GWLP_USERDATA);
         
         // -----------------------------
         
-        switch(msg)
+        switch(p_msg)
         {
         
         case WM_MDIACTIVATE:
             
-            activedoc = ((DUNGEDIT*)GetWindowLongPtr(p_win, GWLP_USERDATA))->ew.doc;
+            AudioFrame_On_MDI_Activate
+            (
+                p_win,
+                p_wp,
+                p_lp,
+                ed
+            );
             
             goto deflt;
         
@@ -82,18 +132,14 @@
         
         case WM_GETMINMAXINFO:
             
-            ed = (MUSEDIT*) GetWindowLongPtr(p_win,GWLP_USERDATA);
-            
-            DefMDIChildProc(p_win,msg,wparam, p_lp);
+            DefMDIChildProc(p_win, p_msg, p_wp, p_lp);
             
             if(!ed)
                 goto deflt;
             
-            return SendMessage(ed->dlg,WM_GETMINMAXINFO,wparam, p_lp);
+            return SendMessage(ed->dlg,WM_GETMINMAXINFO, p_wp, p_lp);
         
         case WM_SIZE:
-            
-            ed = (MUSEDIT*) GetWindowLongPtr(p_win,GWLP_USERDATA);
             
             SetWindowPos
             (
@@ -108,11 +154,17 @@
         
         case WM_DESTROY:
             
-            ed = (MUSEDIT*)GetWindowLongPtr(p_win,GWLP_USERDATA);
-            ed->ew.doc->mbanks[ed->ew.param]=0;
+            ed->ew.doc->mbanks[ed->ew.param] = 0;
             
-            if(sndinit && ed->ew.doc == sounddoc && !playedsong)
-                zwaves->pflag=0;
+            if
+            (
+                sndinit
+             && Is(ed->ew.doc, sounddoc)
+             && IsFalse(playedsong)
+            )
+            {
+                zwaves->pflag = 0;
+            }
             
             free(ed);
             
@@ -125,8 +177,9 @@
         deflt:
         default:
             
-            return DefMDIChildProc(p_win, msg, wparam, p_lp);
+            return DefMDIChildProc(p_win, p_msg, p_wp, p_lp);
         }
+        
         return 0;
     }
 

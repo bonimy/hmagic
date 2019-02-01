@@ -1033,11 +1033,7 @@
         
         HTREEITEM hitem = NULL;
         
-        TVINSERTSTRUCT tvi = { 0 };
-        
         TVHITTESTINFO hti = { 0 };
-        
-        TVITEM * itemstr;
         
         // -----------------------------
         
@@ -1118,24 +1114,18 @@
                 break;
             
             if( ! (hti.flags & TVHT_ONITEM) )
+            {
                 break;
+            }
             
-            itemstr = &(tvi.item);
-            itemstr->hItem = hitem;
-            itemstr->mask = TVIF_PARAM;
-            
-            SendMessage
+            item_param = HM_TreeView_GetItemParam
             (
                 notific->hwndFrom,
-                TVM_GETITEM,
-                0,
-                (LPARAM) itemstr
+                hitem
             );
             
-            item_param = itemstr->lParam;
-                
         open_edit_window:
-                
+            
             PostMessage
             (
                 p_win,
@@ -1143,7 +1133,7 @@
                 item_param,
                 0
             );
-
+            
             break;
         }
         
@@ -1335,13 +1325,110 @@
         
         if(hc)
         {
-            DUNGEDIT * ed = (DUNGEDIT*) GetWindowLongPtr(hc, GWLP_USERDATA);
-            HWND map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
-        
+            CP2(DUNGEDIT) ed = (DUNGEDIT*) GetWindowLongPtr
+            (
+                hc,
+                GWLP_USERDATA
+            );
+            
+            HWND const map_win = GetDlgItem(ed->dlg, ID_DungEditWindow);
+            
+            // -----------------------------
+            
             Dungselectchg(ed, map_win, 1);
         }
         
-        free(buf);
+        if(buf)
+        {
+            free(buf);
+            
+            buf = NULL;
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static BOOL
+    Z3Dlg_OpenOrActivateMusicEditor
+    (
+        CP2(FDOC)       p_doc,
+        uint16_t  const p_item_id
+    )
+    {
+        BOOL r = FALSE;
+        
+        char * buf = NULL;
+        
+        // -----------------------------
+        
+        if( p_doc->mbanks[p_item_id] )
+        {
+            HM_MDI_ActivateChild
+            (
+                clientwnd,
+                p_doc->mbanks[p_item_id]
+            );
+        }
+        else if( Is(p_item_id, 3) )
+        {
+            HWND mdi_child = NULL;
+            
+            // -----------------------------
+            
+            mdi_child = Editwin
+            (
+                p_doc,
+                "MUSBANK",
+                "Wave editor",
+                3,
+                sizeof(SAMPEDIT)
+            );
+            
+            if(mdi_child)
+            {
+                p_doc->mbanks[3] = mdi_child;
+                
+                r = TRUE;
+            }
+        }
+        else
+        {
+            HWND mdi_child = NULL;
+            
+            // -----------------------------
+            
+            asprintf
+            (
+                &buf,
+                "Song bank %d",
+                p_item_id + 1
+            );
+            
+            mdi_child = Editwin
+            (
+                p_doc,
+                "MUSBANK",
+                buf,
+                p_item_id,
+                sizeof(MUSEDIT)
+            );
+            
+            if(mdi_child)
+            {
+                p_doc->mbanks[p_item_id] = mdi_child;
+                
+                r = TRUE;
+            }
+        }
+        
+        if(buf)
+        {
+            free(buf);
+            
+            buf = NULL;
+        }
         
         return r;
     }
@@ -1399,56 +1486,16 @@
             
         case Z3Dlg_TreeViewCategory_Music:
             
-            if(doc->mbanks[item_id])
-            {
-                HM_MDI_ActivateChild
-                (
-                    clientwnd,
-                    doc->mbanks[item_id]
-                );
-                
-                break;
-            }
-            
-            if(item_id == 3)
-            {
-                doc->mbanks[3] = Editwin
-                (
-                    doc,
-                    "MUSBANK",
-                    "Wave editor",
-                    3,
-                    sizeof(SAMPEDIT)
-                );
-            }
-            else
-            {
-                asprintf
-                (
-                    &buf,
-                    "Song bank %d",
-                    item_id + 1
-                );
-                
-                doc->mbanks[item_id] = Editwin
-                (
-                    doc,
-                    "MUSBANK",
-                    buf,
-                    item_id,
-                    sizeof(MUSEDIT)
-                );
-            }
+            Z3Dlg_OpenOrActivateMusicEditor
+            (
+                doc,
+                item_id
+            );
             
             break;
         
         case Z3Dlg_TreeViewCategory_Monologue:
             
-            // \task[high] This works, so restructure the rest of
-            // this window procedure to handle other categories this
-            // way. This prevents the treeview from stealing keyboard
-            // focus back from the newly opened MDI child windows.
-            // (treeviews are bastards!)
             if(doc->t_wnd)
             {
                 HM_MDI_ActivateChild
@@ -1635,8 +1682,16 @@
             oed->gfxnum=0;
             oed->paltype=3;
             
+            // \task[med] Restructure the structures families so that
+            // this sort of type punning is banished. It's not only dangerous,
+            // it's confusing to analyze for correctness!
+            // The way to approach this particular subroutine would be to
+            // extract what it is actually using from the DUNGEDIT pointer
+            // and make that a substructure.
             if(palmode)
-                Setpalmode((DUNGEDIT*)oed);
+            {
+                Setpalmode((DUNGEDIT*) oed);
+            }
             
             rom=doc->rom;
             Getblocks(doc,225);
@@ -1689,6 +1744,8 @@
         if(buf)
         {
             free(buf);
+            
+            buf = NULL;
         }
         
         return r;

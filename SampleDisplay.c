@@ -264,7 +264,7 @@ SampleDisplayProc(HWND p_win,UINT p_msg, WPARAM p_wp,LPARAM p_lp)
     
     case WM_GETDLGCODE:
         
-        return DLGC_WANTCHARS;
+        return (DLGC_WANTCHARS | DLGC_WANTARROWS);
     
     case WM_SIZE:
         

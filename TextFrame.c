@@ -122,7 +122,7 @@
             goto default_case;
         
         case WM_SETFOCUS:
-
+            
             SetFocus(dlg);
             
             break;
