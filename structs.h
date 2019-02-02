@@ -1013,6 +1013,12 @@ struct tag_text_offsets_ty
     */
     unsigned region2_bound;
     
+    /**
+        The longest a message can possibly be, in terms of zchars, zcommands,
+        and their parameters, combined.
+    */
+    unsigned max_message_length;
+    
     text_codes_ty codes;
     
 } text_offsets_ty;

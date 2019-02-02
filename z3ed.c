@@ -160,6 +160,8 @@ LoadOffsets(void)
     t->codes.dict_bound     = 0xea;
     
     t->codes.abs_terminator = 0xff;
+    
+    t->max_message_length = 0xe00;
 }    
 
 

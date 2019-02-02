@@ -10,44 +10,48 @@
 
 // =============================================================================
 
-char const * z_alphabet[] =
-{
-    // codes 0x00 and up
-    "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-    
-    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-    
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-    
-    // codes 0x3E and up
-    "!", "?", "-", ".", ",",
-    
-    // codes 0x43 and up
-    "[...]", ">", "(", ")",
-    
-    // codes 0x47 and up
-    "[Ankh]", "[Waves]", "[Snake]", "[LinkL]", "[LinkR]",
-    "\"", "[Up]", "[Down]", "[Left]", "[Right]", "'",
-    
-    // codes 0x52 and up
-    "[1HeartL]", "[1HeartR]", "[2HeartL]", "[3HeartL]",
-    "[3HeartR]", "[4HeartL]", "[4HeartR]",
-    
-    " ", "<", "[A]", "[B]", "[X]", "[Y]",
-    
-    // \note These are invalid characters that shouldn't be encountered,
-    // however, I've decided to make them two characters each, just so we have
-    // a basic assumption that each of the strings in this array have
-    // a minimum of two characters allocated.
-    "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0",
-};
+    CP2C(char) z_alphabet[] =
+    {
+        // codes 0x00 and up
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+        "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+        
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+        
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        
+        // codes 0x3E and up
+        "!", "?", "-", ".", ",",
+        
+        // codes 0x43 and up
+        "[...]", ">", "(", ")",
+        
+        // codes 0x47 and up
+        "[Ankh]", "[Waves]", "[Snake]", "[LinkL]", "[LinkR]",
+        "\"", "[Up]", "[Down]", "[Left]", "[Right]", "'",
+        
+        // codes 0x52 and up
+        "[1HeartL]", "[1HeartR]", "[2HeartL]", "[3HeartL]",
+        "[3HeartR]", "[4HeartL]", "[4HeartR]",
+        
+        " ", "<", "[A]", "[B]", "[X]", "[Y]",
+        
+        // \note These are invalid characters that shouldn't be encountered,
+        // however, I've decided to make them two characters each, just so we have
+        // a basic assumption that each of the strings in this array have
+        // a minimum of two characters allocated.
+        "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0",
+    };
 
-enum
-{
-    NUM_Zchars = sizeof(z_alphabet) / sizeof(const char *)
-};
+// =============================================================================
+
+    enum
+    {
+        NUM_Zchars = MACRO_ArrayLength(z_alphabet)
+    };
+
+// =============================================================================
 
 #if 0
         // codes 0x67 and up
@@ -96,72 +100,75 @@ enum
 
 // =============================================================================
 
-char const * const tsym_str[] =
-{
-    "Up",
-    "Down",
-    "Left",
-    "Right",
-    0,
-    "1HeartL",
-    "1HeartR",
-    "2HeartL",
-    "3HeartL",
-    "3HeartR",
-    "4HeartL",
-    "4HeartR",
-    0,
-    0,
-    "A",
-    "B",
-    "X",
-    "Y"
-};
-
-enum
-{
-    NUM_Tsym = sizeof(tsym_str) / sizeof(char const *)
-};
+    CP2C(char) tsym_str[] =
+    {
+        "Up",
+        "Down",
+        "Left",
+        "Right",
+        0,
+        "1HeartL",
+        "1HeartR",
+        "2HeartL",
+        "3HeartL",
+        "3HeartR",
+        "4HeartL",
+        "4HeartR",
+        0,
+        0,
+        "A",
+        "B",
+        "X",
+        "Y"
+    };
 
 // =============================================================================
 
-char const * const tcmd_str[] =
-{
-    "NextPic",
-    "Choose",
-    "Item",
-    "Name",
-    "Window",
-    "Number",
-    "Position",
-    "ScrollSpd",
-    "Selchg",
-    "Crash",
-    "Choose3",
-    "Choose2",
-    "Scroll",
-    "1",
-    "2",
-    "3",
-    "Color",
-    "Wait",
-    "Sound",
-    "Speed",
-    "Mark",
-    "Mark2",
-    "Clear",
-    "Waitkey",
-};
-
-
-enum
-{
-    NUM_CmdStrings = sizeof(tcmd_str) / sizeof(tcmd_str[0]),
-};
+    enum
+    {
+        NUM_Tsym = MACRO_ArrayLength(tsym_str)
+    };
 
 // =============================================================================
 
-char const * text_error = NULL;
+    CP2C(char) tcmd_str[] =
+    {
+        "NextPic",
+        "Choose",
+        "Item",
+        "Name",
+        "Window",
+        "Number",
+        "Position",
+        "ScrollSpd",
+        "Selchg",
+        "Crash",
+        "Choose3",
+        "Choose2",
+        "Scroll",
+        "1",
+        "2",
+        "3",
+        "Color",
+        "Wait",
+        "Sound",
+        "Speed",
+        "Mark",
+        "Mark2",
+        "Clear",
+        "Waitkey",
+    };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_CmdStrings = MACRO_ArrayLength(tcmd_str)
+    };
+
+// =============================================================================
+
+    P2C(char) text_error = NULL;
 
 // =============================================================================
 
@@ -175,307 +182,340 @@ char const * text_error = NULL;
     
 // =============================================================================
 
-void
-LoadText(FDOC * const doc)
-{
-    text_offsets_ty const * const to = &offsets.text;
-    
-    text_codes_ty const * const tc = &to->codes;
-    
-    int data_pos = to->region1;
-    
-    int msg_count     = 0;
-    int max_msg_count = 0x200;
-    
-    unsigned char *rom = doc->rom;
-    
-    // -----------------------------
-    
-    // list of pointers for the game's text messages
-    doc->text_bufz = (ZTextMessage*) calloc(max_msg_count,
-                                            sizeof(ZTextMessage) );
-    
-    for( ; ; )
+    void
+    LoadText(FDOC * const doc)
     {
-        // buffer for the current message
-        ZTextMessage msg = { 0 };
+        text_offsets_ty const * const to = &offsets.text;
+        
+        text_codes_ty const * const tc = &to->codes;
+        
+        int data_pos = to->region1;
+        
+        int msg_count     = 0;
+        int max_msg_count = 0x200;
+        
+        unsigned char *rom = doc->rom;
         
         // -----------------------------
         
-        ZTextMessage_Init(&msg);
+        // list of pointers for the game's text messages
+        doc->text_bufz = (ZTextMessage*) calloc(max_msg_count,
+                                                sizeof(ZTextMessage) );
         
         for( ; ; )
         {
-            // Current zchar to convert to ascii.
-            uint8_t a = rom[data_pos];
+            // buffer for the current message
+            ZTextMessage msg = { 0 };
             
             // -----------------------------
             
-            if(a == tc->region_switch)
+            ZTextMessage_Init(&msg);
+            
+            for( ; ; )
             {
-                data_pos = to->region2;
-            }
-            else if(a == tc->abs_terminator)
-            {
-                doc->t_number = msg_count;
+                // Current zchar to convert to ascii.
+                uint8_t a = rom[data_pos];
                 
-                // indicate that text is loaded and return
-                doc->t_loaded = 1;
+                // -----------------------------
                 
-                ZTextMessage_Free(&msg);
-                
-                return;
-            }
-            else if(a < tc->zchar_bound)
-            {
-                // if it's a character, just copy verbatim to the destination
-                // buffer.
-                data_pos++;
-                
-                ZTextMessage_AppendChar(&msg, a);
-            }
-            else if(a >= tc->dict_base)
-            {
-                uint8_t const adj_code = (a - tc->dict_base);
-                
-                // use the dictionary to load the characters up
-                uint16_t const l = ldle16b_i(rom + to->dictionary,
-                                             adj_code);
-                
-                uint16_t const k = ldle16b_i(rom + to->dictionary,
-                                             adj_code + 1);
-                
-                uint32_t const src_addr = rom_addr_split(to->bank, l);
-                
-                size_t len = (k - l);
-                size_t i   = 0;
-                
-                for( ; i < len; i += 1)
+                if(a == tc->region_switch)
                 {
-                    ZTextMessage_AppendChar(&msg, rom[src_addr + i]);
+                    data_pos = to->region2;
                 }
-                
-                data_pos += 1;
-            }
-            else if(a == tc->msg_terminator)
-            {
-                data_pos += 1;
-                
-                break;
-            }
-            else
-            {
-                int l = rom[to->param_counts + a];
-                
-                while(l--)
+                else if(a == tc->abs_terminator)
                 {
-                    ZTextMessage_AppendChar(&msg,
-                                            rom[data_pos]);
+                    doc->t_number = msg_count;
+                    
+                    // indicate that text is loaded and return
+                    doc->t_loaded = 1;
+                    
+                    ZTextMessage_Free(&msg);
+                    
+                    return;
+                }
+                else if(a < tc->zchar_bound)
+                {
+                    // if it's a character, just copy verbatim to the destination
+                    // buffer.
+                    data_pos++;
+                    
+                    ZTextMessage_AppendChar(&msg, a);
+                }
+                else if(a >= tc->dict_base)
+                {
+                    uint8_t const adj_code = (a - tc->dict_base);
+                    
+                    // use the dictionary to load the characters up
+                    uint16_t const l = ldle16b_i
+                    (
+                        rom + to->dictionary,
+                        adj_code
+                    );
+                    
+                    uint16_t const k = ldle16b_i
+                    (
+                        rom + to->dictionary,
+                        adj_code + 1
+                    );
+                    
+                    uint32_t const src_addr = rom_addr_split(to->bank, l);
+                    
+                    size_t len = (k - l);
+                    size_t i   = 0;
+                    
+                    // -----------------------------
+                    
+                    for( ; i < len; i += 1)
+                    {
+                        ZTextMessage_AppendChar(&msg, rom[src_addr + i]);
+                    }
                     
                     data_pos += 1;
                 }
+                else if(a == tc->msg_terminator)
+                {
+                    data_pos += 1;
+                    
+                    break;
+                }
+                else
+                {
+                    int l = rom[to->param_counts + a];
+                    
+                    while(l--)
+                    {
+                        ZTextMessage_AppendChar(&msg,
+                                                rom[data_pos]);
+                        
+                        data_pos += 1;
+                    }
+                }
             }
-        }
-        
-        if(msg_count == max_msg_count)
-        {
-            doc->text_bufz = (ZTextMessage*)
-            recalloc(doc->text_bufz,
-                     max_msg_count + COUNT_GROW_SIZE,
-                     max_msg_count,
-                     sizeof(ZTextMessage) );
             
-            max_msg_count += COUNT_GROW_SIZE;
+            if( Is(msg_count, max_msg_count) )
+            {
+                doc->text_bufz = (ZTextMessage*)
+                recalloc(doc->text_bufz,
+                         max_msg_count + COUNT_GROW_SIZE,
+                         max_msg_count,
+                         sizeof(ZTextMessage) );
+                
+                max_msg_count += COUNT_GROW_SIZE;
+            }
+            
+            doc->text_bufz[msg_count] = msg;
+            
+            msg_count += 1;
         }
-        
-        doc->text_bufz[msg_count] = msg;
-        
-        msg_count += 1;
     }
-}
 
 // =============================================================================
 
-void
-Savetext(FDOC * const doc)
-{
-    text_offsets_ty const * const to = &offsets.text;
-    
-    text_codes_ty const * const tc = &to->codes;
-    
-    int bd;
-    short m,n,o,p,q,v,u;
-    
-    // Index of which message we're dealing with.
-    size_t m_i = 0;
-    
-    // \task[high] Can b2 overflow or is this just... fantasy?
-    unsigned char b2[2048];
-    
-    unsigned char * rom = doc->rom;
-    
-    size_t write_pos = to->region1;
-    
-    unsigned const dict_loc = to->dictionary;
-    
-    // Number of dictionary entries
-    unsigned const num_dict = ( ldle16b(rom + dict_loc) - 0xc705 ) >> 1;
-    
-    // -----------------------------
-    
-    if( ! doc->t_modf )
+    void
+    Savetext(FDOC * const doc)
     {
-        return;
-    }
-    
-    doc->t_modf = 0;
-    
-    for(m_i = 0; m_i < doc->t_number; m_i += 1)
-    {
-        ZTextMessage const * const msg = &doc->text_bufz[m_i];
+        // Index of which message we're dealing with.
+        size_t m_i = 0;
         
-        size_t r = num_dict;
+        // \task[high] Can b2 overflow or is this just... fantasy?
+        unsigned char b2[2048] = { 0 };
         
-        // Index into the zchar array in the current message.
-        size_t z_i = 0;
+        CP2(uint8_t) rom = doc->rom;
         
-        uint16_t const msg_len = msg->m_len;
+        CP2C(text_offsets_ty) to = &offsets.text;
+        
+        CP2C(text_codes_ty) tc = &to->codes;
+        
+        size_t write_pos = to->region1;
+        
+        unsigned const dict_loc = to->dictionary;
+        
+        // Number of dictionary entries
+        unsigned const num_dict =
+        (
+            (
+                rom_addr_split(to->bank, ldle16b(rom + dict_loc) )
+              - to->dictionary
+            ) - 1
+        ) >> 1;
         
         // -----------------------------
         
-        m = bd = 0;
-        
-        for(z_i = 0; z_i < msg_len; )
+        if( ! doc->t_modf )
         {
-            q = b2[bd] = msg->m_text[z_i];
-            
-            bd += 1;
-            z_i += 1;
-            
-            if(q >= tc->command_base)
-            {
-                uint8_t l = rom[to->param_counts + q] - 1;
-                
-                // -----------------------------
-                
-                for
-                (
-                    ;
-                    l--;
-                    bd += 1, z_i += 1
-                )
-                {
-                    b2[bd] = msg->m_text[z_i];
-                }
-                
-                m = bd;
-            }
-            
-            if(bd > m + 1)
-            {
-                size_t l = 0;
-                size_t t = num_dict;
-                
-                // -----------------------------
-                
-                o = ldle16b(rom + dict_loc);
-                
-                v = 255;
-                
-                for(l = 0; l < num_dict; l += 1)
-                {
-                    n = o;
-                    o = ldle16b_i(rom + dict_loc, l + 1);
-                    p = o - n - bd + m;
-                    
-                    if(p >= 0)
-                    {
-                        if( ! memcmp(rom + 0x78000 + n, b2 + m, bd - m) )
-                        {
-                            if(p < v)
-                            {
-                                t = l;
-                                v = p;
-                            }
-                            
-                            if(!p)
-                            {
-                                r = t;
-                                u = z_i;
-                                
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                if
-                (
-                    (t == num_dict)
-                 || (msg->m_text[z_i] >= tc->command_base)
-                )
-                {
-                    if(r != num_dict)
-                    {
-                        b2[m] = r + tc->dict_base;
-                        
-                        m   += 1;
-                        z_i  = u;
-                        bd   = m;
-                        
-                        r = num_dict;
-                    }
-                    else
-                    {
-                        m = (bd - 1);
-                    }
-                }
-            }
-        }
-        
-        write_pos += bd;
-        
-        // The subtraction of two accounts for the need for a message
-        // terminator code and the potential need for a master
-        // terminator code for all of the text data.
-        if
-        (
-            (write_pos < to->region1)
-         && (write_pos > (to->region2_bound - 2) )
-        )
-        {
-            doc->t_modf = 1;
-            
-            MessageBox(framewnd,
-                       "Not enough space for monologue.",
-                       "Bad error happened",
-                       MB_OK);
-            
             return;
         }
         
-        // Check if writing this message would put us past the end of the first
-        // bank where text data can reside. The subtraction of two is to
-        // account for a message terminator code as well as a possible
-        // additional bank switch code.
-        if( write_pos > (to->region1_bound - 2) )
+        doc->t_modf = 0;
+        
+        for(m_i = 0; m_i < doc->t_number; m_i += 1)
         {
-            rom[write_pos - bd] = tc->region_switch;
+            size_t bd = 0;
+            size_t m  = 0;
+            size_t r  = num_dict;
             
-            write_pos = to->region2 + bd;
+            // Index into the zchar array in the current message.
+            size_t z_i = 0;
+            
+            CP2C(ZTextMessage) msg = &doc->text_bufz[m_i];
+            
+            // \task[high] There's a program crashing bug in this loop
+            // Find out where.
+            uint16_t const msg_len = msg->m_len;
+            
+            // -----------------------------
+            
+            m = bd = 0;
+            
+            for(z_i = 0; z_i < msg_len; )
+            {
+                int const q = b2[bd] = msg->m_text[z_i];
+                
+                // -----------------------------
+                
+                bd += 1;
+                z_i += 1;
+                
+                if(q >= tc->command_base)
+                {
+                    uint8_t l = rom[to->param_counts + q] - 1;
+                    
+                    // -----------------------------
+                    
+                    for
+                    (
+                        ;
+                        l--;
+                        bd += 1, z_i += 1
+                    )
+                    {
+                        b2[bd] = msg->m_text[z_i];
+                    }
+                    
+                    m = bd;
+                }
+                
+                if(bd > m + 1)
+                {
+                    int o = ldle16b(rom + dict_loc);
+                    int u = 0;
+                    int v = 255;
+                    
+                    
+                    size_t l = 0;
+                    size_t t = num_dict;
+                    
+                    // -----------------------------
+                    
+                    for(l = 0; l < num_dict; l += 1)
+                    {
+                        int n = o;
+                        int p = 0;
+                        
+                        // -----------------------------
+                        
+                        o = ldle16b_i(rom + dict_loc, l + 1);
+                        
+                        p = (o - n - bd + m);
+                        
+                        if(p >= 0)
+                        {
+                            if( ! memcmp(rom + 0x78000 + n, b2 + m, bd - m) )
+                            {
+                                if(p < v)
+                                {
+                                    t = l;
+                                    v = p;
+                                }
+                                
+                                if(!p)
+                                {
+                                    r = t;
+                                    u = z_i;
+                                    
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if
+                    (
+                        (t == num_dict)
+                     || (msg->m_text[z_i] >= tc->command_base)
+                    )
+                    {
+                        if(r != num_dict)
+                        {
+                            b2[m] = r + tc->dict_base;
+                            
+                            m   += 1;
+                            z_i  = u;
+                            bd   = m;
+                            
+                            r = num_dict;
+                        }
+                        else
+                        {
+                            m = (bd - 1);
+                        }
+                    }
+                }
+            }
+            
+            write_pos += bd;
+            
+            /*
+                The subtraction of two accounts for the need for a message
+                terminator code and the potential need for a master terminator
+                code for all of the text data.
+            */
+            if
+            (
+                (write_pos < to->region1)
+             && (write_pos > (to->region2_bound - 2) )
+            )
+            {
+                doc->t_modf = 1;
+                
+                MessageBox
+                (
+                    framewnd,
+                    "Not enough space for monologue.",
+                    "Bad error happened",
+                    MB_OK
+                );
+                
+                return;
+            }
+            
+            /*
+                Check if writing this message would put us past the end of the
+                first bank where text data can reside. The subtraction of two
+                is to account for a message terminator code as well as a
+                possible additional bank switch code.
+            */
+            if( write_pos > (to->region1_bound - 2) )
+            {
+                rom[write_pos - bd] = tc->region_switch;
+                
+                write_pos = to->region2 + bd;
+            }
+            
+            if( IsNonZero(bd) )
+            {
+                memcpy(rom + write_pos - bd, b2, bd);
+            }
+            
+            rom[write_pos] = tc->msg_terminator;
+            
+            write_pos += 1;
         }
         
-        memcpy(rom + write_pos - bd, b2, bd);
+        rom[write_pos] = tc->abs_terminator;
         
-        rom[write_pos] = tc->msg_terminator;
-        
-        write_pos += 1;
+        doc->modf = 1;
     }
-    
-    rom[write_pos] = tc->abs_terminator;
-    
-    doc->modf = 1;
-}
 
 // =============================================================================
 

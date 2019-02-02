@@ -104,6 +104,8 @@ SD_ENTRY text_sd[] =
         HWND          const p_win
     )
     {
+        char * text_buf = NULL;
+        
         HWND const listbox = GetDlgItem
         (
             p_win,
@@ -113,9 +115,9 @@ SD_ENTRY text_sd[] =
         // Message index (if any is selected)
         int m_i = HM_ListBox_GetSelectedItem(listbox);
         
-        FDOC * const doc = p_ed->ew.doc;
+        CP2(FDOC) doc = p_ed->ew.doc;
         
-        uint8_t * const rom = doc->rom;
+        CP2(uint8_t) rom = doc->rom;
         
         CP2C(text_offsets_ty) to = &offsets.text;
         
@@ -157,12 +159,34 @@ SD_ENTRY text_sd[] =
             Makezeldastring(doc, &amsg, &zmsg);
             
             // \task[med] Lack of a better criterion for now.
-            if(zmsg.m_text != NULL)
+            if(zmsg.m_len > to->max_message_length)
             {
-                char * text_buf = NULL;
+                asprintf
+                (
+                    &text_buf,
+                    "Message is too long to be rendered by the game engine.\n"
+                    "The maximum acceptable length is 0x%x bytes (zchars, "
+                    "zcommands, or parameters thereof.\n"
+                    "\n"
+                    "It exceeds this limit by 0x%x bytes. Please shorten it "
+                    "if you'd like to edit this message successfully.",
+                    to->max_message_length,
+                    (zmsg.m_len - to->max_message_length)
+                );
                 
-                // -----------------------------
+                HM_OK_MsgBox
+                (
+                    framewnd,
+                    text_buf,
+                    "Error"
+                );
+
+                ZTextMessage_Free(&zmsg);
                 
+                goto cleanup;
+            }
+            else if( IsNonNull(zmsg.m_text) )
+            {
                 if(p_ed->num)
                 {
                     // Note that this logic assumes that the dictionary
@@ -265,8 +289,6 @@ SD_ENTRY text_sd[] =
                 HM_ListBox_InsertString(listbox, m_i, text_buf);
                 
                 HM_ListBox_SelectItem(listbox, m_i);
-                
-                free(text_buf);
             }
             else
             {
@@ -278,12 +300,21 @@ SD_ENTRY text_sd[] =
                 
                 SetFocus(ted_win);
                 
-                return;
+                goto cleanup;
             }
             
             AString_Free(&amsg);
             
             doc->t_modf = 1;
+        }
+        
+    cleanup:
+        
+        if(text_buf)
+        {
+            free(text_buf);
+            
+            text_buf = NULL;
         }
     }
 
@@ -400,11 +431,19 @@ SD_ENTRY text_sd[] =
             
             de_offset = rom_addr_split(to->bank, de_base);
             
-            ZTextMessage_AppendStream(&zmsg,
-                                      rom + de_offset,
-                                      de_bound - de_base);
+            ZTextMessage_AppendStream
+            (
+                &zmsg,
+                rom + de_offset,
+                de_bound - de_base
+            );
             
-            TextLogic_ZStringToAString(p_doc, &zmsg, &amsg);
+            TextLogic_ZStringToAString
+            (
+                p_doc,
+                &zmsg,
+                &amsg
+            );
             
             asprintf(&text_buf, "%03d: %s", d_i, amsg.m_text);
             
