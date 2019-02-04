@@ -2759,7 +2759,16 @@ done:
 
 //LoadPal#**********************************
 
-void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals)
+extern void
+Loadpal
+(
+    void *ed,
+    CP2C(uint8_t) rom,
+    int start,
+    int ofs, 
+    int len,
+    int pals
+)
 {
     int i;
     int j;
@@ -2784,7 +2793,13 @@ void Loadpal(void *ed, unsigned char *rom, int start, int ofs, int len, int pals
                 pe[j].peFlags = 0;
             }
             
-            SetPaletteEntries(( (DUNGEDIT*) ed)->hpal, (ofs + *(short*) (( (DUNGEDIT*) ed)->pal)) & 255, len, pe);
+            SetPaletteEntries
+            (
+                ( (DUNGEDIT*) ed)->hpal,
+                (ofs + *(short*) (( (DUNGEDIT*) ed)->pal)) & 255,
+                len,
+                pe
+            );
             
             ofs += 16;
         }
@@ -3941,23 +3956,43 @@ void Delgraphwin(DUNGEDIT*ed)
 void
 Updpal(void*ed)
 {
-    if(ed == dispwnd && ( (DUNGEDIT*) ed)->hpal)
+    if
+    (
+        (ed == dispwnd) && ( (DUNGEDIT*) ed)->hpal
+    )
     {
-        SetPalette(framewnd, ( (DUNGEDIT*) ed)->hpal);
+        SetPalette
+        (
+            framewnd,
+            ( (DUNGEDIT*) ed)->hpal
+        );
     }
     else
     {
-        SendMessage(( (DUNGEDIT*) ed)->dlg, 4002, 0, 0);
+        SendMessage
+        (
+            ((DUNGEDIT*) ed)->dlg,
+            4002,
+            0,
+            0
+        );
     }
 }
 
-void Setdispwin(DUNGEDIT *ed)
+// =============================================================================
+
+void
+Setdispwin(DUNGEDIT *ed)
 {
     if(ed != dispwnd)
     {
         dispwnd = ed;
         
-        SetPalette(framewnd, ed->hpal);
+        SetPalette
+        (
+            framewnd,
+            ed->hpal
+        );
     }
 }
 

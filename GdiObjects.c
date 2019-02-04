@@ -224,11 +224,14 @@
     SetPalette
     (
         HWND     const win,
-        HPALETTE const pal)
+        HPALETTE const pal
+    )
     {
         HDC const hdc = GetDC(win);
         
         HPALETTE const oldpal = SelectPalette(hdc, pal, 0);
+        
+        // -----------------------------
         
         RealizePalette(hdc);
         

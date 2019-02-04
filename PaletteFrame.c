@@ -11,7 +11,7 @@
 
 // =============================================================================
 
-COLORREF custcols[16];
+    COLORREF custcols[16];
 
 // =============================================================================
 
@@ -34,7 +34,7 @@ COLORREF custcols[16];
         LPARAM const p_lp
     )
     {
-        short * b = NULL;
+        uint16_t const * b = NULL;
         
         int i = 0;
         int j = 0;
@@ -53,18 +53,18 @@ COLORREF custcols[16];
         
         ShowWindow(p_win, SW_SHOW);
         
-        i = (ed->ew.param >> 10) & 63;
+        i = (ed->ew.param >> 10) & 0x3f;
         
         ed->palw = pal_w[i];
         ed->palh = pal_h[i];
         
-        k = ed->palw*ed->palh;
+        k = ed->palw * ed->palh;
         
         ed->pal = malloc(k * 2);
         ed->brush = malloc(k * 4);
         ed->modf = 0;
         
-        b = (short*)
+        b = (uint16_t*)
         (
             ed->ew.doc->rom
           + romaddr(pal_addr[i] + (k * (ed->ew.param >> 16) << 1) )
@@ -72,11 +72,13 @@ COLORREF custcols[16];
         
         for(j = 0; j < k; j += 1)
         {
-            l = ed->pal[j] = b[j];
+            l = ed->pal[j] = ldle16h_i(b, j);
             
             ed->brush[j] = CreateSolidBrush
             (
-                ( (l & 0x1f) << 3) + ((l & 0x3e0) << 6) + ((l & 0x7c00) << 9)
+                ( (l &   0x1f) << 3)
+              + ( (l &  0x3e0) << 6)
+              + ( (l & 0x7c00) << 9)
             );
         }
         
@@ -166,7 +168,7 @@ COLORREF custcols[16];
     
         // -----------------------------
         
-        if(msg == WM_CREATE)
+        if( Is(msg, WM_CREATE) )
         {
             PaletteFrame_OnCreate(win, lparam);
             
@@ -216,15 +218,16 @@ COLORREF custcols[16];
             }
             
             goto deflt;
+        
         case WM_MDIACTIVATE:
             
-            activedoc=((WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA))->ew.doc;
+            activedoc = ((WMAPEDIT*) GetWindowLongPtr(win,GWLP_USERDATA))->ew.doc;
             
             break;
         
         case WM_GETMINMAXINFO:
             
-            DefMDIChildProc(win,msg,wparam,lparam);
+            DefMDIChildProc(win, msg, wparam, lparam);
             
             if(!ed)
                 goto deflt;
@@ -283,12 +286,13 @@ COLORREF custcols[16];
             upd:
                 
                 ed->modf=1;
+                
                 rc.left=m+(i<<4);
                 rc.top=n+(j<<4);
                 rc.right=rc.left+16;
                 rc.bottom=rc.top+16;
                 
-                InvalidateRect(win,&rc,0);
+                InvalidateRect(win, &rc, 0);
             }
             
             break;
@@ -300,10 +304,11 @@ COLORREF custcols[16];
                 DeleteObject(ed->brush[i]);
             }
             
-            ed->ew.doc->pals[ed->ew.param&1023]=0;
+            ed->ew.doc->pals[ed->ew.param & 1023] = 0;
             
             free(ed->pal);
             free(ed->brush);
+            
             free(ed);
             
             break;

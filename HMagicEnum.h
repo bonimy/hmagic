@@ -122,6 +122,12 @@
     */
     enum
     {
+        /**
+            Use this flag to indicate that no special far orientation flags
+            are being used for the child control.
+        */
+        FLG_SDCH_NONE = 0,
+        
         /// Read "far-oriented x coordinate for super dialog child window".
         FLG_SDCH_FOX = 1 << 0,
         
