@@ -40,10 +40,10 @@
         SD_OverTransportButton,
         SD_OverItemButton,
         SD_OverWarpButton,
-        SD_OverLeftArrow,
-        SD_OverRightArrow,
-        SD_OverUpArrow,
-        SD_OverDownArrow,
+        SD_Over_LeftArrow,
+        SD_Over_RightArrow,
+        SD_Over_UpArrow,
+        SD_Over_DownArrow,
         SD_OverSprTileSetStatic,
         SD_OverSprTileSetEditCtl,
         SD_OverMapSearchBtn,
@@ -52,6 +52,7 @@
         SD_OverMap16_Selector,
         SD_OverWindowFocus,
         SD_OverAfterLast,
+        SD_Over_BackdropColor
     };
 
     enum

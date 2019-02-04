@@ -124,13 +124,16 @@ Updatemap(DUNGEDIT *ed);
 void
 Updpal(void*ed);
 
-void
-Loadpal(void          * ed,
-        unsigned char * rom,
-        int             start,
-        int             ofs,
-        int             len,
-        int             pals);
+extern void
+Loadpal
+(
+    void          * ed,
+    CP2C(uint8_t)   rom,
+    int             start,
+    int             ofs,
+    int             len,
+    int             pals
+);
 
 void
 Getblocks(FDOC * doc,

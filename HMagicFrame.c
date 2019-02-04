@@ -45,7 +45,7 @@
     static void
     UpdatePalettes(void)
     {
-        DUNGEDIT const * ed = (DUNGEDIT*) firstgraph;
+        P2C(DUNGEDIT) ed = (DUNGEDIT*) firstgraph;
         
         // -----------------------------
         

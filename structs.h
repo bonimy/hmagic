@@ -725,7 +725,11 @@ typedef struct
     
     DLGPROC proc;
     
-    int style, minw, minh, numsde;
+    int style;
+    
+    int minw, minh;
+    
+    int numsde;
     
     SD_ENTRY *sde;
     
