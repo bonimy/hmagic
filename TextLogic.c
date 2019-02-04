@@ -317,14 +317,16 @@
         // Index of which message we're dealing with.
         size_t m_i = 0;
         
-        // \task[high] Can b2 overflow or is this just... fantasy?
-        unsigned char b2[2048] = { 0 };
-        
         CP2(uint8_t) rom = doc->rom;
         
         CP2C(text_offsets_ty) to = &offsets.text;
         
         CP2C(text_codes_ty) tc = &to->codes;
+        
+        // \task[med] While this is more correct than it was in the past,
+        // we still should be more on guard for zstrings that are too long
+        // due to poor validation elsewhere.
+        CP2(uint8_t) b2 = (uint8_t*) calloc(1, to->max_message_length);
         
         size_t write_pos = to->region1;
         
@@ -350,6 +352,12 @@
         
         for(m_i = 0; m_i < doc->t_number; m_i += 1)
         {
+            // Seems to reference an earlier position when doing dictionary
+            // matching... needs confirmation and more detail.
+            int u = 0;
+            
+            // -----------------------------
+            
             size_t bd = 0;
             size_t m  = 0;
             size_t r  = num_dict;
@@ -359,8 +367,6 @@
             
             CP2C(ZTextMessage) msg = &doc->text_bufz[m_i];
             
-            // \task[high] There's a program crashing bug in this loop
-            // Find out where.
             uint16_t const msg_len = msg->m_len;
             
             // -----------------------------
@@ -378,15 +384,17 @@
                 
                 if(q >= tc->command_base)
                 {
-                    uint8_t l = rom[to->param_counts + q] - 1;
+                    uint8_t param_i = 0;
+                    
+                    uint8_t const param_count = rom[to->param_counts + q] - 1;
                     
                     // -----------------------------
                     
                     for
                     (
-                        ;
-                        l--;
-                        bd += 1, z_i += 1
+                        param_i = 0;
+                        param_i < param_count;
+                        param_i += 1, bd += 1, z_i += 1
                     )
                     {
                         b2[bd] = msg->m_text[z_i];
@@ -397,30 +405,41 @@
                 
                 if(bd > m + 1)
                 {
-                    int o = ldle16b(rom + dict_loc);
-                    int u = 0;
                     int v = 255;
-                    
                     
                     size_t l = 0;
                     size_t t = num_dict;
                     
                     // -----------------------------
                     
+                    // \task[low] This loop performs a search of the dictionary
+                    // entries to try to find a best match, if any match exists
+                    // at all. It should be extracted as a subroutine.
                     for(l = 0; l < num_dict; l += 1)
                     {
-                        int n = o;
-                        int p = 0;
+                        int const o = ldle16b_i(rom + dict_loc, l);
+                        int const n = ldle16b_i(rom + dict_loc, l + 1);
+
+                        int const de_length = (n - o);
+                        
+                        int const p = (de_length - bd + m);
                         
                         // -----------------------------
                         
-                        o = ldle16b_i(rom + dict_loc, l + 1);
-                        
-                        p = (o - n - bd + m);
-                        
                         if(p >= 0)
                         {
-                            if( ! memcmp(rom + 0x78000 + n, b2 + m, bd - m) )
+                            if
+                            (
+                                IsZero
+                                (
+                                    memcmp
+                                    (
+                                        rom + rom_addr_split(to->bank, o),
+                                        b2 + m,
+                                        bd - m
+                                    )
+                                )
+                            )
                             {
                                 if(p < v)
                                 {
@@ -515,6 +534,11 @@
         rom[write_pos] = tc->abs_terminator;
         
         doc->modf = 1;
+        
+        if(b2)
+        {
+            free(b2);
+        }
     }
 
 // =============================================================================
@@ -569,15 +593,15 @@ Makezeldastring
     CP2(ZTextMessage) p_zmsg
 )
 {
-    text_codes_ty const * const tc = &offsets.text.codes;
+    CP2C(text_codes_ty) tc = &offsets.text.codes;
     
     char * text_buf = NULL;
     
-    char const * const abuf = p_amsg->m_text;
+    CP2C(char) abuf = p_amsg->m_text;
     
     int i = 0;
     
-    short j,l,m,k;
+    short j, l, m, k;
     
     // -----------------------------
     
@@ -595,7 +619,7 @@ Makezeldastring
             
             for(l = 0; l < NUM_Zchars; l += 1)
             {
-                // \task[high] It's wasteful iterating through all of the zchar
+                // \task[med] It's wasteful iterating through all of the zchar
                 // strings when we only need to look at the ones bounded
                 // by brackets.
                 
@@ -603,9 +627,12 @@ Makezeldastring
                 // the rest of the string.
                 if( abuf[i + m] == '\0' )
                 {
-                    asprintf(&text_buf,
-                             "Unmatched left bracket at position %u",
-                             i);
+                    asprintf
+                    (
+                        &text_buf,
+                        "Unmatched left bracket at position %u",
+                        i
+                    );
                     
                     goto error;
                 }
@@ -1025,7 +1052,7 @@ error:
         
         new_capacity = ( (p_count / 2048) + 1) * 2048;
         
-        // \task[high] We want something like AString_Expand() to optionally resize
+        // \task[med] We want something like AString_Expand() to optionally resize
         // only if necessary.
         AString_Resize
         (

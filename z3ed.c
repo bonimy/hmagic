@@ -9,6 +9,8 @@
 
 // \task[high] A note to merge the changes in the standalone project file
 // for Epoch 2 into the repo.
+// \task[high] A lot of people have requested that the moving of headers
+// dialog be included in the next release.
 
 /**
     

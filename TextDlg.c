@@ -166,7 +166,7 @@ SD_ENTRY text_sd[] =
                     &text_buf,
                     "Message is too long to be rendered by the game engine.\n"
                     "The maximum acceptable length is 0x%x bytes (zchars, "
-                    "zcommands, or parameters thereof.\n"
+                    "zcommands, or parameters thereof.)\n"
                     "\n"
                     "It exceeds this limit by 0x%x bytes. Please shorten it "
                     "if you'd like to edit this message successfully.",
@@ -405,7 +405,7 @@ SD_ENTRY text_sd[] =
         // Index into dictionary entry table.
         size_t d_i = 0;
         
-        // \task[high] This should be rewritten to make more sense and feel
+        // \task[med] This should be rewritten to make more sense and feel
         // less convoluted.
         // Number of dictionary entries.
         size_t num_des =

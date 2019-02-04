@@ -780,11 +780,12 @@ void Savesongs(FDOC *doc)
     ss_num = 0;
     ss_size = 512;
     ss_next = 0;
-    ssblt = malloc(512 * sizeof(SSBLOCK));
     
     // if the music has not been modified, return. 
     if(! (doc->m_modf) )
         return;
+    
+    ssblt = malloc(512 * sizeof(SSBLOCK));
     
     // set it so the music has not been modified. (reset the status)
     doc->m_modf = 0;
