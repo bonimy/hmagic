@@ -741,7 +741,12 @@
                     
                 somewhere_bad:
                     
-                    MessageBox(framewnd,"Unable to save","Bad error happened",MB_OK);
+                    HM_OK_MsgBox
+                    (
+                        framewnd,
+                        "Unable to save",
+                        "Bad error happened"
+                    );
                     
                     return 1;
                 }

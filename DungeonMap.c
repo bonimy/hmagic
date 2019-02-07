@@ -807,8 +807,9 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     
     uint8_t * const drawbuf = ed->map_bits;
     
-    // \task I hate writing code like this. But basically, these bitmaps are
-    // drawn upside down.
+    // \task[low] I hate writing code like this. But basically, these
+    // bitmaps are drawn upside down. Maybe if we moved to C++ this could
+    // be made less messy.
     uint8_t * b2 = ( drawbuf + (511 * 512) + x - (y * 512) );
     
     int col;

@@ -407,7 +407,7 @@ foundblk:
         
         HBRUSH old_brush;
         
-        RECT bd_rect = { 0, 0, 20, 20 };
+        RECT bd_rect = { 10, 10, 16, 16 };
         
         // -----------------------------
         

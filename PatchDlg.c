@@ -9,6 +9,8 @@
 
     #include "Wrappers.h"
 
+    #include "HMagicUtility.h"
+
     #include "PatchEnum.h"
     #include "PatchLogic.h"
 
@@ -89,46 +91,198 @@ SUPERDLG patchdlg =
 
 // =============================================================================
 
+    extern int
+    HM_FileDialog_GetSpec
+    (
+        HWND      const p_file_dlg,
+        CP2(char)       p_buffer,
+        size_t    const p_buffer_size
+    )
+    {
+        int const spec_length = SendMessage
+        (
+            GetParent(p_file_dlg),
+            CDM_GETSPEC,
+            p_buffer_size,
+            (LPARAM) p_buffer
+        );
+        
+        // -----------------------------
+        
+        return spec_length;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_FileDialog_GetFolder
+    (
+        HWND      const p_file_dlg,
+        CP2(char)       p_buffer,
+        size_t    const p_buffer_size
+    )
+    {
+        int const folder_length = SendMessage
+        (
+            GetParent(p_file_dlg),
+            CDM_GETFOLDERPATH,
+            p_buffer_size,
+            (LPARAM) p_buffer
+        );
+        
+        // -----------------------------
+        
+        return folder_length;
+    }
+
+// =============================================================================
+
+    static size_t
+    HM_MultiSelectFileDlgHook_OnOK
+    (
+        HWND              const p_file_dlg,
+        CP2(OPENFILENAME)       p_ofn
+    )
+    {
+        char dummy_spec[MAX_PATH] = { 0 };
+        char folder[MAX_PATH] = { 0 };
+        
+        int const folder_length = HM_FileDialog_GetFolder
+        (
+            p_file_dlg,
+            p_ofn->lpstrFile,
+            p_ofn->nMaxFile
+        );
+        
+        BOOL const exceeded = (folder_length > p_ofn->nMaxFile);
+        
+        int const spec_length = HM_FileDialog_GetSpec
+        (
+            p_file_dlg,
+            IsTrue(exceeded) ? folder : p_ofn->lpstrFile + folder_length,
+            IsTrue(exceeded) ? MAX_PATH : (p_ofn->nMaxFile - folder_length)
+        );
+        
+        int const total_length = (spec_length + folder_length);
+        
+        // -----------------------------
+        
+        if(total_length > p_ofn->nMaxFile)
+        {
+            size_t const old_size = p_ofn->nMaxFile;
+            
+            // -----------------------------
+            
+            p_ofn->nMaxFile = (total_length + MAX_PATH);
+            
+            p_ofn->lpstrFile = (LPTSTR) recalloc
+            (
+                p_ofn->lpstrFile,
+                p_ofn->nMaxFile,
+                old_size,
+                sizeof(char)
+            );
+        }
+
+        return p_ofn->nMaxFile;
+    }
+
+// =============================================================================
+
+    static size_t
+    HM_MultiSelectFileDlgHook_OnSelectionChange
+    (
+        HWND              const p_file_dlg,
+        CP2(OPENFILENAME)       p_ofn
+    )
+    {
+        char dummy_spec[MAX_PATH] = { 0 };
+        char folder[MAX_PATH] = { 0 };
+        
+        int const spec_length = HM_FileDialog_GetSpec
+        (
+            p_file_dlg,
+            dummy_spec,
+            MAX_PATH
+        );
+        
+        int const folder_length = HM_FileDialog_GetFolder
+        (
+            p_file_dlg,
+            folder,
+            MAX_PATH
+        );
+        
+        int const total_length = (spec_length + folder_length);
+        
+        // -----------------------------
+        
+        if(total_length > p_ofn->nMaxFile)
+        {
+            size_t const old_size = p_ofn->nMaxFile;
+            
+            // -----------------------------
+            
+            p_ofn->nMaxFile = (total_length + MAX_PATH);
+            
+            p_ofn->lpstrFile = (LPTSTR) recalloc
+            (
+                p_ofn->lpstrFile,
+                p_ofn->nMaxFile,
+                old_size,
+                sizeof(char)
+            );
+        }
+        
+        return p_ofn->nMaxFile;
+    }
+
+// =============================================================================
+
     static void
     MultiSelectFileDialogHook_OnNotify
     (
-        HWND   const p_dlg_win,
+        HWND   const p_file_dlg,
         LPARAM const p_lp
     )
     {
         CP2C(OFNOTIFY) notification = (OFNOTIFY*) p_lp;
         
+        CP2(OPENFILENAME) ofn = notification->lpOFN;
+        
         UINT const code = notification->hdr.code;
-        
-        char files_buf[MAX_PATH * 2] = { 0 };
-        
-        size_t files_len = 5;
         
         // -----------------------------
         
         switch(code)
         {
+
+        default:
+            
+            break;
+        
+        case CDN_FILEOK:
+
+            HM_MultiSelectFileDlgHook_OnOK
+            (
+                p_file_dlg,
+                ofn
+            );
+            
+            break;
+        
+        case CDN_FOLDERCHANGE:
+            
+            break;
         
         case CDN_SELCHANGE:
             
-            files_len = SendMessage
+            HM_MultiSelectFileDlgHook_OnSelectionChange
             (
-                GetParent(p_dlg_win),
-                CDM_GETFILEPATH,
-                MAX_PATH * 2,
-                (LPARAM) files_buf
+                p_file_dlg,
+                ofn
             );
-            
-            files_len = SendMessage
-            (
-                GetParent(p_dlg_win),
-                CDM_GETSPEC,
-                MAX_PATH * 2,
-                (LPARAM) files_buf
-            );
-            
-            files_len = 4;
-            
+
             break;
         }
     }
@@ -181,6 +335,96 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
 
 // =============================================================================
 
+    extern INT_PTR
+    HM_MultiSelectFileDialog_Open
+    (
+        HWND              const p_parent,
+        CP2C(char)              p_title,
+        CP2C(char)              p_filter,
+        CP2C(char)              p_initial_dir,
+        CP2(OPENFILENAME)       p_out_ofn
+    )
+    {
+        OPENFILENAME ofn = { 0 };
+        
+        INT_PTR r = IDCANCEL;
+        
+        // -----------------------------
+
+        ofn.lStructSize = sizeof(ofn);
+        
+        ofn.hwndOwner = p_parent;
+        ofn.hInstance = hinstance;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        ofn.lpstrFilter = p_filter;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        ofn.nMaxCustFilter = 0;
+        
+        ofn.lpstrCustomFilter = NULL;
+        
+        ofn.nFilterIndex = 1;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        ofn.nMaxFile = MAX_PATH;
+        
+        ofn.lpstrFile = (LPSTR) calloc(1, ofn.nMaxFile);
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        ofn.lpstrInitialDir = p_initial_dir;
+        
+        ofn.lpstrTitle = p_title;
+        
+        // Hook the dialog's window procedure.
+        ofn.Flags =
+        (
+            OFN_FILEMUSTEXIST
+          | OFN_HIDEREADONLY
+          | OFN_ALLOWMULTISELECT
+          | OFN_EXPLORER
+          | OFN_ENABLEHOOK
+        );
+        
+        ofn.lpstrDefExt = 0;
+        
+        ofn.lpfnHook = MultiSelectFileDialogHook;
+
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        r = IsTrue( GetOpenFileName(&ofn) ) ? IDOK : IDCANCEL;
+        
+        p_out_ofn[0] = ofn;
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_FileDlg_CountFiles
+    (
+        CP2C(OPENFILENAME) p_ofn
+    )
+    {
+        int i = 0;
+
+        // -----------------------------
+        
+        for(i = 0; i < p_ofn->nMaxFile; i += 1)
+        {
+            printf(p_ofn->lpstrFile[i]);
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
     void
     PatchDlg_AddModule
     (
@@ -205,61 +449,45 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
             ID_Patch_ModulesListBox
         );
         
+        INT_PTR ofn_result = IDCANCEL;
+        
         OPENFILENAME ofn = { 0 };
         
         // -----------------------------
         
-        ofn.lStructSize = sizeof(ofn);
-        
-        ofn.hwndOwner = p_win;
-        ofn.hInstance = hinstance;
-        
-        ofn.lpstrFilter = patch_filter;
-        
-        ofn.lpstrCustomFilter=0;
-        ofn.nFilterIndex=1;
-        
-        ofn.lpstrFile = (LPSTR) calloc(1, MAX_PATH);
-        
-        patchname[0] = 0;
-        
-        ofn.nMaxFile = MAX_PATH;
-        ofn.lpstrInitialDir = patch_dir;
-        
-        ofn.lpstrTitle = "Load patch";
-        
-        ofn.Flags =
-        (
-            OFN_FILEMUSTEXIST | OFN_HIDEREADONLY
-          | OFN_ALLOWMULTISELECT | OFN_EXPLORER
-        );
-        
-        ofn.lpstrDefExt = 0;
-        
-        // Hook the dialog's window procedure.
-        ofn.Flags |= OFN_ENABLEHOOK;
-        ofn.lpfnHook = MultiSelectFileDialogHook;
-        
-        
-        // \task Make a wrapper for this, especially now that we're 
+        // \task[high] Make a wrapper for this, especially now that we're 
         // multiselecting. Specifically, we need a file count and a
         // list of pointers to the file names in the reverse order
         // as presented in the structure, as this reflects the order
         // in which they were selected.
         
-        MessageBox(p_win, "This code doesn't work chief", "Fix it", MB_OK);
+        HM_OK_MsgBox(p_win, "This code doesn't work chief", "Fix it");
         
-        if( ! GetOpenFileName(&ofn) )
+        ofn_result = HM_MultiSelectFileDialog_Open
+        (
+            p_win,
+            "Load Patch",
+            patch_filter,
+            patch_dir,
+            &ofn
+        );
+        
+        if( Is(ofn_result, IDCANCEL) )
         {
             return;
         }
+        
+        HM_FileDlg_CountFiles(&ofn);
         
         for(i = 0; i < num_files; i += 1)
         {
             doc->nummod++;
         
-            doc->modules = (ASMHACK*) realloc(doc->modules,
-                                              sizeof(ASMHACK) * doc->nummod);
+            doc->modules = (ASMHACK*) realloc
+            (
+                doc->modules,
+                sizeof(ASMHACK) * doc->nummod
+            );
             
             mod = (doc->modules + doc->nummod - 1);
             

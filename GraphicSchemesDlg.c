@@ -72,7 +72,8 @@ editvarious(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         Setdispwin( (DUNGEDIT*) &ec);
         
-        // \task This line is a test.
+        // \task[high] This line is a test. It uses the main icon, just
+        // for this dialog. We're experimenting with icons right now.
         PostMessage(win, WM_SETICON, 0, (LPARAM) main_icon);
         
 loadnewgfx:
