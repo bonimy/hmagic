@@ -39,33 +39,68 @@ SD_ENTRY samp_sd[]={
 // =============================================================================
 
     static void
-    LoadInstrument(HWND             const p_win,
-                   SAMPEDIT const * const ed)
+    LoadInstrument
+    (
+        HWND             const p_win,
+        CP2C(SAMPEDIT)         p_ed
+    )
     {
-        text_buf_ty text_buf = { 0 };
+        char * text_buf = NULL;
         
-        ZINST const * const zi = ed->ew.doc->insts+ed->editinst;
+        CP2C(ZINST) zi = p_ed->ew.doc->insts + p_ed->editinst;
         
         // -----------------------------
         
-        SetDlgItemInt(p_win,
-                      ID_Samp_InstrFrequencyEdit,
-                      (zi->multhi << 8) + zi->multlo,
-                      0);
+        SetDlgItemInt
+        (
+            p_win,
+            ID_Samp_InstrFrequencyEdit,
+            (zi->multhi << 8) + zi->multlo,
+            0
+        );
         
-        wsprintf(text_buf,
-                 "%04X",
-                 (zi->ad << 8) + zi->sr);
+        asprintf
+        (
+            &text_buf,
+            "%04X",
+            (zi->ad << 8) + zi->sr
+        );
         
-        SetDlgItemText(p_win, ID_Samp_InstrADSR_Edit, text_buf);
+        SetDlgItemText
+        (
+            p_win,
+            ID_Samp_InstrADSR_Edit,
+            text_buf
+        );
         
-        wsprintf(text_buf,
-                 "%02X",
-                 zi->gain);
+        asprintf
+        (
+            &text_buf,
+            "%02X",
+            zi->gain
+        );
         
-        SetDlgItemText(p_win, ID_Samp_InstrGainEdit, text_buf);
+        SetDlgItemText
+        (
+            p_win,
+            ID_Samp_InstrGainEdit,
+            text_buf
+        );
         
-        SetDlgItemInt(p_win, ID_Samp_InstrSampleIndex_Edit, zi->samp, 0);
+        SetDlgItemInt
+        (
+            p_win,
+            ID_Samp_InstrSampleIndex_Edit,
+            zi->samp,
+            0
+        );
+        
+        if(text_buf)
+        {
+            free(text_buf);
+            
+            text_buf = NULL;
+        }
     }
 
 // =============================================================================

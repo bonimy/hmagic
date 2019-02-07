@@ -28,12 +28,50 @@ SD_ENTRY patch_sd[] =
           | LBS_NOTIFY
         ),
         WS_EX_CLIENTEDGE,
-        10
+        FLG_SDCH_FOWH
     },
-    {"STATIC","Loaded modules:",0,0,0,0, ID_Patch_ModulesLabel, WS_VISIBLE|WS_CHILD,0,0},
-    {"BUTTON","Add",80,20,0,20, ID_Patch_AddModuleButton, WS_VISIBLE|WS_CHILD,0,3},
-    {"BUTTON","Remove",80,44,0,20, ID_Patch_RemoveModuleButton, WS_VISIBLE|WS_CHILD,0,3},
-    {"BUTTON","Build",80,68,0,20, ID_Patch_BuildButton, WS_VISIBLE|WS_CHILD,0,3}
+    {
+        "STATIC",
+        "Loaded modules:",
+        0, 0,
+        0, 0,
+        ID_Patch_ModulesLabel,
+        (WS_VISIBLE | WS_CHILD),
+        0,
+        FLG_SDCH_NONE
+    },
+    {
+        "BUTTON",
+        "Add",
+        80, 20,
+        0, 20,
+        ID_Patch_AddModuleButton,
+        (WS_VISIBLE | WS_CHILD),
+        0,
+        (FLG_SDCH_FOX | FLG_SDCH_FOW)
+    },
+    {
+        "BUTTON",
+        "Remove",
+        80, 44,
+        0, 20,
+        ID_Patch_RemoveModuleButton,
+        (WS_VISIBLE | WS_CHILD),
+        0,
+        (FLG_SDCH_FOX | FLG_SDCH_FOW)
+    },
+    {
+        "BUTTON",
+        "Build",
+        80,
+        68,
+        0,
+        20,
+        ID_Patch_BuildButton,
+        (WS_VISIBLE | WS_CHILD),
+        0,
+        (FLG_SDCH_FOX | FLG_SDCH_FOW)
+    }
 };
 
 // =============================================================================
@@ -42,7 +80,7 @@ SUPERDLG patchdlg =
 {
     "",
     PatchDlg,
-    WS_CHILD | WS_VISIBLE,
+    (WS_CHILD | WS_VISIBLE),
     200,
     200,
     MACRO_ArrayLength(patch_sd),
@@ -461,7 +499,12 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         // as presented in the structure, as this reflects the order
         // in which they were selected.
         
-        HM_OK_MsgBox(p_win, "This code doesn't work chief", "Fix it");
+        HM_OK_MsgBox
+        (
+            p_win,
+            "This code doesn't work chief",
+            "Fix it"
+        );
         
         ofn_result = HM_MultiSelectFileDialog_Open
         (
