@@ -36,7 +36,9 @@
 
     #pragma warning(push, 0)
 
-    #include <windows.h>
+    #include "windows.h"
+    #include "tchar.h"
+
     #include <stdint.h>
     #include <commctrl.h>
     #include <mmsystem.h>
