@@ -16,76 +16,76 @@
 
 // =============================================================================
 
-SD_ENTRY patch_sd[] =
-{
+    SD_ENTRY patch_sd[] =
     {
-        WC_LISTBOX,
-        "",
-        0, 20, 100, 70,
-        ID_Patch_ModulesListBox,
-        (
-            WS_VISIBLE | WS_CHILD | WS_VSCROLL
-          | LBS_NOTIFY
-        ),
-        WS_EX_CLIENTEDGE,
-        FLG_SDCH_FOWH
-    },
-    {
-        "STATIC",
-        "Loaded modules:",
-        0, 0,
-        0, 0,
-        ID_Patch_ModulesLabel,
-        (WS_VISIBLE | WS_CHILD),
-        0,
-        FLG_SDCH_NONE
-    },
-    {
-        "BUTTON",
-        "Add",
-        80, 20,
-        0, 20,
-        ID_Patch_AddModuleButton,
-        (WS_VISIBLE | WS_CHILD),
-        0,
-        (FLG_SDCH_FOX | FLG_SDCH_FOW)
-    },
-    {
-        "BUTTON",
-        "Remove",
-        80, 44,
-        0, 20,
-        ID_Patch_RemoveModuleButton,
-        (WS_VISIBLE | WS_CHILD),
-        0,
-        (FLG_SDCH_FOX | FLG_SDCH_FOW)
-    },
-    {
-        "BUTTON",
-        "Build",
-        80,
-        68,
-        0,
-        20,
-        ID_Patch_BuildButton,
-        (WS_VISIBLE | WS_CHILD),
-        0,
-        (FLG_SDCH_FOX | FLG_SDCH_FOW)
-    }
-};
+        {
+            WC_LISTBOX,
+            "",
+            0, 20, 100, 70,
+            ID_Patch_ModulesListBox,
+            (
+                WS_VISIBLE | WS_CHILD | WS_VSCROLL
+              | LBS_NOTIFY
+            ),
+            WS_EX_CLIENTEDGE,
+            FLG_SDCH_FOWH
+        },
+        {
+            "STATIC",
+            "Loaded modules:",
+            0, 0,
+            0, 0,
+            ID_Patch_ModulesLabel,
+            (WS_VISIBLE | WS_CHILD),
+            0,
+            FLG_SDCH_NONE
+        },
+        {
+            "BUTTON",
+            "Add",
+            80, 20,
+            0, 20,
+            ID_Patch_AddModuleButton,
+            (WS_VISIBLE | WS_CHILD),
+            0,
+            (FLG_SDCH_FOX | FLG_SDCH_FOW)
+        },
+        {
+            "BUTTON",
+            "Remove",
+            80, 44,
+            0, 20,
+            ID_Patch_RemoveModuleButton,
+            (WS_VISIBLE | WS_CHILD),
+            0,
+            (FLG_SDCH_FOX | FLG_SDCH_FOW)
+        },
+        {
+            "BUTTON",
+            "Build",
+            80,
+            68,
+            0,
+            20,
+            ID_Patch_BuildButton,
+            (WS_VISIBLE | WS_CHILD),
+            0,
+            (FLG_SDCH_FOX | FLG_SDCH_FOW)
+        }
+    };
 
 // =============================================================================
 
-SUPERDLG patchdlg =
-{
-    "",
-    PatchDlg,
-    (WS_CHILD | WS_VISIBLE),
-    200,
-    200,
-    MACRO_ArrayLength(patch_sd),
-    patch_sd
-};
+    SUPERDLG patchdlg =
+    {
+        "",
+        PatchDlg,
+        (WS_CHILD | WS_VISIBLE),
+        200,
+        200,
+        MACRO_ArrayLength(patch_sd),
+        patch_sd
+    };
 
 // =============================================================================
 
@@ -129,49 +129,197 @@ SUPERDLG patchdlg =
 
 // =============================================================================
 
-    extern int
-    HM_FileDialog_GetSpec
+    typedef
+    struct
+    {
+        DWORD m_length;
+        
+        DWORD m_error;
+        
+    }
+    HM_FileDlg_Result;
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        char * m_buffer;
+        
+        size_t m_buffer_length;
+
+        DWORD m_error;
+    }
+    HM_FileDlgProperty;
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        HM_FileDlgProperty m_folder;
+        HM_FileDlgProperty m_spec;
+    }
+    HM_FileDlgData;
+
+// =============================================================================
+
+    static void
+    HM_FileDlgProperty_New
     (
-        HWND      const p_file_dlg,
-        CP2(char)       p_buffer,
-        size_t    const p_buffer_size
+        CP2(HM_FileDlgProperty)       p_property,
+        size_t                  const p_buffer_length
     )
     {
-        int const spec_length = SendMessage
+        p_property->m_buffer = (char*) calloc
         (
-            GetParent(p_file_dlg),
-            CDM_GETSPEC,
-            p_buffer_size,
-            (LPARAM) p_buffer
+            p_buffer_length,
+            sizeof(char)
         );
         
-        // -----------------------------
+        p_property->m_buffer_length = p_buffer_length;
         
-        return spec_length;
+        p_property->m_error = 0;
     }
 
 // =============================================================================
 
-    extern int
-    HM_FileDialog_GetFolder
+    extern HM_FileDlgData *
+    HM_FileDlgData_New
     (
-        HWND      const p_file_dlg,
-        CP2(char)       p_buffer,
-        size_t    const p_buffer_size
+        void
     )
     {
-        int const folder_length = SendMessage
+        CP2(HM_FileDlgData) data = (HM_FileDlgData*) calloc
         (
-            GetParent(p_file_dlg),
-            CDM_GETFOLDERPATH,
-            p_buffer_size,
-            (LPARAM) p_buffer
+            1,
+            sizeof(HM_FileDlgData)
         );
         
         // -----------------------------
         
-        return folder_length;
+        if( IsNonNull(data) )
+        {
+            HM_FileDlgProperty_New(&data->m_folder, MAX_PATH);
+            HM_FileDlgProperty_New(&data->m_spec, 0x1000);
+        }
+        
+        return data;
     }
+
+// =============================================================================
+
+    extern void
+    HM_FileDlgData_Delete
+    (
+        CP2(HM_FileDlgData) p_data
+    )
+    {
+        HM_FileDlgData const zeroed_data = { 0 };
+        
+        // -----------------------------
+        
+        if( IsNull(p_data) )
+        {
+            return;
+        }
+        
+        if( IsNonNull(p_data->m_folder.m_buffer) )
+        {
+            free(p_data->m_folder.m_buffer);
+        }
+
+        if( IsNonNull(p_data->m_spec.m_buffer) )
+        {
+            free(p_data->m_spec.m_buffer);
+        }
+        
+        p_data[0] = zeroed_data;
+    }
+
+// =============================================================================
+
+    extern HM_FileDlg_Result
+    HM_FileDlg_GetSpec
+    (
+        HWND                    const p_file_dlg,
+        CP2(HM_FileDlgProperty)       p_property
+    )
+    {
+        HM_FileDlg_Result r = { 0 };
+        
+        int const spec_length = SendMessage
+        (
+            GetParent(p_file_dlg),
+            CDM_GETSPEC,
+            p_property->m_buffer_length,
+            (LPARAM) p_property->m_buffer
+        );
+        
+        // -----------------------------
+        
+        if(spec_length < 0)
+        {
+            p_property->m_error = CommDlgExtendedError();
+            r.m_length = 0;
+        }
+        else
+        {
+            r.m_length = spec_length;
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    HM_FileDlg_Result
+    HM_FileDlg_GetFolder
+    (
+        HWND                    const p_file_dlg,
+        CP2(HM_FileDlgProperty)       p_property
+    )
+    {
+        HM_FileDlg_Result r = { 0 };
+        
+        int const folder_length = SendMessage
+        (
+            GetParent(p_file_dlg),
+            CDM_GETFOLDERPATH,
+            p_property->m_buffer_length,
+            (LPARAM) p_property->m_buffer
+        );
+        
+        // -----------------------------
+        
+        if(folder_length < 0)
+        {
+            p_property->m_error = CommDlgExtendedError();
+            r.m_length = 0;
+        }
+        else
+        {
+            r.m_length = folder_length;
+        }
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static HM_FileDlgData *
+    HM_MultiSelectFileDlgHook_GetData
+    (
+        CP2(OPENFILENAME) p_ofn
+    )
+    {
+        CP2(HM_FileDlgData) data = (HM_FileDlgData*) p_ofn->lCustData;
+        
+        // -----------------------------
+        
+        return data;
+    }
+
 
 // =============================================================================
 
@@ -182,28 +330,89 @@ SUPERDLG patchdlg =
         CP2(OPENFILENAME)       p_ofn
     )
     {
-        char dummy_spec[MAX_PATH] = { 0 };
-        char folder[MAX_PATH] = { 0 };
+        CP2(HM_FileDlgData) data = HM_MultiSelectFileDlgHook_GetData(p_ofn);
         
-        int const folder_length = HM_FileDialog_GetFolder
+        HM_FileDlg_Result folder_r = HM_FileDlg_GetFolder
         (
             p_file_dlg,
-            p_ofn->lpstrFile,
-            p_ofn->nMaxFile
+            &data->m_folder
         );
         
-        BOOL const exceeded = (folder_length > p_ofn->nMaxFile);
-        
-        int const spec_length = HM_FileDialog_GetSpec
+        HM_FileDlg_Result spec_r = HM_FileDlg_GetSpec
         (
             p_file_dlg,
-            IsTrue(exceeded) ? folder : p_ofn->lpstrFile + folder_length,
-            IsTrue(exceeded) ? MAX_PATH : (p_ofn->nMaxFile - folder_length)
+            &data->m_spec
         );
         
-        int const total_length = (spec_length + folder_length);
+        DWORD const total_length = (folder_r.m_length + spec_r.m_length);
         
         // -----------------------------
+        
+        if(folder_r.m_length > data->m_folder.m_buffer_length)
+        {
+            data->m_folder.m_buffer = (char*) recalloc
+            (
+                data->m_folder.m_buffer,
+                folder_r.m_length,
+                data->m_folder.m_buffer_length,
+                sizeof(char)
+            );
+            
+            if(data->m_folder.m_buffer)
+            {
+                data->m_folder.m_buffer_length = folder_r.m_length;
+            }
+            else
+            {
+                goto error;
+            }
+            
+            folder_r = HM_FileDlg_GetFolder
+            (
+                p_file_dlg,
+                &data->m_folder
+            );
+            
+            if(folder_r.m_error)
+            {
+                data->m_folder.m_error = folder_r.m_error;
+                
+                goto error;
+            }
+        }
+        
+        if(spec_r.m_length > data->m_spec.m_buffer_length)
+        {
+            data->m_spec.m_buffer = (char*) recalloc
+            (
+                data->m_spec.m_buffer,
+                spec_r.m_length,
+                data->m_spec.m_buffer_length,
+                sizeof(char)
+            );
+            
+            if(data->m_spec.m_buffer)
+            {
+                data->m_spec.m_buffer_length = spec_r.m_length;
+            }
+            else
+            {
+                goto error;
+            }
+            
+            spec_r = HM_FileDlg_GetSpec
+            (
+                p_file_dlg,
+                &data->m_spec
+            );
+            
+            if(spec_r.m_error)
+            {
+                data->m_spec.m_error = spec_r.m_error;
+                
+                goto error;
+            }
+        }        
         
         if(total_length > p_ofn->nMaxFile)
         {
@@ -222,6 +431,8 @@ SUPERDLG patchdlg =
             );
         }
 
+    error:
+        
         return p_ofn->nMaxFile;
     }
 
@@ -234,24 +445,21 @@ SUPERDLG patchdlg =
         CP2(OPENFILENAME)       p_ofn
     )
     {
-        char dummy_spec[MAX_PATH] = { 0 };
-        char folder[MAX_PATH] = { 0 };
+        CP2(HM_FileDlgData) data = HM_MultiSelectFileDlgHook_GetData(p_ofn);
         
-        int const spec_length = HM_FileDialog_GetSpec
+        HM_FileDlg_Result const spec_r = HM_FileDlg_GetSpec
         (
             p_file_dlg,
-            dummy_spec,
-            MAX_PATH
+            &data->m_spec
         );
         
-        int const folder_length = HM_FileDialog_GetFolder
+        HM_FileDlg_Result const folder_r = HM_FileDlg_GetFolder
         (
             p_file_dlg,
-            folder,
-            MAX_PATH
+            &data->m_folder
         );
         
-        int const total_length = (spec_length + folder_length);
+        DWORD const total_length = (spec_r.m_length + folder_r.m_length);
         
         // -----------------------------
         
@@ -359,17 +567,48 @@ SUPERDLG patchdlg =
 
 // =============================================================================
 
-/// Macros to help make file filters more human readable. name and ext
-/// are expected to be strings.
-#define FILTER(name, ext) name "\0" ext "\0"
-#define FILTER_TERMINATE(x) "\0";
+    #define MACRO_Stringify_ImplA(x) #x
+    #define MACRO_Stringify_ImplW(x) L#x
 
 // =============================================================================
 
-CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
-                          FILTER("FSNASM module files", "*.OBJ")
-                          FILTER("All Files", "*.*")
-                          FILTER_TERMINATE("");
+#if defined UNICODE
+    #define MACRO_Stringify_Impl(x) MACRO_Stringify_ImplW(x)
+#else
+    #define MACRO_Stringify_Impl(x) MACRO_Stringify_ImplA(x)
+#endif
+
+// =============================================================================
+
+    #define MACRO_Stringify(x) MACRO_Stringify_ImplA(x)
+
+    #define MACRO_StringifyA(x) MACRO_Stringify_ImplA(x)
+    #define MACRO_StringifyW(x) MACRO_Stringify_ImplW(x)
+
+// =============================================================================
+
+    /// Macros to help make file filters more human readable. name and ext
+    /// are expected to be strings.
+    #define FILTER_ENTRY(name, ext)name##\0##ext##\0
+    #define FILTER_TERMINATE()\0\0
+
+// =============================================================================
+
+// \note The white space of this preprocessor symbol is sensitive to 
+// refactoring. Keep each line pinned to the respective first column, otherwise
+// the resulting filter string will end up with extraneous space characters,
+// and if you're especially not careful, an extraneous blank filter.
+#define patch_filter_pre \
+FILTER_ENTRY(FSNASM source files,*.ASM)\
+FILTER_ENTRY(FSNASM module files,*.OBJ)\
+FILTER_ENTRY(All Files,*.*)\
+FILTER_TERMINATE()\
+
+// =============================================================================
+
+char const patch_filter[] = MACRO_StringifyA(patch_filter_pre);
+
+wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 
 // =============================================================================
 
@@ -380,7 +619,7 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         CP2C(char)              p_title,
         CP2C(char)              p_filter,
         CP2C(char)              p_initial_dir,
-        CP2(OPENFILENAME)       p_out_ofn
+        CP2(HM_FileDlgData)     p_data
     )
     {
         OPENFILENAME ofn = { 0 };
@@ -406,6 +645,8 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         
         ofn.nFilterIndex = 1;
         
+        ofn.lpstrDefExt = 0;
+        
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
         ofn.nMaxFile = MAX_PATH;
@@ -418,6 +659,8 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         
         ofn.lpstrTitle = p_title;
         
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
         // Hook the dialog's window procedure.
         ofn.Flags =
         (
@@ -428,15 +671,17 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
           | OFN_ENABLEHOOK
         );
         
-        ofn.lpstrDefExt = 0;
-        
         ofn.lpfnHook = MultiSelectFileDialogHook;
 
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
+        ofn.lCustData = (LPARAM) p_data;
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
         r = IsTrue( GetOpenFileName(&ofn) ) ? IDOK : IDCANCEL;
         
-        p_out_ofn[0] = ofn;
+        free(ofn.lpstrFile);
         
         return r;
     }
@@ -446,16 +691,16 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
     extern int
     HM_FileDlg_CountFiles
     (
-        CP2C(OPENFILENAME) p_ofn
+        CP2C(HM_FileDlgData) p_data
     )
     {
-        int i = 0;
+        DWORD i = 0;
 
         // -----------------------------
         
-        for(i = 0; i < p_ofn->nMaxFile; i += 1)
+        for(i = 0; i < p_data->m_folder.m_buffer_length; i += 1)
         {
-            printf(p_ofn->lpstrFile[i]);
+            ;
         }
         
         return 0;
@@ -489,15 +734,15 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
         
         INT_PTR ofn_result = IDCANCEL;
         
-        OPENFILENAME ofn = { 0 };
+        CP2(HM_FileDlgData) data = HM_FileDlgData_New();
         
         // -----------------------------
         
-        // \task[high] Make a wrapper for this, especially now that we're 
-        // multiselecting. Specifically, we need a file count and a
-        // list of pointers to the file names in the reverse order
-        // as presented in the structure, as this reflects the order
-        // in which they were selected.
+        // \task[high] The wrappers we've written are okay but we need to
+        // finish the job so that we can easily tell what to add to the
+        // patch list control after they've been selected (if any) from the
+        // file dialog. Since some of the interfaces have changed recently
+        // let's be extra careful to tidy up any loose ends.
         
         HM_OK_MsgBox
         (
@@ -512,15 +757,15 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
             "Load Patch",
             patch_filter,
             patch_dir,
-            &ofn
+            data
         );
         
         if( Is(ofn_result, IDCANCEL) )
         {
-            return;
+            goto cleanup;
         }
         
-        HM_FileDlg_CountFiles(&ofn);
+        HM_FileDlg_CountFiles(data);
         
         for(i = 0; i < num_files; i += 1)
         {
@@ -544,6 +789,10 @@ CP2C(char) patch_filter = FILTER("FSNASM source files", "*.ASM")
                 patchname
             );
         }
+        
+    cleanup:
+        
+        HM_FileDlgData_Delete(data);
         
         doc->p_modf = 1;
     }
