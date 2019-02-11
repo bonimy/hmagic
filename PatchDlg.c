@@ -752,17 +752,30 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 
 // =============================================================================
 
+    // \task[low] Move to header
+    #define IsEven(x) ( ( (x) % 2 ) == 0 )
+
+// =============================================================================
+
     extern int
     HM_FileDlg_CountFiles
     (
-        CP2C(HM_FileDlgData) p_data
+        CP2C(HM_FileDlgData) p_data,
+        CP2(size_t)          p_max_name_length
     )
     {
+        BOOL in_name = FALSE;
+        
+        char const null_char    = '\0';
+        char const space        = ' ';
+        char const double_quote = '\"';
+        
         DWORD i = 0;
 
-        size_t file_count = 0;
-        
-        size_t name_length = 0;
+        size_t quote_count     = 0;
+        size_t file_count      = 0;
+        size_t name_length     = 0;
+        size_t max_name_length = 0;
         
         CP2C(HM_FileDlgProperty) spec = &p_data->m_spec;
         
@@ -770,27 +783,60 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
         
         for(i = 0; i < spec->m_actual_length; i += 1)
         {
-            if( IsNot(spec->m_buffer[i], '\0') )
+            char const c = spec->m_buffer[i];
+            
+            // -------------------------
+            
+            if( Is(c, null_char) )
             {
-                name_length += 1;
+                break;
+            }
+            if( Is(c, space) )
+            {
+                continue;
+            }
+            else if( Is(c, double_quote) ) 
+            {
+                if( IsFalse(in_name) )
+                {
+                    in_name = TRUE;
+                    
+                    name_length = 0;
+                }
+                else
+                {
+                    in_name = FALSE;
+                    
+                    if(name_length > max_name_length)
+                    {
+                        max_name_length = name_length;
+                    }
+                }
+                
+                quote_count += 1;
+            }
+            else if( IsFalse(in_name) )
+            {
+                // Should only see non-space characters within a filename
+                // region. Error out.
+                goto error;
             }
             else
             {
-                if( Is(name_length, 0) )
-                {
-                    // Found the double null terminator
-                    break;
-                }
-                
-                file_count += 1;
-                
-                name_length = 0;    
-                
-                continue;
+                name_length += 1;
             }
         }
         
-        return 0;
+        if( IsEven(quote_count) )
+        {
+            file_count = (quote_count / 2);
+        }
+        
+    error:
+        
+        p_max_name_length[0] = max_name_length;
+        
+        return file_count;
     }
 
 // =============================================================================
@@ -802,7 +848,13 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
         CP2C(HM_FileDlgData)       p_data
     )
     {
-        size_t const file_count = HM_FileDlg_CountFiles(p_data);
+        size_t max_name_length = 0;
+        
+        size_t const file_count = HM_FileDlg_CountFiles
+        (
+            p_data,
+            &max_name_length
+        );
         
         DWORD i = 0;
 
