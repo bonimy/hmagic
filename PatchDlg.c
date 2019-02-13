@@ -949,20 +949,19 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
             sizeof(char)
         );
         
-        char * dummy = strcpy
+        size_t const insertion_offset = strlen(p_data->m_folder.m_buffer);
+        
+        // -----------------------------
+        
+        strcpy
         (
             file_name_buf,
             p_data->m_folder.m_buffer
         );
         
-        size_t const insertion_offset = strlen(file_name_buf);
-        
-        // -----------------------------
-        
-        
         if( IsZero(file_count) )
         {
-            return file_count;
+            goto cleanup;
         }
         
         while(always)
@@ -1013,6 +1012,8 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
                 break;
             }
         }
+        
+    cleanup:
         
         if(file_name_buf)
         {
