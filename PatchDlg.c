@@ -841,6 +841,91 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 
 // =============================================================================
 
+    extern BOOL
+    HM_FileDlg_GetNextFile
+    (
+        CP2C(HM_FileDlgData)       p_data,
+        size_t               const p_start_pos,
+        CP2(size_t)                p_end_pos,
+        CP2(size_t)                p_name_start,
+        CP2(size_t)                p_name_end
+    )
+    {
+        BOOL in_name = FALSE;
+        
+        char const null_char    = '\0';
+        char const space        = ' ';
+        char const double_quote = '\"';
+        
+        CP2C(HM_FileDlgProperty) spec = &p_data->m_spec;
+        
+        size_t i          = 0;
+        size_t name_start = 0;
+        size_t name_end   = 0;
+        
+        // -----------------------------
+        
+        for(i = p_start_pos; i < spec->m_actual_length; i += 1)
+        {
+            char const c = spec->m_buffer[i];
+            
+            // -------------------------
+            
+            if( Is(c, null_char) )
+            {
+                break;
+            }
+            if( Is(c, space) && IsFalse(in_name) )
+            {
+                continue;
+            }
+            else if( Is(c, double_quote) ) 
+            {
+                if( IsFalse(in_name) )
+                {
+                    // Opening quote of the file name.
+
+                    in_name = TRUE;
+                    
+                    name_start = (i + 1);
+                    name_end   = name_start;
+                    
+                    continue;
+                }
+                else
+                {
+                    // Closing quote of the file name.
+                    
+                    in_name = FALSE;
+                    
+                    name_end = i;
+                    
+                    p_end_pos[0] = (i + 1);
+                    
+                    break;
+                }
+            }
+            else if( IsFalse(in_name) )
+            {
+                // Encountered a filename character but we're not in a name
+                // boundary yet; this is bad!
+                return FALSE;
+            }
+        }
+        
+        if( Is(name_start, name_end) )
+        {
+            return FALSE;
+        }
+        
+        p_name_start[0] = name_start;
+        p_name_end[0]   = name_end;
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
     extern int
     HM_FileDlg_AddFiles
     (
@@ -856,13 +941,82 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
             &max_name_length
         );
         
-        DWORD i = 0;
-
+        size_t start_pos = 0;
+        
+        char * file_name_buf = (char*) calloc
+        (
+            p_data->m_folder.m_actual_length + max_name_length + 1,
+            sizeof(char)
+        );
+        
+        char * dummy = strcpy
+        (
+            file_name_buf,
+            p_data->m_folder.m_buffer
+        );
+        
+        size_t const insertion_offset = strlen(file_name_buf);
+        
         // -----------------------------
         
-        for(i = 0; i < p_data->m_spec.m_buffer_length; i += 1)
+        
+        if( IsZero(file_count) )
         {
-            ;
+            return file_count;
+        }
+        
+        while(always)
+        {
+            size_t end_pos    = 0;
+            size_t name_start = 0;
+            size_t name_end   = 0;
+            
+            BOOL const found_name = HM_FileDlg_GetNextFile
+            (
+                p_data,
+                start_pos,
+                &end_pos,
+                &name_start,
+                &name_end
+            );
+            
+            // -----------------------------
+            
+            if(end_pos <= start_pos)
+            {
+                // Something's wrong. This should monotonically increase.
+                break;
+            }
+            
+            if(found_name)
+            {
+                CP2(char) dest   = (file_name_buf + insertion_offset);
+                P2C(char) source = (p_data->m_spec.m_buffer + name_start);
+                
+                size_t i = 0;
+                
+                size_t const name_length = (name_end - name_start);
+                
+                // -----------------------------
+                
+                start_pos = end_pos;
+                
+                for(i = 0; i < name_length; i += 1)
+                {
+                    dest[i] = source[i];
+                }
+                
+                dest[i] = '\0';
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        if(file_name_buf)
+        {
+            free(file_name_buf);
         }
         
         return 0;
