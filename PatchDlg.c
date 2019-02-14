@@ -757,90 +757,6 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 
 // =============================================================================
 
-    extern int
-    HM_FileDlg_CountFiles
-    (
-        CP2C(HM_FileDlgData) p_data,
-        CP2(size_t)          p_max_name_length
-    )
-    {
-        BOOL in_name = FALSE;
-        
-        char const null_char    = '\0';
-        char const space        = ' ';
-        char const double_quote = '\"';
-        
-        DWORD i = 0;
-
-        size_t quote_count     = 0;
-        size_t file_count      = 0;
-        size_t name_length     = 0;
-        size_t max_name_length = 0;
-        
-        CP2C(HM_FileDlgProperty) spec = &p_data->m_spec;
-        
-        // -----------------------------
-        
-        for(i = 0; i < spec->m_actual_length; i += 1)
-        {
-            char const c = spec->m_buffer[i];
-            
-            // -------------------------
-            
-            if( Is(c, null_char) )
-            {
-                break;
-            }
-            if( Is(c, space) )
-            {
-                continue;
-            }
-            else if( Is(c, double_quote) ) 
-            {
-                if( IsFalse(in_name) )
-                {
-                    in_name = TRUE;
-                    
-                    name_length = 0;
-                }
-                else
-                {
-                    in_name = FALSE;
-                    
-                    if(name_length > max_name_length)
-                    {
-                        max_name_length = name_length;
-                    }
-                }
-                
-                quote_count += 1;
-            }
-            else if( IsFalse(in_name) )
-            {
-                // Should only see non-space characters within a filename
-                // region. Error out.
-                goto error;
-            }
-            else
-            {
-                name_length += 1;
-            }
-        }
-        
-        if( IsEven(quote_count) )
-        {
-            file_count = (quote_count / 2);
-        }
-        
-    error:
-        
-        p_max_name_length[0] = max_name_length;
-        
-        return file_count;
-    }
-
-// =============================================================================
-
     extern BOOL
     HM_FileDlg_GetNextFile
     (
@@ -927,8 +843,173 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 // =============================================================================
 
     extern int
+    HM_FileDlg_CountFiles
+    (
+        CP2C(HM_FileDlgData) p_data,
+        CP2(size_t)          p_max_name_length
+    )
+    {
+        size_t max_name_length = 0;
+        size_t file_count      = 0;
+        size_t start_pos       = 0;
+        
+        // -----------------------------
+        
+        while(always)
+        {
+            size_t end_pos    = 0;
+            size_t name_start = 0;
+            size_t name_end   = 0;
+            
+            // \task[high] While we're adding high priority tasks, we should
+            // also work out how to reverse the ordering of the files, since
+            // the file dialog api seems to treat it like a FIFO... who
+            // knows why. Where exactly to handle this, not sure yet.
+            
+            // \task[high] This logic doesn't work if there's only one
+            // file selected because... for some dumbass reason Win32 doesn't
+            // quote the file in that case, but does when more than one is
+            // selected.
+            BOOL const found_name = HM_FileDlg_GetNextFile
+            (
+                p_data,
+                start_pos,
+                &end_pos,
+                &name_start,
+                &name_end
+            );
+            
+            // -----------------------------
+            
+            // \task[high] This is not quite the right condition at the
+            // moment, because the actual length counts null terminators
+            // at the end as well as spaces. We need to have a way to
+            // know that searching for paths ended "naturally"
+            if
+            (
+                (start_pos < p_data->m_spec.m_actual_length)
+             && (end_pos <= start_pos)
+            )
+            {
+                // Encountered some funky looking data...
+                break;
+            }
+            
+            start_pos = end_pos;
+            
+            if(found_name)
+            {
+                size_t const name_length = (name_end - name_start);
+                
+                // -----------------------------
+                
+                file_count += 1;
+                
+                if(name_length > max_name_length)
+                {
+                    max_name_length = name_length;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        p_max_name_length[0] = max_name_length;
+        
+        return file_count;
+    }
+
+// =============================================================================
+
+    // \task[med] Move to wrapper header
+    extern int
+    HM_ListBox_FindString
+    (
+        HWND const       p_listbox,
+        size_t     const p_start_index,
+        CP2C(char)       p_string
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_FINDSTRING,
+            p_start_index,
+            (LPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    static void
+    PatchDlg_AddFileName
+    (
+        CP2(FDOC)        p_doc,
+        HWND       const p_listbox,
+        CP2C(char)       p_file_name
+
+    )
+    {
+        // Index of the slot for the newly added module (if it ultimately
+        // ends up being added.)
+        size_t const k = p_doc->nummod;
+        
+        int const string_index = HM_ListBox_FindString
+        (
+            p_listbox,
+            0,
+            p_file_name
+        );
+        
+        // -----------------------------
+        
+        // If the file is to be added to the list box, we expect that it
+        // will not be present. If it is not present, that is an "error", but
+        // that's what we want to see if we are to proceed and add the asm
+        // file as a module.
+        if( IsNotListBoxError(string_index) )
+        {
+            return;
+        }
+        
+        p_doc->nummod += 1;
+        
+        p_doc->modules = (ASMHACK*) realloc
+        (
+            p_doc->modules,
+            sizeof(ASMHACK) * p_doc->nummod
+        );
+        
+        if(always)
+        {
+            CP2(ASMHACK) mod = p_doc->modules;
+
+            // -----------------------------
+            
+            mod[k].filename = _strdup(p_file_name);
+            
+            mod[k].flag = 0;
+            
+            HM_ListBox_AddString
+            (
+                p_listbox,
+                p_file_name
+            );
+        }
+    }
+
+// =============================================================================
+
+    extern int
     HM_FileDlg_AddFiles
     (
+        CP2(FDOC)                  p_doc,
         HWND                 const p_listbox,
         CP2C(HM_FileDlgData)       p_data
     )
@@ -1006,6 +1087,13 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
                 }
                 
                 dest[i] = '\0';
+                
+                PatchDlg_AddFileName
+                (
+                    p_doc,
+                    p_listbox,
+                    file_name_buf
+                );
             }
             else
             {
@@ -1032,14 +1120,7 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
         HWND        const p_win
     )
     {
-        int i         = 0;
-        int num_files = 0;
-        
         FDOC * const doc = p_ed->ew.doc;
-        
-        ASMHACK * mod = doc->modules;
-        
-        char patchname[MAX_PATH] = { 0 };
         
         char patch_dir[MAX_PATH] = { 0 };
         
@@ -1084,32 +1165,10 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
         
         HM_FileDlg_AddFiles
         (
+            doc,
             listbox,
             data
         );
-        
-        for(i = 0; i < num_files; i += 1)
-        {
-            doc->nummod++;
-        
-            doc->modules = (ASMHACK*) realloc
-            (
-                doc->modules,
-                sizeof(ASMHACK) * doc->nummod
-            );
-            
-            mod = (doc->modules + doc->nummod - 1);
-            
-            mod->filename = _strdup(patchname);
-            
-            mod->flag = 0;
-            
-            HM_ListBox_AddString
-            (
-                listbox,
-                patchname
-            );
-        }
         
     cleanup:
         
@@ -1120,62 +1179,62 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
 
 // =============================================================================
 
-void
-PatchDlg_RemoveModule
-(
-    PATCHLOAD * const p_ed,
-    HWND        const p_win
-)
-{
-    FDOC * const doc = p_ed->ew.doc;
-    
-    HWND const listbox = GetDlgItem
+    void
+    PatchDlg_RemoveModule
     (
-        p_win,
-        ID_Patch_ModulesListBox
-    );
-    
-    int const i = HM_ListBox_GetSelectedItem(listbox);
-        
-    // -----------------------------
-    
-    if( IsListBoxError(i) )
+        PATCHLOAD * const p_ed,
+        HWND        const p_win
+    )
     {
-        return;
-    }
-    
-    HM_ListBox_DeleteString
-    (
-        listbox,
-        i
-    );
-    
-    if(always)
-    {
-        CP2(ASMHACK) mod = (doc->modules + i);
+        FDOC * const doc = p_ed->ew.doc;
         
+        HWND const listbox = GetDlgItem
+        (
+            p_win,
+            ID_Patch_ModulesListBox
+        );
+        
+        int const i = HM_ListBox_GetSelectedItem(listbox);
+            
         // -----------------------------
         
-        if(mod->filename)
+        if( IsListBoxError(i) )
         {
-            free(mod->filename);
-            
-            mod->filename = NULL;
-            mod->flag     = 0;
+            return;
         }
-    }
         
-    doc->nummod--;
-    
-    memcpy(doc->modules + i,
-           doc->modules + i + 1,
-           (doc->nummod - i) * sizeof(ASMHACK));
-    
-    doc->modules = (ASMHACK*) realloc(doc->modules,
-                                      sizeof(ASMHACK) * doc->nummod);
-    
-    doc->p_modf = 1;
-}
+        HM_ListBox_DeleteString
+        (
+            listbox,
+            i
+        );
+        
+        if(always)
+        {
+            CP2(ASMHACK) mod = (doc->modules + i);
+            
+            // -----------------------------
+            
+            if(mod->filename)
+            {
+                free(mod->filename);
+                
+                mod->filename = NULL;
+                mod->flag     = 0;
+            }
+        }
+            
+        doc->nummod--;
+        
+        memcpy(doc->modules + i,
+               doc->modules + i + 1,
+               (doc->nummod - i) * sizeof(ASMHACK));
+        
+        doc->modules = (ASMHACK*) realloc(doc->modules,
+                                          sizeof(ASMHACK) * doc->nummod);
+        
+        doc->p_modf = 1;
+    }
 
 // =============================================================================
 
