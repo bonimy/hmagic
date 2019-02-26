@@ -169,7 +169,7 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             ed->tool=2;
             break;
         
-        case 3005|(CBN_SELCHANGE<<16):
+        case HM_CBN_SELCHANGE(3005):
             
             ed->marknum = HM_ComboBox_GetSelectedItem( (HWND) lparam);
             

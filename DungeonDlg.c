@@ -2024,10 +2024,10 @@ updpal2:
             
             break;
         
-        case ID_DungEntrSong | (CBN_SELCHANGE << 16):
-        case ID_DungEntrPalaceID | (CBN_SELCHANGE << 16):
-        case ID_DungBG2Settings | (CBN_SELCHANGE << 16):
-        case ID_DungCollSettings | (CBN_SELCHANGE << 16):
+        case HM_CBN_SELCHANGE(ID_DungEntrSong):
+        case HM_CBN_SELCHANGE(ID_DungEntrPalaceID):
+        case HM_CBN_SELCHANGE(ID_DungBG2Settings):
+        case HM_CBN_SELCHANGE(ID_DungCollSettings):
             
             rom = ed->ew.doc->rom;
             

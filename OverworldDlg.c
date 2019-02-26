@@ -1329,7 +1329,7 @@ updsprpal:
             
             break;
         
-        case SD_OverPhaseComboBox | (CBN_SELCHANGE << 16):
+        case HM_CBN_SELCHANGE(SD_OverPhaseComboBox):
             
             if((n = ed->ecopy[ed->sprset]) != -1)
             {
