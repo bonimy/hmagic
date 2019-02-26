@@ -559,11 +559,11 @@ HM_FreeFileStat(HM_FileStat * const p_s)
 
 // =============================================================================
 
-WPARAM
-HM_NullWP(void)
-{
-    return (WPARAM) 0;
-}
+    WPARAM
+    HM_NullWP(void)
+    {
+        return (WPARAM) 0;
+    }
 
 // =============================================================================
 
@@ -571,6 +571,71 @@ HM_NullWP(void)
     HM_NullLP(void)
     {
         return (LPARAM) 0;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ComboBox_AddString
+    (
+        HWND       const p_combobox,
+        CP2C(char)       p_string
+    )
+    {
+        int const insertion_index = SendMessage
+        (
+            p_combobox,
+            CB_ADDSTRING,
+            HM_NullWP(),
+            (WPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return insertion_index;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ComboBox_SelectItem
+    (
+        HWND const p_combobox,
+        int  const p_item_index
+    )
+    {
+        int const selection_index = SendMessage
+        (
+            p_combobox,
+            CB_SETCURSEL,
+            (WPARAM) p_item_index,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return selection_index;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ComboBox_GetSelectedItem
+    (
+        HWND const p_combobox
+    )
+    {
+        int const selected_index = SendMessage
+        (
+            p_combobox,
+            CB_GETCURSEL,
+            HM_NullLP(),
+            HM_NullLP()
+        );
+
+        // -----------------------------
+        
+        return selected_index;
     }
 
 // =============================================================================

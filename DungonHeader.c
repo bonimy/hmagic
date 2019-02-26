@@ -43,18 +43,39 @@ editroomprop(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
     
     (void) lparam;
     
-    switch(msg) {
+    switch(msg)
+    {
+    
     case WM_INITDIALOG:
+        
         rom=dunged->ew.doc->rom;
         hc=GetDlgItem(win, IDC_COMBO1);
-        for(i=0;i<8;i++) SendMessage(hc,CB_ADDSTRING,0, (LPARAM) ef_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[4],0);
+        
+        for(i = 0; i < 8; i += 1)
+        {
+            HM_ComboBox_AddString(hc, ef_str[i]);
+        }
+        
+        HM_ComboBox_SelectItem(hc, dunged->hbuf[4]);
+        
         hc=GetDlgItem(win,IDC_COMBO2);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING, 0, (LPARAM) tag_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[5],0);
+        
+        for(i = 0; i < 64; i += 1)
+        {
+            HM_ComboBox_AddString(hc, tag_str[i]);
+        }
+        
+        HM_ComboBox_SelectItem(hc, dunged->hbuf[5]);
+        
         hc=GetDlgItem(win,IDC_COMBO3);
-        for(i=0;i<64;i++) SendMessage(hc,CB_ADDSTRING,0,(LPARAM) tag_str[i]);
-        SendMessage(hc,CB_SETCURSEL,dunged->hbuf[6],0);
+        
+        for(i = 0; i < 64; i += 1)
+        {
+            HM_ComboBox_AddString(hc, tag_str[i]);
+        }
+        
+        HM_ComboBox_SelectItem(hc, dunged->hbuf[6]);
+        
         SendDlgItemMessage(win,IDC_BUTTON1,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[2]);
         SendDlgItemMessage(win,IDC_BUTTON3,BM_SETIMAGE,IMAGE_BITMAP, (LPARAM) arrows_imgs[3]);
         hs=dunged->hsize;
@@ -122,13 +143,25 @@ editroomprop(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
                 break;
             }
             break;
+        
         case IDOK:
-            rom=dunged->ew.doc->rom;
+        {
+            HWND const combo_1 = GetDlgItem(win, IDC_COMBO1);
+            HWND const combo_2 = GetDlgItem(win, IDC_COMBO2);
+            HWND const combo_3 = GetDlgItem(win, IDC_COMBO3);
+            
+            // -----------------------------
+            
+            rom = dunged->ew.doc->rom;
+            
             dunged->hsize = hs;
-            dunged->hbuf[4] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO1,CB_GETCURSEL,0,0);
-            dunged->hbuf[5] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO2,CB_GETCURSEL,0,0);
-            dunged->hbuf[6] = (unsigned char) SendDlgItemMessage(win,IDC_COMBO3,CB_GETCURSEL,0,0);
+            
+            dunged->hbuf[4] = (unsigned char) HM_ComboBox_GetSelectedItem(combo_1);
+            dunged->hbuf[5] = (unsigned char) HM_ComboBox_GetSelectedItem(combo_2);
+            dunged->hbuf[6] = (unsigned char) HM_ComboBox_GetSelectedItem(combo_3);
+            
             dunged->hbuf[7]=(GetDlgItemInt(win,IDC_EDIT6,0,0)&3)|
+            
             ((GetDlgItemInt(win,IDC_EDIT15,0,0)&3)<<2)|
             ((GetDlgItemInt(win,IDC_EDIT17,0,0)&3)<<4)|
             ((GetDlgItemInt(win,IDC_EDIT19,0,0)&3)<<6);
@@ -147,6 +180,8 @@ editroomprop(HWND win, UINT msg, WPARAM wparam, LPARAM lparam)
             dunged->hmodf = 1;
             
             dunged->ew.doc->modf=1;
+        }
+        
         case IDCANCEL:
             EndDialog(win,0);
         }

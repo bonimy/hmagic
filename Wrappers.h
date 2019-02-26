@@ -273,6 +273,30 @@ struct
     LPARAM
     HM_NullLP(void);
 
+// =============================================================================
+
+    extern int
+    HM_ComboBox_AddString
+    (
+        HWND       const p_combobox,
+        CP2C(char)       p_string
+    );
+
+    extern int
+    HM_ComboBox_SelectItem
+    (
+        HWND const p_combobox,
+        int  const p_item_index
+    );
+
+    extern int
+    HM_ComboBox_GetSelectedItem
+    (
+        HWND const p_combobox
+    );
+
+// =============================================================================
+
     extern unsigned long
     HM_NumPadKeyDownFilter
     (

@@ -558,7 +558,19 @@ Openroom(DUNGEDIT * const ed,
     
     int layer = 0;
     
-    HWND win = ed->dlg;
+    HWND const win = ed->dlg;
+    
+    HWND const bg2_settings_combo = GetDlgItem
+    (
+        win,
+        ID_DungBG2Settings
+    );
+    
+    HWND const collision_combo = GetDlgItem
+    (
+        win,
+        ID_DungCollSettings
+    );
     
     // -----------------------------
     
@@ -625,13 +637,14 @@ Openroom(DUNGEDIT * const ed,
         {
             // \task[med] Is this buggy? What if the value is not in this list?
             // Probably not the case in a vanilla rom, but still...
-            SendDlgItemMessage(win, ID_DungBG2Settings, CB_SETCURSEL, i, 0);
+            HM_ComboBox_SelectItem(bg2_settings_combo, i);
             
             break;
         }
     }
     
-    SendDlgItemMessage(win, ID_DungCollSettings, CB_SETCURSEL, ed->coll, 0);
+    HM_ComboBox_SelectItem(collision_combo, ed->coll);
+    
     SetDlgItemInt(win, ID_DungSprTileSet, ed->sprgfx, 0);
     
     buf = rom + 0x50000 + ((short*)(rom + ed->ew.doc->dungspr))[map];
@@ -1281,6 +1294,30 @@ editdungprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         rom_cty buf2 = NULL;
         rom_cty rom  = ed->ew.doc->rom;
         
+        HWND const entrance_song_combo = GetDlgItem
+        (
+            p_win,
+            ID_DungEntrSong
+        );
+        
+        HWND const entrance_palace_combo = GetDlgItem
+        (
+            p_win,
+            ID_DungEntrPalaceID
+        );
+        
+        HWND const bg2_settings_combo = GetDlgItem
+        (
+            p_win,
+            ID_DungBG2Settings
+        );
+        
+        HWND const collision_combo = GetDlgItem
+        (
+            p_win,
+            ID_DungCollSettings
+        );
+        
         // -----------------------------
         
         p_ed_return[0] = ed;
@@ -1390,42 +1427,44 @@ editdungprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                 SendDlgItemMessage(p_win, ID_DungLeftArrow + i, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM) arrows_imgs[i]);
             
             for(i = 0; i < 40; i++)
+            {
                 // map in the names of the music tracks
-                SendDlgItemMessage(p_win, ID_DungEntrSong, CB_ADDSTRING, 0, (LPARAM) mus_str[i]);
+                HM_ComboBox_AddString(entrance_song_combo, mus_str[i]);
+            }
             
             // if j is a starting location, use 0x15bc9, otherwise 0x1582e as an offset.
             l = rom[ (j >= 0x85 ? 0x15bc9 : 0x1582e) + j ];
             
-            for(i = 0; i < 40; i++)
+            for(i = 0; i < 40; i += 1)
             {
                 if(mus_ofs[i] == l)
                 {
-                    SendDlgItemMessage(p_win, ID_DungEntrSong, CB_SETCURSEL, i, 0);
+                    HM_ComboBox_SelectItem(entrance_song_combo, i);
                     
                     break;
                 }
             }
             
-            for(i = 0; i < 9; i++)
-                SendDlgItemMessage(p_win, ID_DungBG2Settings, CB_ADDSTRING, 0, (LPARAM) bg2_str[i]);
-            
-            for(i = 0; i < 5; i++)
-                SendDlgItemMessage(p_win, ID_DungCollSettings, CB_ADDSTRING, 0, (LPARAM) coll_str[i]);
-            
-            for(i = 0; i < 15; i++)
+            for(i = 0; i < 9; i += 1)
             {
-                SendDlgItemMessage(p_win,
-                                   ID_DungEntrPalaceID,
-                                   CB_ADDSTRING,
-                                   0,
-                                   (LPARAM) level_str[i]);
+                HM_ComboBox_AddString(bg2_settings_combo, bg2_str[i]);
             }
             
-            SendDlgItemMessage(p_win,
-                               ID_DungEntrPalaceID,
-                               CB_SETCURSEL,
-                               ( (rom[ (j >= 0x85 ? 0x15b91 : 0x1548b) + j] + 2) >> 1) & 0x7f,
-                               0);
+            for(i = 0; i < 5; i += 1)
+            {
+                HM_ComboBox_AddString(collision_combo, coll_str[i]);
+            }
+            
+            for(i = 0; i < 15; i += 1)
+            {
+                HM_ComboBox_AddString(entrance_palace_combo, level_str[i]);
+            }
+            
+            HM_ComboBox_SelectItem
+            (
+                entrance_palace_combo,
+                ( (rom[ (j >= 0x85 ? 0x15b91 : 0x1548b) + j] + 2) >> 1) & 0x7f
+            );
             
             ed->gfxtmp = rom[(j >= 0x85 ? 0x15b83 : 0x15381) + j];
             
@@ -1992,7 +2031,7 @@ updpal2:
             
             rom = ed->ew.doc->rom;
             
-            j = SendMessage((HWND)lparam,CB_GETCURSEL,0,0);
+            j = HM_ComboBox_GetSelectedItem( (HWND) lparam );
             
             if(j == -1)
                 break;

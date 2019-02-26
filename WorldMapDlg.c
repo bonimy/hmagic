@@ -1,11 +1,11 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "GdiObjects.h"
-#include "Wrappers.h"
+    #include "GdiObjects.h"
+    #include "Wrappers.h"
 
-#include "WorldMapLogic.h"
+    #include "WorldMapLogic.h"
 
 BOOL CALLBACK
 wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -122,10 +122,12 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         
         hc=GetDlgItem(win,3005);
         
-        for(i=0;i<10;i++)
-            SendMessage(hc,CB_ADDSTRING,0,(LPARAM) mapmark_str[i]);
+        for(i = 0; i < 10; i += 1)
+        {
+            HM_ComboBox_AddString(hc, mapmark_str[i]);
+        }
         
-        SendMessage(hc,CB_SETCURSEL,0,0);
+        HM_ComboBox_SelectItem(hc, 0);
         
         break;
     case 4002:
@@ -166,9 +168,10 @@ wmapdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         case 3004:
             ed->tool=2;
             break;
+        
         case 3005|(CBN_SELCHANGE<<16):
             
-            ed->marknum = (short) SendMessage((HWND)lparam,CB_GETCURSEL,0,0);
+            ed->marknum = HM_ComboBox_GetSelectedItem( (HWND) lparam);
             
             if(j==4)
                 break;

@@ -862,7 +862,7 @@ foundblk:
             
             for(i = l; i < 3; i++)
             {
-                o[i] = *(short*)(rom + sprset_loc[i] + j*2);
+                o[i] = ldle16b_i(rom + sprset_loc[i], j);
                 
                 for(k = l; k < i; k++)
                 {
@@ -886,13 +886,15 @@ foundblk:
                 }
                 
                 ed->esize[i] = k;
-                ed->ebuf[i] = malloc(k);
+                
+                ed->ebuf[i] = (uint8_t*) malloc(k);
+                
                 memcpy(ed->ebuf[i], b2, k);
                 
-                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) (sprset_str[i]));
+                HM_ComboBox_AddString(hc, sprset_str[i]);
             }
             
-            SendMessage(hc, CB_SETCURSEL, ed->sprset - l, 0);
+            HM_ComboBox_SelectItem(hc, ed->sprset - l);
             
             if(j < 0x80)
             {
@@ -1336,7 +1338,10 @@ updsprpal:
                 ed->ebuf[n] = ed->ebuf[ed->sprset];
             }
             
-            n = SendMessage((HWND)lparam,CB_GETCURSEL,0,0)+(ed->ew.param>>7);
+            n = HM_ComboBox_GetSelectedItem
+            (
+                (HWND) lparam
+            ) + (ed->ew.param >> 7);
             
             if(ed->ecopy[n] != -1)
             {

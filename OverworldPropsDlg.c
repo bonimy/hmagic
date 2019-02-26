@@ -1,23 +1,25 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "AudioLogic.h"
+    #include "Wrappers.h"
+
+    #include "AudioLogic.h"
 
 // =============================================================================
 
-static const char *
-amb_str[9] =
-{
-    "Nothing",
-    "Heavy rain",
-    "Light rain",
-    "Stop",
-    "Earthquake",
-    "Wind",
-    "Flute",
-    "Chime 1",
-    "Chime 2"
-};
+    static const char *
+    amb_str[9] =
+    {
+        "Nothing",
+        "Heavy rain",
+        "Light rain",
+        "Stop",
+        "Earthquake",
+        "Wind",
+        "Flute",
+        "Chime 1",
+        "Chime 2"
+    };
 
 // ==============================================================================
 
@@ -62,21 +64,27 @@ CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             k = rom[0x14303 + oved->ew.param + (i << 6)];
             
             if(k >= 16)
+            {
                 k += 16;
+            }
             
             hc = GetDlgItem(win, cb_ids[i]);
             
-            for(j = 0; j < 16; j++)
-                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) mus_str[j+1]);
+            for(j = 0; j < 16; j += 1)
+            {
+                HM_ComboBox_AddString(hc, mus_str[j + 1]);
+            }
             
-            SendMessage(hc,CB_SETCURSEL,k&15,0);
+            HM_ComboBox_SelectItem(hc, k & 15);
             
             hc = GetDlgItem(win, cb2_ids[i]);
             
             for(j = 0; j < 9; j++)
-                SendMessage(hc,CB_ADDSTRING,0, (LPARAM) amb_str[j]);
+            {
+                HM_ComboBox_AddString(hc, amb_str[j]);
+            }
             
-            SendMessage(hc,CB_SETCURSEL,k>>5,0);
+            HM_ComboBox_SelectItem(hc, k >> 5);
         }
         
         SetDlgItemInt(win,IDC_EDIT1,((short*)(rom + 0x3f51d))[oved->ew.param],0);
@@ -99,11 +107,13 @@ CALLBACK editovprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             
             for( ; i < 4; i++)
             {
-                hc=GetDlgItem(win,cb_ids[i]);
-                k=SendMessage(hc,CB_GETCURSEL,0,0);
+                hc = GetDlgItem(win,cb_ids[i]);
                 
-                hc=GetDlgItem(win,cb2_ids[i]);
-                k|=SendMessage(hc,CB_GETCURSEL,0,0)<<5;
+                k = HM_ComboBox_GetSelectedItem(hc);
+                
+                hc = GetDlgItem(win,cb2_ids[i]);
+                
+                k |= HM_ComboBox_GetSelectedItem(hc) << 5;
                 
                 if(k >= 32)
                     k -= 16;

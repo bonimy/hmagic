@@ -1514,24 +1514,34 @@
                 
                 rom = activedoc->rom;
                 
-                for(i=0;i<0x160;i++)
-                    ((unsigned short*) (rom + 0x4c881))[i] = 0xcb41;
+                for(i = 0; i < 0x160; i += 1)
+                {
+                    stle16b_i(rom + 0x4c881, i, 0xcb41);
+                }
                 
                 rom[0x4cb41] = 0xff;
                 
-                memcpy(rom + 0x4cb42,
-                       rom + activedoc->dungspr,
-                       activedoc->sprend - activedoc->dungspr);
+                memcpy
+                (
+                    rom + 0x4cb42,
+                    rom + activedoc->dungspr,
+                    activedoc->sprend - activedoc->dungspr
+                );
                 
                 for(i = 0; i < 0x128; i++)
                 {
-                    addle16b_i(rom + 0x4cb42,
-                               i,
-                               (short) (0x4cb42 - activedoc->dungspr) );
+                    addle16b_i
+                    (
+                        rom + 0x4cb42,
+                        i,
+                        (short) (0x4cb42 - activedoc->dungspr)
+                    );
                 }
                 
                 activedoc->sprend += 0x4cb42 - activedoc->dungspr;
+                
                 activedoc->dungspr = 0x4cb42;
+                
                 activedoc->modf = 1;
                 
                 break;
