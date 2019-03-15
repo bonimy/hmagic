@@ -424,6 +424,9 @@
     <ClInclude Include="Zelda3_Enum.h">
       <Filter>Main\Header Files\General</Filter>
     </ClInclude>
+    <ClInclude Include="hm-res.h">
+      <Filter>Main\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="z3ed.rc">
