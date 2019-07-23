@@ -89,6 +89,65 @@
 
 // =============================================================================
 
+    uint32_t const FNV_offset_basis_32bit = 0x811c9dc5;
+    uint32_t const FNV_prime_32bit        = 0x01000193;
+
+// =============================================================================
+
+    // \note Information on implementing this came from Wikipedia.
+    // \task[med] Move to a more appropriate file and have a header file too.
+    extern uint32_t
+    FNV_1A_Hash
+    (
+        CP2C(void)       p_data,
+        size_t     const p_length
+    )
+    {
+        CP2C(char) data = ( CP2C(char) ) p_data;
+        
+        uint32_t hash = FNV_offset_basis_32bit;
+        
+        size_t i = 0;
+        
+        // -----------------------------
+        
+        for(i = 0 ; i < p_length; i += 1)
+        {
+            uint8_t const octet = (uint8_t) data[i];
+            
+            // -----------------------------
+            
+            hash ^= octet;
+            hash *= FNV_prime_32bit;
+        }
+        
+        return hash;
+    }
+
+// =============================================================================
+
+    /**
+        Convenience wrapper for hashing strings.
+    */
+    extern uint32_t
+    FNV_1A_HashOfString
+    (
+        CP2C(char) p_string
+    )
+    {
+        size_t const length = strlen(p_string);
+        
+        // -----------------------------
+        
+        return FNV_1A_Hash
+        (
+            p_string,
+            length
+        );
+    }
+
+// =============================================================================
+
     static void
     PatchDlg_OnInitDialog
     (
@@ -117,7 +176,7 @@
         
         j = doc->nummod;
         
-        for(i = 0; i < j; i++)
+        for(i = 0; i < j; i += 1)
         {
             HM_ListBox_AddString
             (
@@ -150,16 +209,270 @@
         size_t m_actual_length;
         
         size_t m_buffer_length;
-
+        
         DWORD m_error;
     }
     HM_FileDlgProperty;
 
 // =============================================================================
 
+    /**
+        Object that contains a vector of strings all having the same hash.
+    */
     typedef
     struct
     {
+        size_t m_count;
+        size_t m_capacity;
+        
+        P2C(char) * m_entries;
+    }
+    HashedStringSubtable;
+
+// =============================================================================
+
+    /**
+        The object that maps the hashed value to a subtable.
+    */
+    typedef
+    struct
+    {
+        uint32_t m_hash;
+        
+        HashedStringSubtable * m_subtable;
+    }
+    HashedStringEntry;
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        size_t m_count;
+        size_t m_capacity;
+        
+        HashedStringEntry * m_entries;
+    }
+    HashedStringTable;
+
+// =============================================================================
+
+    extern int
+    HashedStringSubtable_Clear
+    (
+        CP2(HashedStringSubtable) p_subtable
+    )
+    {
+        size_t i = 0;
+
+        // -----------------------------
+        
+        for(i = 0; i < p_subtable->m_count; i += 1)
+        {
+            P2C(char) string = p_subtable->m_entries[i];
+            
+            // -----------------------------
+            
+            free( (void*) string);
+            
+            p_subtable->m_entries[i] = NULL;
+        }
+        
+        p_subtable->m_count = 0;
+        
+        return 0;
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HashedStringSubtable_AddString
+    (
+        CP2(HashedStringSubtable) p_subtable,
+        CP2C(char)                p_string
+    )
+    {
+        CP2(HashedStringSubtable) st = p_subtable;
+        
+        size_t i = 0;
+        
+        // -----------------------------
+        
+        for(i = 0; i < st->m_count; i += 1)
+        {
+            CP2C(char) other_string = st->m_entries[i];
+            
+            // -----------------------------
+            
+            if( IsZero( strcmp(p_string, other_string) ) )
+            {
+                // Didn't need to be added.
+                return FALSE;
+            }
+        }
+        
+        if( IsZero(st->m_capacity) )
+        {
+            enum
+            {
+                NUM_DefaultCapacity = 4
+            };
+            
+            st->m_entries = ( P2C(char) * ) calloc
+            (
+                NUM_DefaultCapacity,
+                sizeof( P2C(char) )
+            );
+            
+            if( IsNonNull(st->m_entries) )
+            {
+                st->m_capacity = NUM_DefaultCapacity;
+                
+                st->m_count = 0;
+            }
+        }
+
+        if( Is(st->m_count, st->m_capacity) )
+        {
+            size_t new_capacity = (st->m_capacity * 2);
+            
+            // -----------------------------
+            
+            st->m_entries = ( P2C(char) * ) recalloc
+            (
+                (void*) st->m_entries,
+                st->m_capacity * 2,
+                st->m_capacity,
+                sizeof( P2C(char) )
+            );
+            
+            if( IsNull(st->m_entries) )
+            {
+                // \task[high] This needs attention. We need more complex
+                // information sent back than just a boolean.
+                return FALSE;
+            }
+            
+            st->m_capacity = new_capacity;
+        }
+
+        if(always)
+        {
+            size_t const k = st->m_count;
+            
+            // -----------------------------
+            
+            st->m_entries[k] = hm_strdup(p_string);
+            
+            st->m_count += 1;
+        }
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HashedStringTable_Init
+    (
+        CP2(HashedStringTable)       p_table,
+        size_t                 const p_capacity
+    )
+    {
+        p_table->m_entries = (HashedStringEntry*) calloc
+        (
+            p_capacity,
+            sizeof(HashedStringEntry)
+        );
+        
+        if(p_table->m_entries)
+        {
+            p_table->m_capacity = p_capacity;
+            
+            p_table->m_count = 0;
+            
+            return TRUE;
+        }
+        
+        return FALSE;
+    }
+
+// =============================================================================
+
+    extern int
+    HashedStringTable_Clear
+    (
+        CP2(HashedStringTable) p_table
+    )
+    {
+        size_t i = 0;
+        
+        // -----------------------------
+        
+        for(i = 0; i < p_table->m_count; i += 1)
+        {
+            CP2(HashedStringEntry) entry = &p_table->m_entries[i];
+            
+            // -----------------------------
+            
+            if(entry->m_subtable)
+            {
+                CP2(HashedStringSubtable) subtable = entry->m_subtable;
+                
+                HashedStringSubtable_Clear(subtable);
+            }
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HashedStringTable_AddString
+    (
+        CP2(HashedStringTable) p_table,
+        CP2C(char)             p_string
+    )
+    {
+        uint32_t const h = FNV_1A_HashOfString(p_string);
+        
+        size_t i = 0;
+
+        CP2(HashedStringEntry) ents = p_table->m_entries;
+        
+        // -----------------------------
+        
+        for(i = 0; i < p_table->m_count; i += 1)
+        {
+            CP2(HashedStringEntry) entry = &ents[i];
+            
+            if( Is(entry->m_hash, h) )
+            {
+                // There's already at least one string in the table that
+                // has this hash. We'll need to defer to that hash's subtable
+                // to check whether the string is already there.
+
+                HashedStringSubtable_AddString
+                (
+                    entry->m_subtable,
+                    p_string
+                );
+                
+                return FALSE;
+            }
+        }
+        
+        return TRUE;
+    }
+
+// =============================================================================
+
+    typedef
+    struct
+    {
+        HashedStringTable m_files;
+        
         HM_FileDlgProperty m_folder;
         HM_FileDlgProperty m_spec;
     }
@@ -205,11 +518,39 @@
         
         if( IsNonNull(data) )
         {
-            HM_FileDlgProperty_New(&data->m_folder, MAX_PATH);
+            
+            HM_FileDlgProperty_New
+            (
+                &data->m_folder,
+#if defined NDEBUG
+                MAX_PATH
+#else
+                // test just to make sure the allocator is well behaved.
+                0x40
+#endif
+
+            );
             HM_FileDlgProperty_New(&data->m_spec, 0x100);
         }
         
         return data;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_FileDlgData_ResetFileSpec
+    (
+        CP2(HM_FileDlgData) p_data
+    )
+    {
+        // \task[high] Implement this routine. We need to delete an array
+        // of files but keep the length of the number of pointers the
+        // same (just delete any strdup'd like data)
+        HashedStringTable_Clear
+        (
+            &p_data->m_files
+        );
     }
 
 // =============================================================================
@@ -229,6 +570,8 @@
             return;
         }
         
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
         if( IsNonNull(p_data->m_folder.m_buffer) )
         {
             free(p_data->m_folder.m_buffer);
@@ -238,6 +581,10 @@
         {
             free(p_data->m_spec.m_buffer);
         }
+        
+        HM_FileDlgData_ResetFileSpec(p_data);
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
         p_data[0] = zeroed_data;
         
@@ -288,6 +635,13 @@
         
         // -----------------------------
         
+        // Windows counts the null terminator, but we don't
+        // care about that.
+        spec_length -= 1;
+        
+        // Assume no errors happened at first.
+        p_property->m_error = 0;
+        
         if(spec_length < 0)
         {
             p_property->m_error = CommDlgExtendedError();
@@ -303,8 +657,6 @@
                 // We got the whole thing in one call, no need to reallocate.
 
                 p_property->m_actual_length = spec_length;
-                
-                p_property->m_error = 0;
             }
             else
             {
@@ -313,7 +665,7 @@
                     spec_length,
                     0x100
                 );
-
+                
                 // -----------------------------
                 
                 p_property->m_buffer = (char*) recalloc
@@ -364,9 +716,11 @@
         CP2(HM_FileDlgProperty)       p_property
     )
     {
-        int const folder_length = SendMessage
+        HWND const parent_win = GetParent(p_file_dlg);
+        
+        int folder_length = SendMessage
         (
-            GetParent(p_file_dlg),
+            parent_win,
             CDM_GETFOLDERPATH,
             p_property->m_buffer_length,
             (LPARAM) p_property->m_buffer
@@ -376,76 +730,73 @@
         
         if(folder_length < 0)
         {
+            // There was an error retrieving the current folder.
+            
             p_property->m_error = CommDlgExtendedError();
             
             p_property->m_actual_length = 0;
         }
         else
         {
+            // Grabbed it, now check that we got the whole thing.
+            
             DWORD const folder_length_dword = folder_length;
             
             // -----------------------------
             
             if(folder_length_dword <= p_property->m_buffer_length)
             {
-                p_property->m_actual_length = folder_length;
+                // It fits. We're done.
+                
+                p_property->m_actual_length = (folder_length - 1);
             }
             else
             {
-                p_property->m_actual_length = 0;
-            }
-        }
-        
-        return folder_length;
-    }
-
-// =============================================================================
-
-    extern int
-    HM_FileDlg_GetFolderPlus
-    (
-        HWND                    const p_file_dlg,
-        CP2(HM_FileDlgProperty)       p_property
-    )
-    {
-        int folder_length = HM_FileDlg_GetFolder(p_file_dlg, p_property);
-        
-        DWORD const folder_length_dword = folder_length;
-        
-        // -----------------------------
-        
-        if
-        (
-            (folder_length >= 0)
-         && IsNot(p_property->m_actual_length, folder_length_dword)
-         && IsNonZero(p_property->m_error)
-        )
-        {
-            size_t const new_count = HM_ModularRoundUp
-            (
-                folder_length,
-                0x100
-            );
-
-            // -----------------------------
+                // We only grabbed the partial folder path because our buffer
+                // wasn't large enough. Reallocate it so that it will fit and
+                // request it again.
                 
-            p_property->m_buffer = (char*) recalloc
-            (
-                p_property->m_buffer,
-                p_property->m_buffer_length,
-                new_count,
-                sizeof(char)
-            );
-            
-            if(p_property->m_buffer)
-            {
-                p_property->m_buffer_length = new_count;
+                size_t const new_count = HM_ModularRoundUp
+                (
+                    folder_length,
+                    0x100
+                );
                 
-                folder_length = HM_FileDlg_GetFolder(p_file_dlg, p_property);
-            }
-            else
-            {
-                p_property->m_buffer_length = 0;
+                // -----------------------------
+                
+                p_property->m_buffer = (char*) recalloc
+                (
+                    p_property->m_buffer,
+                    new_count,
+                    p_property->m_buffer_length,
+                    sizeof(char)
+                );
+                
+                if(p_property->m_buffer)
+                {
+                    p_property->m_buffer_length = new_count;
+                    
+                    folder_length = SendMessage
+                    (
+                        parent_win,
+                        CDM_GETFOLDERPATH,
+                        p_property->m_buffer_length,
+                        (LPARAM) p_property->m_buffer
+                    );
+                    
+                    if(folder_length < 0)
+                    {
+                        p_property->m_error = CommDlgExtendedError();
+                    }
+                    else
+                    {
+                        p_property->m_actual_length = (folder_length - 1);
+                    }
+                }
+                else
+                {
+                    p_property->m_buffer_length = 0;
+                }
             }
         }
         
@@ -465,6 +816,74 @@
         // -----------------------------
         
         return data;
+    }
+
+// =============================================================================
+
+    // \task
+    extern size_t
+    hm_str_count_char
+    (
+        CP2C(char)       p_string,
+        char       const p_character
+    )
+    {
+        // horizontal code golf.
+        char const c = p_character;
+        
+        size_t const length = strlen(p_string);
+        
+        size_t i     = 0;
+        size_t count = 0;
+        
+        // -----------------------------
+        
+        for(i = 0; i < length; i += 1)
+        {
+            char const d = p_string[i];
+            
+            // -----------------------------
+            
+            if( Is(c, d) )
+            {
+                count += 1;
+            }
+        }
+        
+        return count;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_MultiSelectFileDlgHook_ParseFileSpec
+    (
+        CP2(HM_FileDlgProperty) p_file_spec,
+        CP2(HashedStringTable)  p_files
+    )
+    {
+        char const quote_char = '\"';
+        
+        size_t const quote_count = hm_str_count_char
+        (
+            p_file_spec->m_buffer,
+            quote_char
+        );
+
+        // -----------------------------
+        
+        if( IsOdd(quote_count) )
+        {
+            // Unbalanced quoting. something is very off.
+            return -1;
+        }
+        else if( IsZero(quote_count) )
+        {
+            // There's only one filename in the buffer.
+            
+        }
+        
+        return 0;
     }
 
 // =============================================================================
@@ -542,11 +961,54 @@
         // it considered to be zero files selected when the OK button is hit.
         // However, I have a feeling that the system will fight us tooth and
         // nail on this.
-        UNREFERENCED_PARAMETER(p_file_dlg);
-        UNREFERENCED_PARAMETER(p_ofn);
+        CP2(HM_FileDlgData) data = HM_MultiSelectFileDlgHook_GetData
+        (
+            p_ofn
+        );
+        
+        int const spec_length = HM_FileDlg_GetSpec
+        (
+            p_file_dlg,
+            &data->m_spec
+        );
+        
+        // -----------------------------
+        
+        HM_MultiSelectFileDlgHook_ParseFileSpec
+        (
+            &data->m_spec,
+            &data->m_files
+        );
         
         return 0;
+    }
 
+// =============================================================================
+
+    static void
+    HM_MultiSelectFileDlgHook_OnFolderChange
+    (
+        HWND              const p_file_dlg,
+        CP2(OPENFILENAME)       p_ofn
+    )
+    {
+        CP2(HM_FileDlgData) data = HM_MultiSelectFileDlgHook_GetData
+        (
+            p_ofn
+        );
+        
+        // -----------------------------
+
+        int const folder_length = HM_FileDlg_GetFolder
+        (
+            p_file_dlg,
+            &data->m_folder
+        );
+        
+        HM_FileDlgData_ResetFileSpec
+        (
+            data
+        );
     }
 
 // =============================================================================
@@ -584,6 +1046,12 @@
             break;
         
         case CDN_FOLDERCHANGE:
+            
+            HM_MultiSelectFileDlgHook_OnFolderChange
+            (
+                p_file_dlg,
+                ofn
+            );
             
             break;
         
@@ -751,11 +1219,6 @@ wchar_t const patch_filter_wide[] = MACRO_StringifyW(patch_filter_pre);
         
         return r;
     }
-
-// =============================================================================
-
-    // \task[low] Move to header
-    #define IsEven(x) ( ( (x) % 2 ) == 0 )
 
 // =============================================================================
 

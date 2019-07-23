@@ -51,6 +51,18 @@
 
 // =============================================================================
 
+    /*
+        Convenience macro for testing if an integer is even.
+    */
+    #define IsEven(x) ( IsZero( (x) % 2 ) )
+
+    /*
+        Convenience macro for testing if an integer is odd.
+    */
+    #define IsOdd(x) ( IsNonZero( (x) % 2 ) )
+
+// =============================================================================
+
     /**
         Convenience macro for declarations. Also horizontal code golf.
         Read "constant pointer to constant x"
@@ -322,13 +334,37 @@ struct
         CP2C(char)       p_title_bar
     );
 
-    void*
-    hm_memdup(void const * const p_arr,
-              size_t             p_len);
+// =============================================================================
 
-    char *
-    hm_strndup(char const * const p_str,
-               size_t             p_len);
+    /**
+        This section has convenience functions modeled after the standard
+        C library. Note that this is why they're styled as all lowercase,
+        to evoke the same naming scheme, but with a hm_ (hyrule magic) prefix.
+    */
+
+    extern void *
+    hm_memdup
+    (
+        CP2C(void)    p_array,
+        size_t  const p_length
+    );
+
+    /**
+        Provided because while strdup() shows up in some compiler vendor
+        libraries, it's not really considered standard, afaik.
+    */
+    extern char *
+    hm_strdup
+    (
+        CP2C(char) p_string
+    );
+
+    extern char *
+    hm_strndup
+    (
+        CP2C(char)       p_string,
+        size_t     const p_length
+    );
 
     BOOL
     HM_CheckEmbeddedStr(void const * const p_buffer,

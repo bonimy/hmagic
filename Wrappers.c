@@ -1058,42 +1058,87 @@ HM_FreeFileStat(HM_FileStat * const p_s)
 
 // =============================================================================
 
-void*
-hm_memdup(void const * const p_arr,
-          size_t             p_len)
-{
-    void * const new_arr = calloc(1, p_len);
-    
-    if(new_arr)
+    extern void *
+    hm_memdup
+    (
+        CP2C(void)       p_array,
+        size_t     const p_length
+    )
     {
-        memcpy(new_arr, p_arr, p_len);
+        CP2(void) new_arr = calloc(1, p_length);
+        
+        // -----------------------------
+        
+        if(new_arr)
+        {
+            memcpy
+            (
+                new_arr,
+                p_array,
+                p_length
+            );
+        }
+        
+        return new_arr;
     }
-    
-    return new_arr;
-}
 
 // =============================================================================
 
-char *
-hm_strndup(char const * const p_str,
-           size_t             p_len)
-{
-    char * out = (char*) calloc(p_len + 1, sizeof(char));
-    
-    size_t i = 0;
-    
-    for(i = 0; i < p_len; i += 1)
+    extern char *
+    hm_strdup
+    (
+        CP2C(char) p_string
+    )
     {
-        out[i] = p_str[i];
+        size_t const length = strlen(p_string);
         
-        if(p_str[i] == 0)
+        char * dup_string = (char*) calloc
+        (
+            (length + 1),
+            sizeof(char)
+        );
+        
+        // -----------------------------
+
+        if( IsNonNull(dup_string) )
         {
-            break;
+            strcpy(dup_string, p_string);
         }
+        
+        return dup_string;
     }
-    
-    return out;
-}
+
+// =============================================================================
+
+    extern char *
+    hm_strndup
+    (
+        CP2C(char)    p_string,
+        size_t  const p_length
+    )
+    {
+        char * out = (char*) calloc
+        (
+            (p_length + 1),
+            sizeof(char)
+        );
+        
+        size_t i = 0;
+        
+        // -----------------------------
+        
+        for(i = 0; i < p_length; i += 1)
+        {
+            out[i] = p_string[i];
+            
+            if(p_string[i] == 0)
+            {
+                break;
+            }
+        }
+        
+        return out;
+    }
 
 // =============================================================================
 

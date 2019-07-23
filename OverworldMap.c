@@ -23,28 +23,85 @@ uint8_t const map16ofs[] = {0, 1, 64, 65, 0, 1, 32, 33};
 // \task[high] Moving exits on the OW editor should trigger a modified flag, but it
 // doesn't according to Zarby. And he's right, b/c callers of this mess don't set any special
 // flags.
-void changeposition(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dx,int dy,int sp,int map,int i,int q,int door1,int door2)
+void
+changeposition
+(
+    unsigned char * rom,
+    int x,
+    int y,
+    int sx,
+    int sy,
+    int cx,
+    int cy,
+    int dx,
+    int dy,
+    int sp,
+    int map,
+    int i,
+    int q,
+    int door1,
+    int door2
+)
 {
     int a=(map&7)<<9,b=(map&56)<<6,d,e,f,g,h,j,k,l;
+    
     k=((short*)(rom+x))[i];
     l=((short*)(rom+y))[i];
     h=((short*)(rom+x))[i]=k+dx;
     j=((short*)(rom+y))[i]=l+dy;
-    if(door1) if(((unsigned short*)(rom+door2))[i]+1>=2) j+=39; else j+=19;
-    d=((short*)(rom+sx))[i];
-    f=((short*)(rom+cx))[i];
+    
+    if(door1)
+    {
+        if( ((unsigned short*)(rom + door2))[i] + 1 >= 2 )
+            j += 39;
+        else
+            j += 19;
+    }
+    
+    d = ((short*)(rom+sx))[i];
+    f = ((short*)(rom+cx))[i];
+    
     if((dx<0 && h<f) || (dx>0 && h>f)) dx=h-f; else dx=0;
+    
     d+=dx;
-    if(d<a) dx+=a-d,d=a;
-    if(d>a+q) dx+=a+q-d,d=a+q;
+    
+    if(d < a)
+        dx += a - d, d = a;
+    
+    if(d > a + q)
+        dx += a + q - d, d = a + q;
+    
     ((short*)(rom+sx))[i]=d;
     ((short*)(rom+cx))[i]+=dx;
+    
     e=((short*)(rom+sy))[i];
     g=((short*)(rom+cy))[i];
-    if((dy<0 && j<g) || (dy>0 && j>g)) dy=j-g; else dy=0;
-    e+=dy;
-    if(e<b) dy+=b-e,e=b;
-    if(e>b+q+32) dy+=b+q+32-e,e=b+q+32;
+    
+    if
+    (
+        (dy < 0 && j < g)
+     || (dy > 0 && j > g)
+    )
+    {
+        dy = j - g;
+    }
+    else
+    {
+        dy = 0;
+    }
+    
+    e += dy;
+    
+    if(e < b)
+    {
+        dy += b - e, e = b;
+    }
+    
+    if(e>b+q+32)
+    {
+        dy += b + q + 32 - e, e = b + q + 32;
+    }
+    
     ((short*)(rom+sy))[i]=e;
     ((short*)(rom+cy))[i]+=dy;
     ((short*)(rom+sp))[i]=(((e-b)&0xfff0)<<3)+(((d-a)&0xfff0)>>3);
@@ -66,8 +123,16 @@ void changeposition(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,in
 // =============================================================================
 
 HGDIOBJ
-Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
-            uint8_t const * const rom)
+Paintovlocs
+(
+    HDC hdc,
+    OVEREDIT * ed,
+    int t,
+    int n,
+    int o,
+    int q,
+    uint8_t const * const rom
+)
 {
     text_buf_ty text_buf = { 0 };
     
@@ -321,8 +386,11 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
 // =============================================================================
 
 void
-OverworldMap_OnPaint(OVEREDIT * const ed,
-                     HWND       const win)
+OverworldMap_OnPaint
+(
+    OVEREDIT * const ed,
+    HWND       const win
+)
 {
     RECT rc = { 0 };
     
@@ -613,7 +681,13 @@ OverworldMap_OnPaint(OVEREDIT * const ed,
 // =============================================================================
 
 LRESULT CALLBACK
-overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
+overmapproc
+(
+    HWND win,
+    UINT msg,
+    WPARAM wparam,
+    LPARAM lparam
+)
 {
     SCROLLINFO si;
     
@@ -1736,9 +1810,11 @@ movetile:
         }
         
         if(ed->dtool)
+        {
             ReleaseCapture();
+        }
         
-        ed->dtool=0;
+        ed->dtool = 0;
         
         break;
     

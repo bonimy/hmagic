@@ -60,8 +60,9 @@
         
         k = ed->palw * ed->palh;
         
-        ed->pal = malloc(k * 2);
-        ed->brush = malloc(k * 4);
+        ed->pal = (short*) malloc(k * 2);
+        ed->brush = (HBRUSH*) malloc(k * 4);
+        
         ed->modf = 0;
         
         b = (uint16_t*)
