@@ -918,11 +918,14 @@
             
             l = pal_num[i];
             
-            sub_root = HM_TreeView_InsertSubroot(hc,
-                                                 pal_root,
-                                                 pal_text[i]);
+            sub_root = HM_TreeView_InsertSubroot
+            (
+                hc,
+                pal_root,
+                pal_text[i]
+            );
             
-            for(j = 0; j < l; j++)
+            for(j = 0; j < l; j += 1)
             {
                 asprintf
                 (

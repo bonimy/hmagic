@@ -378,7 +378,7 @@ foundblk:
 // =============================================================================
 
     void
-    DungeonDlg_OnBackdropColor
+    OverworldDlg_OnBackdropColor
     (
         HWND const p_win
     )
@@ -389,6 +389,7 @@ foundblk:
             SD_Over_BackdropColor
         );
         
+        // Get the bitmap of the backdrop button.
         HBITMAP const bd_bm = (HBITMAP) SendMessage
         (
             bd_color_button,
@@ -401,7 +402,11 @@ foundblk:
         
         HDC const mem_dc = CreateCompatibleDC(dev_dc);
         
-        HBITMAP const old_bm = (HBITMAP) SelectObject(mem_dc, bd_bm);
+        HBITMAP const old_bm = (HBITMAP) SelectObject
+        (
+            mem_dc,
+            bd_bm
+        );
         
         static int toggle = 0;
         
@@ -504,15 +509,27 @@ foundblk:
         
         RECT backdrop_rect = {0, 0, 20, 20};
         
-        HGDIOBJ old_brush = SelectObject(backdrop_color_dc, green_brush);
+        HGDIOBJ old_brush = SelectObject
+        (
+            backdrop_color_dc,
+            green_brush
+        );
         
         // -----------------------------
         
         HM_DrawRectangle(backdrop_color_dc, backdrop_rect);
         
-        SelectObject(backdrop_color_dc, old_brush);
+        SelectObject
+        (
+            backdrop_color_dc,
+            old_brush
+        );
         
-        backdrop_test_bitmap = SelectObject(backdrop_color_dc, old_bm);
+        backdrop_test_bitmap = SelectObject
+        (
+            backdrop_color_dc,
+            old_bm
+        );
         
         SendMessage
         (
@@ -523,7 +540,12 @@ foundblk:
         );
         
         DeleteDC(backdrop_color_dc);
-        ReleaseDC(backdrop_color_button, backdrop_device_dc);
+        
+        ReleaseDC
+        (
+            backdrop_color_button,
+            backdrop_device_dc
+        );
         
         // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
         
@@ -767,10 +789,14 @@ foundblk:
         
         {
             if(m == 3 || m == 5 || m == 7 || j == 0x95)
+            {
                 ed->pal[0] = deathcolor;
+            }
             
             for(i = 16; i < 256; i += 16)
+            {
                 ed->pal[i] = ed->pal[0];
+            }
         }
         
         ov = ed->ew.doc->overworld + j;
@@ -1028,7 +1054,7 @@ OverworldDlg
             
         case SD_Over_BackdropColor:
             
-            DungeonDlg_OnBackdropColor(p_win);
+            OverworldDlg_OnBackdropColor(p_win);
             
             break;
         

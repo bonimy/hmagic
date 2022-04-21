@@ -26,10 +26,25 @@ Savepal(PALEDIT * const ed)
     }
     
     k = ed->palw*ed->palh;
-    b = (short*)(ed->ew.doc->rom+romaddr(pal_addr[(ed->ew.param>>10)&63]+(k*(ed->ew.param>>16)<<1)));
+    b = (short*)
+    (
+        ed->ew.doc->rom
+      + romaddr
+        (
+            pal_addr[ (ed->ew.param >> 10) & 63 ]
+          + (k * (ed->ew.param >> 16) << 1)
+        )
+    );
     
-    memcpy(b,ed->pal,k<<1);
+    memcpy
+    (
+        b,
+        ed->pal,
+        k << 1
+    );
     
     ed->modf = 0;
     ed->ew.doc->modf = 1;
 }
+
+// =============================================================================
