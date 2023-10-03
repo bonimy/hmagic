@@ -179,7 +179,7 @@
         COUNT_GROW_SIZE = 64,
         TEXT_GROW_SIZE = 128,
     };
-    
+
 // =============================================================================
 
     void
@@ -199,8 +199,11 @@
         // -----------------------------
         
         // list of pointers for the game's text messages
-        doc->text_bufz = (ZTextMessage*) calloc(max_msg_count,
-                                                sizeof(ZTextMessage) );
+        doc->text_bufz = (ZTextMessage*) calloc
+        (
+            max_msg_count,
+            sizeof(ZTextMessage)
+        );
         
         for( ; ; )
         {
@@ -284,8 +287,11 @@
                     
                     while(l--)
                     {
-                        ZTextMessage_AppendChar(&msg,
-                                                rom[data_pos]);
+                        ZTextMessage_AppendChar
+                        (
+                            &msg,
+                            rom[data_pos]
+                        );
                         
                         data_pos += 1;
                     }
@@ -294,11 +300,13 @@
             
             if( Is(msg_count, max_msg_count) )
             {
-                doc->text_bufz = (ZTextMessage*)
-                recalloc(doc->text_bufz,
-                         max_msg_count + COUNT_GROW_SIZE,
-                         max_msg_count,
-                         sizeof(ZTextMessage) );
+                doc->text_bufz = (ZTextMessage*) recalloc
+                (
+                    doc->text_bufz,
+                    max_msg_count + COUNT_GROW_SIZE,
+                    max_msg_count,
+                    sizeof(ZTextMessage)
+                );
                 
                 max_msg_count += COUNT_GROW_SIZE;
             }
