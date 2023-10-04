@@ -1,6 +1,7 @@
 
     #include "structs.h"
 
+    #include "OverworldEnum.h"
     #include "OverworldEdit.h"
 
 // =============================================================================
@@ -61,16 +62,21 @@ editwhirl(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             EnableWindow(GetDlgItem(win,IDC_EDIT11),1);
             break;
         case IDOK:
-            hc=GetDlgItem(oved->dlg,3001);
+            
+            hc=GetDlgItem(oved->dlg, SD_Over_Display);
             Overselchg(oved,hc);
+            
             rom=oved->ew.doc->rom;
             i=oved->selobj;
+            
             l=((short*)(rom + 0x16ae5))[i]=GetDlgItemInt(win,IDC_EDIT12,0,0);
             n=(rom[0x12884 + l]<<8)|0xff;
             j=(l&7)<<9;
             k=(l&56)<<6;
+            
             if(l!=oved->ew.param) oved->selobj=-1;
             if(i>8) ((short*)(rom + 0x16ce6))[i]=GetDlgItemInt(win,IDC_EDIT1,0,0);
+            
             ((short*)(rom + 0x16b29))[i]=(l=GetDlgItemInt(win,IDC_EDIT2,0,0)&n)+k;
             ((short*)(rom + 0x16b4b))[i]=(m=GetDlgItemInt(win,IDC_EDIT3,0,0)&n)+j;
             ((short*)(rom + 0x16b07))[i]=((l&0xfff0)<<3)|((m&0xfff0)>>3);
@@ -78,10 +84,13 @@ editwhirl(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             ((short*)(rom + 0x16bd3))[i]=(GetDlgItemInt(win,IDC_EDIT5,0,0)&n)+j;
             ((short*)(rom + 0x16b6d))[i]=(oved->objy=GetDlgItemInt(win,IDC_EDIT6,0,0)&n)+k;
             ((short*)(rom + 0x16b8f))[i]=(oved->objx=GetDlgItemInt(win,IDC_EDIT7,0,0)&n)+j;
+            
             rom[0x16bf5 + i] = GetDlgItemInt(win,IDC_EDIT13,0,1);
             rom[0x16c17 + i] = GetDlgItemInt(win,IDC_EDIT14,0,1);
+            
             Overselchg(oved,hc);
             oved->ew.doc->modf=1;
+        
         case IDCANCEL:
             EndDialog(win,0);
             break;

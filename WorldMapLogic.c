@@ -145,12 +145,12 @@ Wmapselchg(WMAPEDIT const * const ed,
         if(!win2)
             return;
         
-        ed2=(WMAPEDIT*)GetWindowLong(win2,GWL_USERDATA);
+        ed2 = (WMAPEDIT*) GetWindowLongPtr(win2, GWLP_USERDATA);
         
         if((ed->tool==4 && ed2->tool!=4) || (ed->tool!=4 && 
             (ed2->marknum!=ed->marknum || ed2->tool==4))) return;
         
-        win2=GetDlgItem(ed2->dlg,3000);
+        win2 = GetDlgItem(ed2->dlg, 3000);
         
         rc.right-=a;
         rc.bottom-=b;

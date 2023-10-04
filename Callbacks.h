@@ -30,10 +30,16 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
 // =============================================================================
 
-    HM_DeclareWndProc(frameproc);
+    /**
+        Window procedure for the application's main frame window. (In fact
+        in typical MDI contexts, these are called "MainFrame" windows.)
+    */
+    HM_DeclareWndProc(MDI_FrameWnd);
+
+// =============================================================================
 
     // Root document window procedure.
-    HM_DeclareWndProc(superdlgproc);
+    HM_DeclareWndProc(SuperDlg);
 
     // Root document window procedure.
     HM_DeclareWndProc(docproc);
@@ -86,7 +92,7 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(overmapproc);
 
     // Super Dialog procedure.
-    HM_DeclareDlgProc(overdlgproc);
+    HM_DeclareDlgProc(OverworldDlg);
 
     // Child frame window procedure.
     HM_DeclareWndProc(overproc);
@@ -94,30 +100,37 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 // =============================================================================
 
     // Super Dialog procedure.
-    HM_DeclareDlgProc(textdlgproc);
+    HM_DeclareDlgProc(TextDlg);
 
     // Text-related window procedures.
-    HM_DeclareWndProc(texteditproc);
+    HM_DeclareWndProc(TextFrameProc);
 
 // =============================================================================
 
     // Audio-related window procedures.
-    HM_DeclareWndProc(sampdispproc);
+    HM_DeclareWndProc(SampleDisplayProc);
 
     HM_DeclareDlgProc(sampdlgproc);
+    
+    // Tracker Dialog procedure.
+    HM_DeclareDlgProc(trackdlgproc);
 
     HM_DeclareWndProc(trackeditproc);
     HM_DeclareWndProc(trackerproc);
 
-    HM_DeclareWndProc(musbankproc);
+    HM_DeclareDlgProc(musdlgproc);
+
+    HM_DeclareWndProc(AudioFrameProc);
 
 // =============================================================================
 
     // Palette-related procedures.
-    HM_DeclareWndProc(palselproc);
+    
+    // Palette Selector for viewing CHR tilesets.
+    HM_DeclareWndProc(PaletteSelector);
 
     // Child frame window procedure.
-    HM_DeclareWndProc(palproc);
+    HM_DeclareWndProc(PaletteFrameProc);
 
 // =============================================================================
 
@@ -138,7 +151,9 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     HM_DeclareWndProc(lmapdispproc);
     HM_DeclareWndProc(lmapblksproc);
 
-    HM_DeclareWndProc(lmapproc);
+    HM_DeclareDlgProc(lmapdlgproc);
+    
+    HM_DeclareWndProc(PalaceMapFrame);
 
 // =============================================================================
 
@@ -149,6 +164,8 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     
     HM_DeclareWndProc(tmapdispproc);
     
+    HM_DeclareDlgProc(tmapdlgproc);
+
     HM_DeclareWndProc(tmapproc);
 
 // =============================================================================
@@ -156,12 +173,22 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
     // 3D object-related procedures
     HM_DeclareWndProc(perspdispproc);
 
-    HM_DeclareWndProc(perspproc);
+    HM_DeclareDlgProc(perspdlgproc);
+
+    HM_DeclareWndProc(PerspectiveFrameProc);
+
+// =============================================================================
+
+    // CHR (graphics) related procedures
+    HM_DeclareDlgProc(blockdlgproc);
 
 // =============================================================================
 
     // ASM-related procedures.
-    HM_DeclareWndProc(patchproc);
+
+    HM_DeclareDlgProc(PatchDlg);
+
+    HM_DeclareWndProc(PatchFrameProc);
 
 // =============================================================================
 
@@ -175,13 +202,15 @@ void CALLBACK name(HWND p_win, UINT p_msg, UINT p_timer_id, DWORD p_sys_time)
 
     HM_DeclareDlgProc(editvarious);
 
-    HM_DeclareDlgProc(aboutfunc);
+    HM_DeclareDlgProc(AboutDlg);
     
     HM_DeclareDlgProc(seldevproc);
 
     HM_DeclareDlgProc(duproom);
    
     HM_DeclareDlgProc(rompropdlg);
+
+    HM_DeclareDlgProc(errorsproc);
 
 // =============================================================================
 

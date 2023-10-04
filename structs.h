@@ -1,4 +1,18 @@
 
+/// Putting this in to see if this can help us find memory leaks.
+//{
+
+#if defined _DEBUG
+
+    #define _CRTDBG_MAP_ALLOC  
+    
+    #include <stdlib.h>  
+    #include <crtdbg.h>
+
+#endif
+
+//}
+
 #if !defined HMAGIC_STRUCTS_HEADER_GUARD
 
     #define HMAGIC_STRUCTS_HEADER_GUARD
@@ -14,7 +28,7 @@
     // There are just too many of these warnings to address at the moment
     // having to deal with truncation from int to short or char. They should
     // Get tackled eventually (and carefully).
-    // \task Do this at some point.
+    // \task[low] Do this at some point.
 #if 1
     #pragma warning(disable:4242)
     #pragma warning(disable:4244)
@@ -22,7 +36,9 @@
 
     #pragma warning(push, 0)
 
-    #include <windows.h>
+    #include "windows.h"
+    #include "tchar.h"
+
     #include <stdint.h>
     #include <commctrl.h>
     #include <mmsystem.h>
@@ -135,11 +151,62 @@ typedef struct
     unsigned char*pv;
 } PATCH;
 
-typedef struct
+typedef struct tag_ASMHACK
 {
     char*filename;
+
+    /**
+        Seems to indicate, if non zero, that a patch should not be included
+        However, nothing in the program interface currently sets this to
+        anything other than zero.
+    */
     int flag;
+    
 } ASMHACK;
+
+// =============================================================================
+
+/// Text message encoded in zchars (native encoding of the rom)
+typedef
+struct
+{
+    /// Length of the message in Z3 natively encoded text.
+    uint16_t m_len;
+    
+    /**
+        The largest number of zchars it can store. Null termination is not
+        a concern for this, as zelda strings have a different code for
+        termination.
+    */
+    uint16_t m_capacity;
+    
+    /// The actual textual data. Consists of a stream of octets within
+    /// specific ranges.
+    uint8_t * m_text;
+    
+} ZTextMessage;
+
+// =============================================================================
+
+/// Ascii encoded STRING
+typedef
+struct
+{
+    /// length of the actual message.
+    size_t m_len;
+    
+    /**
+        The largest number of characters it can store, not including a null
+        terminator.
+    */
+    size_t m_capacity;
+    
+    /// Ascii encoded text
+    char * m_text;
+    
+} AString;
+
+// =============================================================================
 
 typedef struct tagFDOC
 {
@@ -169,7 +236,9 @@ typedef struct tagFDOC
     ZOVER overworld[160]; // 160 Overworld maps
     
     HWND dungs[0x128]; // 0x128 dungeon maps (296)
-    HWND ents[0xa8]; // entrances
+    
+    /// Windows that correspond to dungeon entrances.
+    HWND ents[0xa8];
     
     short m_loaded,m_size,m_free,m_modf; // ???
     
@@ -199,16 +268,43 @@ typedef struct tagFDOC
     
     HWND t_wnd;
     
-    short t_loaded,t_number,t_modf,withhead;
+    short t_loaded,t_modf,withhead;
     
-    // Array of raw binary text data for each message in the game.
-    // Once correctly loaded, the first two bytes are a 16-bit value that
-    // indicates the length of the buffer, in a way analogous to Pascal
-    // strings.
-    unsigned char **tbuf;
+    size_t t_number;
     
+    /**
+        Array of zchar (rom-native encoded) messages that make up what
+        many refer to as monologue data. These are extracted from the
+        rom the first time the Monologue editor window is opened.
+
+        Excuse the name for now, this was part of a refactor operation and
+        I don't have a better name at the moment.
+    */
+    ZTextMessage * text_bufz;
+    
+    /**
+        The number of modules that are currently loaded. These do not represent
+        actualized changes to the rom, just objects that, when applied, might
+        change the rom. In particular this counts the number of *.asm or *.obj
+        files that are in loaded into the program to be applied to the rom.
+    */
     unsigned short nummod;
+    
+    /**
+        This is the number of changes that have been actualized on the rom,
+        and counts the number of PATCH objects we have allocated. Each of these
+        PATCH structures contains the state of the rom prior to the changes
+        that were applied. These are stored to file as a backup mechanism
+        if a rom is saved by the program, in a file with the naming convention
+        ${filepath}${filename}.${extension}.hmd
+        
+        The convention described above uses syntax similar to bash on Linux.
+    */
     unsigned short numpatch;
+    
+    /**
+        The number
+    */
     unsigned short numseg;
     
     FILETIME lastbuild;
@@ -307,7 +403,11 @@ typedef struct
 {
     EDITWIN ew;
     HWND dlg;
+
+    /// Not used
     short sel;
+    
+    /// 0 if editing normal text, 1 if editing dictionary.
     short num;
 } TEXTEDIT;
 
@@ -434,10 +534,15 @@ typedef struct overedit
     short objx,objy;
     short selx,sely;
     short stselx,stsely;
+    
     unsigned short undobuf[0x400];
+    
     int undomodf;
+    
     short esize[3];
-    unsigned char*ebuf[3];
+    
+    uint8_t * ebuf[3];
+    
     unsigned char e_modf[3];
     char ecopy[3];
     short ssize;
@@ -621,7 +726,12 @@ typedef struct
     char *title;
     
     DLGPROC proc;
-    int style, minw, minh, numsde;
+    
+    int style;
+    
+    int minw, minh;
+    
+    int numsde;
     
     SD_ENTRY *sde;
     
@@ -746,31 +856,189 @@ typedef struct
     
 } ZCHANNEL;
 
-#pragma pack(pop)
+// =============================================================================
+
+    /**
+        This is meant to represent the binary layout of a wav file.
+    */
+    typedef
+    struct
+    {
+        int8_t m_chunk_id[4];
+        
+        uint32_t m_chunk_size;
+        
+        int8_t m_format[4];
+        
+        int8_t m_subchunk_1_id[4];
+        
+        uint32_t m_subchunk_1_size;
+        
+        uint16_t m_audio_format;
+        uint16_t m_num_channels;
+        
+        uint32_t m_sample_rate;
+        
+        uint32_t m_byte_rate;
+        
+        uint16_t m_block_align;
+        uint16_t m_bits_per_sample;
+        
+        int8_t m_subchunk_2_id[4];
+        
+        uint32_t m_subchunk_2_size;
+        
+        int8_t m_data[1];
+        
+    } HM_WaveFileData;
+
+// =============================================================================
+
+    /**
+        Contains customization information for Window classes. This has
+        less information than the full up structure used by Microsoft, but
+        just enough that we can specify what is usually important to us.
+    */
+    typedef
+    struct
+    {
+        WNDPROC m_proc;
+        
+        char const * const m_class_name;
+        
+        UINT m_style;
+        
+        HBRUSH * m_brush;
+        
+        HCURSOR * m_cursor;
+        
+        int m_wnd_extra;
+        
+        ATOM m_atom;
+        
+    } HM_WindowClass;
 
 // =============================================================================
 
 typedef
-struct
+struct tag_dungeon_offsets_ty
 {
     unsigned torches;
     unsigned torch_count;
         
 } dungeon_offsets_ty;
 
+// =============================================================================
+
 typedef
-struct
+struct tag_overworld_offsets_ty
 {
     unsigned dummy;
     
 } overworld_offsets_ty;
 
+// =============================================================================
+
 typedef
-struct
+struct tag_text_codes_ty
+{
+    /// Start of the zchar codes.
+    uint8_t zchar_base;
+    
+    /// One higher than the highest valid zchar code.
+    uint8_t zchar_bound;
+    
+    /// Start of the command codes.
+    uint8_t command_base;
+
+    /// One higher than highest valid command code.
+    uint8_t command_bound;
+    
+    /// Byte that terminates an individual monologue message.
+    uint8_t msg_terminator;
+    
+    /// Code indicating to switch monologue data regions, if any.
+    uint8_t region_switch;
+    
+    /// Start of the dictionary codes
+    uint8_t dict_base;
+    
+    /// One higher than the highest valid dictionary entry code.
+    uint8_t dict_bound;
+    
+    /// The code that indicates that absolute end of the monologue stream.
+    uint8_t abs_terminator;
+    
+} text_codes_ty;
+
+// =============================================================================
+
+typedef
+struct tag_text_offsets_ty
+{
+    /**
+        The primary CPU bank that the Text module in the rom operates from.
+    */
+    uint8_t bank;
+
+    /// Location of the dictionary for monologue.
+    unsigned dictionary;
+    
+    /**
+        Upper limit rom address of all of the dictionary region.
+    */
+    unsigned dictionary_bound;
+    
+    /**
+        Location of the table that has parameter counts for various monologue
+        commands.
+    */
+    unsigned param_counts;
+    
+    /**
+        The primary region where monologue data is stored. This area is filled
+        up first, then the rest goes in the secondary region. This is
+        a rom address.
+    */
+    unsigned region1;
+
+    /**
+        The upper bound rom address of the primary monologue data region.
+        This address represents the
+    */
+    unsigned region1_bound;
+    
+    /**
+        The rom address of the secondary monologue data region.
+    */
+    unsigned region2;
+    
+    /**
+        Upper bound of the secondary monologue region. There are only
+        two regions in a vanilla rom, that we're aware of.
+    */
+    unsigned region2_bound;
+    
+    /**
+        The longest a message can possibly be, in terms of zchars, zcommands,
+        and their parameters, combined.
+    */
+    unsigned max_message_length;
+    
+    text_codes_ty codes;
+    
+} text_offsets_ty;
+
+// =============================================================================
+
+typedef
+struct tag_offsets_ty
 {
     dungeon_offsets_ty dungeon;
     
     overworld_offsets_ty overworld;
+    
+    text_offsets_ty text;
 
 } offsets_ty;
 
@@ -782,6 +1050,10 @@ extern offsets_ty offsets;
 
 typedef uint8_t * rom_ty;
 typedef uint8_t const * rom_cty;
+
+// =============================================================================
+
+#pragma pack(pop)
 
 // =============================================================================
 
@@ -863,6 +1135,13 @@ extern int wver;
 
 extern int const always;
 
+extern uint8_t const u8_neg1;
+
+extern uint16_t const u16_neg1;
+
+extern uint32_t const u32_neg1;
+
+
 extern const short bg3blkofs[4];
 
 extern int palhalf[8];
@@ -876,10 +1155,6 @@ extern DUNGEDIT * dunged;
 extern uint8_t drawbuf[0x400];
 
 extern uint16_t *dm_buf;
-
-extern char const * mus_str[];
-
-extern char const * level_str[];
 
 extern int door_ofs;
 
@@ -899,6 +1174,10 @@ extern int mouse_x;
 extern int mouse_y;
 
 extern int palmode;
+
+extern unsigned char masktab[16];
+
+TEXTMETRIC textmetric;
 
 // =============================================================================
 

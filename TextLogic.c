@@ -1,497 +1,1462 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "HMagicUtility.h"
+    #include "Wrappers.h"
 
-// =============================================================================
+    #include "HMagicUtility.h"
 
-const char z_alphabet[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789"
-    "!?-.,\0>()@£${}\""
-    "\0\0\0\0'\0\0\0\0\0\0\0 <\0\0\0\0";
-
-char const * const tsym_str[] =
-{
-    "Up",
-    "Down",
-    "Left",
-    "Right",
-    0,
-    "1HeartL",
-    "1HeartR",
-    "2HeartL",
-    "3HeartL",
-    "3HeartR",
-    "4HeartL",
-    "4HeartR",
-    0,0,
-    "A",
-    "B",
-    "X",
-    "Y"
-};
-
-char const * const tcmd_str[] =
-{
-    "NextPic",
-    "Choose",
-    "Item",
-    "Name",
-    "Window",
-    "Number",
-    "Position",
-    "ScrollSpd",
-    "Selchg",
-    "Crash",
-    "Choose3",
-    "Choose2",
-    "Scroll",
-    "1",
-    "2",
-    "3",
-    "Color",
-    "Wait",
-    "Sound",
-    "Speed",
-    "Mark",
-    "Mark2",
-    "Clear",
-    "Waitkey",
-};
-
-char const * text_error = 0;
+    #include "TextLogic.h"
 
 // =============================================================================
 
-void
-LoadText(FDOC * const doc)
-{
+    CP2C(char) z_alphabet[] =
+    {
+        // codes 0x00 and up
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+        "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+        
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+        "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+        
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        
+        // codes 0x3E and up
+        "!", "?", "-", ".", ",",
+        
+        // codes 0x43 and up
+        "[...]", ">", "(", ")",
+        
+        // codes 0x47 and up
+        "[Ankh]", "[Waves]", "[Snake]", "[LinkL]", "[LinkR]",
+        "\"", "[Up]", "[Down]", "[Left]", "[Right]", "'",
+        
+        // codes 0x52 and up
+        "[1HeartL]", "[1HeartR]", "[2HeartL]", "[3HeartL]",
+        "[3HeartR]", "[4HeartL]", "[4HeartR]",
+        
+        " ", "<", "[A]", "[B]", "[X]", "[Y]",
+        
+        // \note These are invalid characters that shouldn't be encountered,
+        // however, I've decided to make them two characters each, just so we have
+        // a basic assumption that each of the strings in this array have
+        // a minimum of two characters allocated.
+        "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0", "\0\0",
+    };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_Zchars = MACRO_ArrayLength(z_alphabet)
+    };
+
+// =============================================================================
+
+#if 0
+        // codes 0x67 and up
+        "[NextPic]", "[Choose]", "[Item]", "[Name]", "[Window ",
+        "[Number ", "[Position ", "[ScrollSpd ", "[SelChng]",
+    
+        // codes 0x70 and up
+        "[Command 70]", "[Choose2]", "[Choose3]", "[Scroll]", 
+        "[Line1]", "[Line2]", "[Line3]", "[Color ",
+        "[Wait ", "[Sound ", "[Speed ",
+        "[Command 7B]", "[Command 7C]", "[Command 7D]", "[WaitKey]", "[End]",
+
+        // codes 0x80 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0x90 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0xA0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0xB0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0xC0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0xD0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+
+        // codes 0xE0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+ 
+        // codes 0xF0 and up
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0",
+        "\0", "\0", "\0", "\0", "\0", "\0", "\0", "\0"
+
+#endif
+
+// =============================================================================
+
+    CP2C(char) tsym_str[] =
+    {
+        "Up",
+        "Down",
+        "Left",
+        "Right",
+        0,
+        "1HeartL",
+        "1HeartR",
+        "2HeartL",
+        "3HeartL",
+        "3HeartR",
+        "4HeartL",
+        "4HeartR",
+        0,
+        0,
+        "A",
+        "B",
+        "X",
+        "Y"
+    };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_Tsym = MACRO_ArrayLength(tsym_str)
+    };
+
+// =============================================================================
+
+    CP2C(char) tcmd_str[] =
+    {
+        "NextPic",
+        "Choose",
+        "Item",
+        "Name",
+        "Window",
+        "Number",
+        "Position",
+        "ScrollSpd",
+        "Selchg",
+        "Crash",
+        "Choose3",
+        "Choose2",
+        "Scroll",
+        "1",
+        "2",
+        "3",
+        "Color",
+        "Wait",
+        "Sound",
+        "Speed",
+        "Mark",
+        "Mark2",
+        "Clear",
+        "Waitkey",
+    };
+
+// =============================================================================
+
+    enum
+    {
+        NUM_CmdStrings = MACRO_ArrayLength(tcmd_str)
+    };
+
+// =============================================================================
+
+    P2C(char) text_error = NULL;
+
+// =============================================================================
+
     enum
     {
         /// Default size of a buffer and the amount by which it increases when
         /// reallocation is necessary.
-        TEXT_GROW_SIZE = 128,
         COUNT_GROW_SIZE = 64,
+        TEXT_GROW_SIZE = 128,
     };
     
-    int data_pos = 0xe0000;
-    
-    int msg_count     = 0;
-    int max_msg_count = 0x200;
-    
-    unsigned char a;
-    
-    unsigned char *rom = doc->rom;
-    
-    // list of pointers for the game's text messages
-    doc->tbuf = (uint8_t**) calloc(max_msg_count, sizeof(uint8_t*) );
-    
-    for( ; ; )
+// =============================================================================
+
+    void
+    LoadText(FDOC * const doc)
     {
-        // current maximum size for the buffer (can change as needed)
-        size_t max_msg_size = TEXT_GROW_SIZE;
+        text_offsets_ty const * const to = &offsets.text;
         
-        // the size of the useful data in the message buffer
-        size_t msg_size = 2;
+        text_codes_ty const * const tc = &to->codes;
         
-        // buffer for the current message
-        uint8_t * msg = (uint8_t*) calloc(1, TEXT_GROW_SIZE);
+        int data_pos = to->region1;
+        
+        int msg_count     = 0;
+        int max_msg_count = 0x200;
+        
+        unsigned char *rom = doc->rom;
         
         // -----------------------------
         
+        // list of pointers for the game's text messages
+        doc->text_bufz = (ZTextMessage*) calloc(max_msg_count,
+                                                sizeof(ZTextMessage) );
+        
         for( ; ; )
         {
-            a = rom[data_pos];
+            // buffer for the current message
+            ZTextMessage msg = { 0 };
             
-            if(a == 0x80)
+            // -----------------------------
+            
+            ZTextMessage_Init(&msg);
+            
+            for( ; ; )
             {
-                // 0x80 tells us to go to the second data set 
-                data_pos = 0x75f40;
-            }
-            else if(a == 0xff)
-            {
-                // 0xff is the terminator byte for all text data, period
+                // Current zchar to convert to ascii.
+                uint8_t a = rom[data_pos];
                 
-                doc->t_number = msg_count;
-                doc->t_loaded = 1; // indicate that text is loaded and return
+                // -----------------------------
+                
+                if(a == tc->region_switch)
+                {
+                    data_pos = to->region2;
+                }
+                else if(a == tc->abs_terminator)
+                {
+                    doc->t_number = msg_count;
+                    
+                    // indicate that text is loaded and return
+                    doc->t_loaded = 1;
+                    
+                    ZTextMessage_Free(&msg);
+                    
+                    return;
+                }
+                else if(a < tc->zchar_bound)
+                {
+                    // if it's a character, just copy verbatim to the destination
+                    // buffer.
+                    data_pos++;
+                    
+                    ZTextMessage_AppendChar(&msg, a);
+                }
+                else if(a >= tc->dict_base)
+                {
+                    uint8_t const adj_code = (a - tc->dict_base);
+                    
+                    // use the dictionary to load the characters up
+                    uint16_t const l = ldle16b_i
+                    (
+                        rom + to->dictionary,
+                        adj_code
+                    );
+                    
+                    uint16_t const k = ldle16b_i
+                    (
+                        rom + to->dictionary,
+                        adj_code + 1
+                    );
+                    
+                    uint32_t const src_addr = rom_addr_split(to->bank, l);
+                    
+                    size_t len = (k - l);
+                    size_t i   = 0;
+                    
+                    // -----------------------------
+                    
+                    for( ; i < len; i += 1)
+                    {
+                        ZTextMessage_AppendChar(&msg, rom[src_addr + i]);
+                    }
+                    
+                    data_pos += 1;
+                }
+                else if(a == tc->msg_terminator)
+                {
+                    data_pos += 1;
+                    
+                    break;
+                }
+                else
+                {
+                    int l = rom[to->param_counts + a];
+                    
+                    while(l--)
+                    {
+                        ZTextMessage_AppendChar(&msg,
+                                                rom[data_pos]);
+                        
+                        data_pos += 1;
+                    }
+                }
+            }
+            
+            if( Is(msg_count, max_msg_count) )
+            {
+                doc->text_bufz = (ZTextMessage*)
+                recalloc(doc->text_bufz,
+                         max_msg_count + COUNT_GROW_SIZE,
+                         max_msg_count,
+                         sizeof(ZTextMessage) );
+                
+                max_msg_count += COUNT_GROW_SIZE;
+            }
+            
+            doc->text_bufz[msg_count] = msg;
+            
+            msg_count += 1;
+        }
+    }
+
+// =============================================================================
+
+    void
+    Savetext(FDOC * const doc)
+    {
+        // Index of which message we're dealing with.
+        size_t m_i = 0;
+        
+        CP2(uint8_t) rom = doc->rom;
+        
+        CP2C(text_offsets_ty) to = &offsets.text;
+        
+        CP2C(text_codes_ty) tc = &to->codes;
+        
+        // \task[med] While this is more correct than it was in the past,
+        // we still should be more on guard for zstrings that are too long
+        // due to poor validation elsewhere.
+        CP2(uint8_t) b2 = (uint8_t*) calloc(1, to->max_message_length);
+        
+        size_t write_pos = to->region1;
+        
+        unsigned const dict_loc = to->dictionary;
+        
+        // Number of dictionary entries
+        unsigned const num_dict =
+        (
+            (
+                rom_addr_split(to->bank, ldle16b(rom + dict_loc) )
+              - to->dictionary
+            ) - 1
+        ) >> 1;
+        
+        // -----------------------------
+        
+        if( ! doc->t_modf )
+        {
+            return;
+        }
+        
+        doc->t_modf = 0;
+        
+        for(m_i = 0; m_i < doc->t_number; m_i += 1)
+        {
+            // Seems to reference an earlier position when doing dictionary
+            // matching... needs confirmation and more detail.
+            int u = 0;
+            
+            // -----------------------------
+            
+            size_t bd = 0;
+            size_t m  = 0;
+            size_t r  = num_dict;
+            
+            // Index into the zchar array in the current message.
+            size_t z_i = 0;
+            
+            CP2C(ZTextMessage) msg = &doc->text_bufz[m_i];
+            
+            uint16_t const msg_len = msg->m_len;
+            
+            // -----------------------------
+            
+            m = bd = 0;
+            
+            for(z_i = 0; z_i < msg_len; )
+            {
+                int const q = b2[bd] = msg->m_text[z_i];
+                
+                // -----------------------------
+                
+                bd += 1;
+                z_i += 1;
+                
+                if(q >= tc->command_base)
+                {
+                    uint8_t param_i = 0;
+                    
+                    uint8_t const param_count = rom[to->param_counts + q] - 1;
+                    
+                    // -----------------------------
+                    
+                    for
+                    (
+                        param_i = 0;
+                        param_i < param_count;
+                        param_i += 1, bd += 1, z_i += 1
+                    )
+                    {
+                        b2[bd] = msg->m_text[z_i];
+                    }
+                    
+                    m = bd;
+                }
+                
+                if(bd > m + 1)
+                {
+                    int v = 255;
+                    
+                    size_t l = 0;
+                    size_t t = num_dict;
+                    
+                    // -----------------------------
+                    
+                    // \task[low] This loop performs a search of the dictionary
+                    // entries to try to find a best match, if any match exists
+                    // at all. It should be extracted as a subroutine.
+                    for(l = 0; l < num_dict; l += 1)
+                    {
+                        int const o = ldle16b_i(rom + dict_loc, l);
+                        int const n = ldle16b_i(rom + dict_loc, l + 1);
+
+                        int const de_length = (n - o);
+                        
+                        int const p = (de_length - bd + m);
+                        
+                        // -----------------------------
+                        
+                        if(p >= 0)
+                        {
+                            if
+                            (
+                                IsZero
+                                (
+                                    memcmp
+                                    (
+                                        rom + rom_addr_split(to->bank, o),
+                                        b2 + m,
+                                        bd - m
+                                    )
+                                )
+                            )
+                            {
+                                if(p < v)
+                                {
+                                    t = l;
+                                    v = p;
+                                }
+                                
+                                if(!p)
+                                {
+                                    r = t;
+                                    u = z_i;
+                                    
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if
+                    (
+                        (t == num_dict)
+                     || (msg->m_text[z_i] >= tc->command_base)
+                    )
+                    {
+                        if(r != num_dict)
+                        {
+                            b2[m] = r + tc->dict_base;
+                            
+                            m   += 1;
+                            z_i  = u;
+                            bd   = m;
+                            
+                            r = num_dict;
+                        }
+                        else
+                        {
+                            m = (bd - 1);
+                        }
+                    }
+                }
+            }
+            
+            write_pos += bd;
+            
+            /*
+                The subtraction of two accounts for the need for a message
+                terminator code and the potential need for a master terminator
+                code for all of the text data.
+            */
+            if
+            (
+                (write_pos < to->region1)
+             && (write_pos > (to->region2_bound - 2) )
+            )
+            {
+                doc->t_modf = 1;
+                
+                MessageBox
+                (
+                    framewnd,
+                    "Not enough space for monologue.",
+                    "Bad error happened",
+                    MB_OK
+                );
                 
                 return;
             }
             
-            else if(a < 0x67)
+            /*
+                Check if writing this message would put us past the end of the
+                first bank where text data can reside. The subtraction of two
+                is to account for a message terminator code as well as a
+                possible additional bank switch code.
+            */
+            if( write_pos > (to->region1_bound - 2) )
             {
-                // if it's a character, just copy verbatim to the destination
-                // buffer.
-                data_pos++;
-                msg[msg_size++] = a;
-            }
-            else if(a >= 0x88)
-            {
-                uint8_t const adj_code = (a - 0x88);
+                rom[write_pos - bd] = tc->region_switch;
                 
-                // use the dictionary to load the characters up
-                uint16_t const l = ldle16b(rom + 0x74703 + (adj_code << 1) );
-                uint16_t const k = ldle16b(rom + 0x74705 + (adj_code << 1) );
-                
-                uint32_t src_addr = romaddr(0xe0000 + k);
-                
-                size_t len = (k - l);
-                size_t i   = 0;
-                
-                for( ; i < len; i += 1)
-                {
-                    msg[msg_size++] = rom[src_addr + i];
-                }
-                
-                data_pos++;
-            }
-            else if(a == 0x7f)
-            {
-                // 0x7f is a terminator byte for each message
-                data_pos++;
-                
-                break;
-            }
-            else
-            {
-                // 0x7536B is a length indicator for each byte code
-                int l = rom[0x7536b + a];
-                
-                while(l--)
-                    msg[msg_size++] = rom[data_pos++];
+                write_pos = to->region2 + bd;
             }
             
-            if(msg_size >= (max_msg_size - 64) )
+            if( IsNonZero(bd) )
             {
-                // if the text data won't fit into the current buffer, reallocate
-                msg = (uint8_t*) recalloc(msg,
-                                          max_msg_size + TEXT_GROW_SIZE,
-                                          max_msg_size,
-                                          sizeof(uint8_t) );
-                
-                max_msg_size += TEXT_GROW_SIZE;
+                memcpy(rom + write_pos - bd, b2, bd);
             }
+            
+            rom[write_pos] = tc->msg_terminator;
+            
+            write_pos += 1;
         }
         
-        stle16b(msg, msg_size);
+        rom[write_pos] = tc->abs_terminator;
         
-        msg = (uint8_t*) recalloc(msg,
-                                  msg_size,
-                                  max_msg_size,
-                                  sizeof(uint8_t) );
+        doc->modf = 1;
         
-        if(msg_count == max_msg_count)
+        if(b2)
         {
-            doc->tbuf = (uint8_t**)
-            recalloc(doc->tbuf,
-                     max_msg_count + COUNT_GROW_SIZE,
-                     max_msg_count,
-                     sizeof(uint8_t*) );
-            
-            max_msg_count += COUNT_GROW_SIZE;
+            free(b2);
         }
-        
-        doc->tbuf[msg_count++] = msg;
     }
-}
 
 // =============================================================================
 
-void
-Savetext(FDOC * const doc)
+// Bidirectional, case insensitive, string comparison of up to n characters
+int
+bi_strnistr(char const * const p_lhs,
+            char const * const p_rhs,
+            size_t       const p_lhs_size,
+            size_t       const p_rhs_size)
 {
-    int i,bd,j,k;
-    short l,m,n,o,p,q,r,v,t,u,w;
+    size_t i = 0;
     
-    // \task Can b2 overflow or is this just... fantasy?
-    unsigned char*b, b2[2048];
-    unsigned char*rom=doc->rom;
+    // Take the minimum of the two to avoid buffer overflows.
+    size_t const limit = (p_lhs_size < p_rhs_size)
+                       ? p_lhs_size
+                       : p_rhs_size;
     
-    size_t write_pos = 0xe0000;
+    // -----------------------------
     
-    if(!doc->t_modf)
-        return;
-    
-    doc->t_modf=0;
-    
-    w = ( ldle16b(rom + 0x74703) - 0xc705 ) >> 1;
-    
-    for(i=0;i<doc->t_number;i++) {
-        b=doc->tbuf[i];
-        m=bd=0;
-        k=*(short*)b;
-        j=2;
-        r=w;
-        for(;j<k;)
-        {
-            q=b2[bd++]=b[j++];
-            if(q>=0x67) {
-                l=rom[0x7536b + q] - 1;
-                while(l--) b2[bd++]=b[j++];
-                m=bd;
-            }
-            if(bd>m+1) {
-                o=*(short*)(rom + 0x74703);
-                v=255;
-                t=w;
-                for(l=0;l<w;l++) {
-                    n=o;
-                    o=*(short*)(rom + 0x74705 + (l<<1));
-                    p=o-n-bd+m;
-                    if(p>=0) if(!memcmp(rom + 0x78000 + n,b2+m,bd-m)) {
-                        if(p<v) t=l,v=p;
-                        if(!p) {r=t;u=j;break;}
-                    }
-                }
-                if(t==w || b[j] >= 0x67) {
-                    if(r!=w) {
-                        b2[m]=r + 0x88;
-                        m++;
-                        j=u;
-                        bd=m;
-                        r=w;
-                    } else m=bd-1;
-                }
-            }
-        }
-        
-        write_pos += bd;
-        
-        // The subtraction of two accounts for the need for a message
-        // terminator code (0x7f) and the potential need for a master
-        // terminator code for all of the text data (0xff).
-        if( (write_pos < 0xe0000) && (write_pos > (0x77400 - 2) ) )
-        {
-            doc->t_modf = 1;
-            
-            MessageBox(framewnd,
-                       "Not enough space for monologue.",
-                       "Bad error happened",
-                       MB_OK);
-            
-            return;
-        }
-        
-        // Check if writing this message would put us past the end of the first
-        // bank where text data can reside. The subtraction of two is to
-        // account for a message terminator code (0x7f) as well as a possible
-        // additional bank switch code (0x80).
-        if( write_pos > (0xe8000 - 2) )
-        {
-            rom[write_pos - bd] = 0x80;
-            write_pos = 0x75f40 + bd;
-        }
-        
-        memcpy(rom + write_pos - bd, b2, bd);
-        
-        rom[write_pos++] = 0x7f;
-    }
-    
-    rom[write_pos] = 0xff;
-    
-    doc->modf = 1;
-}
-
-// =============================================================================
-
-uint8_t *
-Makezeldastring(FDOC const * const doc,
-                char       *       buf)
-{
-    text_buf_ty text_buf = { 0 };
-    
-    uint8_t * b2 = (uint8_t*) malloc(128);
-    char *n;
-    
-    int bd = 2, bs = 128;
-    
-    short j,l,m,k;
-    
-    for(;;)
+    // We are looking for an exact length match in both directions,
+    // in addition to character by character match.
+    if(p_lhs_size != p_rhs_size)
     {
-        j = *(buf++);
+        return 0;
+    }
+    
+    for(i = 0; i < limit; i += 1)
+    {
+        char const a = toupper( p_lhs[i] );
+        char const b = toupper( p_rhs[i] );
+        
+        // -----------------------------
+        
+        if(a != b)
+        {
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+
+// =============================================================================
+
+/// Converts ASCII text to the game's custom text format.
+extern void
+Makezeldastring
+(
+    CP2C(FDOC)        p_doc,
+    CP2C(AString)     p_amsg,
+    CP2(ZTextMessage) p_zmsg
+)
+{
+    CP2C(text_codes_ty) tc = &offsets.text.codes;
+    
+    char * text_buf = NULL;
+    
+    CP2C(char) abuf = p_amsg->m_text;
+    
+    int i = 0;
+    
+    short j, l, m, k;
+    
+    // -----------------------------
+    
+    for( ; ; )
+    {
+        j = abuf[i];
+        
+        i += 1;
         
         // look for a [ character
         if(j == '[')
         {
             // m is the distance to the ] character
-            m = strcspn(buf," ]");
+            m = strcspn(abuf + i, " ]");
             
-            for(l = 0; l < 18; l++)
-                if(tsym_str[l] && (!tsym_str[l][m]) && !_strnicmp(buf,tsym_str[l],m))
-                    break;
-            
-            // the condition l == 18 means it did not find any string in the
-            // special symbol strings list to match this one
-            if(l == 18)
+            for(l = 0; l < NUM_Zchars; l += 1)
             {
-                for(l = 0; l < 24; l++)
-                    if((!tcmd_str[l][m]) && !_strnicmp(buf,tcmd_str[l],m))
-                        break;
+                // \task[med] It's wasteful iterating through all of the zchar
+                // strings when we only need to look at the ones bounded
+                // by brackets.
                 
-                // if this condition is true it means we didn't find a match in the 
-                // command strings either
-                if(l == 24)
+                // Make sure there's an actual matching right bracket within
+                // the rest of the string.
+                if( abuf[i + m] == '\0' )
                 {
+                    asprintf
+                    (
+                        &text_buf,
+                        "Unmatched left bracket at position %u",
+                        i
+                    );
+                    
+                    goto error;
+                }
+                
+                if
+                (
+                    bi_strnistr
+                    (
+                        abuf + i - 1,
+                        z_alphabet[l],
+                        m + 2,
+                        strlen(z_alphabet[l])
+                    )
+                )
+                {
+                    // Located a string that matches a known zchar
+                    // representation
+                    break;
+                }
+            }
+            
+            if(l != NUM_Zchars)
+            {
+                // Move past the end of the bracketed expression, write
+                // the zchar into the buffer, and move onto the next bit of
+                // ascii text.
+                i += (m + 1);
+                
+                ZTextMessage_AppendChar(p_zmsg, l);
+                
+                continue;
+            }
+
+            for(l = 0; l < NUM_Tsym; l += 1)
+            {
+                if
+                (
+                    ( tsym_str[l] )
+                 && (
+                        bi_strnistr
+                        (
+                            abuf + i,
+                            tsym_str[l],
+                            m,
+                            strlen(tsym_str[l])
+                        )
+                    )
+                )
+                {
+                    break;
+                }
+            }
+            
+            
+            // Means it did not find any string in the special symbol strings
+            // list to match this one
+            if(l == NUM_Tsym)
+            {
+                for(l = 0; l < NUM_CmdStrings; l += 1)
+                {
+                    if
+                    (
+                        bi_strnistr
+                        (
+                            abuf + i,
+                            tcmd_str[l],
+                            m,
+                            strlen(tcmd_str[l])
+                        )
+                    )
+                    {
+                        break;
+                    }
+                }
+                
+                // if this condition is true it means we didn't find a match in
+                // the command strings either
+                if(l == NUM_CmdStrings)
+                {
+                    char * n = NULL;
+                    
+                    // -----------------------------
+                    
                     // strtol converts a string to a long data type
-                    j = (short) strtol(buf, &n, 16);
+                    j = (short) strtol(abuf + i, &n, 16);
                     
                     // k is the distance from the start of the command to the 
-                    k = n - buf;
+                    k = n - (abuf + i);
                     
-                    // if the string doesn't match the pattern [XX] fogedda boud it                 
+                    // if the string doesn't match the pattern [XX] fogedda boud
+                    // it                 
                     if(k > 2 || k < 1)
                     {
-                        buf[m] = 0;
-                        wsprintf(text_buf, "Invalid command \"%s\"", buf);
+                        asprintf(&text_buf,
+                                 "Invalid command \"%s\"",
+                                 abuf + i);
                         
 error:
                         
-                        MessageBox(framewnd, text_buf, "Bad error happened", MB_OK);
-                        free(b2);
-                        text_error = buf;
+                        MessageBox(framewnd, text_buf,
+                                    "Bad error happened", MB_OK);
+
+                        ZTextMessage_Free(p_zmsg);
                         
-                        return 0;
+                        text_error = (abuf + i);
+                        
+                        free(text_buf);
+
+                        return;
                     };
                     
                     m = k;
-                    b2[bd++] = (char) j;
+                    
+                    ZTextMessage_AppendChar(p_zmsg, j);
+                    
                     l = 0;
                 }
                 else
-                    b2[bd++] = l + 0x67, l = doc->rom[0x753d2 + l] - 1;
+                {
+                    ZTextMessage_AppendChar(p_zmsg,
+                                            l + tc->command_base);
+                    
+                    l = p_doc->rom[0x753d2 + l] - 1;
+                }
             }
             else
-                b2[bd++] = l + 0x4d, l = 0;
+            {
+                ZTextMessage_AppendChar(p_zmsg, l + 0x4d);
+                
+                l = 0;
+            }
             
-            buf += m;
+            i += m;
             
             while(l--)
             {
-                if(*buf!=' ')
+                char * n = NULL;
+                
+                // -----------------------------
+                
+                if( abuf[i] != ' ')
                 {
-syntaxerror:
-                    wsprintf(text_buf,"Syntax error: '%c'",*buf);
+                    
+                syntaxerror:
+                    
+                    asprintf(&text_buf,
+                             "Syntax error: '%c'",
+                             abuf[i]);
                     
                     goto error;
                 }
                 
-                buf++;
+                i += 1;
                 
-                j = (short) strtol(buf,&n,16);
-                m = n - buf;
+                j = (short) strtol(abuf + i, &n, 16);
+                
+                m = n - (abuf + i);
                 
                 if(m > 2 || m < 1)
                 {
-                    wsprintf(text_buf,"Invalid number");
+                    asprintf(&text_buf,
+                             "Invalid number");
+                    
                     goto error;
                 };
                 
-                buf += m;
-                b2[bd++] = (char) j;
+                i += m;
+                
+                ZTextMessage_AppendChar(p_zmsg, j);
             }
             
-            if(*buf!=']')
+            if( abuf[i] != ']')
+            {
                 goto syntaxerror;
+            }
             
-            buf++;
+            i += 1;
         }
         else
         {
-            if(!j)
-                break;
-            
-            for(l = 0; l < 0x5f; l++)
-                if(z_alphabet[l] == j)
-                    break;
-            
-            if(l == 0x5f)
+            if( ! j )
             {
-                wsprintf(text_buf,"Invalid character '%c'",j);
+                break;
+            }
+            
+            for(l = 0; l < NUM_Zchars; l += 1)
+            {
+                if
+                (
+                    (z_alphabet[l][0] == j)
+                 && (z_alphabet[l][1] == 0)
+                )
+                {
+                    // Matches an ascii string that is a single character.
+                    break;
+                }
+            }
+            
+            if(l == NUM_Zchars)
+            {
+                asprintf(&text_buf,
+                         "Invalid character '%c'",
+                         j);
+                
                 goto error;
             }
             
-            b2[bd++] = (char) l;
-        }
-        
-        if(bd > bs - 64)
-        {
-            bs += 128;
-            b2 = (uint8_t*) realloc(b2, bs);
+            ZTextMessage_AppendChar(p_zmsg, l);
         }
     }
-    
-    // \task Shouldn't we just structurize this stuff and store the length
-    // as a member? for pete's sake...
-    *(unsigned short*) b2 = bd;
-    
-    return b2;
 }
 
 // =============================================================================
 
-void
-Makeasciistring(FDOC          const * const doc,
-                char                * const buf,
-                unsigned char const * const buf2,
-                int                   const bufsize)
-{
-    text_buf_ty text_buf = { 0 };
-    
-    int i;
-    
-    short j,k,l,m,n;
-    
-    j = *(short*) buf2;
-    l = 2;
-    
-    // -----------------------------
-    
-    for(i=0;i<bufsize-1;) {
-        if(l>=j) break;
-        k=buf2[l++];
-        if(k<0x5f)
+    static int
+    AString_Resize
+    (
+        CP2(AString)       p_msg,
+        size_t       const p_size
+    )
+    {
+        size_t old_capacity = 0;
+        
+        // -----------------------------
+        
+        if(p_msg == NULL)
         {
-            if(!z_alphabet[k])
-            {
-                if(k==0x43) m=wsprintf(text_buf,"...");
-                else m=wsprintf(text_buf,"[%s]",tsym_str[k - 0x4d]);
-                goto longstring;
-            }
-            else
-            {
-                buf[i++]=z_alphabet[k];
-            }
+            return -1;
         }
-        else if(k >= 0x67 && k < 0x7f)
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        old_capacity = p_msg->m_capacity;
+        
+        if(p_size < 2048)
         {
-            m=wsprintf(text_buf,"[%s",tcmd_str[k - 0x67]);
-            n=doc->rom[0x7536b + k] - 1;
-            while(n--) m+=wsprintf(text_buf+m," %02X",buf2[l++]);
-            text_buf[m++]=']';
-longstring:
-            n = 0;
-            
-            while(m--)
-            {
-                buf[i++] = text_buf[n++];
-                
-                if(i == bufsize - 1)
-                    break;
-            }
+            p_msg->m_capacity = 2048;
         }
         else
         {
-            m = wsprintf(text_buf, "[%02X]",k);
+            p_msg->m_capacity = p_size;
+        }
+        
+        p_msg->m_text = (char*) recalloc
+        (
+            p_msg->m_text,
+            p_msg->m_capacity + 1,
+            old_capacity,
+            sizeof(char)
+        );
+        
+        if(p_msg->m_text)
+        {
+            return p_msg->m_capacity;
+        }
+        
+        return -1;
+    }
+
+// =============================================================================
+
+    extern int
+    AString_Init(CP2(AString) p_msg)
+    {
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
+        
+        p_msg->m_len = 0;
+        
+        if(p_msg->m_text)
+        {
+            /// Fill with zeroes, so reset it, essentially.
+            memset(p_msg->m_text, 0, p_msg->m_capacity + 1);
+        }
+        else
+        {
+            AString_Resize(p_msg, 2048);
+        }
+        
+        return (p_msg->m_text != NULL);
+    }
+
+// =============================================================================
+
+    extern int
+    AString_InitSized
+    (
+        CP2(AString)       p_msg,
+        size_t       const p_size
+    )
+    {
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
+        
+        if(p_msg->m_text != NULL)
+        {
+            p_msg->m_len = 0;
             
-            goto longstring;
+            free(p_msg->m_text);
+            
+            p_msg->m_text = NULL;
+        }
+    
+        p_msg->m_capacity = p_size;
+        p_msg->m_len      = p_size;
+        p_msg->m_text     = (char*) calloc(1,
+                                           p_msg->m_capacity + 1);
+        
+        return (p_msg->m_text != NULL);
+    }
+
+    #define MACRO_ReturnIf(x, value) if(x == value) { return x; }
+
+// =============================================================================
+
+    extern int
+    AString_InitFromNativeString
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_source
+    )
+    {
+        size_t const source_length = strlen(p_source);
+        
+        int r = 0;
+        
+        // -----------------------------
+        
+        AString_Free(p_msg);
+        
+        r = AString_Resize(p_msg, source_length);
+        
+        MACRO_ReturnIf(r, -1);
+        
+        p_msg->m_len = source_length;
+        
+        strcpy(p_msg->m_text, p_source);
+        
+        return (p_msg->m_len);
+    }
+
+// =============================================================================
+
+    extern int
+    AString_InitFormatted
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
+    )
+    {
+        char * buf = NULL;
+        
+        va_list var_args;
+        
+        int length = 0;
+        
+        // -----------------------------
+        
+        if(p_msg == NULL)
+        {
+            return 0;
+        }
+        
+        // If it already had allocated content, flush it out and start over.
+        AString_Free(p_msg);
+        
+        // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~
+        
+        va_start(var_args, p_fmt);
+        
+        length = vasprintf(&buf, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        if(buf)
+        {
+            AString_AppendString(p_msg, buf);
+            
+            free(buf);
+            
+            return length;
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
+    extern int
+    AString_CopyN
+    (
+        CP2(AString)        p_dest,
+        CP2C(AString)       p_source,
+        size_t        const p_count
+    )
+    {
+        size_t i = 0;
+        
+        size_t new_capacity = 0;
+        
+        // -----------------------------
+        
+        if( (p_dest == NULL) || (p_source == NULL) )
+        {
+            return 0;
+        }
+        
+        if(p_dest->m_text)
+        {
+            p_dest->m_len = 0;
+        }
+        
+        new_capacity = ( (p_count / 2048) + 1) * 2048;
+        
+        // \task[med] We want something like AString_Expand() to optionally resize
+        // only if necessary.
+        AString_Resize
+        (
+            p_dest,
+            new_capacity
+        );
+        
+        for(i = 0; i < p_count; i += 1)
+        {
+            p_dest->m_text[i] = p_source->m_text[i];
+        }
+        
+        p_dest->m_len = p_count;
+        
+        return p_count;
+    }
+
+// =============================================================================
+
+    extern int
+    AString_AppendChar
+    (
+        CP2(AString)       p_msg,
+        char         const p_char
+    )
+    {
+        // Fake a one character string to pass on to another "member" function.
+        char str[2] = { p_char, '\0' };
+        
+        // -----------------------------
+        
+        return AString_AppendString(p_msg, str);
+    }
+
+// =============================================================================
+
+    extern int
+    AString_AppendString
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_str
+    )
+    {
+        size_t i = 0;
+        
+        size_t const k = p_msg->m_len;
+        size_t const n = strlen(p_str);
+        
+        // -----------------------------
+        
+        // Check if the buffer needs expanding.
+        if( (k + n) > p_msg->m_capacity )
+        {
+            p_msg->m_text = (char*) recalloc
+            (
+                p_msg->m_text,
+                p_msg->m_capacity + 2048 + 1,
+                p_msg->m_capacity + 1,
+                sizeof(char)
+            );
+            
+            if(p_msg->m_text == NULL)
+            {
+                return 0;
+            }
+            
+            p_msg->m_capacity += 2048;
+        }
+        
+        for(i = 0; i < n; i += 1)
+        {
+            p_msg->m_text[i + k]     = p_str[i];
+            p_msg->m_text[i + k + 1] = '\0';
+        }
+        
+        p_msg->m_len += n;
+        
+        return 1;        
+    }
+
+// =============================================================================
+
+    extern int
+    AString_AppendFormatted
+    (
+        CP2(AString) p_msg,
+        CP2C(char)   p_fmt,
+        ...
+    )
+    {
+        char * buf = NULL;
+        
+        va_list var_args;
+        
+        int additional_length = 0;
+        
+        // -----------------------------
+        
+        va_start(var_args, p_fmt);
+        
+        additional_length = vasprintf(&buf, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        if(buf)
+        {
+            AString_AppendString(p_msg, buf);
+            
+            free(buf);
+            
+            return additional_length;
+        }
+        
+        return 0;
+    }
+
+// =============================================================================
+
+    extern void
+    AString_Free
+    (
+        CP2(AString) p_msg
+    )
+    {
+        if(p_msg)
+        {
+            if(p_msg->m_text)
+            {
+                free(p_msg->m_text);
+                
+                p_msg->m_text = NULL;
+                
+                p_msg->m_capacity = 0;
+                p_msg->m_len      = 0;
+            }
         }
     }
+
+// =============================================================================
+
+    extern int
+    ZTextMessage_Init
+    (
+        CP2(ZTextMessage) p_msg
+    )
+    {
+        p_msg->m_len      = 0;
+        p_msg->m_capacity = TEXT_GROW_SIZE;
+        
+        p_msg->m_text = (uint8_t*) calloc(p_msg->m_capacity,
+                                          sizeof(uint8_t) );
+        
+        if(p_msg->m_text == NULL)
+        {
+            return 0;
+        }
+        
+        return 1;
+    }
+
+// =============================================================================
+
+    extern void
+    ZTextMessage_AppendChar
+    (
+        CP2(ZTextMessage)       p_msg,
+        uint8_t           const p_char
+    )
+    {
+        if(p_msg)
+        {
+            uint16_t const i = p_msg->m_len;
+            
+            // -----------------------------
+            
+            if(p_msg->m_len == p_msg->m_capacity)
+            {
+                uint16_t const old_capacity = p_msg->m_capacity;
+                
+                // -----------------------------
+                
+                p_msg->m_capacity += TEXT_GROW_SIZE;
+                
+                p_msg->m_text = (uint8_t*) recalloc
+                (
+                    p_msg->m_text,
+                    p_msg->m_capacity,
+                    old_capacity,
+                    sizeof(uint8_t)
+                );
+            }
+            
+            p_msg->m_text[i] = p_char;
     
-    buf[i] = 0;
-}
+            p_msg->m_len += 1;
+        }
+    }
+
+// =============================================================================
+
+    extern void
+    ZTextMessage_AppendStream
+    (
+        CP2(ZTextMessage)       p_msg,
+        CP2C(uint8_t)           p_data,
+        uint16_t          const p_len
+    )
+    {
+        if(p_msg && p_data && (p_len > 0) )
+        {
+            uint16_t const i       = p_msg->m_len;
+            uint16_t const new_len = (i + p_len);
+            
+            // -----------------------------
+            
+            if(new_len > p_msg->m_capacity)
+            {
+                uint16_t const new_capacity = new_len + TEXT_GROW_SIZE
+                                            - (new_len % TEXT_GROW_SIZE);  
+                
+                p_msg->m_text = (uint8_t*) recalloc
+                (
+                    p_msg->m_text,
+                    new_capacity,
+                    p_msg->m_capacity,
+                    sizeof(uint8_t)
+                );
+                
+                p_msg->m_capacity = new_capacity;
+            }
+            
+            memcpy(p_msg->m_text + i,
+                   p_data,
+                   p_len);
+            
+            p_msg->m_len = new_len;
+        }
+    }
+
+// =============================================================================
+
+    extern void
+    ZTextMessage_Empty
+    (
+        CP2(ZTextMessage) p_msg
+    )
+    {
+        if(p_msg)
+        {
+            p_msg->m_len = 0;
+        }
+    }
+
+// =============================================================================
+
+    extern void
+    ZTextMessage_Free
+    (
+        CP2(ZTextMessage) p_msg
+    )
+    {
+        if(p_msg != NULL)
+        {
+            if(p_msg->m_text)
+            {
+                free(p_msg->m_text);
+                
+                p_msg->m_text = NULL;
+            }
+            
+            p_msg->m_len      = 0;
+            p_msg->m_capacity = 0;
+        }
+    }
+
+// =============================================================================
+
+    // C doesn't have cast to temporarily ignore const-ness, so this is the
+    // best I could come up with for the moment.
+    #define const_assign(x, type) ((type *) (&x))[0]
+
+// =============================================================================
+
+    extern void
+    TextLogic_ZStringToAString
+    (
+        CP2C(FDOC)         doc,
+        CP2C(ZTextMessage) p_zmsg,
+        CP2(AString)       p_msg
+    )
+    {
+        text_buf_ty text_buf = { 0 };
+        
+        int i;
+        
+        short m;
+        
+        uint16_t const zchar_len = p_zmsg->m_len;
+        
+        // Index into the zchar buffer.
+        size_t z_i = 0;
+        
+        text_offsets_ty const * const to = &offsets.text;
+        
+        text_codes_ty const * const tc = &to->codes;
+        
+        // -----------------------------
+        
+        AString_Init(p_msg);
+        
+        for(i = 0; ; )
+        {
+            uint8_t const zchar = 0;
+            
+            // -----------------------------
+            
+            if(z_i >= zchar_len)
+            {
+                break;
+            }
+            
+            const_assign(zchar, uint8_t) = p_zmsg->m_text[z_i];
+            
+            z_i += 1;
+            
+            if(zchar < NUM_Zchars)
+            {
+                if( IsZero( z_alphabet[zchar][0] ) )
+                {
+                    // \task[med] Character codes 0x63-0x66 in the
+                    // USA rom are invalid, but I'm not entirely sure
+                    // what to do if they're encountered yet. Backburner'd.
+                    // For now just ignore such characters and continue
+                    // converting.
+                    continue;
+                }
+                
+                AString_AppendString
+                (
+                    p_msg,
+                    z_alphabet[zchar]
+                );
+            }
+            else if
+            (
+                IsNot(zchar, tc->msg_terminator)
+             && (zchar >= tc->command_base)
+             && (zchar <  tc->command_bound)
+            )
+            {
+                // Command code.
+                uint8_t const code = zchar;
+                
+                size_t n = 0;
+                
+                // -----------------------------
+                
+                m = wsprintf
+                (
+                    text_buf,
+                    "[%s",
+                    tcmd_str[code - tc->command_base]
+                );
+                
+                n = doc->rom[to->param_counts + code] - 1;
+                
+                while(n--)
+                {
+                    m += wsprintf
+                    (
+                        text_buf + m,
+                        " %02X",
+                        p_zmsg->m_text[z_i]
+                        );
+                    
+                    z_i += 1;
+                }
+                
+                text_buf[m] = ']';
+                
+                m += 1;
+                
+                n = 0;
+                
+                while(m--)
+                {
+                    AString_AppendChar
+                    (
+                        p_msg,
+                        text_buf[n]
+                    );
+                    
+                    n += 1;
+                }
+            }
+            else
+            {
+                // \task[med] Similar to an invalid zchar, hitting this
+                // bit of code would indicate that there's some other
+                // invalid bit of data in the stream. We should definitely
+                // react to this in some way, but what way isn't clear.
+                continue;
+            }
+        }
+    }
 
 // =============================================================================

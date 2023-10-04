@@ -15,11 +15,11 @@
     int
     cpuaddr(int addr);
 
-    void *
-    recalloc(void   const * const p_old_buf,
-             size_t         const p_new_count,
-             size_t         const p_old_count,
-             size_t         const p_element_size);
+    extern void *
+    recalloc(void   * const p_old_buf,
+             size_t   const p_new_count,
+             size_t   const p_old_count,
+             size_t   const p_element_size);
 
     uint16_t
     ldle16b(uint8_t const * const p_arr);
@@ -52,6 +52,11 @@
               size_t    const p_index,
               uint16_t  const p_val);
 
+    void
+    stle16h_i(uint16_t * const p_arr,
+              size_t     const p_index,
+              uint16_t   const p_val);
+    
     void
     stle24b(uint8_t * const p_arr,
             uint32_t  const p_value);

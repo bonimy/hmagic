@@ -3,20 +3,40 @@
 
     #define HMAGIC_PROTOTYPES_HEADER_GUARD
 
-#include "structs.h"
+    #include "structs.h"
 
-int
-ShowDialog(HINSTANCE hinst,LPSTR id,HWND owner,DLGPROC dlgproc, LPARAM param);
+    #include "Wrappers.h"
 
-void
-Setpalette(HWND const win, HPALETTE const pal);
+// =============================================================================
 
-void
-PaintSprName(HDC hdc,
-             int x,
-             int y,
-             RECT const * const p_clip,
-             char const * const p_name);
+    extern LPARAM
+    ShowDialog
+    (
+        HINSTANCE const hinst,
+        LPSTR     const id,
+        HWND      const p_owner,
+        DLGPROC   const dlgproc,
+        LPARAM    const param
+    );
+
+    /**
+        \param p_y  Position of the entity relative to upper bound of the clip
+        rectangle. If the upper left coordinate of the entity is above said
+        rectangle, this value will be negative.
+        
+        \param p_window_size this subroutine assumes that the content
+        (paintable) dimensions of the window are square. That is, its height is
+        the same as its width.
+    */
+    void
+    PaintSprName
+    (
+        HDC          const p_hdc,
+        int          const p_x,
+        int          const p_y,
+        RECT const * const p_clip,
+        char const * const p_name
+    );
 
 void
 Drawblock(OVEREDIT const * const ed,
@@ -85,10 +105,6 @@ Handlescroll(HWND win,
              int size2);
 
 char const *
-Getsprstring(DUNGEDIT const * const ed,
-             int              const i);
-
-char const *
 Getsecretstring(uint8_t const * const rom,
                 int             const i);
 
@@ -108,13 +124,16 @@ Updatemap(DUNGEDIT *ed);
 void
 Updpal(void*ed);
 
-void
-Loadpal(void          * ed,
-        unsigned char * rom,
-        int             start,
-        int             ofs,
-        int             len,
-        int             pals);
+extern void
+Loadpal
+(
+    void          * ed,
+    CP2C(uint8_t)   rom,
+    int             start,
+    int             ofs,
+    int             len,
+    int             pals
+);
 
 void
 Getblocks(FDOC * doc,
@@ -157,35 +176,29 @@ Paintdungeon(DUNGEDIT * const ed,
 void
 Updatesize(HWND win);
 
-HWND
-CreateSuperDialog(SUPERDLG *dlgtemp,HWND owner,int x,int y,int w,int h,
-                  LPARAM lparam);
+    extern HWND
+    CreateSuperDialog
+    (
+        SUPERDLG * const dlgtemp,
+        HWND       const owner,
+        int        const x,
+        int        const y,
+        int        const w,
+        int        const h,
+        LPARAM     const lparam
+    );
 
-void
-Unloadovl(FDOC *doc);
+    extern void
+    Unloadovl
+    (
+        CP2(FDOC) doc
+    );
 
 void
 Stopsong(void);
 
 void
 Drawdot(HDC hdc, RECT * rc, int q, int n, int o);
-
-/**
-    \param p_y  Position of the entity relative to upper bound of the clip
-    rectangle. If the upper left coordinate of the entity is above said
-    rectangle, this value will be negative.
-    
-    \param p_window_size this subroutine assumes that the content (paintable)
-    dimensions of the window are square. That is, its height is the same
-    as its width.
-*/
-void
-Paintspr(HDC const p_dc,
-         int const p_x,
-         int const p_y,
-         int const p_hscroll,
-         int const p_vscroll,
-         size_t const p_window_size);
 
 // \note Not sure whether to make a task for these or not. While it appears
 // at first glance to be dungeon related, this is type punning, and the
@@ -208,12 +221,6 @@ Uncompress(uint8_t const *       src,
            int             const p_big_endian);
 
 
-int
-Savesecrets(FDOC          * const doc,
-            int             const num,
-            uint8_t const * const buf,
-            int             const size);
-
 uint8_t *
 Compress(uint8_t const * const src,
          int             const oldsize,
@@ -230,47 +237,20 @@ loadoverovl(FDOC *doc, uint16_t *buf, int mapnum);
 void
 SetBS16(BLOCKSEL16*bs,int i,HWND hc);
 
-HWND
-Editwin(FDOC       * const doc,
-        char const * const wclass,
-        char const * const title,
-        LPARAM       const param,
-        int          const size);
+    extern HWND
+    Editwin
+    (
+        CP2(FDOC)  doc,
+        CP2C(char) wclass,
+        CP2C(char) title,
+        LPARAM     const param,
+        int        const size
+    );
 
-int
-Fixscrollpos(unsigned char*rom,
-             int x,int y,
-             int sx,int sy,
-             int cx,int cy,
-             int dp,
-             int m,int l,
-             int door1,int door2);
-
-// \task These belong in a *Logic.h header flie
-void
-Savedungmap(LMAPEDIT*ed);
-void
-Savetmap(TMAPEDIT*ed);
-void
-Savepersp(PERSPEDIT*ed);
-void
-Savesongs(FDOC *doc);
-void
-SaveOverlays(FDOC * const doc);
-int
-Buildpatches(FDOC * const doc);
-void
-Removepatches(FDOC * const doc);
-void
-Initsound(void);
-void
-Exitsound(void);
-void
-midinoteoff(ZCHANNEL * const zch);
-void
-Updatesprites(void);
-
-void
-HM_RegisterClasses(HINSTANCE p_inst);
+    extern BOOL
+    HM_RegisterClasses
+    (
+        HINSTANCE const p_inst
+    );
 
 #endif

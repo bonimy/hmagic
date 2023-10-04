@@ -194,20 +194,47 @@ BEGIN
 END
 
 
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // RCDATA
 //
+
 IDR_SPRNAMES            RCDATA                  "sprname.dat"
 IDR_ENTRANCE_NAMES      RCDATA                  "text_resources\\entrance_names.txt"
 IDR_AREA_NAMES          RCDATA                  "text_resources\\area_names.txt"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON2               ICON                    "icon2.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDR_TEST_TOOLTIP        "From IDR"
+    IDS_AUDIO_COPY_FAIL     "Cannot copy a zero length sample.\nNothing has been copied to the clipboard."
+    IDS_ERROR               "Error"
+END
+
+STRINGTABLE
+BEGIN
+    IDC_TEST_TOOLTIP        "From IDC"
+END
+
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Norwegian, Bokmål (Norway) resources
+// Norwegian, Bokmal (Norway) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NOR)
 LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL
@@ -221,84 +248,10 @@ LANGUAGE LANG_NORWEGIAN, SUBLANG_NORWEGIAN_BOKMAL
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO
 BEGIN
-    IDD_DIALOG1, DIALOG
+    IDD_ABOUT_DLG, DIALOG
     BEGIN
-    END
-
-    IDD_DIALOG2, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG3, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG4, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG5, DIALOG
-    BEGIN
-    END
-
-    IDD_DUNG_CHOOSE_OBJECT, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG8, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG9, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG10, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG11, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG12, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG13, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG14, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG16, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG17, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG18, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG19, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG20, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG22, DIALOG
-    BEGIN
-    END
-
-    IDD_DIALOG23, DIALOG
-    BEGIN
+        RIGHTMARGIN, 186
+        BOTTOMMARGIN, 144
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -309,14 +262,15 @@ END
 // Dialog
 //
 
-IDD_DIALOG1 DIALOG 0, 0, 186, 111
+IDD_ABOUT_DLG DIALOGEX 0, 0, 198, 145
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDCANCEL,68,90,50,14
-    CTEXT           "Hyrule Magic v0.962\n\nProgrammed by Sephiroth3\n\nSpecial thanks to wilsonj, Yarx, GameMakr24\n\n",IDC_STATIC,49,31,90,56
+    DEFPUSHBUTTON   "OK",IDCANCEL,76,116,50,14
+    CTEXT           "Hyrule Magic v0.964999999\n\nProgrammed by Sephiroth3\n\nSpecial thanks to wilsonj, Yarx, GameMakr24\n\nCurses to MathOnNapkins!",IDC_STATIC,49,31,90,79
     ICON            IDI_ICON1,IDC_STATIC,81,7,20,20,SS_CENTERIMAGE | SS_REALSIZEIMAGE
+    ICON            IDI_ICON2,IDC_TEST_TOOLTIP,133,9,20,20,SS_NOTIFY | SS_CENTERIMAGE | SS_REALSIZEIMAGE
 END
 
 IDD_DIALOG2 DIALOGEX 0, 0, 186, 135
@@ -347,13 +301,13 @@ BEGIN
     CONTROL         "16-bit",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,60,56,38,9
 END
 
-IDD_DIALOG4 DIALOG 0, 0, 150, 47
+IDD_DIALOG4 DIALOGEX 0, 0, 150, 47
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,93,6,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,93,24,50,14
-    EDITTEXT        IDC_EDIT1,48,14,38,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT1,48,14,38,13,ES_AUTOHSCROLL | ES_NUMBER
     LTEXT           "",IDC_STATIC2,13,6,29,26,SS_CENTERIMAGE
 END
 
@@ -658,7 +612,7 @@ BEGIN
     EDITTEXT        IDC_EDIT3,62,35,43,12,ES_AUTOHSCROLL
 END
 
-IDD_DIALOG18 DIALOG 0, 0, 186, 193
+IDD_ROM_PROPERTIES DIALOG 0, 0, 186, 193
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "ROM information"
 FONT 8, "MS Sans Serif"
@@ -729,7 +683,7 @@ BEGIN
     EDITTEXT        IDC_EDIT8,219,182,19,12,ES_AUTOHSCROLL
 END
 
-IDD_DIALOG23 DIALOG 0, 0, 186, 138
+IDD_FSNASM_RESULTS_DLG DIALOG 0, 0, 186, 138
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Errors"
 FONT 8, "MS Sans Serif"
@@ -740,6 +694,14 @@ BEGIN
 END
 
 
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON1               ICON                    "icon1.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -862,15 +824,7 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_ICON1               ICON                    "icon1.ico"
-#endif    // Norwegian, Bokmål (Norway) resources
+#endif    // Norwegian, Bokmal (Norway) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

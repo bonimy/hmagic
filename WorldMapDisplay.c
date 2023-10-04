@@ -14,6 +14,55 @@
 
 // =============================================================================
 
+static int
+Fixscrollpos(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dp,int m,int l,int door1,int door2)
+{
+    int j,k,n,o,p,q,r,s,t,u;
+    r=((short*)(rom+x))[m];
+    s=((short*)(rom+y))[m];
+    if(door1) if(((unsigned short*)(rom+door2))[m]+1>=2) s+=39; else s+=19;
+    n=rom[0x125ec + (r>>9)+(s>>9<<3)]+(l&64);
+    j=((short*)(rom+sx))[m];
+    k=((short*)(rom+sy))[m];
+    o=(n&56)<<6;
+    p=(n&7)<<9;
+    q=rom[0x12844 + n]?1024:512;
+    t=((short*)(rom+cy))[m];
+    u=((short*)(rom+cx))[m];
+    j+=r-u;
+    k+=s-t;
+    t=s;
+    u=r;
+    if(k<o) {
+        t+=o-k;
+        k=o;
+    }
+    if(k>o+q-256) {
+        t+=o-k+q-256;
+        k=o+q-256;
+    }
+    if(j<p) {
+        u+=p-j;
+        j=p;
+    }
+    if(j>p+q-240) {
+        u+=p-j+q-240;
+        j=p+q-240;
+    }
+    ((short*)(rom+cy))[m]=t;
+    ((short*)(rom+cx))[m]=u;
+    ((short*)(rom+sx))[m]=j;
+    ((short*)(rom+sy))[m]=k;
+    ((short*)(rom+dp))[m]=(((k-((n&56)<<6))&0xfff0)<<3)|(((j-((n&7)<<9))&0xfff0)>>3);
+    if(door1) {
+        if(((unsigned short*)(rom+door1))[m]+1>=2) ((short*)(rom+door1))[m]+=(((l-n)&7)<<6)+(((l&56)-(n&56))<<3);
+        if(((unsigned short*)(rom+door2))[m]+1>=2) ((short*)(rom+door2))[m]+=(((l-n)&7)<<6)+(((l&56)-(n&56))<<3);
+    }
+    return n;
+}
+
+// =============================================================================
+
 void
 WorldMapDisplay_OnPaint(WMAPEDIT const * const p_ed,
                         HWND             const p_win)
@@ -276,14 +325,26 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     RECT rc = {0,0,0,0};
     
     POINT pt;
-    switch(msg) {
+    switch(msg)
+    {
+    
     case WM_GETDLGCODE:
+        
         return DLGC_WANTCHARS;
+    
     case WM_CHAR:
-        if(wparam==26) wmapdlgproc(GetParent(win),WM_COMMAND,3007,0);
+        
+        if(wparam == 26)
+        {
+            // Ctrl-Z
+            // Undo, apparently? 
+            wmapdlgproc(GetParent(win),WM_COMMAND,3007,0);
+        }
+        
         break;
+    
     case WM_SIZE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(!ed) break;
         si.cbSize=sizeof(si);
         si.fMask=SIF_RANGE|SIF_PAGE;
@@ -299,15 +360,15 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         ed->mapscrollh=Handlescroll(win,-1,ed->mapscrollh,ed->mappageh,SB_HORZ,si.nMax,32);
         break;
     case WM_VSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollv=Handlescroll(win,wparam,ed->mapscrollv,ed->mappagev,SB_VERT,ed->ew.param?8:16,32);
         break;
     case WM_HSCROLL:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         ed->mapscrollh=Handlescroll(win,wparam,ed->mapscrollh,ed->mappageh,SB_HORZ,ed->ew.param?8:16,32);
         break;
     case WM_LBUTTONDOWN:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->dtool) break;
         if(ed->tool!=1 && ed->selflag) {
             Wmapselectwrite(ed);
@@ -320,7 +381,7 @@ wmapdispproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         goto mousemove;
     case WM_RBUTTONDOWN:
     case WM_MOUSEMOVE:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
 mousemove:
         
         n=ed->mapscrollh<<5;
@@ -737,7 +798,7 @@ maperror:
         }
         break;
     case WM_LBUTTONUP:
-        ed=(WMAPEDIT*)GetWindowLong(win,GWL_USERDATA);
+        ed=(WMAPEDIT*)GetWindowLongPtr(win,GWLP_USERDATA);
         if(ed->dtool>1 && ed->dtool<4) {
             Wmapselectionrect(ed,&rc);
             InvalidateRect(win,&rc,0);
@@ -776,7 +837,7 @@ maperror:
     
     case WM_PAINT:
         
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (WMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         
         if(ed)
         {
@@ -786,7 +847,7 @@ maperror:
         break;
     
     case WM_KEYDOWN:
-        ed = (WMAPEDIT*) GetWindowLong(win, GWL_USERDATA);
+        ed = (WMAPEDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
         i=ed->selmark;
         if(ed->tool!=3 || i==-1 || ed->marknum==9) break;
         if(wparam>=65 && wparam<71) { wparam-=55; goto digit; }

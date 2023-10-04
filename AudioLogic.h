@@ -63,7 +63,15 @@
     
     extern HWAVEOUT hwo;
 
+    extern char const * mus_str[];
+
 // =============================================================================
+
+    void
+    Initsound(void);
+
+    void
+    Exitsound(void);
 
     void
     Mixbuffer(void);
@@ -91,6 +99,20 @@
     Modifywaves(FDOC * const doc,
                 int    const es);
 
+
+    extern void
+    Edittrack(FDOC  * doc,
+              short   i);
+
+    extern void
+    NewSR(FDOC*doc,int bank);
+
+    void
+    midinoteoff(ZCHANNEL * const zch);
+
 // =============================================================================
+
+
+    ;
 
 #endif

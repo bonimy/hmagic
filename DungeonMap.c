@@ -1,4 +1,5 @@
 
+    // For sprintf
     #include <stdio.h>
 
     #include "structs.h"
@@ -806,8 +807,9 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     
     uint8_t * const drawbuf = ed->map_bits;
     
-    // \task I hate writing code like this. But basically, these bitmaps are
-    // drawn upside down.
+    // \task[low] I hate writing code like this. But basically, these
+    // bitmaps are drawn upside down. Maybe if we moved to C++ this could
+    // be made less messy.
     uint8_t * b2 = ( drawbuf + (511 * 512) + x - (y * 512) );
     
     int col;
@@ -824,7 +826,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     
     if((t & 24) == 24)
     {
-        // \task Used with only with Link's graphics dialog, seemingly.
+        // \task[low] Used with only with Link's graphics dialog, seemingly.
         
         b3 = ed->ew.doc->blks[225].buf;
         
@@ -838,7 +840,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     }
     else if(t & 16)
     {
-        // \task 2bpp graphics? Not sure.
+        // \task[low] 2bpp graphics? Not sure.
         // Used with the dungeon map screen (not the maps themselves)
         
         if(d >= 0x180)
@@ -860,7 +862,7 @@ DrawDungeonBlock(DUNGEDIT * const ed,
     }
     else if(t & 8)
     {
-        // \task Used with a lot of the tilemap screens, title screen in particular.
+        // \task[low] Used with a lot of the tilemap screens, title screen in particular.
 
         if(d >= 0x100)
             goto noblock;
@@ -1162,7 +1164,7 @@ DrawDungeonBlank(DUNGEDIT * const p_ed,
     
     uint8_t * const drawbuf = p_ed->map_bits;
     
-    // \task I hate writing code like this. But basically, these bitmaps are
+    // \task[low] I hate writing code like this. But basically, these bitmaps are
     // drawn upside down.
     uint8_t * b2 = ( drawbuf + (511 * 512) + p_x - (p_y * 512) );
     
@@ -1910,8 +1912,11 @@ void
 DungeonMap_OnMouseWheel(DUNGEDIT * const p_ed,
                         MSG        const p_msg)
 {
-    HM_MouseWheelData const d = HM_GetMouseWheelData(p_msg.wParam,
-                                                     p_msg.lParam);
+    HM_MouseWheelData const d = HM_GetMouseWheelData
+    (
+        p_msg.wParam,
+        p_msg.lParam
+    );
     
     unsigned scroll_type = SB_LINEUP;
     
@@ -2182,8 +2187,6 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
     // -----------------------------
     
     sprintf(info, "X: %d, Y: %d", d.m_rel_pos.x / 8, d.m_rel_pos.y / 8);
-    
-    SetDlgItemText(debug_window, IDC_STATIC2, info);
     
     if(p_ed->withfocus & 2)
     {
@@ -2510,7 +2513,7 @@ DungeonMap_OnMouseMove(DUNGEDIT * const p_ed,
 // =============================================================================
 
 /// Compact way of calling DefWindowProc().
-// \task Move this to Wrappers.c / .h
+// \task[low] Move this to Wrappers.c / .h
 LRESULT
 HM_DefWindowProc(MSG const p_packed_msg)
 {
@@ -3328,7 +3331,7 @@ DungeonMap_OnKeyDown(DUNGEDIT * const p_ed,
                 if(p_ed->selobj == 1)
                     break;
                 
-                // \task Perhaps a swaple24b() is in order.
+                // \task[med] Perhaps a swaple24b() is in order.
                 // or like... hm_memswap
                 i = ldle24b(p_ed->ebuf + p_ed->selobj - 3);
                 
@@ -3577,7 +3580,7 @@ selfirst:
             if(dm_k == 0xff)
                 dm_k = 0x13f;
             
-            // \task Just a gentle reminder that if we change this to
+            // \task[low] Just a gentle reminder that if we change this to
             // an unsigned type we will probably have problems
             // (due to integer promotion rules).
             if(dm_k == u16_neg1)
@@ -3694,12 +3697,19 @@ DungeonMap_ObjectSelectorDialog(DUNGEDIT * const p_ed,
         }
         else if(i < 0x138)
         {
-            int _ = (dm_k -= 0x40);
+            int _ = (i -= 0x40);
             int j = obj3_t[dm_k];
             
-            dm_l = (j == 0) | (j == 2);
+            dm_k = _;
             
-            (void) _;
+            // \task[low] This logic doesn't work. Just disabling it for
+            // now until we can figure out what the original intent
+            // was.
+#if 0
+            // dm_l = (j == 0) | ( (j == 2) );
+#else
+            (void) j;
+#endif
         }
         else
         {
@@ -3846,7 +3856,7 @@ DungeonMap_OnRightMouseDown(DUNGEDIT * const p_ed,
     
     AppendMenu(menu2, MF_STRING, DCM_GfxSubmenu, "Other...");
     
-    AppendMenu(menu, MF_POPUP | MF_STRING,(int) menu2,"Edit blocks");
+    AppendMenu(menu, MF_POPUP | MF_STRING, (UINT_PTR) menu2,"Edit blocks");
     
     GetCursorPos(&pt);
     

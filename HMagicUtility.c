@@ -50,34 +50,45 @@ rom_addr_split(uint8_t  const p_bank,
 
 // =============================================================================
 
-// this calculates (lo-rom) cpu addresses from rom addreses.
-int
-cpuaddr(int addr)
-{
-    return ((addr&0x1f8000)<<1) | (addr&0x7fff) | 0x8000;
-}
+    // this calculates (lo-rom) cpu addresses from rom addreses.
+    int
+    cpuaddr(int addr)
+    {
+        int r = ( (addr & 0x1f8000) << 1) | (addr & 0x7fff) | 0x8000;
+        
+        return r;
+    }
 
 // =============================================================================
 
-void *
-recalloc(void   const * const p_old_buf,
-         size_t         const p_new_count,
-         size_t         const p_old_count,
-         size_t         const p_element_size)
-{
-    void * const new_buf = calloc(p_new_count, p_element_size);
-    
-    if(new_buf)
+    extern void *
+    recalloc(void   * const p_old_buf,
+             size_t   const p_new_count,
+             size_t   const p_old_count,
+             size_t   const p_element_size)
     {
-        // Copy using the smaller of the two count values.
-        size_t const limit_count = p_old_count > p_new_count ? p_new_count
-                                                             : p_old_count;
+        void * const new_buf = calloc(p_new_count, p_element_size);
         
-        memcpy(new_buf, p_old_buf, (limit_count * p_element_size) );
+        // -----------------------------
+        
+        if(new_buf)
+        {
+            // Copy using the smaller of the two count values.
+            size_t const limit_count = p_old_count > p_new_count ? p_new_count
+                                                                 : p_old_count;
+            
+            // -----------------------------
+            
+            if(p_old_buf)
+            {
+                memcpy(new_buf, p_old_buf, (limit_count * p_element_size) );
+                
+                free(p_old_buf);
+            }
+        }
+        
+        return new_buf;
     }
-    
-    return new_buf;
-}
 
 // =============================================================================
 
@@ -252,13 +263,32 @@ stle16b(uint8_t * const p_arr,
 
 // =============================================================================
 
-void
-stle16b_i(uint8_t * const p_arr,
-          size_t    const p_index,
-          uint16_t  const p_val)
-{
-    stle16b(p_arr + (p_index * 2), p_val);
-}
+    // "Store little endian 16-bit value using a byte pointer, offset by an
+    // index before dereferencing"
+    void
+    stle16b_i(uint8_t * const p_arr,
+              size_t    const p_index,
+              uint16_t  const p_val)
+    {
+        stle16b(p_arr + (p_index * 2), p_val);
+    }
+
+// =============================================================================
+
+    // "Store little endian 16-bit value using a halfword pointer, offset
+    // "by an index before dereferencing"
+    void
+    stle16h_i(uint16_t * const p_arr,
+              size_t     const p_index,
+              uint16_t   const p_val)
+    {
+        // byte indexed alias.
+        uint8_t * const p_arr_b = (uint8_t*) (p_arr + p_index);
+        
+        // -----------------------------
+        
+        stle16b(p_arr_b, p_val);
+    }
 
 // =============================================================================
 

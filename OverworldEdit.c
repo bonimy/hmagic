@@ -1,9 +1,12 @@
 
-#include "structs.h"
+    #include "structs.h"
 
-#include "prototypes.h"
+    #include "prototypes.h"
 
-#include "OverworldEdit.h"
+    #include "HMagicUtility.h"
+
+    #include "OverworldEnum.h"
+    #include "OverworldEdit.h"
 
 // =============================================================================
 
@@ -141,23 +144,23 @@ Overselchg(OVEREDIT const * const ed,
 
 // =============================================================================
 
-void
-Overtoolchg(OVEREDIT * const ed,
-            int        const i,
-            HWND       const win)
-{
-    HWND hc=GetDlgItem(win,3001);
-    
-    if(tool_ovt[i]!=tool_ovt[ed->tool])
-        InvalidateRect(hc,0,0);
-    else
+    void
+    Overtoolchg(OVEREDIT * const ed,
+                int        const i,
+                HWND       const win)
+    {
+        HWND hc = GetDlgItem(win, SD_Over_Display);
+        
+        if(tool_ovt[i] != tool_ovt[ed->tool])
+            InvalidateRect(hc,0,0);
+        else
+            Overselchg(ed,hc);
+        
+        ed->tool=i;
+        ed->selobj=-1;
+        
         Overselchg(ed,hc);
-    
-    ed->tool=i;
-    ed->selobj=-1;
-    
-    Overselchg(ed,hc);
-}
+    }
 
 // =============================================================================
 
@@ -458,45 +461,59 @@ foundnextovl:
 
 // =============================================================================
 
-int
+extern int
 getbgmap(OVEREDIT * const ed,
          int        const a,
          int        const b)
 {
     int c,d;
-    switch(a) {
+    
+    switch(a)
+    {
+    
     case 0:
         d=0;
         if(b==2) c=158; else c=151;
         break;
+    
     case 64:
         d=0;
         c=151;
         break;
+    
     case 128:
         d=2;
         if(b==2) c=160; else c=151;
         break;
+    
     case 3: case 5: case 7:
         d=1;
         c=149;
         break;
+    
     case 67: case 69: case 71:
         d=1;
         c=156;
         break;
+    
     case 136: case 147:
         d=2;
         c=159;
         break;
+    
     case 91:
-        if(b) {
+        if(b)
+        {
             d=1;
             c=150;
             break;
         }
+    
     default:
-        if(b) d=2; else
+        if(b)
+            d=2;
+        else
+    
     case 112:
         d=0;
         c=159;
@@ -512,6 +529,246 @@ getbgmap(OVEREDIT * const ed,
     }
     
     return c;
+}
+
+// =============================================================================
+
+extern int
+Savesecrets(FDOC          * const doc,
+            int             const num,
+            uint8_t const * const buf,
+            int             const size)
+{
+    int i,j,k;
+    int adr[128];
+    unsigned char*rom=doc->rom;
+    for(i=0;i<128;i++)
+        adr[i]=0xe0000 + ((short*)(rom + 0xdc2f9))[i];
+    k=doc->sctend;
+    if(rom[0x125ec + (num&63)]!=(num&63)) {
+        j=(num&64)?doc->sctend:adr[64];
+        for(i=num&63;i<64;i++) {
+            if(rom[0x125ec + i]!=i) continue;
+            j=adr[i+(num&64)];
+            if(*(short*)(rom+j)!=-1) j-=2;
+            break;
+        }
+        ((short*)(rom + 0xdc2f9))[num]=adr[num]=j;
+    } else j=adr[num];
+    for(i=num+1;i<128;i++) {
+        if(rom[0x125ec + (i&63)]!=(i&63)) continue;
+        k=adr[i];
+        break;
+    }
+    
+    if( is16b_neg1(rom + j) )
+    {
+        if(!size) return 0;
+        if(k>j) k-=2;
+        j+=size+2;
+        adr[num]+=2;
+    } else {
+        if(!size) {
+            if(j>0xdc3f9) {
+                j-=2;
+                adr[num]-=2;
+            }
+        } else j+=size;
+        if(*(short*)(rom+k)!=-1) k-=2;
+    }
+    if(doc->sctend-k+j>0xdc894) {
+        MessageBox(framewnd,"Not enough space for secret items","Bad error happened",MB_OK);
+        return 1;
+    }
+    memmove(rom+j,rom+k,doc->sctend-k);
+    if(size) memcpy(rom+adr[num],buf,size);
+    if(j==k) return 0;
+    ((short*)(rom + 0xdc2f9))[num]=adr[num];
+    doc->sctend+=j-k;
+    for(i=num+1;i<128;i++) {
+        ((short*)(rom + 0xdc2f9))[i]=adr[i]+j-k;
+    }
+    return 0;
+}
+
+// =============================================================================
+
+extern void
+SaveOverlays(FDOC * const doc)
+{
+    int i, // counter variable
+        j = 0,
+        k, // another counter variable
+        l,
+        m,
+        n,
+        o,
+        p,
+        q = 0,
+        r = 0;
+    
+    unsigned short *b = doc->ovlbuf;
+    unsigned char *rom = doc->rom;
+    
+    char buf[4096];
+    
+    // if the overlays have not been loaded, exit the routine. 
+    if(doc->o_loaded != 1)
+        return;
+    
+    m = 0;
+    o = 0;
+    
+    for(i = 0; i < 128; i++)
+    {
+        for(k = 0; k < i; k++)
+        {
+            // if b[k] is the same as the last one in the list (b[i]), copy it in the rom
+            if(b[k] == b[i])
+            {
+                ( (short*) ( rom + 0x77664 ) )[i] = ((short*) ( rom + 0x77664 ))[k];
+                
+                // skip to the next overlay. i.e. increment i.
+                goto nextovl;
+            }
+        }
+        
+        // if none of them match, take i and make k into the value of b[i].
+        k = b[i];
+        
+        ( (short*) ( rom + 0x77664 ) )[i] = j + 0xf764;
+        
+        if( !( doc->o_enb[i >> 3] & (1 << (i & 7) ) ))
+            // beats me. seems like loop around if certain overlays are not enabled.
+            continue;
+        
+        // convert m to the next lowest even integer. 
+        if(b[k] == 0xfffe && m)
+        {
+            ((short*) ( rom + 0x77664 ))[i] = m + 0xf864;
+            
+            continue;
+        }
+        
+        p = 0;
+        
+        k = b[i];
+        
+        n = 0xfffe;
+        
+        for(;;)
+        {
+            l = b[k++];
+            
+            if(l >= 0xfffe)
+                break;
+            
+            if(l == 0x918)
+                q = j;
+            
+            if(l - n == 1)
+            {
+                if(n == p + 0x918)
+                    p++;
+                else
+                    p = 0;
+                
+                buf[j++] = 0x1a;
+            }
+            else
+            {
+                p = 0;
+                
+                if(l - n == 2)
+                {
+                    *(short*) (buf + j) = 0x1a1a;
+                    j += 2;
+                }
+                else
+                {
+                    buf[j] = 0xa9;
+                    
+                    *(short*) (buf + j + 1) = l;
+                    
+                    j += 3;
+                }
+            }
+            
+            n = l;
+            
+            for(;;)
+            {
+                if(j >= 0x89c)
+                {
+error:
+                    MessageBox(framewnd,"Not enough room for overlays","Bad error happened",MB_OK);
+                    return;
+                }
+                
+                l = b[k++];
+                
+                if(l >= 0xfffe)
+                    break;
+                
+                if(!p)
+                    r = l;
+                else if( map16ofs[p] != l - r)
+                    p = 0;
+                
+                buf[j] = 0x8d;
+                
+                *(short*) (buf + j + 1) = (l << 1) + 0x2000;
+                j += 3;
+            }
+            
+            if(l == 0xfffe)
+                break;
+        }
+        
+        if(p == 3)
+        {
+            j = q;
+            buf[j] = 0xa2;
+            
+            *(short*) (buf + j + 1) = r << 1;
+            
+            if(o)
+            {
+                buf[j + 3] = 0x4c;
+                
+                *(short*) (buf + j + 4) = o + 0xf764;
+                j += 6;
+            }
+            else
+            {
+                j += 3;
+                o = j;
+                
+                *(int*) (buf + j) = 0x9d0918a9;
+                *(int*) (buf + j + 4) = 0x9d1a2000;
+                *(int*) (buf + j + 8) = 0x9d1a2002;
+                *(int*) (buf + j + 12) = 0x9d1a2080;
+                *(int*) (buf + j + 16) = 0x602082;
+                
+                j += 19;
+            }
+        }
+        else
+            buf[j++] = 0x60;
+        
+        if(!m)
+            m = j;
+        
+        if(j >= 0x89c)
+            goto error;
+        
+nextovl:;
+    }
+    
+    memcpy(rom + 0x77764, buf, j);
+    
+    doc->oolend = j + 0x77764;
+    doc->o_modf = 0;
 }
 
 // =============================================================================

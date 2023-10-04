@@ -54,11 +54,11 @@
       <Optimization>Disabled</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>EnableAllWarnings</WarningLevel>
-      <MinimalRebuild>true</MinimalRebuild>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=_WIN32_WINNT_WIN2K;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BrowseInformation>true</BrowseInformation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -89,7 +89,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <Optimization>MaxSpeed</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WIN32_WINNT=_WIN32_WINNT_WIN2K;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -108,13 +108,17 @@
     <Link>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Winmm.lib;comctl32.lib;msimg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AboutDlg.c" />
     <ClCompile Include="AsmPatchFrame.c" />
     <ClCompile Include="AudioFrame.c" />
     <ClCompile Include="AudioLogic.c" />
+    <ClCompile Include="BlockDlg.c" />
+    <ClCompile Include="BossLocationsDlg.c" />
     <ClCompile Include="ChooseObject.c" />
     <ClCompile Include="DocumentFrame.c" />
     <ClCompile Include="DungeonDlg.c" />
@@ -125,26 +129,61 @@
     <ClCompile Include="DuplicateRoomDlg.c" />
     <ClCompile Include="EditExitDlg.c" />
     <ClCompile Include="EditWhirlpoolDlg.c" />
+    <ClCompile Include="ErrorsDlg.c" />
+    <ClCompile Include="GdiObjects.c" />
+    <ClCompile Include="GraphicSchemesDlg.c" />
+    <ClCompile Include="GraphicsLogic.c" />
     <ClCompile Include="HMagicConfigDlg.c" />
     <ClCompile Include="HMagicFrame.c" />
     <ClCompile Include="HMagicLogic.c" />
     <ClCompile Include="HMagicUtility.c" />
+    <ClCompile Include="LevelMapBlocks.c" />
+    <ClCompile Include="LevelMapDisplay.c" />
+    <ClCompile Include="LevelMapDlg.c" />
+    <ClCompile Include="LevelMapFrame.c" />
+    <ClCompile Include="LevelMapLogic.c" />
+    <ClCompile Include="Map16Selector.c" />
+    <ClCompile Include="Map16_Edit.c" />
+    <ClCompile Include="Map16_Finder.c" />
     <ClCompile Include="Map16_SearchDlg.c" />
+    <ClCompile Include="Map32Selector.c" />
+    <ClCompile Include="Map32_Edit.c" />
+    <ClCompile Include="Map8Selector.c" />
+    <ClCompile Include="Map8_Edit.c" />
+    <ClCompile Include="MetatileLogic.c" />
+    <ClCompile Include="MusicDlg.c" />
     <ClCompile Include="OverworldDlg.c" />
     <ClCompile Include="OverworldEdit.c" />
     <ClCompile Include="OverworldFrame.c" />
     <ClCompile Include="OverworldMap.c" />
+    <ClCompile Include="OverworldPropsDlg.c" />
     <ClCompile Include="PaletteEdit.c" />
     <ClCompile Include="PaletteFrame.c" />
     <ClCompile Include="PaletteSelector.c" />
+    <ClCompile Include="PatchDlg.c" />
+    <ClCompile Include="PatchLogic.c" />
+    <ClCompile Include="PerspectiveDisplay.c" />
+    <ClCompile Include="PerspectiveDlg.c" />
+    <ClCompile Include="PerspectiveFrame.c" />
+    <ClCompile Include="PerspectiveLogic.c" />
     <ClCompile Include="RomProperties.c" />
+    <ClCompile Include="SampleDisplay.c" />
     <ClCompile Include="SampleEditDlg.c" />
+    <ClCompile Include="SampleEditLogic.c" />
     <ClCompile Include="ScreenEditorLogic.c" />
     <ClCompile Include="SoundDevSelectDlg.c" />
     <ClCompile Include="SuperDlg.c" />
     <ClCompile Include="TextDlg.c" />
     <ClCompile Include="TextFrame.c" />
     <ClCompile Include="TextLogic.c" />
+    <ClCompile Include="TileMapDisplay.c" />
+    <ClCompile Include="TileMapDlg.c" />
+    <ClCompile Include="TileMapFrame.c" />
+    <ClCompile Include="TileMapLogic.c" />
+    <ClCompile Include="TrackEditDlg.c" />
+    <ClCompile Include="TrackEditFrame.c" />
+    <ClCompile Include="TrackerLogic.c" />
+    <ClCompile Include="Tracker.c" />
     <ClCompile Include="WindowClasses.c" />
     <ClCompile Include="WorldMapDisplay.c" />
     <ClCompile Include="WorldMapDlg.c" />
@@ -162,20 +201,31 @@
     <ClInclude Include="DungeonEnum.h" />
     <ClInclude Include="DungeonLogic.h" />
     <ClInclude Include="GdiObjects.h" />
+    <ClInclude Include="GraphicsLogic.h" />
     <ClInclude Include="HMagicEnum.h" />
     <ClInclude Include="HMagicLogic.h" />
     <ClInclude Include="HMagicUtility.h" />
+    <ClInclude Include="LevelMapLogic.h" />
+    <ClInclude Include="MetatileLogic.h" />
     <ClInclude Include="OverworldEdit.h" />
     <ClInclude Include="OverworldEnum.h" />
     <ClInclude Include="PaletteEdit.h" />
+    <ClInclude Include="PatchEnum.h" />
+    <ClInclude Include="PatchLogic.h" />
+    <ClInclude Include="PerspectiveLogic.h" />
     <ClInclude Include="prototypes.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SampleEditLogic.h" />
+    <ClInclude Include="SampleEnum.h" />
     <ClInclude Include="ScreenEditorLogic.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="TextEnum.h" />
     <ClInclude Include="TextLogic.h" />
+    <ClInclude Include="TileMapLogic.h" />
+    <ClInclude Include="TrackerLogic.h" />
     <ClInclude Include="WorldMapLogic.h" />
     <ClInclude Include="Wrappers.h" />
+    <ClInclude Include="Zelda3_Enum.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="icon1.ico" />
@@ -188,6 +238,7 @@
     <ResourceCompile Include="z3ed.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="icon2.ico" />
     <None Include="text_resources\area_names.txt" />
     <None Include="text_resources\entrance_names.txt" />
   </ItemGroup>

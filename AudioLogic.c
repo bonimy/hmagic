@@ -2,6 +2,8 @@
     #include "structs.h"
     #include "prototypes.h"
 
+    #include "GdiObjects.h"
+
     #include "Callbacks.h"
 
     #include "HMagicLogic.h"
@@ -78,6 +80,8 @@
 
     int wnumbufs = 0;
 
+    int exitsound=0;
+
     int const freqvals[13] =
     {
         0x157,0x16c,0x181,0x198,0x1b0,0x1ca,0x1e5,0x202,0x221,
@@ -104,6 +108,52 @@
     WAVEHDR * wbufs = 0;
 
     HWAVEOUT hwo = 0;
+
+// =============================================================================
+
+const char * mus_str[] =
+{
+    "Same",
+    "None",
+    "Title",
+    "World map",
+    "Beginning",
+    "Rabbit",
+    "Forest",
+    "Intro",
+    "Town",
+    "Warp",
+    "Dark world",
+    "Master swd",
+    "File select",
+    "Soldier",
+    "Mountain",
+    "Shop",
+    "Fanfare",
+    "Castle",
+    "Palace",
+    "Cave",
+    "Clear",
+    "Church",
+    "Boss",
+    "Dungeon",
+    "Psychic",
+    "Secret way",
+    "Rescue",
+    "Crystal",
+    "Fountain",
+    "Pyramid",
+    "Kill Agah",
+    "Ganon room",
+    "Last boss",
+    "Triforce",
+    "Ending",
+    "Staff",
+    "Stop",
+    "Fade out",
+    "Lower vol",
+    "Normal vol"
+};
 
 // =============================================================================
 
@@ -299,7 +349,7 @@ Mixbuffer(void)
     unsigned char*d;
     static char v1,v2;
     
-    // \task Nitpicky, but why are all these static. Just makes things even
+    // \task[low] Nitpicky, but why are all these static. Just makes things even
     // less re-entrant for no apparent reason.
     static unsigned short f;
     static unsigned envx,
@@ -384,7 +434,7 @@ Mixbuffer(void)
             __asm add envclklo, eax
             __asm adc envclk, edx
 #else
-            // \task Not exactly equivalent. does carry really matter here?
+            // \task[med] Not exactly equivalent. does carry really matter here?
             // Do regression test.
             {
                 uint64_t w = envclkadd;
@@ -419,7 +469,7 @@ Mixbuffer(void)
             __asm sbb envx,edx
             
 #else
-            // \task not exactly equivalent? (sbb vs. sub) Do regression test.
+            // \task[med] not exactly equivalent? (sbb vs. sub) Do regression test.
             {
                 signed borrow = 0;
                 
@@ -606,44 +656,70 @@ Updatesong(void)
                     l=zch->pos;
                     j=zch->loop;
 nexttime:
-                    if(l==-1) {
+                    
+                    if(l == -1)
+                    {
                         j--;
+                        
                         if(j<=0) goto endnote;
-                        l=zch->lopst;
+                        
+                        l = zch->lopst;
+                        
                         goto nexttime;
                     }
-                    sc=sounddoc->scmd+l;
-                    if(sc->cmd!=0xc8) {
-                        if(sc->cmd==0xef) {
-                            l=*(short*)&(sc->p1);
+                    
+                    sc = sounddoc->scmd+l;
+                    
+                    if(sc->cmd != 0xc8)
+                    {
+                        if(sc->cmd == 0xef)
+                        {
+                            l = *(short*) &(sc->p1);
+                            
                             goto nexttime;
                         }
-                        if(sc->cmd>=0xe0) {
+                        
+                        if(sc->cmd >= 0xe0)
+                        {
                             l=sc->next;
+                            
                             goto nexttime;
                         }
 endnote:
-                        if(sounddev<0x20000) zw->envs=3;
-                        else midinoteoff(zch);
+                        if(sounddev < 0x20000)
+                            zw->envs = 3;
+                        else
+                            midinoteoff(zch);
                     }
                 }
             }
-            if(zch->volt) {
+            
+            if(zch->volt)
+            {
                 zch->volt--;
-                zch->vol+=zch->vold;
-                volflag|=chf;
+                zch->vol += zch->vold;
+                
+                volflag |= chf;
             }
-            if(zch->pant) {
+            
+            if(zch->pant)
+            {
                 zch->pant--;
                 zch->pan+=zch->pand;
+                
                 volflag|=chf;
             }
             
-            if(pbflag&chf)
+            if(pbflag & chf)
             {
-                if(!zch->pbt) {
+                if(!zch->pbt)
+                {
                     if(!zch->pbtim) zch->pbtim++;
-                    if(pbstatflag&chf) pbflag&=~chf; else {
+                    
+                    if(pbstatflag&chf)
+                        pbflag&=~chf;
+                    else
+                    {
                         zch->pbt=zch->pbtim+1;
                         
                         // What is the significance of this constant?
@@ -669,20 +745,29 @@ endnote:
                         }
                         pbstatflag|=chf;
                     }
-                } else if(pbstatflag&chf) {
+                }
+                else if(pbstatflag&chf)
+                {
                     if(sounddev<0x20000)
                         zch->freq+=zch->fdlt;
-                    else zch->midpb+=zch->midpbdlt;
+                    else
+                        zch->midpb+=zch->midpbdlt;
+                    
                     fqflag|=chf;
                 }
                 zch->pbt--;
             }
-            if(zch->vibt) {
+            
+            if(zch->vibt)
+            {
                 zch->vibt--;
                 zch->vibdep+=zch->vibdlt;
             }
+            
             zch->vibcnt+=zch->vibspd;
+            
             if(zch->vibdlt) fqflag|=chf;
+            
             if(!zch->tim) {
 again:
                 if(zch->pos==-1) {zch->playing=0;continue;}
@@ -931,7 +1016,7 @@ nonote:;
                         volflag|=chf;
                         break;
                     case 239:
-                        if(*(unsigned short*)&(sc->p1)>=sounddoc->m_size) break;
+                        if(*(unsigned short*)&(sc->p1) >= sounddoc->m_size) break;
                         zch->callpos=zch->pos;
                         zch->lopst=zch->pos=*(unsigned short*)&(sc->p1);
                         if(zch->pos>=sounddoc->m_size) zch->playing=0,zch->pos=zch->lopst=0;
@@ -1061,6 +1146,213 @@ Playsong(FDOC * const doc,
     sounddoc=doc;
     Playpatt();
 //  LeaveCriticalSection(&cs_song);
+}
+
+
+// =============================================================================
+
+void
+Modifywaves(FDOC * const doc,
+            int    const es)
+{
+    int i,j;
+    ZWAVE*zw=doc->waves,*zw2=zw+es;
+    j=doc->numwave;
+    for(i=0;i<j;i++) {
+        if(zw->copy==es) {
+            if(zw->end!=zw2->end)
+            {
+                zw->end = zw2->end;
+                
+                zw->buf = (short*) realloc(zw->buf,
+                                           zw->end << 1);
+            }
+            memcpy(zw->buf,zw2->buf,zw->end<<1);
+            if(zw->lopst>=zw->end) zw->lflag=0;
+            if(zw->lflag) zw->buf[zw->end]=zw->buf[zw->lopst];
+        }
+        zw++;
+    }
+}
+
+// =============================================================================
+
+void
+Playpatt(void)
+{
+    int i;
+    ZCHANNEL*zch=zchans;
+    SONGPART*sp;
+    sp=playedsong->tbl[playedpatt];
+    for(i=0;i<8;i++) zch->playing=1,zch->tim=1,zch->loop=0,(zch++)->pos=sp->tbl[i];
+}
+
+// =============================================================================
+
+void
+midinoteoff(ZCHANNEL * const zch)
+{
+    if(zch->midnote!=0xff)
+    {
+        HMIDIOUT const hmo = (HMIDIOUT) hwo;
+        
+        midiOutShortMsg(hmo,
+                        (0x80 + zch->midch) | (zch->midnote << 8) | 0x400000);
+        
+        if(zch->midnote & 0xff00)
+            midiOutShortMsg(hmo,
+                            (0x80 + zch->midch) | (zch->midnote & 0xff00) | 0x400000);
+    }
+    
+    zch->midnote = 0xff;
+}
+
+// =============================================================================
+
+void
+Stopsong(void)
+{
+    int i;
+    ZMIXWAVE*zw=zwaves;
+    sounddoc=0;
+    if(sounddev<0x20000)
+    for(i=0;i<8;i++) (zw++)->pflag=0;
+    else for(i=0;i<8;i++) midinoteoff(zchans+i);
+}
+
+// =============================================================================
+
+void CALLBACK
+midifunc(UINT timerid,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+{
+    (void) timerid, msg, inst, p1, p2;
+    
+    if(exitsound)
+    {
+//      if(exitsound==1) {
+//          timeKillEvent(midi_timer);
+//          exitsound=2;
+//          SetEvent(wave_end);
+//      }
+        return;
+    }
+    Updatesong();
+}
+
+// =============================================================================
+
+void CALLBACK
+midifunc2(HWND win,UINT msg,UINT timerid,DWORD systime)
+{
+    (void) win, msg, timerid, systime;
+    
+    if(exitsound)
+        return;
+    
+    Updatesong();
+}
+
+
+// =============================================================================
+
+int CALLBACK
+soundproc(HWAVEOUT bah,UINT msg,DWORD inst,DWORD p1,DWORD p2)
+{
+    int r;
+    
+    (void) bah, inst, p2;
+    
+    switch(msg) {
+    case WOM_DONE:
+        r=((WAVEHDR*)p1)->dwUser;
+        if(exitsound) {
+            if(exitsound==1) {
+                exitsound=2;
+                if(wave_end) SetEvent(wave_end);
+            }
+            return 0;
+        }
+        wcurbuf=r;
+        if(r==wcurbuf) {
+            while(wbufs[wcurbuf].dwFlags&WHDR_DONE) {
+                Mixbuffer();
+                wbufs[wcurbuf].dwFlags&=~WHDR_DONE;
+                waveOutWrite(hwo,wbufs+wcurbuf,sizeof(WAVEHDR));
+                wcurbuf=wcurbuf+1;
+                if(wcurbuf==wnumbufs) wcurbuf=0;
+            }
+        }
+    }
+    
+    return 0;
+}
+
+int CALLBACK soundfunc(LPVOID param)
+{
+    MSG msg;
+    
+    (void) param;
+    
+    while(GetMessage(&msg,0,0,0)) {
+        switch(msg.message) {
+        case MM_WOM_DONE:
+            soundproc(0,WOM_DONE,0,msg.lParam,0);
+            break;
+        }
+    }
+    return 0;
+}
+
+void
+Exitsound(void)
+{
+    int n;
+    
+    WAVEHDR*wh;
+    
+    if(!sndinit) return;
+    exitsound=1;
+    
+    if(sounddev < 0x20000)
+    {
+        SetCursor(wait_cursor);
+        if(soundthr) {
+            WaitForSingleObject(wave_end,INFINITE);
+        } else {
+            while(WaitForSingleObject(wave_end,50)==WAIT_TIMEOUT);
+        }
+        SetCursor(normal_cursor);
+        waveOutReset(hwo);
+        wh=wbufs;
+        for(n=0;n<wnumbufs;n++,wh++) waveOutUnprepareHeader(hwo,wh,sizeof(WAVEHDR));
+        waveOutClose(hwo);
+        CloseHandle(wave_end);
+        free(wbufs);
+        free(wdata);
+        free(mixbuf);
+    }
+    else
+    {
+        if(wver)
+        {
+            KillTimer(framewnd,midi_timer);
+        }
+        else
+        {
+            timeKillEvent(midi_timer);
+            timeEndPeriod(miditimeres);
+        }
+        
+        for(n = 0; n < 8; n++)
+            midinoteoff(zchans+n);
+        
+        midiOutClose((HMIDIOUT) hwo);
+    }
+    
+    // DeleteCriticalSection(&cs_song);
+    exitsound=0;
+    sndinit=0;
+    soundthr=0;
 }
 
 // =============================================================================

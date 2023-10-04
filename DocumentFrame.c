@@ -1,8 +1,41 @@
 
-#include "structs.h"
-#include "prototypes.h"
+    #include "structs.h"
+    #include "prototypes.h"
 
-#include "AudioLogic.h"
+    #include "AudioLogic.h"
+
+    #include "HMagicEnum.h"
+
+    #include "TextLogic.h"
+
+    #include "PatchLogic.h"
+
+// =============================================================================
+
+    void
+    DocumentFrame_OnCreate(HWND   const p_win,
+                           LPARAM const p_lp)
+    {
+        CP2C(CREATESTRUCT) cs = (CREATESTRUCT*) p_lp;
+        
+        CP2C(MDICREATESTRUCT) mdi_cs = (MDICREATESTRUCT*) cs->lpCreateParams;
+        
+        CP2(FDOC) doc = (FDOC*) mdi_cs->lParam;
+        
+        // -----------------------------
+        
+        SetWindowLongPtr(p_win, GWLP_USERDATA, (LONG_PTR) doc);
+        
+        ShowWindow(p_win, SW_SHOW);
+        
+        doc->editwin = CreateSuperDialog
+        (
+            &z3_dlg,
+            p_win,
+            0, 0, 0, 0,
+            (LPARAM) doc
+        );
+    }
 
 // =============================================================================
 
@@ -28,27 +61,27 @@ DocumentFrame_OnClose(FDOC * const param,
     
     for(i = 0; i < 2; i++)
     {
-        if(param->wmaps[i] && ((WMAPEDIT*) (GetWindowLong(param->wmaps[i], GWL_USERDATA)))->modf)
+        if(param->wmaps[i] && ((WMAPEDIT*) (GetWindowLongPtr(param->wmaps[i], GWLP_USERDATA)))->modf)
             goto save;
     }
     
     for(i=0;i<168;i++) {
-        if(param->ents[i] && ((DUNGEDIT*)(GetWindowLong(param->ents[i],GWL_USERDATA)))->modf) goto save;
+        if(param->ents[i] && ((DUNGEDIT*)(GetWindowLongPtr(param->ents[i],GWLP_USERDATA)))->modf) goto save;
     }
     
     for(i=0;i<PALNUM;i++) {
-        if(param->pals[i] && ((PALEDIT*)(GetWindowLong(param->pals[i],GWL_USERDATA)))->modf) goto save;
+        if(param->pals[i] && ((PALEDIT*)(GetWindowLongPtr(param->pals[i], GWLP_USERDATA)))->modf) goto save;
     }
     
     for(i=0;i<14;i++) {
-        if(param->dmaps[i] && ((LMAPEDIT*)(GetWindowLong(param->dmaps[i],GWL_USERDATA)))->modf) goto save;
+        if(param->dmaps[i] && ((LMAPEDIT*)(GetWindowLongPtr(param->dmaps[i], GWLP_USERDATA)))->modf) goto save;
     }
     
     for(i=0;i<11;i++) {
-        if(param->tmaps[i] && ((TMAPEDIT*)(GetWindowLong(param->tmaps[i],GWL_USERDATA)))->modf) goto save;
+        if(param->tmaps[i] && ((TMAPEDIT*)(GetWindowLongPtr(param->tmaps[i], GWLP_USERDATA)))->modf) goto save;
     }
     
-    if(param->perspwnd && ((PERSPEDIT*)(GetWindowLong(param->perspwnd,GWL_USERDATA)))->modf) goto save;
+    if(param->perspwnd && ((PERSPEDIT*)(GetWindowLongPtr(param->perspwnd, GWLP_USERDATA)))->modf) goto save;
     goto dontsave;
     
 save:
@@ -71,57 +104,89 @@ save:
     
 dontsave:
     
-    DestroyWindow(GetDlgItem(win,2000));
-    SendMessage(clientwnd,WM_MDIDESTROY,(long)win,0);
+    DestroyWindow( GetDlgItem(win, ID_SuperDlg) );
+    
+    HM_MDI_DestroyChild(clientwnd, win);
+    
     activedoc=0;
     param->modf=2;
+    
     for(i=0;i<160;i++)
     {
-        if(param->overworld[i].win) SendMessage(param->overworld[i].win,WM_CLOSE,0,0);
+        if(param->overworld[i].win)
+            SendMessage(param->overworld[i].win,WM_CLOSE,0,0);
     }
     
     for(i=0;i<168;i++)
     {
-        if(param->ents[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->ents[i],0);
+        if(param->ents[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->ents[i]);
+        }
     }
     
     for(i=0;i<4;i++)
     {
-        if(param->mbanks[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->mbanks[i],0);
+        if(param->mbanks[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->mbanks[i]);
+        }
     }
     
     for(i=0;i<PALNUM;i++)
     {
-        if(param->pals[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->pals[i],0);
+        if(param->pals[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->pals[i]);
+        }
     }
     
     for(i=0;i<2;i++)
     {
-        if(param->wmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->wmaps[i],0);
+        if(param->wmaps[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->wmaps[i]);
+        }
     }
     
-    for(i=0;i<14;i++)
+    for(i = 0; i < 14; i++)
     {
-        if(param->dmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->dmaps[i],0);
+        if(param->dmaps[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->dmaps[i]);
+        }
     }
     
-    for(i=0;i<11;i++)
+    for(i = 0; i < 11; i++)
     {
-        if(param->tmaps[i]) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->tmaps[i],0);
+        if(param->tmaps[i])
+        {
+            HM_MDI_DestroyChild(clientwnd, param->tmaps[i]);
+        }
     }
     
-    if(param->perspwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->perspwnd,0);
-    if(param->hackwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->hackwnd,0);
-    if(param->m_loaded) {
-        for(i=0;i<param->srnum;i++)
-            if(param->sr[i].editor) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->sr[i].editor,0);
+    if(param->perspwnd) HM_MDI_DestroyChild(clientwnd, param->perspwnd);
+    
+    if(param->hackwnd) HM_MDI_DestroyChild(clientwnd, param->hackwnd);
+    
+    if(param->m_loaded)
+    {
+        for(i = 0; i < param->srnum; i++)
+            if(param->sr[i].editor)
+                HM_MDI_DestroyChild(clientwnd, param->sr[i].editor);
     }
-    if(param->t_wnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->t_wnd,0);
-    if(param->perspwnd) SendMessage(clientwnd,WM_MDIDESTROY,(long)param->perspwnd,0);
+    
+    if(param->t_wnd) HM_MDI_DestroyChild(clientwnd, param->t_wnd);
+    
+    if(param->perspwnd)
+        HM_MDI_DestroyChild(clientwnd, param->perspwnd);
+    
     if(param->prev) param->prev->next=param->next;
     else firstdoc=param->next;
+    
     if(param->next) param->next->prev=param->prev;
     else lastdoc=param->prev;
+    
     h2=GetMenu(framewnd);
     h=GetSubMenu(h2,GetMenuItemCount(h2)==5?0:1);
     i=firstdoc?MF_ENABLED:MF_GRAYED;
@@ -139,66 +204,122 @@ dontsave:
     free(param->rom);
     Unloadsongs(param);
     Unloadovl(param);
-    if(param->t_loaded) {
-        for(i=0;i<param->t_number;i++) free(param->tbuf[i]);
-        free(param->tbuf);
+    
+    if(param->t_loaded)
+    {
+        size_t m_i = 0;
+        
+        for(m_i = 0; m_i < param->t_number; m_i += 1)
+        {
+            ZTextMessage_Free( &param->text_bufz[m_i] );
+        }
+        
+        free(param->text_bufz);
     }
+    
+    Doc_FreePatchInputs(param);
     
     free(param);
 }
 
 // =============================================================================
 
-// Window procedure for the document window with the large tree control.
-LRESULT CALLBACK
-docproc(HWND win,UINT msg, WPARAM wparam,LPARAM lparam)
-{
-    FDOC *param;
-    
-    switch(msg)
+    // Window procedure for the document window with the large tree control.
+    LRESULT CALLBACK
+    docproc
+    (
+        HWND   win,
+        UINT   msg,
+        WPARAM p_wp,
+        LPARAM p_lp
+    )
     {
-    
-    case WM_MDIACTIVATE:
-        activedoc=(FDOC*)GetWindowLong(win,GWL_USERDATA);
+        HWND const dlg = GetDlgItem(win, ID_SuperDlg);
         
-        goto deflt;
-    
-    case WM_CLOSE:
+        FDOC * param;
         
-        param = (FDOC*) GetWindowLong(win, GWL_USERDATA);
+        // -----------------------------
         
-        if(param)
+        switch(msg)
         {
-            DocumentFrame_OnClose(param, win);
+    
+        case WM_MDIACTIVATE:
+        {
+            HM_MdiActivateData ad = HM_MDI_GetActivateData(p_wp, p_lp);
+            
+            // -----------------------------
+            
+            if( Is(win, ad.m_activating) )
+            {
+                activedoc = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+            }
+            
+            goto default_case;
         }
         
-        break;
-
-    
-    case WM_GETMINMAXINFO:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        DefMDIChildProc(win,msg,wparam,lparam);
-        if(!param) break;
-        return SendMessage(param->editwin,WM_GETMINMAXINFO,wparam,lparam);
-    case WM_SIZE:
-        param=(FDOC*)GetWindowLong(win,GWL_USERDATA);
-        SetWindowPos(param->editwin,0,0,0,LOWORD(lparam),HIWORD(lparam),SWP_NOZORDER|SWP_NOOWNERZORDER|SWP_NOACTIVATE);
-        goto deflt;
-    case WM_CREATE:
+        case WM_SETFOCUS:
+            
+            SetFocus(dlg);
+            
+            goto default_case;
         
-        param=(FDOC*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
+        case WM_CLOSE:
+            
+            param = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+            
+            if(param)
+            {
+                DocumentFrame_OnClose(param, win);
+            }
+            
+            break;
         
-        SetWindowLongPtr(win, GWLP_USERDATA, (LONG_PTR) param);
+        case WM_GETMINMAXINFO:
+            
+            param = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+            
+            DefMDIChildProc(win, msg, p_wp, p_lp);
+            
+            if( IsNull(param) )
+            {
+                break;
+            }
+            
+            return SendMessage
+            (
+                param->editwin,
+                WM_GETMINMAXINFO,
+                p_wp,
+                p_lp
+            );
+            
+        case WM_SIZE:
+            
+            param = (FDOC*) GetWindowLongPtr(win, GWLP_USERDATA);
+            
+            SetWindowPos
+            (
+                param->editwin,
+                0,
+                0, 0,
+                LOWORD(p_lp), HIWORD(p_lp),
+                (SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE)
+            );
+            
+            goto default_case;
         
-        ShowWindow(win,SW_SHOW);
-        param->editwin=CreateSuperDialog(&z3_dlg,win,0,0,0,0,(long)param);
-    default:
-deflt:
+        case WM_CREATE:
+            
+            DocumentFrame_OnCreate(win, p_lp);
+            
+        case WM_CHILDACTIVATE:
+        default:
+        default_case:
+            
+            return DefMDIChildProc(win, msg, p_wp, p_lp);
+        }
         
-        return DefMDIChildProc(win,msg,wparam,lparam);
+        return 0;
     }
-    
-    return 0;
-}
 
 // =============================================================================

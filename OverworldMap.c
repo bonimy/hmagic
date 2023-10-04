@@ -20,6 +20,9 @@ uint8_t const map16ofs[] = {0, 1, 64, 65, 0, 1, 32, 33};
 
 // =============================================================================
 
+// \task[high] Moving exits on the OW editor should trigger a modified flag, but it
+// doesn't according to Zarby. And he's right, b/c callers of this mess don't set any special
+// flags.
 void changeposition(unsigned char*rom,int x,int y,int sx,int sy,int cx,int cy,int dx,int dy,int sp,int map,int i,int q,int door1,int door2)
 {
     int a=(map&7)<<9,b=(map&56)<<6,d,e,f,g,h,j,k,l;
@@ -69,8 +72,11 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     text_buf_ty text_buf = { 0 };
     
     int i,j,k,m;
-    short *b2,*b3;
-    unsigned char*b6;
+    
+    uint16_t const * b2 = NULL;
+    uint16_t const * b3 = NULL;
+    
+    unsigned char * b6;
     
     HGDIOBJ oldobj = 0;
     
@@ -82,22 +88,25 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 0:
         
+        // Sprites
         oldobj = SelectObject(hdc, purple_brush);
         
         if(ed->ew.param < 0x90)
         {
-            m=ed->sprset;
-            b6=ed->ebuf[m];
+            m  = ed->sprset;
+            b6 = ed->ebuf[m];
             
             for(i = ed->esize[m] - 3; i >= 0; i -= 3)
             {
-                if(ed->tool==5 && i==ed->selobj)
+                if( (ed->tool == 5) && (i == ed->selobj) )
+                {
                     continue;
+                }
                 
-                rc.left=((b6[i+1])<<4)-n;
-                rc.top=((b6[i])<<4)-o;
+                rc.left = ( (b6[i + 1]) << 4 ) - n;
+                rc.top  = ( (b6[i])     << 4 ) - o;
                 
-                Drawdot(hdc,&rc,q,n,o);
+                Drawdot(hdc, &rc, q, n, o);
                 GetOverString(ed, 5, i, text_buf);
                 
                 text_r = rc;
@@ -115,97 +124,28 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
     
     case 1:
         
-        b2=(short*)(ed->ew.doc->rom + 0xdb96f);
-        b3=(short*)(ed->ew.doc->rom + 0xdba71);
+        b2 = (uint16_t*) (ed->ew.doc->rom + 0xdb96f);
+        b3 = (uint16_t*) (ed->ew.doc->rom + 0xdba71);
         
+        // Entrances
         oldobj = SelectObject(hdc, yellow_brush);
         
-        for(i=0;i<129;i++)
+        for(i = 0; i < 129; i++)
         {
             
             if(ed->tool==3 && i==ed->selobj)
                 continue;
             
-            if(b2[i]==ed->ew.param)
+            if( ldle16h_i(b2, i) == ed->ew.param)
             {
-                j=b3[i];
+                j = ldle16h_i(b3, i);
+                
                 rc.left=((j&0x7e)<<3)-n;
                 rc.top=((j&0x1f80)>>3)-o;
+                
                 Drawdot(hdc,&rc,q,n,o);
+                
                 wsprintf(text_buf,"%02X",rom[0xdbb73 + i]);
-                
-                PaintSprName(hdc,
-                             rc.left,
-                             rc.top,
-                             &rc,
-                             text_buf);
-            }
-        }
-        break;
-    case 2:
-        b2=(short*)(rom + 0x160ef);
-        b3=(short*)(rom + 0x16051);
-        oldobj = SelectObject(hdc, white_brush);
-        for(i=0;i<79;i++) {
-            if(ed->tool==7 && i==ed->selobj) continue;
-            if(rom[0x15e28 + i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
-                rc.left=j-n;
-                rc.top=k-o;
-                Drawdot(hdc,&rc,q,n,o);
-                
-                wsprintf(text_buf,
-                         "%04X",
-                         ((unsigned short*)(rom + 0x15d8a))[i]);
-                
-                PaintSprName(hdc,
-                             rc.left, rc.top,
-                             &rc,
-                             text_buf);
-            }
-        }
-        break;
-    case 3:
-        b2=(short*)(ed->ew.doc->rom + 0xdb826);
-        b3=(short*)(ed->ew.doc->rom + 0xdb800);
-        oldobj = SelectObject(hdc, black_brush);
-        for(i=0;i<19;i++) {
-            if(ed->tool==8 && i==ed->selobj) continue;
-            if(b2[i]==ed->ew.param) {
-                j=b3[i];
-                j+=0x400;
-                rc.left=((j&0x7e)<<3)-n;
-                rc.top=((j&0x1f80)>>3)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                
-                wsprintf(text_buf,
-                         "%02X",
-                         rom[0xdb84c + i]);
-                
-                PaintSprName(hdc,
-                             rc.left,
-                             rc.top,
-                             &rc,
-                             text_buf);
-            }
-        }
-        break;
-    case 4:
-        oldobj = SelectObject(hdc, red_brush);
-        if(ed->ew.param<0x80) {
-            for(i=0;i<ed->ssize;i+=3) {
-                if(ed->tool==10 && i==ed->selobj) continue;
-                j=ed->sbuf[i];
-                k=ed->sbuf[i+1];
-                j+=k<<8;
-                rc.left=((j&0x7e)<<3)-n;
-                rc.top=((j&0x1f80)>>3)-o;
-                Drawdot(hdc,&rc,q,n,o);
-                
-                GetOverString(ed, 10, i, text_buf);
                 
                 PaintSprName(hdc,
                              rc.left,
@@ -217,29 +157,159 @@ Paintovlocs(HDC hdc,OVEREDIT*ed,int t,int n,int o,int q,
         
         break;
     
-    case 5:
-        b2=(short*)(rom + 0x16b8f);
-        b3=(short*)(rom + 0x16b6d);
-        oldobj = SelectObject(hdc, blue_brush);
-        for(i=0;i<17;i++) {
-            if(ed->tool==9 && i==ed->selobj) continue;
-            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param) {
-                j=b2[i];
-                k=b3[i];
-                j-=((ed->ew.param&7)<<9);
-                k-=((ed->ew.param&56)<<6);
+    case 2:
+        
+        b2 = (uint16_t*) (rom + 0x160ef);
+        b3 = (uint16_t*) (rom + 0x16051);
+        
+        // Exits
+        oldobj = SelectObject(hdc, white_brush);
+        
+        for(i = 0; i < 79; i++)
+        {
+            if(ed->tool==7 && i==ed->selobj)
+                continue;
+            
+            if(rom[0x15e28 + i] == ed->ew.param)
+            {
+                j = ldle16h_i(b2, i);
+                k = ldle16h_i(b3, i);
+                
+                j -= ((ed->ew.param&7)<<9);
+                k -= ((ed->ew.param&56)<<6);
                 
                 rc.left=j-n;
                 rc.top=k-o;
                 
                 Drawdot(hdc,&rc,q,n,o);
                 
-                GetOverString(ed, 9, i, text_buf);
+                wsprintf(text_buf,
+                         "%04X",
+                         ((unsigned short*)(rom + 0x15d8a))[i]);
+                
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
+                PaintSprName(hdc,
+                             rc.left, rc.top,
+                             &text_r,
+                             text_buf);
+            }
+        }
+        
+        break;
+    
+    case 3:
+        
+        b2 = (uint16_t*) (ed->ew.doc->rom + 0xdb826);
+        b3 = (uint16_t*) (ed->ew.doc->rom + 0xdb800);
+        
+        // Holes
+        oldobj = SelectObject(hdc, black_brush);
+        
+        for(i = 0; i < 19; i++)
+        {
+            if( (ed->tool == 8) && (i == ed->selobj) )
+                continue;
+            
+            if(b2[i] == ed->ew.param)
+            {
+                j  = ldle16h_i(b3, i);
+                j += 0x400;
+                
+                rc.left=((j&0x7e)<<3)-n;
+                rc.top=((j&0x1f80)>>3)-o;
+                
+                Drawdot(hdc,&rc,q,n,o);
+                
+                wsprintf(text_buf,
+                         "%02X",
+                         rom[0xdb84c + i]);
+                
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
                 
                 PaintSprName(hdc,
                              rc.left,
                              rc.top,
-                             &rc,
+                             &text_r,
+                             text_buf);
+            }
+        }
+        
+        break;
+    
+    case 4:
+        
+        // Items
+        oldobj = SelectObject(hdc, red_brush);
+        
+        if(ed->ew.param < 0x80)
+        {
+            for(i=0;i<ed->ssize;i+=3)
+            {
+                if(ed->tool==10 && i==ed->selobj) continue;
+                j=ed->sbuf[i];
+                k=ed->sbuf[i+1];
+                j+=k<<8;
+                rc.left=((j&0x7e)<<3)-n;
+                rc.top=((j&0x1f80)>>3)-o;
+                Drawdot(hdc,&rc,q,n,o);
+                
+                GetOverString(ed, 10, i, text_buf);
+                
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
+                PaintSprName(hdc,
+                             rc.left,
+                             rc.top,
+                             &text_r,
+                             text_buf);
+            }
+        }
+        
+        break;
+    
+    case 5:
+        
+        b2 = (uint16_t*) (rom + 0x16b8f);
+        b3 = (uint16_t*) (rom + 0x16b6d);
+        
+        // Bird ("Fly-{N}") locations.
+        oldobj = SelectObject(hdc, blue_brush);
+        
+        for(i = 0; i < 17; i++)
+        {
+            if(ed->tool == 9 && i == ed->selobj)
+                continue;
+            
+            if(((short*)(rom + 0x16ae5))[i]==ed->ew.param)
+            {
+                j = ldle16h_i(b2, i);
+                k = ldle16h_i(b3, i);
+                
+                j -= ( (ed->ew.param & 0x07) << 9);
+                k -= ( (ed->ew.param & 0x38) << 6);
+                
+                rc.left = (j - n);
+                rc.top  = (k - o);
+                
+                Drawdot(hdc, &rc, q, n, o);
+                
+                GetOverString(ed, 9, i, text_buf);
+                
+                text_r = rc;
+                
+                Getstringobjsize(text_buf, &text_r);
+                
+                PaintSprName(hdc,
+                             rc.left,
+                             rc.top,
+                             &text_r,
                              text_buf);
             }
         }
@@ -564,7 +634,7 @@ overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
     
     unsigned char*b6 = 0,*rom = 0;
     
-    OVEREDIT * const ed = (OVEREDIT*) GetWindowLong(win, GWL_USERDATA);
+    OVEREDIT * const ed = (OVEREDIT*) GetWindowLongPtr(win, GWLP_USERDATA);
     
     switch(msg)
     {
@@ -665,7 +735,14 @@ overmapproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                         if(k&j) AppendMenu(menu2,MF_STRING,i+9,sprset_str[i]);
                         k<<=1;
                     }
-                    AppendMenu(menu,MF_STRING|MF_POPUP,(int)menu2,"Use same sprites as");
+                    
+                    AppendMenu
+                    (
+                        menu,
+                        MF_STRING | MF_POPUP,
+                        (UINT_PTR) menu2,
+                        "Use same sprites as"
+                    );
                 }
             }
             if(ed->disp&8) AppendMenu(menu,MF_STRING,12,"Clear overlay");
@@ -878,27 +955,62 @@ addexit:
                 ed->ecopy[k]=-1;
                 InvalidateRect(win,0,0);
             }
-        } else {
-            if(ed->disp&8) {
+        }
+        else
+        {
+            if(ed->disp&8)
+            {
                 l=(lparam>>20)+(ed->mapscrollv<<1);
                 k=((lparam&65535)>>4)+(ed->mapscrollh<<1);
+                
                 if(ed->mapsize) q=63; else q=31;
+                
                 if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ovlmap[(ed->disp&1)?((k&31)+((l&31)<<5) + 0x1000):k+(l<<6)],0);
-            } else {
+                
+                SetDlgItemInt
+                (
+                    ed->dlg,
+                    SD_Over_MetaTileIndexEdit,
+                    ed->ovlmap[(ed->disp&1)?((k&31)+((l&31)<<5) + 0x1000):k+(l<<6)],
+                    0
+                );
+            }
+            else
+            {
                 l=(lparam>>21)+ed->mapscrollv;
                 k=((lparam&65535)>>5)+ed->mapscrollh;
                 if(ed->mapsize) q=31; else q=15;
                 if(k>q || l>q) break;
-                SetDlgItemInt(ed->dlg,3005,ed->ov->buf[k+(l<<5)],0);
+                
+                SetDlgItemInt
+                (
+                    ed->dlg,
+                    SD_Over_MetaTileIndexEdit,
+                    ed->ov->buf[k+(l<<5)],0
+                );
             }
         }
         break;
+    
     case WM_GETDLGCODE:
+        
         return DLGC_WANTCHARS;
+    
     case WM_CHAR:
         
-        if(wparam==26) {overdlgproc(GetParent(win),WM_COMMAND,3014,0);break;}
+        if(wparam == 26)
+        {
+            OverworldDlg
+            (
+                GetParent(win),
+                WM_COMMAND,
+                SD_OverUndoButton,
+                0
+            );
+            
+            break;
+        }
+        
         i=ed->selobj;
         
         if(i == -1)
@@ -1030,7 +1142,14 @@ updent:
         switch(ed->tool)
         {
         case 3:
-            SendMessage(ed->ew.doc->editwin,4000,0x30000 + ed->ew.doc->rom[0xdbb73 + ed->selobj],0);
+            
+            // Double clicked on an entrance marker, launch a dungeon editor
+            // window that corresponds to that entrance.
+            SendMessage(ed->ew.doc->editwin,
+                        4000,
+                        0x30000 + ed->ew.doc->rom[0xdbb73 + ed->selobj],
+                        0);
+            
             break;
         case 5:
             
@@ -1103,40 +1222,55 @@ updent:
             
             break;
         }
-        if(ed->dtool) break;
-        if(ed->tool!=1 && ed->selflag) {
+        
+        if(ed->dtool)
+        {
+            break;
+        }
+        
+        if(ed->tool!=1 && ed->selflag)
+        {
             Overselectwrite(ed);
             Getselectionrect(ed,&rc);
             InvalidateRect(win,&rc,0);
         }
+        
         ed->dtool=ed->tool+1;
-        if(ed->tool!=6) SetCapture(win);
+        
+        if(ed->tool != 6)
+        {
+            SetCapture(win);
+        }
+        
         SetFocus(win);
+        
         goto mousemove;
     
     mousemove:
     case WM_MOUSEMOVE:
         
         {
-            HWND const par = GetParent(win);
+            HWND const parent = GetParent(win);
             
-            RECT const par_rect = HM_GetWindowRect(par);
+            RECT const parent_rect = HM_GetWindowRect(parent);
             
             HM_MouseMoveData const d =
             HM_GetMouseMoveData(win, wparam, lparam);
             
             POINT const rel_pos =
             {
-                d.m_screen_pos.x - par_rect.left,
-                d.m_screen_pos.y - par_rect.top
+                d.m_screen_pos.x - parent_rect.left,
+                d.m_screen_pos.y - parent_rect.top
             };
             
             LPARAM const new_lp = MAKELPARAM(rel_pos.x, rel_pos.y);
             
-            PostMessage(GetParent(win), msg, wparam, new_lp);
+            // -----------------------------
+            
+            PostMessage(parent, msg, wparam, new_lp);
         }
         
-        if(!ed->dtool)
+        if( ! ed->dtool )
         {
             break;
         }
@@ -1178,7 +1312,9 @@ updent:
                 ed->ov->modf=1;
                 break;
             }
-            if(msg==WM_LBUTTONDOWN) {
+            
+            if( Is(msg, WM_LBUTTONDOWN) )
+            {
                 memcpy(ed->undobuf,ed->ov->buf,0x800);
                 ed->undomodf=ed->ov->modf;
             }
@@ -1204,9 +1340,12 @@ updent:
         
         case 2:
         case 3:
-            k>>=5;
-            l>>=5;
-            if(msg==WM_LBUTTONDOWN) {
+            
+            k >>= 5;
+            l >>= 5;
+            
+            if(msg==WM_LBUTTONDOWN)
+            {
                 if(ed->selflag) if(k>=ed->rectleft && k<ed->rectright && l>=ed->recttop && l<ed->rectbot) {
                     ed->selx=k;
                     ed->sely=l;
@@ -1437,7 +1576,7 @@ movetile:
                         // ranges.
                         if(always)
                         {
-                            int max_pos = (512 << ed->mapsize) - 0x10;
+                            int max_pos = (512 << (ed->mapsize? 1 : 0) ) - 0x10;
                             
                             if(ed->objx < 0)
                                 ed->objx = 0;

@@ -1,4 +1,7 @@
 
+    #include <stdio.h>
+    #include <stdarg.h>
+
     #include "prototypes.h"
 
     #include "Wrappers.h"
@@ -95,7 +98,7 @@ HM_GetDlgItemRect(HWND     const p_dlg,
 signed int
 HM_GetSignedLoword(LPARAM p_ptr)
 {
-    return ( (int)(short) LOWORD(p_ptr) );
+    return ( (int) (short) LOWORD(p_ptr) );
 }
 
 // =============================================================================
@@ -103,7 +106,7 @@ HM_GetSignedLoword(LPARAM p_ptr)
 signed int
 HM_GetSignedHiword(LPARAM p_ptr)
 {
-    return ( (int)(short) HIWORD(p_ptr) );
+    return ( (int) (short) HIWORD(p_ptr) );
 }
 
 // =============================================================================
@@ -146,25 +149,29 @@ HM_GetMouseMoveData(HWND   const p_win,
 
 // =============================================================================
 
-HM_MouseWheelData
-HM_GetMouseWheelData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MouseWheelData d;
+    HM_MouseWheelData
+    HM_GetMouseWheelData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    )
+    {
+        HM_MouseWheelData d;
+        
+        d.m_distance = HM_GetSignedHiword(p_wp);
+        
+        d.m_flags = LOWORD(p_wp);
+        
+        d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
+        d.m_control_key = truth(d.m_flags & MK_CONTROL);
     
-    d.m_distance = HM_GetSignedHiword(p_wp);
-    
-    d.m_flags = LOWORD(p_wp);
-    
-    d.m_shift_key   = truth(d.m_flags & MK_SHIFT);
-    d.m_control_key = truth(d.m_flags & MK_CONTROL);
-
-    d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
-    
-    d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
-    d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
-    
-    return d;
-}
+        d.m_alt_key     = (GetKeyState(VK_MENU) < 0 );
+        
+        d.m_screen_pos.x = HM_GetSignedLoword(p_lp);
+        d.m_screen_pos.y = HM_GetSignedHiword(p_lp);
+        
+        return d;
+    }
 
 // =============================================================================
 
@@ -213,63 +220,139 @@ HM_GetMouseData(MSG const p_packed_msg)
 
 // =============================================================================
 
-HM_MdiActivateData
-HM_GetMdiActivateData(WPARAM const p_wp, LPARAM const p_lp)
-{
-    HM_MdiActivateData d;
-    
-    // -----------------------------
-    
-    d.m_deactivating = (HWND) p_wp;
-    d.m_activating   = (HWND) p_lp;
-    
-    return d;
-}
+    extern HM_MdiActivateData
+    HM_MDI_GetActivateData
+    (
+        WPARAM const p_wp,
+        LPARAM const p_lp
+    )
+    {
+        HM_MdiActivateData d;
+        
+        // -----------------------------
+        
+        d.m_deactivating = (HWND) p_wp;
+        d.m_activating   = (HWND) p_lp;
+        
+        return d;
+    }
 
 // =============================================================================
 
-BOOL
-HM_DrawRectangle(HDC  const p_device_context,
-                 RECT const p_rect)
-{
-    return Rectangle(p_device_context,
-                     p_rect.left,
-                     p_rect.top,
-                     p_rect.right,
-                     p_rect.bottom);
-}
+    extern HWND
+    HM_MDI_GetActiveChild
+    (
+        HWND const p_mdi_client_wnd
+    )
+    {
+        HWND const h = (HWND) SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIGETACTIVE,
+            HM_NullWP(),
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return h;
+    }
 
 // =============================================================================
 
-SCROLLINFO
-HM_GetVertScrollInfo(HWND const p_win)
-{
-    SCROLLINFO si = { 0 };
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_VERT, &si);
-    
-    return si;
-}
+    extern LRESULT
+    HM_MDI_ActivateChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    )
+    {
+        // MDI child windows should return zero if they process this message.
+        LRESULT r = SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIACTIVATE,
+            (WPARAM) p_mdi_child_wnd,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
 
 // =============================================================================
 
-SCROLLINFO
-HM_GetHorizScrollInfo(HWND const p_win)
-{
-    SCROLLINFO si = { 0 };
-    
-    si.cbSize = sizeof(SCROLLINFO);
-    
-    si.fMask = SIF_ALL;
-     
-    GetScrollInfo(p_win, SB_HORZ, &si);
-    
-    return si;
-}
+    extern void
+    HM_MDI_DestroyChild
+    (
+        HWND const p_mdi_client_wnd,
+        HWND const p_mdi_child_wnd
+    )
+    {
+        SendMessage
+        (
+            p_mdi_client_wnd,
+            WM_MDIDESTROY,
+            (WPARAM) p_mdi_child_wnd,
+            0
+        );
+    }
+
+// =============================================================================
+
+    BOOL
+    HM_DrawRectangle
+    (
+        HDC  const p_device_context,
+        RECT const p_rect
+    )
+    {
+        return Rectangle
+        (
+            p_device_context,
+            p_rect.left,
+            p_rect.top,
+            p_rect.right,
+            p_rect.bottom
+        );
+    }
+
+// =============================================================================
+
+    SCROLLINFO
+    HM_GetVertScrollInfo(HWND const p_win)
+    {
+        SCROLLINFO si = { 0 };
+        
+        // -----------------------------
+        
+        si.cbSize = sizeof(SCROLLINFO);
+        
+        si.fMask = SIF_ALL;
+         
+        GetScrollInfo(p_win, SB_VERT, &si);
+        
+        return si;
+    }
+
+// =============================================================================
+
+    SCROLLINFO
+    HM_GetHorizScrollInfo(HWND const p_win)
+    {
+        SCROLLINFO si = { 0 };
+        
+        // -----------------------------
+        
+        si.cbSize = sizeof(SCROLLINFO);
+        
+        si.fMask = SIF_ALL;
+         
+        GetScrollInfo(p_win, SB_HORZ, &si);
+        
+        return si;
+    }
 
 // =============================================================================
 
@@ -484,51 +567,429 @@ HM_NullWP(void)
 
 // =============================================================================
 
-LPARAM
-HM_NullLP(void)
-{
-    return (LPARAM) 0;
-}
+    LPARAM
+    HM_NullLP(void)
+    {
+        return (LPARAM) 0;
+    }
 
 // =============================================================================
 
-unsigned long
-HM_NumPadKeyDownFilter(MSG const p_packed_msg)
-{
-    unsigned long const key_info = p_packed_msg.lParam;
-    
-    unsigned long const key = p_packed_msg.wParam;
-    
-    // -----------------------------
-    
-    if( ! (key_info & 0x1000000) )
+    extern int
+    HM_ListBox_GetCount
+    (
+        HWND const p_listbox
+    )
     {
-        // Allows the num pad directional keys to work regardless of 
-        // whether numlock is on or not. (This block is entered if numlock
-        // is off.)
+        int const item_count = SendMessage
+        (
+            p_listbox,
+            LB_GETCOUNT,
+            HM_NullWP(),
+            HM_NullLP()
+        );
         
-        switch(key)
-        {
-           
-        default:
-            break;
+        // -----------------------------
         
-        case VK_RIGHT:
-            return VK_NUMPAD6;
-        
-        case VK_LEFT:
-            return VK_NUMPAD4;
-        
-        case VK_DOWN:
-            return VK_NUMPAD2;
-        
-        case VK_UP:
-            return VK_NUMPAD8;
-        }
+        return item_count;
     }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_AddString
+    (
+        HWND    const p_listbox,
+        LPCSTR  const p_string
+    )
+    {
+        int index = SendMessage
+        (
+            p_listbox,
+            LB_ADDSTRING,
+            0,
+            (LPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return index;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_SetItemData
+    (
+        HWND   const p_listbox,
+        int    const p_item_index,
+        LPARAM const p_data
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_SETITEMDATA,
+            (WPARAM) p_item_index,
+            p_data
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetSelectedItem
+    (
+        HWND const p_listbox
+    )
+    {
+        int selected_item_index = SendMessage
+        (
+            p_listbox,
+            LB_GETCURSEL,
+            0,
+            0
+        );
+        
+        // -----------------------------
+        
+        return selected_item_index;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_SelectItem
+    (
+        HWND const p_listbox,
+        int  const p_item_index
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_SETCURSEL,
+            p_item_index,
+            0
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_InsertString
+    (
+        HWND       const p_listbox,
+        int        const p_insertion_index,
+        CP2C(char)       p_string
+    )
+    {
+        // The index at which the string was inserted.
+        int const inserted_where = SendMessage
+        (
+            p_listbox,
+            LB_INSERTSTRING,
+            p_insertion_index,
+            (LPARAM) p_string
+        );
+        
+        // -----------------------------
+        
+        return inserted_where;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_DeleteString
+    (
+        HWND const p_listbox,
+        int  const p_deletion_index
+    )
+    {
+        int const remaining_string_count = SendMessage
+        (
+            p_listbox,
+            LB_DELETESTRING,
+            p_deletion_index,
+            0
+        );
+        
+        // -----------------------------
+        
+        return remaining_string_count;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetText
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(char)       p_buffer
+    )
+    {
+        int const text_length = SendMessage
+        (
+            p_listbox,
+            LB_GETTEXT,
+            p_item_index,
+            (LPARAM) p_buffer
+        );
+        
+        // -----------------------------
+        
+        return text_length;
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetTextLength
+    (
+        HWND      const p_listbox,
+        int       const p_item_index
+    )
+    {
+        int const text_length = SendMessage
+        (
+            p_listbox,
+            LB_GETTEXTLEN,
+            p_item_index,
+            HM_NullLP()
+        );
+        
+        // -----------------------------
+        
+        return text_length;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_ListBox_ResetContent
+    (
+        HWND const p_listbox
+    )
+    {
+        SendMessage
+        (
+            p_listbox,
+            LB_RESETCONTENT,
+            0,
+            0
+        );
+    }
+
+// =============================================================================
+
+    extern int
+    HM_ListBox_GetItemRect
+    (
+        HWND      const p_listbox,
+        int       const p_item_index,
+        CP2(RECT)       p_item_rect
+    )
+    {
+        int r = SendMessage
+        (
+            p_listbox,
+            LB_GETITEMRECT,
+            p_item_index,
+            (LPARAM) p_item_rect
+        );
+        
+        // -----------------------------
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_ListBox_SetHorizontalExtent
+    (
+        HWND const p_listbox,
+        int  const p_extent
+    )
+    {
+        SendMessage
+        (
+            p_listbox,
+            LB_SETHORIZONTALEXTENT,
+            p_extent,
+            HM_NullLP()
+        );
+    }
+
+// =============================================================================
     
-    return key;
-}
+    extern int
+    HM_ListBox_CalcMaxTextExtent
+    (
+        HWND const p_listbox
+    )
+    {
+        size_t max_text_length = 0x400;
+        
+        char * text_buf = (char*) calloc(1, max_text_length);
+        
+        int i = 0;
+        
+        int const item_count = HM_ListBox_GetCount(p_listbox);
+        
+        int max_item_extent = 0;
+        
+        HFONT const font = (HFONT) SendMessage
+        (p_listbox, WM_GETFONT, HM_NullWP(), HM_NullLP() );
+        
+        HDC const dc = GetDC(p_listbox);
+
+        HGDIOBJ const old_font = SelectObject(dc, font);
+        
+        // -----------------------------
+        
+        for(i = 0; i < item_count; i += 1)
+        {
+            size_t text_length = HM_ListBox_GetTextLength(p_listbox, i);
+            
+            SIZE item_size = { 0 };
+            
+            RECT item_rect = { 0 };
+            
+            // -----------------------------
+            
+            if(text_length > max_text_length)
+            {
+                // Add some slop on the end so we shouldn't have to reallocate
+                // too often.
+                max_text_length = (text_length + 0x400);
+                
+                text_buf = (char*) realloc(text_buf, max_text_length);
+            }
+            
+            HM_ListBox_GetText(p_listbox, i, text_buf);
+            
+            GetTextExtentPoint32(dc, text_buf, text_length, &item_size);
+            
+            HM_ListBox_GetItemRect
+            (
+                p_listbox,
+                i,
+                &item_rect
+            );
+
+            if(item_size.cx > max_item_extent)
+            {
+                max_item_extent = item_size.cx;
+            }
+        }
+        
+        if(text_buf)
+        {
+            free(text_buf);
+        }
+        
+        SelectObject(dc, old_font);
+        
+        ReleaseDC(p_listbox, dc);
+        
+        return max_item_extent;
+    }
+
+// =============================================================================
+
+    extern unsigned long
+    HM_NumPadKeyDownFilter
+    (
+        MSG const p_packed_msg
+    )
+    {
+        unsigned long const key_info = p_packed_msg.lParam;
+        
+        unsigned long const key = p_packed_msg.wParam;
+        
+        // -----------------------------
+        
+        if( ! (key_info & 0x1000000) )
+        {
+            // Allows the num pad directional keys to work regardless of 
+            // whether numlock is on or not. (This block is entered if numlock
+            // is off.)
+            
+            switch(key)
+            {
+               
+            default:
+                break;
+            
+            case VK_RIGHT:
+                return VK_NUMPAD6;
+            
+            case VK_LEFT:
+                return VK_NUMPAD4;
+            
+            case VK_DOWN:
+                return VK_NUMPAD2;
+            
+            case VK_UP:
+                return VK_NUMPAD8;
+            }
+        }
+        
+        return key;
+    }
+
+// =============================================================================
+
+    extern void
+    HM_OK_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    )
+    {
+        MessageBox
+        (
+            p_win,
+            p_prompt,
+            p_title_bar,
+            MB_OK
+        );
+    }
+
+// =============================================================================
+
+    extern BOOL
+    HM_YesNo_MsgBox
+    (
+        HWND       const p_win,
+        CP2C(char)       p_prompt,
+        CP2C(char)       p_title_bar
+    )
+    {
+        int response = MessageBox
+        (
+            p_win,
+            p_prompt,
+            p_title_bar,
+            MB_YESNO
+        );
+        
+        // -----------------------------
+        
+        return Is(response, IDYES);
+    }
 
 // =============================================================================
 
@@ -571,4 +1032,279 @@ hm_strndup(char const * const p_str,
 
 // =============================================================================
 
+    /**
+        Returns TRUE if the second parameter is found at the location
+        pointed to by the first parameter.
+    */
+    BOOL
+    HM_CheckEmbeddedStr(void const * const p_buffer,
+                        char const * const p_string)
+    {
+        char const * const buf = (char const *) p_buffer;
+        
+        size_t const len = strlen(p_string);
+        
+        int r = strncmp(buf, p_string, len);
+        
+        // -----------------------------
+        
+        // The standard C function above returns zero only in the case of an
+        // exact match.
+        return (r == 0);
+    }
 
+// =============================================================================
+
+    BOOL
+    HM_FileExists
+    (
+        CP2C(char)  p_filename,
+        CP2(HANDLE) p_handle
+    )
+    {
+        HANDLE h = CreateFile(p_filename,
+                              GENERIC_READ,
+                              0,
+                              0,
+                              OPEN_EXISTING,
+                              0,
+                              0);
+        
+        // -----------------------------
+        
+        p_handle[0] = h;
+        
+        return (h != INVALID_HANDLE_VALUE);
+    }
+
+// =============================================================================
+
+    extern int
+    vasprintf
+    (
+        CP2(char *)       p_buf_out,
+        CP2C(char)        p_fmt,
+        va_list     const p_var_args
+    )
+    {
+        va_list ap1;
+        
+        size_t size;
+        
+        char * buf;
+        
+        int r = 0;
+        
+        // -----------------------------
+        
+        va_copy(ap1, p_var_args);
+        
+        size = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
+        
+        va_end(ap1);
+        
+        buf = (char*) calloc(1, size);
+        
+        if( ! buf )
+        {
+            return -1;
+        }
+        
+        r = vsnprintf
+        (
+            buf,
+            size,
+            p_fmt,
+            p_var_args
+        );
+        
+        // \note This is done after the formatting of the newly allocated
+        // string, because if the original string was input to the new string
+        // we'll end up referencing freed memory which is bad-mmkay.
+        if(p_buf_out[0])
+        {
+            free(p_buf_out[0]);
+            
+            p_buf_out[0] = NULL;
+        }
+        
+        (*p_buf_out) = buf;
+        
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    asprintf
+    (
+        CP2(char *) p_buf_out,
+        CP2C(char)  p_fmt,
+        ...
+    )
+    {
+        int r;
+        
+        // -----------------------------
+        
+        va_list var_args;
+    
+        va_start(var_args, p_fmt);
+        
+        r = vasprintf(p_buf_out, p_fmt, var_args);
+        
+        va_end(var_args);
+    
+        return r;
+    }
+
+// =============================================================================
+
+    extern int
+    vascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        va_list       const p_var_args
+    )
+    {
+        va_list ap1;
+        
+        size_t current_len    = 0;
+        size_t additional_len = 0;
+        size_t final_len      = 0;
+        
+        char * buf = NULL;
+        
+        // -----------------------------
+        
+        va_copy(ap1, p_var_args);
+        
+        additional_len = vsnprintf(NULL, 0, p_fmt, ap1) + 1;
+        
+        va_end(ap1);
+        
+        if( ! p_buf_out )
+        {
+            return -1;
+        }
+        
+        if( p_buf_out[0] )
+        {
+            current_len = strlen(p_buf_out[0]);
+            
+            final_len = (current_len + additional_len + 1);
+            
+            buf = (char*) recalloc(p_buf_out[0],
+                                   final_len,
+                                   current_len + 1,
+                                   sizeof(char) );
+        }
+        else
+        {
+            buf = (char*) calloc(1, additional_len);
+            
+            final_len = additional_len;
+        }
+        
+        if( ! buf )
+        {
+            return -1;
+        }
+        
+        p_buf_out[0] = buf;
+        
+        return vsnprintf(buf + current_len,
+                         final_len,
+                         p_fmt,
+                         p_var_args);
+    }
+
+// =============================================================================
+
+    extern int
+    ascatf
+    (
+        char       ** const p_buf_out,
+        CP2C(char)          p_fmt,
+        ...
+    )
+    {
+        int r;
+        
+        // -----------------------------
+        
+        va_list var_args;
+        
+        va_start(var_args, p_fmt);
+        
+        r = vascatf(p_buf_out, p_fmt, var_args);
+        
+        va_end(var_args);
+        
+        return r;
+    }
+
+// =============================================================================
+
+#if 1
+
+    static int
+    IconResourceArray[] = { IDI_ICON1 };
+
+    enum
+    {
+        NUM_AnimIcons = MACRO_ArrayLength(IconResourceArray)
+    };
+
+// =============================================================================
+
+    #include "HMagicLogic.h"
+
+// =============================================================================
+
+    void
+    AnimateIcon
+    (
+        HINSTANCE const hInstance,
+        HWND      const hWnd, 
+        DWORD     const dwMsgType,
+        UINT      const p_icon_index
+    )
+    {
+        LPCTSTR a = MAKEINTRESOURCE( IconResourceArray[p_icon_index] );
+        
+        HICON const h_icon = LoadIcon(hInstance, a);
+        
+        NOTIFYICONDATA IconData;
+        
+        // -----------------------------
+        
+        IconData.cbSize = sizeof(NOTIFYICONDATA);
+        IconData.hIcon  = h_icon;
+        IconData.hWnd   = hWnd;
+        
+        lstrcpyn(IconData.szTip,
+                 "Animated Icons - Demo", 
+                 strlen("Animated Icons - Demo") + 1);
+        
+        IconData.uCallbackMessage = HM_WM_1;
+        
+        IconData.uFlags = (NIF_MESSAGE | NIF_ICON | NIF_TIP);
+        
+        Shell_NotifyIcon(dwMsgType, &IconData);
+        
+        SendMessage(hWnd,
+                    WM_SETICON,
+                    (WPARAM) NULL,
+                    (LPARAM) h_icon);
+        
+        if(h_icon)
+        {
+            DestroyIcon(h_icon);
+        }
+    }
+
+// =============================================================================
+
+#endif

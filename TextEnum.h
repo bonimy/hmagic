@@ -5,19 +5,19 @@
 
 // =============================================================================
 
+    #include "HMagicEnum.h"
+
+// =============================================================================
+
     enum
     {
-        ID_TextFirst = 3000,
-        
-        ID_TextEntriesListControl = ID_TextFirst,
+        ID_TextEntriesListControl = ID_SuperDlg_FirstChild,
         ID_TextEditWindow,
         ID_TextSetTextButton,
         ID_TextEditTextRadio,
         ID_TextEditDictionaryRadio,
         
         ID_TextAfterLast,
-        ID_TextNumControls = (ID_TextAfterLast - ID_TextFirst)
-    
     };
 
 // =============================================================================
