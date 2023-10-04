@@ -10186,12 +10186,17 @@ BOOL CALLBACK editroomprop(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
             CheckDlgButton(win,IDC_CHECK5,BST_CHECKED);
             break;
         }
+        
 updbtn:
-        l=1<<hs-7;
+        
+        l = 1 << hs - 7;
         for(i=0;i<17;i++) ShowWindow(GetDlgItem(win,warp_ids[i]),(warp_flag[i]&l)?SW_HIDE:SW_SHOW);
+        
         EnableWindow(GetDlgItem(win,IDC_BUTTON1),hs>7);
         EnableWindow(GetDlgItem(win,IDC_BUTTON3),hs<14);
+        
         break;
+    
     case WM_COMMAND:
         switch(wparam) {
         case IDC_BUTTON1:
@@ -10205,11 +10210,15 @@ updbtn:
         case IDC_CHECK5:
             rom=dunged->ew.doc->rom;
             if(IsDlgButtonChecked(win,IDC_CHECK5)) {
-                for(i=0;i<57;i++) if(((short*)(rom+0x190c))[i]==-1) {
-                    ((short*)(rom+0x190c))[i]=dunged->mapnum;
-                    break;
-                }
-                if(i==57) {
+                for(i=0;i<57;i++)
+                    if(((short*)(rom+0x190c))[i]==-1)
+                    {
+                        ((short*)(rom+0x190c))[i]=dunged->mapnum;
+                        break;
+                    }
+                
+                if(i==57)
+                {
                     MessageBox(framewnd,"You can't add anymore.","Bad error happened",MB_OK);
                     CheckDlgButton(win,IDC_CHECK5,BST_UNCHECKED);
                 }
@@ -13518,7 +13527,10 @@ BOOL CALLBACK blockdlgproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
                     
                     for(j = 0; j < 256; j += 8)
                     {
-                        GetPaletteEntries(hc, ((short*)(ed->pal))[j], 8, (void*)(o));
+                        GetPaletteEntries(hc,
+                                          ((short*)(ed->pal))[j],
+                                          8,
+                                          (void*)(o));
                         
                         for(i = 0; i < 8; i++)
                         {
@@ -15122,8 +15134,10 @@ long CALLBACK palproc(HWND win,UINT msg,WPARAM wparam,LPARAM lparam)
         cc.rgbResult=((l&0x1f)<<3)+((l&0x3e0)<<6)+((l&0x7c00)<<9);
         cc.lpCustColors=custcols;
         cc.Flags=CC_ANYCOLOR|CC_RGBINIT|CC_FULLOPEN;
-        if(ChooseColor(&cc)) {
+        if(ChooseColor(&cc))
+        {
             cc.rgbResult&=0xf8f8f8;
+            
             ed->pal[k]=((cc.rgbResult&0xf8)>>3)+((cc.rgbResult&0xf800)>>6)+((cc.rgbResult&0xf80000)>>9);
             DeleteObject(ed->brush[k]);
             ed->brush[k]=CreateSolidBrush(cc.rgbResult);
@@ -15133,16 +15147,23 @@ upd:
             rc.top=n+(j<<4);
             rc.right=rc.left+16;
             rc.bottom=rc.top+16;
+            
             InvalidateRect(win,&rc,0);
         }
+        
         break;
+    
     case WM_DESTROY:
-        ed=(PALEDIT*)GetWindowLong(win,GWL_USERDATA);
+        
+        ed = (PALEDIT*) GetWindowLong(win, GWL_USERDATA);
+        
         for(i=ed->palw*ed->palh-1;i>=0;i--) DeleteObject(ed->brush[i]);
         free(ed->pal);
         free(ed->brush);
         ed->ew.doc->pals[ed->ew.param&1023]=0;
+        
         break;
+    
     case WM_CREATE:
         ed=(PALEDIT*)(((MDICREATESTRUCT*)(((CREATESTRUCT*)lparam)->lpCreateParams))->lParam);
         SetWindowLong(win,GWL_USERDATA,(long)ed);
@@ -15160,10 +15181,13 @@ upd:
             ed->brush[j]=CreateSolidBrush(((l&0x1f)<<3)+((l&0x3e0)<<6)+((l&0x7c00)<<9));
         }
         Updatesize(win);
-deflt:
+        
+    deflt:
     default:
+        
         return DefMDIChildProc(win,msg,wparam,lparam);
     }
+    
     return 0;
 }
 
@@ -15337,6 +15361,8 @@ deflt:
     default:
         return DefMDIChildProc(win,msg,wparam,lparam);
     }
+    
+    return 0;
 }
 
 //Drawblock32#******************************
